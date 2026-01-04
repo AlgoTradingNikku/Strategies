@@ -35,17 +35,34 @@ class RiskManager:
             qty = pos['qty']
             pnl_pct = ((ltp - entry) / entry) * 100
             
-            # --- TSL LOGIC (Highest Wins) ---
-            # 1. Standard SL (Fixed %)
+            # --- TSL LOGIC: "HIGHEST WINS" SYSTEM ---
+            # The bot uses THREE protective lines and takes the MAXIMUM (safest exit price):
+            #
+            # WHY WE NEED ALL THREE:
+            # 1. Fixed SL protects against IMMEDIATE gap-downs (e.g., bad news, market crash)
+            #    - TSL hasn't activated yet because price never moved up
+            #    - Without this, you could lose 50%+ instantly
+            #
+            # 2. TSL protects GROWING profits as price rises
+            #    - Trails 5% behind the peak price
+            #    - Gives the trade "room to breathe" while locking in gains
+            #
+            # 3. Profit Lock creates a BREAKEVEN floor after initial profit
+            #    - Activates after 3% profit is reached
+            #    - Ensures you don't give back all gains on a reversal
+            #    - The 1:2 ratio (3% profit → 1% lock) prevents premature exits
+            
+            # LINE A: Fixed Hard Stop Loss (Default: 30%)
+            # Purpose: Worst-case backstop for immediate bad trades
             sl_price = entry * (1 - (config.get("risk_management.stop_loss_pct", 30) / 100))
             
-            # 2. TSL Logic
+            # LINE B: Trailing Stop Loss (Default: 5%)
+            # Purpose: Protect profits as they grow, trailing behind peak
             tsl_pct = config.get("risk_management.trailing_stop_pct", 5)
-            # Standard TSL Line: Peak - 5%
             tsl_price = pos['peak_price'] * (1 - (tsl_pct / 100))
             
-            # 3. Profit Lock (Line C)
-            # If PnL > Activation (3%), Lock Profit (1%)
+            # LINE C: Profit Lock (Default: 1% lock after 3% profit)
+            # Purpose: Create breakeven protection after initial profit threshold
             activation = config.get("risk_management.trailing_activation_pct", 3)
             lock = config.get("risk_management.profit_lock_pct", 1)
             
@@ -82,8 +99,113 @@ class RiskManager:
             return False
             
         # 2. Daily Loss Check (Stop New Entries)
-        max_daily_loss = config.get("risk_management.max_daily_loss", 1000)
+        max_daily_loss = config.get("risk_management.max_daily_acceptable_loss", 1000)
         if max_daily_loss > 0 and self.daily_pnl < -max_daily_loss:
             return False
             
         return True
+
+
+"""
+================================================================================
+WORKED EXAMPLE: "HIGHEST WINS" TSL SYSTEM IN ACTION
+================================================================================
+
+Entry Price: ₹100
+Config: SL=30%, TSL=5%, Profit Lock=1% (activates at 3% profit), Target=50%
+
+SCENARIO: Price rises to ₹120, then drops to ₹113
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TICK 1: Entry                                                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Price: ₹100 | Peak: ₹100                                                   │
+│ Line A (Fixed SL):    ₹100 - 30% = ₹70                                     │
+│ Line B (TSL):         ₹100 - 5%  = ₹95                                     │
+│ Line C (Profit Lock): Not activated (need 3% profit first)                 │
+│ Effective Stop = max(₹70, ₹95, 0) = ₹95                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TICK 2: Small profit                                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Price: ₹103 | Peak: ₹103 (3% profit - Profit Lock ACTIVATES!)              │
+│ Line A (Fixed SL):    ₹70 (unchanged)                                      │
+│ Line B (TSL):         ₹103 - 5% = ₹97.85                                   │
+│ Line C (Profit Lock): ₹100 + 1% = ₹101 ✅ (now active, never moves)        │
+│ Effective Stop = max(₹70, ₹97.85, ₹101) = ₹101                             │
+│ → Breakeven protection is now in place!                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TICK 3: Good profit                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Price: ₹110 | Peak: ₹110 (10% profit)                                      │
+│ Line A (Fixed SL):    ₹70 (unchanged)                                      │
+│ Line B (TSL):         ₹110 - 5% = ₹104.50 (moved UP! 📈)                   │
+│ Line C (Profit Lock): ₹101 (static, never moves)                           │
+│ Effective Stop = max(₹70, ₹104.50, ₹101) = ₹104.50                         │
+│ → TSL is now the dominant protector (highest value)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TICK 4: Peak profit                                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Price: ₹120 | Peak: ₹120 (20% profit)                                      │
+│ Line A (Fixed SL):    ₹70 (unchanged)                                      │
+│ Line B (TSL):         ₹120 - 5% = ₹114 (moved UP again! 📈)                │
+│ Line C (Profit Lock): ₹101 (static)                                        │
+│ Effective Stop = max(₹70, ₹114, ₹101) = ₹114                               │
+│ → If price drops below ₹114, we exit with 14% profit                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ TICK 5: Price reversal                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Price: ₹113 | Peak: ₹120 (still, peak doesn't drop)                        │
+│ Line A (Fixed SL):    ₹70                                                  │
+│ Line B (TSL):         ₹120 - 5% = ₹114 (unchanged, trails peak)            │
+│ Line C (Profit Lock): ₹101                                                 │
+│ Effective Stop = max(₹70, ₹114, ₹101) = ₹114                               │
+│ Current Price (₹113) < Effective Stop (₹114)                               │
+│ → 🔻 TSL HIT! Position closed at ₹114                                      │
+│ → Profit booked: ₹14 (14% gain) 🎉                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+UNDERSTANDING THE 1:2 RATIO (Lock : Buffer):
+─────────────────────────────────────────────
+The "1:2 ratio" refers to the relationship between the lock level and the buffer:
+
+  Activation Point: 3% profit (₹103)
+  Lock Point:       1% profit (₹101)
+  Buffer:           3% - 1% = 2% (₹103 → ₹101)
+  
+  Ratio = Lock : Buffer
+        = 1%   : 2%
+        = 1    : 2  ✅
+
+Visual representation:
+  Entry: ₹100
+         ↓
+         ├─ +1% (₹101) ← Profit Lock Floor (static, never moves)
+         │
+         ├─ +2% (₹102) ← Buffer zone (breathing room)
+         │
+         └─ +3% (₹103) ← Activation Trigger
+
+Why this matters:
+- The 2% buffer prevents premature exits from normal market noise
+- Gives the trade "breathing room" after hitting activation threshold
+- Ensures you don't get shaken out immediately after lock activates
+- Allows TSL to take over as the dominant protector for larger profits
+
+KEY INSIGHTS:
+1. Fixed SL (₹70) protected us at entry - if price gapped down immediately
+2. Profit Lock (₹101) ensured we couldn't go negative after hitting 3% profit
+3. TSL (5% trail) did the heavy lifting - moved UP with price, locked in 14% gain
+4. We gave back only 6% (₹120 → ₹114) instead of the full 20% profit
+
+This is why it's called "HIGHEST WINS" - the bot always uses the safest (highest)
+exit price among the three protective lines!
+================================================================================
+"""

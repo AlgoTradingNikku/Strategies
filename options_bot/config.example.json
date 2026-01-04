@@ -11,7 +11,7 @@
         "enable_pullback_entry": true,
         "_comment_pullback": "enable_pullback_entry allows re-entering trends on dips. Vital for Morning Trend Continuation.",
         "max_reentries": 3,
-        "min_gap_minutes": 15,
+        "min_gap_time": "15m",
         "_comment_gap": "Cool-down timer applied per-instrument after CLOSING a trade. Does not block pyramiding."
     },
     "strike_selection": {
@@ -37,9 +37,9 @@
         "utbot_atr": 10
     },
     "active_indicators": {
+        "_comment_indicators": "EMA on HTF automatically detects trend (9 vs 21 crossover). Available: ema, stochrsi, rsi, utbot",
         "htf": [
-            "ema",
-            "trend"
+            "ema"
         ],
         "ltf": [
             "ema",
@@ -48,14 +48,20 @@
         ]
     },
     "risk_management": {
+        "_comment_capital": "Capital in ₹ to allocate per trade (e.g., 10000).",
         "capital_per_trade": 10000,
+        "_comment_sl": "Fixed Stop Loss % from entry price (e.g., 30 = 30%).",
         "stop_loss_pct": 30,
+        "_comment_target": "Target Profit % from entry price (e.g., 50 = 50%).",
         "target_profit_pct": 50,
+        "_comment_tsl": "Trailing Stop % (trails peak price by this amount, e.g., 5%).",
         "trailing_stop_pct": 5,
+        "_comment_lock": "Profit Lock: If profit > activation %, lock profit at lock %. (e.g., if >3%, lock 1%).",
         "trailing_activation_pct": 3,
         "profit_lock_pct": 1,
-        "max_daily_loss": 1000,
-        "_comment_loss": "Set max_daily_loss to 0 to DISABLE the Daily Circuit Breaker.",
+        "_comment_loss": "Set to 0 to disable daily loss limit. Otherwise, bot stops new trades if loss exceeds this amount.",
+        "max_daily_acceptable_loss": 1000,
+        "_comment_positions": "Maximum number of simultaneous open positions.",
         "max_positions": 2
     },
     "trading_hours": {
@@ -69,6 +75,8 @@
             "BANKNIFTY"
         ],
         "paper_trading": true,
+        "live_trading": false,
+        "_comment_live_trading": "Set to true for REAL trading (requires OpenAlgo setup). False = Paper trading with MockAPI (safe default).",
         "log_level": "INFO"
     }
 }

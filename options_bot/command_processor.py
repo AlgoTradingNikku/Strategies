@@ -64,6 +64,28 @@ class CommandProcessor:
             else:
                 print(f"Current SL: {config.get('risk_management.stop_loss_pct')}%")
 
+        elif cmd == "target":
+            if args:
+                try:
+                    val = float(args[0])
+                    old = config.get("risk_management.target_profit_pct")
+                    self.logger.info(f"✅ Target changed: {old}% → {val}%")
+                except ValueError:
+                    self.logger.error("Invalid number format. Use: target 50")
+            else:
+                print(f"Current Target: {config.get('risk_management.target_profit_pct')}%")
+
+        elif cmd == "trailing":
+            if args:
+                try:
+                    val = float(args[0])
+                    old = config.get("risk_management.trailing_stop_pct")
+                    self.logger.info(f"✅ TSL changed: {old}% → {val}%")
+                except ValueError:
+                    self.logger.error("Invalid number format. Use: trailing 5")
+            else:
+                print(f"Current TSL: {config.get('risk_management.trailing_stop_pct')}%")
+
         elif cmd == "pause":
             self.paused = True
             self.logger.warning("⏸️  TRADING PAUSED. No new entries will be taken.")

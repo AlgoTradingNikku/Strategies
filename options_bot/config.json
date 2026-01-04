@@ -1,9 +1,11 @@
 {
     "api": {
-        "api_key": "YOUR_API_KEY_HERE",
+        "api_key": "a2edab0147e5058617b63b677c82c5c44533d356d8b8f33734127d6c5f029a55",
         "host": "http://127.0.0.1:5000",
         "websocket_url": "ws://127.0.0.1:8765"
     },
+    "paper_trading": false,
+    "live_trading": true,
     "strategy_settings": {
         "timeframe_htf": 15,
         "timeframe_ltf": 5,
@@ -11,9 +13,15 @@
         "enable_initial_entry": true,
         "enable_pullback_entry": true,
         "max_reentries": 3,
-        "min_gap_minutes": 15
+        "min_gap_time": "1m",
+        "_comment_gap": "Supports time units: 30s, 5m, 2h. Plain numbers treated as minutes."
     },
     "strike_selection": {
+        "_comment_mode": "ATM_OFFSET(use 'strike_step' with this option), PREMIUM: Target option price (use 'target_premium' with this option)",
+        "_comment_strike_step": "For ATM_OFFSET mode: 0=ATM, +1=1 strike OTM, -1=1 strike ITM, +2=2 strikes OTM, etc.",
+        "_comment_premium": "For PREMIUM mode: Bot finds strike with premium closest to this value (e.g., 100 = ₹100 option)",
+        "_comment_expiry_type": "Options: CURRENT_WEEKLY (default), NEXT_WEEKLY, MONTHLY. Determines which expiry to trade.",
+        "_comment_auto_switch": "If true, automatically switches to next expiry on expiry day to avoid 0DTE volatility. If expiry_type weekly swiches to next weekly, if monthly switches to next monthly..etc. If false, trades current expiry until end.",
         "mode": "ATM_OFFSET",
         "strike_step": 0,
         "target_premium": 100,
@@ -35,24 +43,33 @@
         "utbot_atr": 10
     },
     "active_indicators": {
+        "_comment": "Available indicators - HTF: ema, utbot | LTF: ema, stochrsi, rsi, utbot",
+        "_htf_options": "Switch HTF trend detection: ['ema'] or ['utbot']",
+        "_ltf_options": "Switch LTF signals: ['ema','stochrsi','rsi'] or ['ema','utbot'] or ['utbot'] only",
+        "_htf_example": "ema",
+        "_ltf_example": "ema, stochrsi, rsi",
         "htf": [
-            "ema",
-            "trend"
+            "utbot"
         ],
         "ltf": [
-            "ema",
-            "stochrsi",
-            "rsi"
+            "utbot"
         ]
     },
     "risk_management": {
+        "_comment_loss": "Set to 0 to disable daily loss limit. Otherwise, bot stops new trades if loss exceeds this amount.",
+        "_comment_capital": "Capital in ₹ to allocate per trade (e.g., 10000).",
         "capital_per_trade": 10000,
-        "stop_loss_pct": 50,
+        "_comment_sl": "Fixed Stop Loss % from entry price (e.g., 30 = 30%).",
+        "stop_loss_pct": 30,
+        "_comment_target": "Target Profit % from entry price (e.g., 50 = 50%).",
         "target_profit_pct": 50,
+        "_comment_tsl": "Trailing Stop % (trails peak price by this amount, e.g., 5%).",
         "trailing_stop_pct": 5,
+        "_comment_lock": "Profit Lock: If profit > activation %, lock profit at lock %. (e.g., if >3%, lock 1%).",
         "trailing_activation_pct": 3,
         "profit_lock_pct": 1,
-        "max_daily_loss": 1000,
+        "max_daily_acceptable_loss": 0,
+        "_comment_positions": "Maximum number of simultaneous open positions.",
         "max_positions": 2
     },
     "trading_hours": {
@@ -65,7 +82,6 @@
             "NIFTY",
             "BANKNIFTY"
         ],
-        "paper_trading": true,
         "log_level": "INFO"
     }
 }

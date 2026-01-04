@@ -10,8 +10,9 @@ dependencies = [
     "numpy",
     "websocket-client",
     "python-dotenv",
-    "colorama", 
-    "tabulate" 
+    "colorama",
+    "tabulate",
+    "openalgo>=1.0.13",
 ]
 
 [tool.uv]

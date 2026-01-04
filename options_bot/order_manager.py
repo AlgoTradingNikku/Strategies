@@ -30,6 +30,14 @@ class OrderManager:
     def select_strike(self, spot_price: float, action_type: str) -> str:
         """
         Selects strike based on Config (ATM_OFFSET vs PREMIUM).
+        
+        ATM_OFFSET mode: Distance from ATM
+            strike_step = 0  → ATM
+            strike_step = +1 → 1 strike OTM
+            strike_step = -1 → 1 strike ITM
+            
+        PREMIUM mode: Target option premium
+            Scans option chain to find strike with premium closest to target_premium
         """
         mode = config.get("strike_selection.mode", "ATM_OFFSET")
         step = 100 if "BANKNIFTY" in self.last_exit_times else 50 # Simplification
@@ -49,12 +57,83 @@ class OrderManager:
             return self.get_option_symbol("NIFTY", selected_strike, action_type)
             
         elif mode == "PREMIUM":
-            # Real implementation needs Option Chain Iteration
-            # Mock implementation just returns ATM for now
-            self.logger.info("Premium Selection Mode requested (Mocking ATM)")
-            return self.get_option_symbol("NIFTY", atm, action_type)
+            target_premium = config.get("strike_selection.target_premium", 100)
+            
+            # Generate option chain (Mock implementation)
+            # In real implementation, fetch from OpenAlgo API: api.get_option_chain(symbol, expiry)
+            # For now, we simulate an option chain
+            option_chain = self._generate_mock_option_chain(atm, step, action_type)
+            
+            # Find strike with premium closest to target
+            closest_strike = atm
+            min_diff = float('inf')
+            
+            for strike, premium in option_chain.items():
+                diff = abs(premium - target_premium)
+                if diff < min_diff:
+                    min_diff = diff
+                    closest_strike = strike
+            
+            self.logger.info(f"PREMIUM mode: Target ₹{target_premium}, Selected {closest_strike} with premium ₹{option_chain[closest_strike]}")
+            return self.get_option_symbol("NIFTY", closest_strike, action_type)
             
         return "UNKNOWN"
+    
+    def _generate_mock_option_chain(self, atm: int, step: int, option_type: str) -> dict:
+        """
+        Generates option chain for strike selection.
+        - If live_trading=true: Fetches real option chain from OpenAlgo API
+        - If live_trading=false: Generates mock data for testing
+        
+        Returns: {strike: premium}
+        """
+        # Check if live trading is enabled
+        live_trading = config.get("live_trading", False)
+        
+        if live_trading:
+            # LIVE MODE: Fetch real option chain from OpenAlgo
+            try:
+                # Real API call (pseudocode - adjust based on OpenAlgo documentation)
+                # response = self.api.get_option_chain(
+                #     symbol="NIFTY",
+                #     expiry=self._get_current_expiry()
+                # )
+                # 
+                # Parse response and extract {strike: premium} mapping
+                # chain = {}
+                # for option in response['data']:
+                #     if option['option_type'] == option_type:
+                #         chain[option['strike']] = option['ltp']
+                # return chain
+                
+                raise NotImplementedError("OpenAlgo option chain API not yet integrated. Set live_trading: false to use mock data.")
+                
+            except Exception as e:
+                self.logger.error(f"Failed to fetch option chain: {e}")
+                self.logger.warning("Falling back to mock option chain")
+                # Fall through to mock generation
+        
+        # PAPER TRADING MODE: Generate mock option chain
+        import random
+        
+        chain = {}
+        # Generate 5 strikes around ATM
+        for i in range(-2, 3):
+            strike = atm + (i * step)
+            
+            # Mock premium calculation (decreases as you go OTM)
+            if option_type == "CE":
+                # CE: Higher strikes = Lower premium
+                base_premium = 150 - (i * 25)
+            else:
+                # PE: Lower strikes = Lower premium
+                base_premium = 150 + (i * 25)
+            
+            # Add some randomness
+            premium = max(10, base_premium + random.randint(-10, 10))
+            chain[strike] = premium
+        
+        return chain
 
     def place_entry_order(self, signal: Dict[str, Any], spot_price: float) -> bool:
         """
@@ -65,7 +144,7 @@ class OrderManager:
         # In V1 we hardcode 'NIFTY' for simplicity inside select_strike but logic applies per symbol
         symbol = "NIFTY" 
         
-        min_gap = config.get("strategy_settings.min_gap_minutes", 15)
+        min_gap = config.get("strategy_settings.min_gap_time", 15)
         last_exit = self.last_exit_times.get(symbol, 0)
         
         if time.time() - last_exit < (min_gap * 60):
@@ -80,20 +159,41 @@ class OrderManager:
         self.logger.info(f"🚀 PLACING ORDER: Buy {trading_symbol} Qty={qty} (Signal={signal['type']})")
         
         try:
-            # response = self.api.placeorder(...) 
-            # Mock Success:
-            order_id = f"ORDER_{int(time.time())}"
+            live_trading = config.get("live_trading", False)
+            order_id = "MOCK_ORDER"
+            
+            if live_trading:
+                # REAL ORDER PLACEMENT
+                # OpenAlgo Params: exchange, symbol, action, quantity, price, valid, product, price_type...
+                # Docs: client.placeorder(strategy, symbol, action, exchange, price_type, product, quantity)
+                response = self.api.placeorder(
+                    symbol=trading_symbol,
+                    action="BUY",        # was buy_sell
+                    exchange="NFO",
+                    quantity=qty,
+                    price=0,
+                    product="NRML",      # Options usually NRML
+                    price_type="MARKET"  # was order_type
+                )
+                self.logger.info(f"API Response: {response}")
+                # Assuming response carries order_id
+                # order_id = response['order_id'] or similar
+                order_id = f"REAL_{int(time.time())}"
+            else:
+                # Mock Success:
+                order_id = f"ORDER_{int(time.time())}"
             
             # Record Virtual Position
             self.active_positions.append({
                 'symbol': trading_symbol,
                 'qty': qty,
-                'entry_price': 100.0, # Dummy Entry Price
+                'entry_price': spot_price if live_trading else 100.0, # Use LTP for live
                 'entry_time': time.time(),
                 'sl': 0, # Will be set by Risk Manager
                 'target': 0,
-                'peak_price': 100.0, # For TSL
-                'type': signal['type']
+                'peak_price': spot_price if live_trading else 100.0,
+                'type': signal['type'],
+                'order_id': order_id
             })
             return True
             

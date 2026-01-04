@@ -14,7 +14,7 @@ class MockAPI:
         """Generates random OHLC data for testing."""
         # resolution is in minutes strings usually
         rows = 500
-        dates = pd.date_range(end=pd.Timestamp.now(), periods=rows, freq=f'{resolution}T')
+        dates = pd.date_range(end=pd.Timestamp.now(), periods=rows, freq=f'{resolution}min')
         
         df = pd.DataFrame(index=dates)
         df['open'] = np.random.uniform(23000, 23500, size=rows)

@@ -4,6 +4,7 @@ import time
 import threading
 import logging
 from typing import Any, Dict
+from utils import parse_time_value
 
 CONFIG_FILE = "config.json"
 
@@ -72,6 +73,9 @@ class Config:
         """
         Thread-safe retrieval of config values.
         Supports dotted access: config.get("risk_management.stop_loss_pct")
+        
+        Special handling:
+        - Time values (min_gap_time, etc.) support units: "30s", "5m", "2h"
         """
         with self._file_lock:
             if "." in key:
@@ -80,10 +84,28 @@ class Config:
                 try:
                     for k in keys:
                         value = value[k]
+                    
+                    # Parse time values if they have units
+                    if "minutes" in key or "time" in key.lower():
+                        try:
+                            return parse_time_value(value)
+                        except (ValueError, TypeError):
+                            pass  # Return as-is if parsing fails
+                    
                     return value
                 except (KeyError, TypeError):
                     return default
-            return self._data.get(key, default)
+            
+            value = self._data.get(key, default)
+            
+            # Parse time values if they have units
+            if "minutes" in key or "time" in key.lower():
+                try:
+                    return parse_time_value(value)
+                except (ValueError, TypeError):
+                    pass  # Return as-is if parsing fails
+            
+            return value
 
     def set(self, key: str, value: Any) -> None:
         """
