@@ -1,0 +1,18 @@
+[project]
+name = "options-bot"
+version = "1.0.0"
+description = "Automated Options Trading Bot for OpenAlgo"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "pandas",
+    "numpy",
+    "websocket-client",
+    "python-dotenv",
+    "colorama", 
+    "tabulate" 
+]
+
+[tool.uv]
+# Optimization settings for uv if needed

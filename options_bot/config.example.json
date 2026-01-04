@@ -1,0 +1,74 @@
+{
+    "api": {
+        "api_key": "YOUR_API_KEY_HERE",
+        "host": "http://127.0.0.1:5000"
+    },
+    "strategy_settings": {
+        "timeframe_htf": 15,
+        "timeframe_ltf": 5,
+        "wait_for_candle_close": true,
+        "enable_initial_entry": true,
+        "enable_pullback_entry": true,
+        "_comment_pullback": "enable_pullback_entry allows re-entering trends on dips. Vital for Morning Trend Continuation.",
+        "max_reentries": 3,
+        "min_gap_minutes": 15,
+        "_comment_gap": "Cool-down timer applied per-instrument after CLOSING a trade. Does not block pyramiding."
+    },
+    "strike_selection": {
+        "mode": "ATM_OFFSET",
+        "strike_step": 0,
+        "target_premium": 100,
+        "expiry_type": "CURRENT_WEEKLY",
+        "auto_switch_on_expiry_day": false,
+        "_comment_expiry": "auto_switch helps avoid 0DTE volatility by moving to next expiry on Thursday."
+    },
+    "indicators": {
+        "ema_fast": 9,
+        "ema_slow": 21,
+        "rsi_period": 14,
+        "rsi_overbought": 55,
+        "rsi_oversold": 45,
+        "stoch_period": 14,
+        "stoch_k": 3,
+        "stoch_d": 3,
+        "stoch_overbought": 80,
+        "stoch_oversold": 20,
+        "utbot_key": 2,
+        "utbot_atr": 10
+    },
+    "active_indicators": {
+        "htf": [
+            "ema",
+            "trend"
+        ],
+        "ltf": [
+            "ema",
+            "stochrsi",
+            "rsi"
+        ]
+    },
+    "risk_management": {
+        "capital_per_trade": 10000,
+        "stop_loss_pct": 30,
+        "target_profit_pct": 50,
+        "trailing_stop_pct": 5,
+        "trailing_activation_pct": 3,
+        "profit_lock_pct": 1,
+        "max_daily_loss": 1000,
+        "_comment_loss": "Set max_daily_loss to 0 to DISABLE the Daily Circuit Breaker.",
+        "max_positions": 2
+    },
+    "trading_hours": {
+        "start_time": "09:15",
+        "stop_time": "15:15",
+        "sq_off_time": "15:25"
+    },
+    "general": {
+        "symbols": [
+            "NIFTY",
+            "BANKNIFTY"
+        ],
+        "paper_trading": true,
+        "log_level": "INFO"
+    }
+}
