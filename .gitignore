@@ -1,0 +1,4 @@
+options_bot\.venv
+options_bot\uv.lock
+options_bot\__pycache__
+Strategies.code-workspace
