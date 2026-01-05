@@ -1,0 +1,10 @@
+Connecting to Host: http://127.0.0.1:5000
+
+--- Searching for 'SBIN' ---
+  Found: {"brexchange": "NSE", "brsymbol": "SBIN-EQ", "exchange": "NSE", "expiry": "", "instrumenttype": "EQ", "lotsize": 1, "name": "SBIN", "strike": 0.0, "symbol": "SBIN", "tick_size": 0.05, "token": "3045"}
+  Found: {"brexchange": "NSE", "brsymbol": "SBINEQWETF-EQ", "exchange": "NSE", "expiry": "", "instrumenttype": "EQ", "lotsize": 1, "name": "SBINEQWETF", "strike": 0.0, "symbol": "SBINEQWETF", "tick_size": 0.01, "token": "24524"}
+  Found: {"brexchange": "BSE", "brsymbol": "SBIN-EQ", "exchange": "BSE", "expiry": "", "instrumenttype": "Equity", "lotsize": 1, "name": "SBIN", "strike": 0.0, "symbol": "SBIN", "tick_size": 0.05, "token": "500112"}
+  Found: {"brexchange": "NFO", "brsymbol": "SBIN26FEB630CE", "exchange": "NFO", "expiry": "24-FEB-26", "instrumenttype": "OPTSTK", "lotsize": 750, "name": "SBIN", "strike": 630.0, "symbol": "SBIN24FEB26630CE", "tick_size": 0.05, "token": "158080"}
+  Found: {"brexchange": "NFO", "brsymbol": "SBIN26FEB630PE", "exchange": "NFO", "expiry": "24-FEB-26", "instrumenttype": "OPTSTK", "lotsize": 750, "name": "SBIN", "strike": 630.0, "symbol": "SBIN24FEB26630PE", "tick_size": 0.05, "token": "158081"}
+
+LTP Test -> SBIN on NSE: {'ltp': {}}

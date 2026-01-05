@@ -1,0 +1,80 @@
+Connecting to Host: http://127.0.0.1:5000
+Searching for: Nifty via POST http://127.0.0.1:5000/api/v1/search...
+  Found 10958 matches.
+    - Symbol: 'BANKNIFTY1', Exchange: 'NSE', Name: 'BANKNIFTY1'
+    - Symbol: 'NIFTYETF', Exchange: 'NSE', Name: 'NIFTYETF'
+    - Symbol: 'NIFTYADD', Exchange: 'NSE', Name: 'NIFTYADD'
+    - Symbol: 'NIFTYBETA', Exchange: 'NSE', Name: 'NIFTYBETA'
+    - Symbol: 'NIFTYBEES', Exchange: 'NSE', Name: 'NIFTYBEES'
+    - Symbol: 'NIFTYQLITY', Exchange: 'NSE', Name: 'NIFTYQLITY'
+    - Symbol: 'HDFCNIFTY', Exchange: 'NSE', Name: 'HDFCNIFTY'
+    - Symbol: 'QNIFTY', Exchange: 'NSE', Name: 'QNIFTY'
+    - Symbol: 'NIFTY1', Exchange: 'NSE', Name: 'NIFTY1'
+    - Symbol: 'IDFNIFTYET', Exchange: 'NSE', Name: 'IDFNIFTYET'
+    - Symbol: 'MONIFTY500', Exchange: 'NSE', Name: 'MONIFTY500'
+    - Symbol: 'AXISNIFTY', Exchange: 'NSE', Name: 'AXISNIFTY'
+    - Symbol: 'NIFTYBETF', Exchange: 'NSE', Name: 'NIFTYBETF'
+    - Symbol: 'IVZINNIFTY', Exchange: 'NSE', Name: 'IVZINNIFTY'
+    - Symbol: 'BSLNIFTY', Exchange: 'NSE', Name: 'BSLNIFTY'
+    - Symbol: 'EBANKNIFTY', Exchange: 'NSE', Name: 'EBANKNIFTY'
+    - Symbol: 'NIFTYIETF', Exchange: 'NSE', Name: 'NIFTYIETF'
+    - Symbol: 'NIFTY100EW', Exchange: 'NSE', Name: 'NIFTY100EW'
+    - Symbol: 'AONENIFTY', Exchange: 'NSE', Name: 'AONENIFTY'
+    - Symbol: 'GROWWNIFTY', Exchange: 'NSE', Name: 'GROWWNIFTY'
+Searching for: NIFTY via POST http://127.0.0.1:5000/api/v1/search...
+  Found 10958 matches.
+    - Symbol: 'BANKNIFTY1', Exchange: 'NSE', Name: 'BANKNIFTY1'
+    - Symbol: 'NIFTYETF', Exchange: 'NSE', Name: 'NIFTYETF'
+    - Symbol: 'NIFTYADD', Exchange: 'NSE', Name: 'NIFTYADD'
+    - Symbol: 'NIFTYBETA', Exchange: 'NSE', Name: 'NIFTYBETA'
+    - Symbol: 'NIFTYBEES', Exchange: 'NSE', Name: 'NIFTYBEES'
+    - Symbol: 'NIFTYQLITY', Exchange: 'NSE', Name: 'NIFTYQLITY'
+    - Symbol: 'HDFCNIFTY', Exchange: 'NSE', Name: 'HDFCNIFTY'
+    - Symbol: 'QNIFTY', Exchange: 'NSE', Name: 'QNIFTY'
+    - Symbol: 'NIFTY1', Exchange: 'NSE', Name: 'NIFTY1'
+    - Symbol: 'IDFNIFTYET', Exchange: 'NSE', Name: 'IDFNIFTYET'
+    - Symbol: 'MONIFTY500', Exchange: 'NSE', Name: 'MONIFTY500'
+    - Symbol: 'AXISNIFTY', Exchange: 'NSE', Name: 'AXISNIFTY'
+    - Symbol: 'NIFTYBETF', Exchange: 'NSE', Name: 'NIFTYBETF'
+    - Symbol: 'IVZINNIFTY', Exchange: 'NSE', Name: 'IVZINNIFTY'
+    - Symbol: 'BSLNIFTY', Exchange: 'NSE', Name: 'BSLNIFTY'
+    - Symbol: 'EBANKNIFTY', Exchange: 'NSE', Name: 'EBANKNIFTY'
+    - Symbol: 'NIFTYIETF', Exchange: 'NSE', Name: 'NIFTYIETF'
+    - Symbol: 'NIFTY100EW', Exchange: 'NSE', Name: 'NIFTY100EW'
+    - Symbol: 'AONENIFTY', Exchange: 'NSE', Name: 'AONENIFTY'
+    - Symbol: 'GROWWNIFTY', Exchange: 'NSE', Name: 'GROWWNIFTY'
+Searching for: Index via POST http://127.0.0.1:5000/api/v1/search...
+  Found 4 matches.
+    - Symbol: 'NWFINDEX26-DB', Exchange: 'BSE', Name: 'NWFINDEX26'
+    - Symbol: 'EELINDEX26-DB', Exchange: 'BSE', Name: 'EELINDEX26'
+    - Symbol: 'INDEX2NSETEST', Exchange: 'NSE_INDEX', Name: 'INDEX2NSETEST'
+    - Symbol: 'INDEX1NSETEST', Exchange: 'NSE_INDEX', Name: 'INDEX1NSETEST'
+
+--- Testing LTP for Discovered Symbols ---
+LTP Test -> sym='INDEX2NSETEST', exch='NSE_INDEX': {'ltp': {}}
+LTP Test -> sym='NIFTYBETF', exch='NSE': {'ltp': {}}
+LTP Test -> sym='HDFCNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='MONIFTY500', exch='NSE': {'ltp': {}}
+LTP Test -> sym='BSLNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYETF', exch='NSE': {'ltp': {}}
+LTP Test -> sym='AXISNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='EBANKNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYIETF', exch='NSE': {'ltp': {}}
+LTP Test -> sym='AONENIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYADD', exch='NSE': {'ltp': {}}
+LTP Test -> sym='BANKNIFTY1', exch='NSE': {'ltp': {}}
+LTP Test -> sym='IVZINNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='GROWWNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='EELINDEX26-DB', exch='BSE': {'ltp': {}}
+LTP Test -> sym='INDEX1NSETEST', exch='NSE_INDEX': {'ltp': {}}
+LTP Test -> sym='NIFTY100EW', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYQLITY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYBETA', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTYBEES', exch='NSE': {'ltp': {}}
+LTP Test -> sym='IDFNIFTYET', exch='NSE': {'ltp': {}}
+LTP Test -> sym='QNIFTY', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NWFINDEX26-DB', exch='BSE': {'ltp': {}}
+LTP Test -> sym='NIFTY1', exch='NSE': {'ltp': {}}
+LTP Test -> sym='NIFTY', exch='NSE_INDEX': {'ltp': {}}
+LTP Test -> sym='Nifty 50', exch='NSE_INDEX': {'ltp': {}}
+LTP Test -> sym='Nifty 50', exch='NSE': {'ltp': {}}

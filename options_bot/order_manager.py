@@ -4,10 +4,12 @@ from typing import Dict, Any, List
 from config import config
 
 class OrderManager:
-    def __init__(self, api_client):
+    def __init__(self, api_client, ws_handler=None):
         self.api = api_client
+        self.ws_handler = ws_handler
         self.logger = logging.getLogger("OrderManager")
         self.active_positions = [] # List of dicts
+        self.trade_history = []
         
         # Gap Timer Tracker: {'NIFTY': last_exit_time_timestamp}
         self.last_exit_times = {} 
@@ -93,24 +95,15 @@ class OrderManager:
         if live_trading:
             # LIVE MODE: Fetch real option chain from OpenAlgo
             try:
-                # Real API call (pseudocode - adjust based on OpenAlgo documentation)
+                # Real API call
                 # response = self.api.get_option_chain(
                 #     symbol="NIFTY",
                 #     expiry=self._get_current_expiry()
                 # )
-                # 
-                # Parse response and extract {strike: premium} mapping
-                # chain = {}
-                # for option in response['data']:
-                #     if option['option_type'] == option_type:
-                #         chain[option['strike']] = option['ltp']
-                # return chain
-                
-                raise NotImplementedError("OpenAlgo option chain API not yet integrated. Set live_trading: false to use mock data.")
-                
+                # return self._parse_chain(response)
+                raise NotImplementedError("OpenAlgo option chain API not yet integrated.")
             except Exception as e:
                 self.logger.error(f"Failed to fetch option chain: {e}")
-                self.logger.warning("Falling back to mock option chain")
                 # Fall through to mock generation
         
         # PAPER TRADING MODE: Generate mock option chain
@@ -154,10 +147,20 @@ class OrderManager:
         # 2. Select Symbol
         trading_symbol = self.select_strike(spot_price, signal['type'])
         
-        # 3. Place Order (Mock)
+        # 3. Place Order (Mock/Active)
         qty = 50 # Default Lot
         self.logger.info(f"🚀 PLACING ORDER: Buy {trading_symbol} Qty={qty} (Signal={signal['type']})")
         
+        # Subscribe to this option in WebSocket for real-time tracking
+        if self.ws_handler:
+            try:
+                # Format: SYMBOL.EXCHANGE
+                ws_key = f"{trading_symbol}.NFO"
+                self.ws_handler.subscribe([ws_key])
+                self.logger.info(f"📡 Subscribed to {ws_key} for real-time tracking.")
+            except Exception as ws_err:
+                self.logger.error(f"Failed to subscribe to {trading_symbol} on WS: {ws_err}")
+                
         try:
             live_trading = config.get("live_trading", False)
             order_id = "MOCK_ORDER"
@@ -186,6 +189,7 @@ class OrderManager:
             # Record Virtual Position
             self.active_positions.append({
                 'symbol': trading_symbol,
+                'ws_key': f"{trading_symbol}.NFO",
                 'qty': qty,
                 'entry_price': spot_price if live_trading else 100.0, # Use LTP for live
                 'entry_time': time.time(),

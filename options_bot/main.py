@@ -10,6 +10,9 @@ from strategy import StrategyEngine
 from order_manager import OrderManager
 from risk_manager import RiskManager
 from command_processor import CommandProcessor
+from openalgo_rest import OpenAlgoREST  # Direct REST fallback
+from websocket_handler import WebSocketHandler
+import utils
 
 # Setup Logging
 logging.basicConfig(
@@ -26,6 +29,37 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, signal_handler)
+
+def main_heartbeat(count, symbol, price, ws_active, df=None, mode="LIVE", active_pos=None):
+    """Logs a periodic status message with symbol price and indicator state."""
+    if count % 30 == 0:
+        source = "WS" if ws_active else ("REST" if mode == "LIVE" else "MOCK")
+        
+        indicator_str = ""
+        if df is not None and not df.empty:
+            last = df.iloc[-1]
+            
+            # UTBOT: Map 1 to BUY, -1 to SELL
+            ut_val = last.get('utbot_signal', 0)
+            ut_str = "BUY" if ut_val == 1 else ("SELL" if ut_val == -1 else "WAIT")
+            
+            # RSI: The calculated column is rsi_14
+            rsi_val = last.get('rsi_14', 0)
+            
+            # EMA: Fast/Slow alignment
+            ema9 = last.get('ema_9', 0)
+            ema21 = last.get('ema_21', 0)
+            ema_str = "BUY" if ema9 > ema21 else "SELL"
+            
+            indicator_str = f" | UTBot: {ut_str} | RSI: {rsi_val:.1f} | EMA: {ema_str}"
+        
+        pos_count = len(active_pos) if active_pos else 0
+        pos_str = f" | Positions: {pos_count}"
+        
+        # User requested clean log without 'Main - INFO' and with '[LTF]'
+        print(f"💓 [LTF] {symbol} @ {price} ({source}){indicator_str}{pos_str}", flush=True)
+        return True
+    return False
 
 def main():
     logger.info("--------------------------------")
@@ -44,25 +78,22 @@ def main():
         logger.warning("=" * 60)
         
         try:
-            # Import real OpenAlgo client
-            # Attempt to import the library (User must have installed: pip install openalgo)
-            try:
-                from openalgo import api as openalgo_api
-            except ImportError:
-                raise ImportError("OpenAlgo library not installed. Please run: pip install openalgo")
-
-            # Initialize API
-            logger.info("Connecting to OpenAlgo API...")
-            api = openalgo_api(
-                api_key=config.get("api.api_key"),
-                host=config.get("api.host")
-            )
-            logger.info("✅ Connected to OpenAlgo API")
+            logger.info("Connecting to OpenAlgo API via REST...")
+            api_key = config.get("api.api_key")
+            host = config.get("api.host")
             
-        except ImportError as e:
-            logger.error(f"❌ Dependency Error: {e}")
-            logger.error("💡 Set 'live_trading: false' in config.json to use paper trading mode")
-            sys.exit(1)
+            # Use our robust REST wrapper instead of the SDK
+            api = OpenAlgoREST(api_key=api_key, host=host)
+            logger.info("✅ Connected to OpenAlgo API (REST Mode)")
+            
+            # 1b. Initialize WebSocket for Real-time TSL
+            ws_url = config.get("api.websocket_url", "ws://127.0.0.1:8765")
+            ws_handler = WebSocketHandler(api_key=api_key, ws_url=ws_url)
+            ws_handler.start()
+            # Subscribe to NIFTY spot
+            ws_handler.subscribe(["NIFTY.NSE_INDEX"])
+            logger.info(f"✅ WebSocket Handler Started (Monitoring: NIFTY.NSE_INDEX)")
+            
         except Exception as e:
             logger.error(f"❌ API Connection Failed: {e}")
             logger.error("💡 Check your API Key and Host URL in config.json")
@@ -74,7 +105,7 @@ def main():
     
     # 2. Initialize other components
     dh = DataHandler(api)
-    om = OrderManager(api)
+    om = OrderManager(api, ws_handler=ws_handler if live_trading else None)
     rm = RiskManager(om)
     strat = StrategyEngine()
     cmd_proc = CommandProcessor(om, rm, dh)
@@ -84,20 +115,45 @@ def main():
     logger.info("✅ Command Interface Ready. Type 'help' for commands.")
     
     # Display Active Configuration
-    logger.info("=" * 50)
-    logger.info("📊 ACTIVE INDICATORS:")
+    logger.info("=" * 60)
+    logger.info("  📊 SYSTEM CONFIGURATION SUMMARY")
+    logger.info("-" * 60)
+    
+    # 1. Mode & API
+    mode_str = "LIVE (Real Money)" if live_trading else "PAPER (Mock Data)"
+    logger.info(f"  Mode:           {mode_str}")
+    logger.info(f"  Symbols:        {', '.join(config.get('general.symbols', ['NIFTY']))}")
+    
+    # 2. Indicators
+    logger.info("-" * 60)
+    logger.info("  🚀 STRATEGY & INDICATORS:")
     htf_indicators = config.get("active_indicators.htf", [])
     ltf_indicators = config.get("active_indicators.ltf", [])
-    logger.info(f"  HTF ({config.get('strategy_settings.timeframe_htf')}min): {', '.join(htf_indicators).upper()}")
-    logger.info(f"  LTF ({config.get('strategy_settings.timeframe_ltf')}min): {', '.join(ltf_indicators).upper()}")
+    logger.info(f"  HTF ({config.get('strategy_settings.timeframe_htf')}m):    {', '.join(htf_indicators).upper()}")
+    logger.info(f"  LTF ({config.get('strategy_settings.timeframe_ltf')}m):    {', '.join(ltf_indicators).upper()}")
     
-    logger.info("🎯 RISK SETTINGS:")
-    logger.info(f"  Stop Loss: {config.get('risk_management.stop_loss_pct')}%")
-    logger.info(f"  Target: {config.get('risk_management.target_profit_pct')}%")
-    logger.info(f"  TSL: {config.get('risk_management.trailing_stop_pct')}%")
-    max_loss = config.get('risk_management.max_daily_acceptable_loss')
-    logger.info(f"  Daily Acceptable Loss: ₹{max_loss} {'(Disabled)' if max_loss == 0 else ''}")
-    logger.info("=" * 50)
+    # 3. Strike Selection
+    logger.info("-" * 60)
+    logger.info("  🎯 STRIKE SELECTION:")
+    ss = config.get("strike_selection", {})
+    logger.info(f"  Mode:           {ss.get('mode')}")
+    if ss.get('mode') == "ATM_OFFSET":
+        logger.info(f"  Strike Step:    {ss.get('strike_step')} (0=ATM)")
+    else:
+        logger.info(f"  Target Premium: ₹{ss.get('target_premium')}")
+    logger.info(f"  Expiry Type:    {ss.get('expiry_type')}")
+    
+    # 4. Risk & Capital
+    logger.info("-" * 60)
+    logger.info("  🛡️ RISK MANAGEMENT:")
+    rm_cfg = config.get("risk_management", {})
+    logger.info(f"  Capital/Trade:  ₹{rm_cfg.get('capital_per_trade')}")
+    logger.info(f"  Stop Loss:      {rm_cfg.get('stop_loss_pct')}%")
+    logger.info(f"  Target Profit:  {rm_cfg.get('target_profit_pct')}%")
+    logger.info(f"  TSL Trail:      {rm_cfg.get('trailing_stop_pct')}% (After {rm_cfg.get('trailing_activation_pct')}% profit)")
+    logger.info(f"  Daily Max Loss: ₹{rm_cfg.get('max_daily_acceptable_loss')}")
+    logger.info(f"  Max Positions:  {rm_cfg.get('max_positions')}")
+    logger.info("=" * 60)
     
     # 3. Main Trading Loop
     if live_trading:
@@ -110,77 +166,106 @@ def main():
             if cmd_proc.paused:
                 time.sleep(1)
                 continue
-
-            # A. Fetch Data
-            if live_trading:
-                # REAL MODE: Fetch actual market data
-                try:
-                    # Fetch Quote to verify connection and get current price
-                    # Assumption: api.get_ltp() exists and returns something like {'data': 23450} or similar
-                    try:
-                        # NIFTY spot is on NSE exchange
-                        quote = api.get_ltp(symbol="NIFTY", exchange="NSE")
-                        # quote might be {'status': 'success', 'data': ...}
-                        # logger.debug(f"Tick: {quote}")
-                    except Exception as e:
-                        # Fallback if get_ltp fails
-                        # Just raise error to fail fast if we don't know the API
-                        raise ConnectionError(f"Failed to fetch market data: {e}")
-                     
-                except Exception as e:
-                    logger.error(f"❌ Error fetching live data (Check API Key): {e}")
+            try:
+                # Loop counter for Heartbeat
+                if not hasattr(main, 'loop_count'):
+                    main.loop_count = 0
+                main.loop_count += 1
+                
+                # 1. Fetch Data
+                if live_trading:
+                    symbol = "NIFTY"
+                    exchange = "NSE_INDEX"
+                    # Fetch history for indicators (5min candles)
+                    data = api.history(symbol, resolution="5", exchange=exchange)
+                    # Fetch current spot price (WS Priority)
+                    spot_price = None
+                    ws_ltp = ws_handler.get_ltp("NIFTY.NSE_INDEX")
+                    if ws_ltp:
+                        spot_price = ws_ltp
+                    else:
+                        # Fallback to REST if WS hasn't received tick yet
+                        spot_quote = api.get_ltp(symbol, exchange=exchange)
+                        spot_price = spot_quote.get('ltp')
+                    
+                    # Detailed log at DEBUG level
+                    logger.debug(f"Monitoring Market - {symbol}: {spot_price} {'(WS)' if ws_ltp else '(REST)'}")
+                    
+                    if not spot_price:
+                        logger.warning(f"⚠️ Could not fetch LTP for {symbol}")
+                else:
+                    # PAPER/MOCK MODE:
+                    symbol = "NIFTY"
+                    data = api.history(symbol, resolution="5", start=None, end=None)
+                    spot_price = data['close'].iloc[-1]
+                
+                if data.empty or spot_price is None:
                     time.sleep(5)
-                    # If this is authentication error, maybe exit?
-                    # For now, retry loop
                     continue
-            else:
-                # PAPER/MOCK MODE:
-                # Manually simulate a "New Candle" arrival every 2 seconds for demo
-                mock_data = api.history("NIFTY", "5", None, None) # Get 5min data
-            
-                # B. Calculate Indicators
-                ltf_df = mock_data.copy()
-                ltf_df = calculate_ema(ltf_df, 9)
-                ltf_df = calculate_ema(ltf_df, 21)
-                ltf_df = calculate_rsi(ltf_df, 14)
-                ltf_df = calculate_stochrsi(ltf_df)
-                ltf_df = calculate_utbot(ltf_df, config.get("indicators.utbot_key"), 10)
+
+                # 2. Calculate Indicators
+                df = data.copy()
+                df = calculate_ema(df, 9)
+                df = calculate_ema(df, 21)
+                df = calculate_rsi(df, 14)
+                df = calculate_stochrsi(df)
+                df = calculate_utbot(df, config.get("indicators.utbot_key"), 10)
                 
-                htf_df = ltf_df.copy() # Mocking HTF for now
+                # For simplicity in V1, htf == ltf in terms of data source, but logic remains
+                htf_df = df.copy()
+                ltf_df = df.copy()
+
+                # 2.3 Log Heartbeat (Now with indicator info)
+                main_heartbeat(
+                    main.loop_count, 
+                    symbol, 
+                    spot_price, 
+                    ws_active=bool(ws_ltp if live_trading else False), 
+                    df=df, 
+                    mode="LIVE" if live_trading else "PAPER",
+                    active_pos=om.active_positions
+                )
+
+                # 3. Strategy Logic (Entry)
+                if not om.active_positions: # Only look for entry if flat
+                    signal = strat.generate_signal(htf_df, ltf_df)
+                    if signal:
+                        if rm.check_pre_entry_risk():
+                            om.place_entry_order(signal, spot_price)
                 
-                # C. Generate Signal
-                signal = strat.generate_signal(htf_df, ltf_df)
-                
-                if signal:
-                    # D. Risk Check & Execution
-                    if rm.check_pre_entry_risk():
-                        # Use simulated close price for entry
-                        om.place_entry_order(signal, ltf_df['close'].iloc[-1])
-            
-            # E. Manage Active Positions
-            current_prices = {}
-            if live_trading:
-                # REAL MODE: Fetch real LTPs for active positions
+                # 4. Manage Active Positions (Exit)
+                current_prices = {}
                 for pos in om.active_positions:
-                    try:
-                        # quote = api.get_quote(pos['symbol'])
-                        # current_price = quote['ltp']
-                         pass # Placeholder
-                    except Exception as e:
-                        logger.error(f"Error fetching quote for {pos['symbol']}: {e}")
-            else:
-                # PAPER/MOCK MODE: Simulate price movement
-                for pos in om.active_positions:
-                    # Mock Price fluctuation: +/- 1%
-                    import random
-                    fluctuation = random.uniform(0.99, 1.01)
-                    current_price = pos['peak_price'] * fluctuation # Random walk
-                    current_prices[pos['symbol']] = current_price
-            
-            if current_prices:
-                rm.check_exit_conditions(current_prices)
-            
-            time.sleep(2) # Loop Interval
+                    if live_trading:
+                        # WS Priority for active positions
+                        ws_key = pos.get('ws_key')
+                        ws_ltp = ws_handler.get_ltp(ws_key) if ws_key else None
+                        
+                        if ws_ltp:
+                            current_prices[pos['symbol']] = ws_ltp
+                        else:
+                            # Fallback to REST
+                            opt_quote = api.get_ltp(pos['symbol'], exchange="NFO")
+                            if opt_quote.get('ltp'):
+                                current_prices[pos['symbol']] = opt_quote['ltp']
+                            else:
+                                logger.warning(f"⚠️ Could not fetch price for active position {pos['symbol']}")
+                    else:
+                        # PAPER/MOCK MODE: Simulate price fluctuation
+                        import random
+                        fluctuation = random.uniform(0.99, 1.01)
+                        current_prices[pos['symbol']] = pos['peak_price'] * fluctuation
+
+                if current_prices:
+                    rm.check_exit_conditions(current_prices)
+                
+                # Loop Interval
+                poll_interval = config.get("api.polling_interval", 2)
+                time.sleep(poll_interval)
+                
+            except Exception as e:
+                logger.error(f"❌ Main Loop Error: {e}")
+                time.sleep(5)
             
     except KeyboardInterrupt:
         logger.info("Stopping...")

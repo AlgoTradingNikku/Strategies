@@ -1,0 +1,16 @@
+Connecting to Host: http://127.0.0.1:5000
+Searching for: Nifty...
+  Failed to parse JSON for Nifty
+Searching for: NIFTY...
+  Failed to parse JSON for NIFTY
+Searching for: Index...
+  Failed to parse JSON for Index
+Searching for: FINNIFTY...
+  Failed to parse JSON for FINNIFTY
+Searching for: BANKNIFTY...
+  Failed to parse JSON for BANKNIFTY
+
+--- Testing LTP for Discovered Symbols ---
+LTP Test -> NIFTY (NSE_INDEX): {'ltp': {}}
+LTP Test -> Nifty 50 (NSE_INDEX): {'ltp': {}}
+LTP Test -> Nifty 50 (NSE): {'ltp': {}}
