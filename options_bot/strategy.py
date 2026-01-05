@@ -150,5 +150,24 @@ class StrategyEngine:
         if htf_bearish and ltf_bearish_trend and momentum_sell and strength_sell:
             self.logger.info("✅ SIGNAL GENERATED: BUY PE (All Filters Passed)")
             return {'action': 'BUY', 'type': 'PE'}
+        
+        # Diagnostic Logging (Only if some but not all filters pass, to avoid spam)
+        # We log this every 50 iterations or so to tell the user what's missing
+        if not hasattr(self, 'diag_count'): self.diag_count = 0
+        self.diag_count += 1
+        
+        if self.diag_count % 30 == 0:
+            if htf_bearish and ltf_bearish_trend:
+                missing = []
+                if not momentum_sell: missing.append("Momentum(UTBot Trigger)")
+                if not strength_sell: missing.append(f"Strength(RSI < {config.get('indicators.rsi_overbought', 45)})")
+                if missing:
+                    self.logger.info(f"🔍 Monitoring PE: Trend is SELL, but waiting for: {', '.join(missing)}")
+            elif htf_bullish and ltf_bullish_trend:
+                missing = []
+                if not momentum_buy: missing.append("Momentum(UTBot Trigger)")
+                if not strength_buy: missing.append(f"Strength(RSI > {config.get('indicators.rsi_oversold', 55)})")
+                if missing:
+                    self.logger.info(f"🔍 Monitoring CE: Trend is BUY, but waiting for: {', '.join(missing)}")
             
         return None

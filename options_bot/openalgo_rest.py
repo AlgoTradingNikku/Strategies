@@ -117,9 +117,20 @@ class OpenAlgoREST:
         # Interval handling: SDK uses '5', REST uses '5m'
         interval = resolution
         if isinstance(interval, (int, float)):
-            interval = f"{interval}m"
-        elif isinstance(interval, str) and interval.isdigit():
-             interval = f"{interval}m"
+            if interval == int(interval):
+                interval = f"{int(interval)}m"
+            else:
+                 interval = f"{interval}m"
+        elif isinstance(interval, str):
+            if interval.isdigit():
+                interval = f"{interval}m"
+            elif "." in interval:
+                try:
+                    f_val = float(interval)
+                    if f_val == int(f_val):
+                        interval = f"{int(f_val)}m"
+                except:
+                    pass
             
         # Date handling: if None, use last 2 days
         if not start:

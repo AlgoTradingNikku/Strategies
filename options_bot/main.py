@@ -30,34 +30,44 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-def main_heartbeat(count, symbol, price, ws_active, df=None, mode="LIVE", active_pos=None):
+def main_heartbeat(count, symbol, price, ws_active, ltf_df=None, htf_df=None, mode="LIVE", active_pos=None):
     """Logs a periodic status message with symbol price and indicator state."""
     if count % 30 == 0:
         source = "WS" if ws_active else ("REST" if mode == "LIVE" else "MOCK")
         
-        indicator_str = ""
-        if df is not None and not df.empty:
-            last = df.iloc[-1]
+        # HTF Status
+        htf_str = ""
+        if htf_df is not None and not htf_df.empty:
+            last_htf = htf_df.iloc[-1]
+            h_ema9 = last_htf.get('ema_9', 0)
+            h_ema21 = last_htf.get('ema_21', 0)
+            h_trend = "BUY" if h_ema9 > h_ema21 else "SELL"
+            htf_str = f"[HTF] {h_trend} | "
+
+        # LTF Status
+        ltf_str = ""
+        if ltf_df is not None and not ltf_df.empty:
+            last_ltf = ltf_df.iloc[-1]
             
             # UTBOT: Map 1 to BUY, -1 to SELL
-            ut_val = last.get('utbot_signal', 0)
+            ut_val = last_ltf.get('utbot_signal', 0)
             ut_str = "BUY" if ut_val == 1 else ("SELL" if ut_val == -1 else "WAIT")
             
             # RSI: The calculated column is rsi_14
-            rsi_val = last.get('rsi_14', 0)
+            rsi_val = last_ltf.get('rsi_14', 0)
             
             # EMA: Fast/Slow alignment
-            ema9 = last.get('ema_9', 0)
-            ema21 = last.get('ema_21', 0)
+            ema9 = last_ltf.get('ema_9', 0)
+            ema21 = last_ltf.get('ema_21', 0)
             ema_str = "BUY" if ema9 > ema21 else "SELL"
             
-            indicator_str = f" | UTBot: {ut_str} | RSI: {rsi_val:.1f} | EMA: {ema_str}"
+            ltf_str = f"[LTF] {symbol} @ {price} ({source}) | UTBot: {ut_str} | RSI: {rsi_val:.1f} | EMA: {ema_str}"
         
         pos_count = len(active_pos) if active_pos else 0
         pos_str = f" | Positions: {pos_count}"
         
-        # User requested clean log without 'Main - INFO' and with '[LTF]'
-        print(f"💓 [LTF] {symbol} @ {price} ({source}){indicator_str}{pos_str}", flush=True)
+        # User requested clean log without 'Main - INFO'
+        print(f"💓 {htf_str}{ltf_str}{pos_str}", flush=True)
         return True
     return False
 
@@ -172,12 +182,23 @@ def main():
                     main.loop_count = 0
                 main.loop_count += 1
                 
+                # Fetch poll interval early to avoid reference errors
+                poll_interval = config.get("api.polling_interval", 2)
+                ws_ltp = None
+                spot_price = None
+                
                 # 1. Fetch Data
                 if live_trading:
                     symbol = "NIFTY"
                     exchange = "NSE_INDEX"
-                    # Fetch history for indicators (5min candles)
-                    data = api.history(symbol, resolution="5", exchange=exchange)
+                    
+                    # Fetch history for both timeframes
+                    tf_ltf = str(config.get("strategy_settings.timeframe_ltf", 5))
+                    tf_htf = str(config.get("strategy_settings.timeframe_htf", 15))
+                    
+                    data_ltf = api.history(symbol, resolution=tf_ltf, exchange=exchange)
+                    data_htf = api.history(symbol, resolution=tf_htf, exchange=exchange)
+                    
                     # Fetch current spot price (WS Priority)
                     spot_price = None
                     ws_ltp = ws_handler.get_ltp("NIFTY.NSE_INDEX")
@@ -193,38 +214,56 @@ def main():
                     
                     if not spot_price:
                         logger.warning(f"⚠️ Could not fetch LTP for {symbol}")
+                    
+                    if data_ltf.empty or data_htf.empty:
+                        if main.loop_count % 5 == 1:
+                            logger.info(f"⏳ Syncing historical data for {symbol} (LTF:{tf_ltf}, HTF:{tf_htf})...")
+                        time.sleep(poll_interval)
+                        continue
+                    
+                    if main.loop_count == 1:
+                        logger.info(f"✅ Data synced successfully. Starting market monitoring.")
                 else:
                     # PAPER/MOCK MODE:
                     symbol = "NIFTY"
-                    data = api.history(symbol, resolution="5", start=None, end=None)
-                    spot_price = data['close'].iloc[-1]
+                    data_ltf = api.history(symbol, resolution="5", start=None, end=None)
+                    data_htf = api.history(symbol, resolution="15", start=None, end=None)
+                    spot_price = data_ltf['close'].iloc[-1]
                 
-                if data.empty or spot_price is None:
+                if spot_price is None:
                     time.sleep(5)
                     continue
 
                 # 2. Calculate Indicators
-                df = data.copy()
-                df = calculate_ema(df, 9)
-                df = calculate_ema(df, 21)
-                df = calculate_rsi(df, 14)
-                df = calculate_stochrsi(df)
-                df = calculate_utbot(df, config.get("indicators.utbot_key"), 10)
+                # 2.1 LTF Indicators
+                ltf_df = data_ltf.copy()
+                ltf_df = calculate_ema(ltf_df, 9)
+                ltf_df = calculate_ema(ltf_df, 21)
+                ltf_df = calculate_rsi(ltf_df, 14)
+                ltf_df = calculate_stochrsi(ltf_df)
+                ltf_df = calculate_utbot(ltf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
                 
-                # For simplicity in V1, htf == ltf in terms of data source, but logic remains
-                htf_df = df.copy()
-                ltf_df = df.copy()
-
-                # 2.3 Log Heartbeat (Now with indicator info)
-                main_heartbeat(
-                    main.loop_count, 
-                    symbol, 
-                    spot_price, 
-                    ws_active=bool(ws_ltp if live_trading else False), 
-                    df=df, 
-                    mode="LIVE" if live_trading else "PAPER",
-                    active_pos=om.active_positions
-                )
+                # 2.2 HTF Indicators
+                htf_df = data_htf.copy()
+                htf_df = calculate_ema(htf_df, 9)
+                htf_df = calculate_ema(htf_df, 21)
+                htf_df = calculate_utbot(htf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
+                
+                # 2.3 Log Heartbeat (Now with HTF + LTF info)
+                # Tune frequency: every 10 loops for the first few mins, then every 30
+                hb_freq = 10 if main.loop_count < 100 else 30
+                if main.loop_count % hb_freq == 0:
+                     main_heartbeat(
+                        0, # Force print by passing 0 % count logic inside if needed, 
+                           # but we'll just handle it here:
+                        symbol, 
+                        spot_price, 
+                        ws_active=bool(ws_ltp if live_trading else False), 
+                        ltf_df=ltf_df, 
+                        htf_df=htf_df,
+                        mode="LIVE" if live_trading else "PAPER",
+                        active_pos=om.active_positions
+                    )
 
                 # 3. Strategy Logic (Entry)
                 if not om.active_positions: # Only look for entry if flat
