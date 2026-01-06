@@ -13,20 +13,34 @@ class OrderManager:
         
         # Gap Timer Tracker: {'NIFTY': last_exit_time_timestamp}
         self.last_exit_times = {} 
+        self.last_gap_log_time = {} # {symbol: last_log_timestamp}
+        self.risk_manager = None # Will be set during main initialization
 
     def get_atm_strike(self, spot_price: float, step: int = 50) -> int:
         """Calculates ATM strike based on spot price."""
         return round(spot_price / step) * step
 
-    def get_option_symbol(self, base_symbol: str, strike: int, option_type: str, expiry: str = "CURRENT") -> str:
-        """
-        Constructs option symbol. 
-        In V1 Simulation/Mock, we return a standardized string.
-        Real implementation requires Option Chain Fetching to get exact token/symbol.
-        """
-        # Expiry Selection Logic Placeholder
-        # If expiry == "NEXT", we would shift date etc.
-        expiry_str = "28DEC23" # Dummy for example
+    def get_option_symbol(self, base_symbol: str, strike: int, option_type: str) -> str:
+        from utils import get_expiry_date
+        
+        # 1. Try to fetch from API for 100% accuracy
+        expiry_str = None
+        if hasattr(self.api, 'get_expiries'):
+            expiries = self.api.get_expiries(base_symbol)
+            if expiries:
+                target_type = config.get("strike_selection.expiry_type", "CURRENT_WEEKLY")
+                if target_type == "NEXT_WEEKLY" and len(expiries) > 1:
+                    expiry_str = expiries[1]
+                else:
+                    expiry_str = expiries[0]
+                self.logger.info(f"📅 Using API-provided expiry for {base_symbol}: {expiry_str}")
+        
+        # 2. Fallback to calculation if API fails
+        if not expiry_str:
+            target_type = config.get("strike_selection.expiry_type", "CURRENT_WEEKLY")
+            expiry_str = get_expiry_date(base_symbol, target_type)
+            self.logger.warning(f"⚠️ API expiry failed. Using calculated expiry for {base_symbol}: {expiry_str}")
+        
         return f"{base_symbol}{expiry_str}{strike}{option_type}"
 
     def select_strike(self, spot_price: float, action_type: str) -> str:
@@ -137,21 +151,76 @@ class OrderManager:
         # In V1 we hardcode 'NIFTY' for simplicity inside select_strike but logic applies per symbol
         symbol = "NIFTY" 
         
-        min_gap = config.get("strategy_settings.min_gap_time", 15)
+        from utils import parse_time_value
+        min_gap_raw = config.get("strategy_settings.min_gap_time", 15)
+        min_gap_mins = parse_time_value(min_gap_raw)
+        
         last_exit = self.last_exit_times.get(symbol, 0)
         
-        if time.time() - last_exit < (min_gap * 60):
-            self.logger.warning(f"🚫 Gap Timer Active for {symbol}. Ignoring Trade.")
+        if time.time() - last_exit < (min_gap_mins * 60):
+            # Throttle logging to once every 30 seconds to keep console clean
+            now = time.time()
+            if symbol not in self.last_gap_log_time or (now - self.last_gap_log_time[symbol] > 30):
+                self.logger.warning(f"⏳ Gap Timer Active for {symbol}. Ignoring Trade until cool-down ends.")
+                self.last_gap_log_time[symbol] = now
             return False
+
+        # 1.5. Log Actionable Signal
+        self.logger.info(f"✅ SIGNAL GENERATED: BUY {signal['type']} (Gap Filter Passed)")
 
         # 2. Select Symbol
         trading_symbol = self.select_strike(spot_price, signal['type'])
         
-        # 3. Place Order (Mock/Active)
-        qty = 50 # Default Lot
-        self.logger.info(f"🚀 PLACING ORDER: Buy {trading_symbol} Qty={qty} (Signal={signal['type']})")
+        # 3. Extract Base Symbol (NIFTY, BANKNIFTY, etc.)
+        import re
+        base_match = re.match(r'^([A-Z]+)', trading_symbol)
+        base_symbol = base_match.group(1) if base_match else "NIFTY"
         
-        # Subscribe to this option in WebSocket for real-time tracking
+        # 3. Fetch Dynamic Lot Size from API
+        lot_size = 50 # Default Nifty Fallback
+        if hasattr(self.api, 'get_lot_size'):
+            lot_size = self.api.get_lot_size(trading_symbol)
+            self.logger.info(f"📊 Dynamic Lot Size for {trading_symbol}: {lot_size}")
+        
+        # 4. Calculate Quantity based on Config (LOTS vs CAPITAL)
+        sizing_mode = config.get("position_sizing.mode", "LOTS")
+        self.logger.info(f"🔍 Position Sizing Mode detected: {sizing_mode}")
+        
+        if sizing_mode == "LOTS":
+            lots = config.get("position_sizing.lots_per_trade", 1)
+            qty = lots * lot_size
+            self.logger.info(f"📦 sizing_mode: LOTS | Lots={lots} | Total Qty={qty}")
+            
+            # Fetch LTP just for logging/records
+            option_ltp = 100.0
+            if hasattr(self.api, 'get_ltp'):
+                quote = self.api.get_ltp(trading_symbol, "NFO")
+                if quote and quote.get('ltp'):
+                    option_ltp = quote.get('ltp')
+        else:
+            # CAPITAL mode
+            capital = config.get("position_sizing.capital_per_trade", 10000)
+            
+            # Get current option price for calculation
+            option_ltp = 100.0 # Default fallback
+            if hasattr(self.api, 'get_ltp'):
+                quote = self.api.get_ltp(trading_symbol, "NFO")
+                if quote and quote.get('ltp'):
+                    option_ltp = quote.get('ltp')
+            
+            # Qty = (Capital // Price) rounded down to nearest Lot
+            max_qty_by_capital = capital // option_ltp
+            qty = int(max_qty_by_capital // lot_size) * lot_size
+            
+            # Ensure at least 1 lot if capital allows, or use 1 lot as minimum
+            if qty < lot_size:
+                qty = lot_size
+                self.logger.warning(f"⚠️ Capital ₹{capital} insufficient for {trading_symbol} @ ₹{option_ltp}. Minimum 1 Lot ({lot_size}) forced.")
+            
+            self.logger.info(f"💰 sizing_mode: CAPITAL | Capital=₹{capital} | Calculated Qty={qty}")        
+        self.logger.info(f"🚀 BUY ORDER: {trading_symbol} | Price={option_ltp} | Qty={qty} {signal['type']}")
+        
+        # 5. Subscribe to this option in WebSocket for real-time tracking
         if self.ws_handler:
             try:
                 # Format: SYMBOL.EXCHANGE
@@ -167,18 +236,19 @@ class OrderManager:
             
             if live_trading:
                 # REAL ORDER PLACEMENT
-                # OpenAlgo Params: exchange, symbol, action, quantity, price, valid, product, price_type...
-                # Docs: client.placeorder(strategy, symbol, action, exchange, price_type, product, quantity)
+                order_type = config.get("strategy_settings.order_type", "LIMIT")
+                limit_price = option_ltp if order_type == "LIMIT" else 0
+                
                 response = self.api.placeorder(
                     symbol=trading_symbol,
-                    action="BUY",        # was buy_sell
+                    action="BUY",
                     exchange="NFO",
                     quantity=qty,
-                    price=0,
-                    product="NRML",      # Options usually NRML
-                    price_type="MARKET"  # was order_type
+                    price=limit_price,
+                    product="NRML",
+                    price_type=order_type
                 )
-                self.logger.info(f"API Response: {response}")
+                self.logger.info(f"📤 Entry {order_type} Order Sent @ ₹{limit_price if order_type == 'LIMIT' else 'MKT'} | Response: {response}")
                 # Assuming response carries order_id
                 # order_id = response['order_id'] or similar
                 order_id = f"REAL_{int(time.time())}"
@@ -186,18 +256,27 @@ class OrderManager:
                 # Mock Success:
                 order_id = f"ORDER_{int(time.time())}"
             
+            # Record Brokerage
+            if self.risk_manager:
+                self.risk_manager.record_buy_order()
+            
             # Record Virtual Position
             self.active_positions.append({
                 'symbol': trading_symbol,
                 'ws_key': f"{trading_symbol}.NFO",
                 'qty': qty,
-                'entry_price': spot_price if live_trading else 100.0, # Use LTP for live
+                'entry_price': option_ltp,
                 'entry_time': time.time(),
-                'sl': 0, # Will be set by Risk Manager
-                'target': 0,
-                'peak_price': spot_price if live_trading else 100.0,
+                'peak_price': option_ltp,
                 'type': signal['type'],
-                'order_id': order_id
+                'order_id': order_id,
+                
+                # Snapshot current risk settings for this specific position
+                'sl_pct': config.get("risk_management.stop_loss_pct", 30),
+                'target_pct': config.get("risk_management.target_profit_pct", 50),
+                'tsl_pct': config.get("risk_management.trailing_stop_pct", 5),
+                'tsl_activation_pct': config.get("risk_management.trailing_activation_pct", 3),
+                'profit_lock_pct': config.get("risk_management.profit_lock_pct", 1)
             })
             return True
             
@@ -206,16 +285,53 @@ class OrderManager:
             return False
 
     def close_position(self, position: Dict, reason: str = "Signal"):
-        """Closes a specific position."""
-        self.logger.info(f"🛑 CLOSING POSITION: {position['symbol']} | Reason: {reason}")
+        """Closes a specific position by placing a SELL order."""
+        symbol = position['symbol']
+        qty = position['qty']
         
-        # Mock Close
-        # Update Gap Timer
-        symbol_base = "NIFTY" # Extract base from symbol ideally
-        self.last_exit_times[symbol_base] = time.time()
+        self.logger.info(f"🛑 CLOSING POSITION: {symbol} | Qty: {qty} | Reason: {reason}")
         
+        # 1. Extract Base Symbol for Gap Timer (NIFTY, BANKNIFTY)
+        import re
+        base_match = re.match(r'^([A-Z]+)', symbol)
+        base_symbol = base_match.group(1) if base_match else "NIFTY"
+        
+        # 2. Place SELL Order (if live)
+        live_trading = config.get("live_trading", False)
+        if live_trading:
+            try:
+                order_type = config.get("strategy_settings.order_type", "LIMIT")
+                exit_price = 0
+                
+                if order_type == "LIMIT":
+                    # Fetch latest LTP for the Limit price
+                    quote = self.api.get_ltp(symbol, "NFO")
+                    exit_price = quote.get('ltp', 0) if quote else 0
+                    
+                    if exit_price == 0:
+                         self.logger.error(f"❌ Could not fetch LTP for exit limit. Symbol: {symbol}. Falling back to MARKET.")
+                         order_type = "MARKET"
+
+                response = self.api.placeorder(
+                    symbol=symbol,
+                    action="SELL",
+                    exchange="NFO",
+                    quantity=qty,
+                    price=exit_price,
+                    product="NRML",
+                    price_type=order_type
+                )
+                self.logger.info(f"📤 Exit {order_type} Order Sent @ ₹{exit_price if order_type == 'LIMIT' else 'MKT'} | Response: {response}")
+            except Exception as e:
+                self.logger.error(f"❌ Failed to place Exit Order: {e}")
+
+        # 3. Update Gap Timer (Cooldown start)
+        self.last_exit_times[base_symbol] = time.time()
+        
+        # 4. Remove from active tracking
         if position in self.active_positions:
             self.active_positions.remove(position)
+            self.logger.info(f"✅ Trade cleared from tracker.")
 
     def close_all(self, reason: str = "Emergency"):
         """Closes ALL positions."""

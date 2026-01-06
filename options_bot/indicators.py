@@ -1,6 +1,38 @@
 import pandas as pd
 import numpy as np
 
+def convert_to_heikin_ashi(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Converts standard OHLC data to Heikin-Ashi candles.
+    HA_Close = (Open + High + Low + Close) / 4
+    HA_Open  = (Prev_HA_Open + Prev_HA_Close) / 2
+    HA_High  = Max(High, HA_Open, HA_Close)
+    HA_Low   = Min(Low, HA_Open, HA_Close)
+    """
+    if df.empty:
+        return df
+        
+    ha_df = df.copy()
+    
+    # 1. HA_Close is simple average of OHLC
+    ha_df['close'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+    
+    # 2. HA_Open is recursive. We must iterate or use a specialized approach.
+    ha_opens = [0.0] * len(df)
+    ha_opens[0] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2
+    
+    closes = ha_df['close'].values
+    for i in range(1, len(df)):
+        ha_opens[i] = (ha_opens[i-1] + closes[i-1]) / 2
+        
+    ha_df['open'] = ha_opens
+    
+    # 3. HA_High and HA_Low
+    ha_df['high'] = ha_df[['high', 'open', 'close']].max(axis=1)
+    ha_df['low'] = ha_df[['low', 'open', 'close']].min(axis=1)
+    
+    return ha_df
+
 def calculate_ema(df: pd.DataFrame, period: int = 9, source: str = 'close') -> pd.DataFrame:
     """Calculates Exponential Moving Average."""
     df[f'ema_{period}'] = df[source].ewm(span=period, adjust=False).mean()
@@ -54,7 +86,8 @@ def calculate_utbot(df: pd.DataFrame, key: float = 2.0, period: int = 10) -> pd.
     
     ranges = pd.concat([high_low, high_close, low_close], axis=1)
     true_range = np.max(ranges, axis=1)
-    atr = true_range.rolling(period).mean()
+    atr = true_range.ewm(span=period, adjust=False).mean()
+    df['atr'] = atr
     
     # 2. Calculate Trailing Stop
     x_atr_trailing_stop = pd.Series(index=df.index, dtype='float64')

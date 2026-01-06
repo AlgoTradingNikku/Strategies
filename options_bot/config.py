@@ -1,4 +1,5 @@
 import json
+import yaml
 import os
 import time
 import threading
@@ -6,7 +7,9 @@ import logging
 from typing import Any, Dict
 from utils import parse_time_value
 
-CONFIG_FILE = "config.json"
+# Prioritize YAML for better comment support
+YAML_FILE = "config.yaml"
+JSON_FILE = "config.json"
 
 class Config:
     _instance = None
@@ -26,6 +29,7 @@ class Config:
             
         self._data: Dict[str, Any] = {}
         self._last_modified_time = 0
+        self._active_file = YAML_FILE
         self._file_lock = threading.Lock()
         self.logger = logging.getLogger("Config")
         
@@ -40,27 +44,33 @@ class Config:
         self._initialized = True
 
     def load_config(self) -> None:
-        """Loads configuration from JSON file."""
-        if not os.path.exists(CONFIG_FILE):
-            self.logger.error(f"Config file {CONFIG_FILE} not found!")
+        """Loads configuration from YAML (priority) or JSON file."""
+        # Determine which file to use
+        if os.path.exists(YAML_FILE):
+            self._active_file = YAML_FILE
+        elif os.path.exists(JSON_FILE):
+            self._active_file = JSON_FILE
+        else:
+            self.logger.error("No configuration file (config.yaml or config.json) found!")
             return
 
         try:
             with self._file_lock:
-                with open(CONFIG_FILE, 'r') as f:
-                    new_config = json.load(f)
+                with open(self._active_file, 'r') as f:
+                    if self._active_file.endswith('.yaml'):
+                        new_config = yaml.safe_load(f)
+                    else:
+                        new_config = json.load(f)
                     
                 # Basic Validation (ensure keys exist)
                 self._validate_structure(new_config)
                 
                 self._data = new_config
-                self._last_modified_time = os.path.getmtime(CONFIG_FILE)
-                self.logger.info("Configuration loaded successfully.")
+                self._last_modified_time = os.path.getmtime(self._active_file)
+                self.logger.info(f"Configuration loaded from {self._active_file}")
                 
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Error decoding JSON config: {e}")
         except Exception as e:
-            self.logger.error(f"Error loading config: {e}")
+            self.logger.error(f"Error loading {self._active_file}: {e}")
 
     def _validate_structure(self, config: Dict) -> None:
         """Ensures essential keys are present. Does not check logic, just structure."""
@@ -73,9 +83,6 @@ class Config:
         """
         Thread-safe retrieval of config values.
         Supports dotted access: config.get("risk_management.stop_loss_pct")
-        
-        Special handling:
-        - Time values (min_gap_time, etc.) support units: "30s", "5m", "2h"
         """
         with self._file_lock:
             if "." in key:
@@ -85,8 +92,8 @@ class Config:
                     for k in keys:
                         value = value[k]
                     
-                    # Parse time values if they have units
-                    if "minutes" in key or "time" in key.lower():
+                    # Parse time values (gap, wait, etc) but skip timeframes
+                    if ("minutes" in key or "time" in key.lower()) and "frame" not in key.lower():
                         try:
                             return parse_time_value(value)
                         except (ValueError, TypeError):
@@ -98,34 +105,28 @@ class Config:
             
             value = self._data.get(key, default)
             
-            # Parse time values if they have units
-            if "minutes" in key or "time" in key.lower():
+            if ("minutes" in key or "time" in key.lower()) and "frame" not in key.lower():
                 try:
                     return parse_time_value(value)
                 except (ValueError, TypeError):
-                    pass  # Return as-is if parsing fails
+                    pass
             
             return value
 
     def set(self, key: str, value: Any) -> None:
-        """
-        Runtime update of config (Does NOT write to file, only memory).
-        For persistent changes, edit the JSON file.
-        """
+        """Runtime update of config (memory only)."""
         with self._file_lock:
-            # Complex logic to set nested keys could go here, 
-            # but for now we mainly read from file.
             pass
 
     def _monitor_changes(self):
         """Watcher thread to reload config when file changes."""
         while not self._stop_monitor:
-            time.sleep(5) # Check every 5 seconds
+            time.sleep(5) 
             try:
-                if os.path.exists(CONFIG_FILE):
-                    current_mtime = os.path.getmtime(CONFIG_FILE)
+                if os.path.exists(self._active_file):
+                    current_mtime = os.path.getmtime(self._active_file)
                     if current_mtime > self._last_modified_time:
-                        self.logger.info("Config file changed. Reloading...")
+                        self.logger.info(f"Config file {self._active_file} changed. Reloading...")
                         self.load_config()
             except Exception as e:
                 self.logger.error(f"Error monitoring config file: {e}")

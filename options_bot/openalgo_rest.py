@@ -9,6 +9,7 @@ class OpenAlgoREST:
         self.api_key = api_key
         self.host = host.rstrip('/')
         self.base_url = f"{self.host}/api/v1"
+        self._symbol_cache = {}
         logger.info(f"OpenAlgo REST Client Initialized at {self.base_url}")
 
     def get_ltp(self, symbol, exchange):
@@ -63,17 +64,23 @@ class OpenAlgoREST:
         # Map price_type -> pricetype if needed
         pricetype = kwargs.get('price_type', kwargs.get('pricetype', 'MARKET'))
         
+        # Prepare payload
+        strategy_name = kwargs.get('strategy', config.get('api.strategy_name', 'PythonBot'))
+        
         payload = {
             "apikey": self.api_key,
-            "strategy": kwargs.get('strategy', 'PythonBot'),
+            "strategy": strategy_name,
             "symbol": kwargs.get('symbol'),
             "action": kwargs.get('action'),
             "exchange": kwargs.get('exchange'),
             "quantity": kwargs.get('quantity'),
             "price": kwargs.get('price', 0),
             "pricetype": pricetype,
-            "product": kwargs.get('product', 'NRML')
+            "product": kwargs.get('product', 'NRML'),
+            "mode": "live" # Explicitly tell bridge to go live
         }
+        
+        from config import config # Ensure config can be used for fallback strategy name
         
         try:
             r = requests.post(f"{self.base_url}/placeorder", json=payload, timeout=10)
@@ -170,3 +177,70 @@ class OpenAlgoREST:
             return r.json().get('data', [])
         except:
             return []
+
+    def get_expiries(self, symbol):
+        """Fetch available expiries for a symbol by searching for active options."""
+        import re
+        payload = {
+            "apikey": self.api_key,
+            "query": symbol
+        }
+        try:
+            r = requests.post(f"{self.host}/api/v1/search", json=payload, timeout=10)
+            if r.status_code == 200:
+                data = r.json().get('data', [])
+                expiries = set()
+                # Pattern: Symbol + 2 digits + 3 letters + 2 digits
+                # e.g., NIFTY06JAN26
+                pattern = re.compile(rf'{symbol}(\d{{2}}[A-Z]{{3}}\d{{2}})')
+                for item in data:
+                    sym = item.get('symbol', '')
+                    match = pattern.search(sym)
+                    if match:
+                        expiries.add(match.group(1))
+                
+                if not expiries:
+                    return []
+                
+                # Sort expiries. We need to sort by date, not alphabetically.
+                from datetime import datetime
+                expiry_list = list(expiries)
+                expiry_list.sort(key=lambda x: datetime.strptime(x, "%d%b%y"))
+                return expiry_list
+            logger.error(f"Expiries Fetch Error: {r.status_code} - {r.text}")
+        except Exception as e:
+            logger.error(f"Expiries Fetch Exception: {e}")
+        return []
+
+    def get_symbol_info(self, symbol):
+        """Fetch full symbol info from search API."""
+        if symbol in self._symbol_cache:
+            return self._symbol_cache[symbol]
+            
+        payload = {
+            "apikey": self.api_key,
+            "query": symbol
+        }
+        try:
+            r = requests.post(f"{self.host}/api/v1/search", json=payload, timeout=10)
+            if r.status_code == 200:
+                data = r.json().get('data', [])
+                for item in data:
+                    if item.get('symbol') == symbol:
+                        self._symbol_cache[symbol] = item
+                        return item
+            return None
+        except Exception as e:
+            logger.error(f"Symbol Info Fetch Failed: {e}")
+            return None
+
+    def get_lot_size(self, symbol):
+        """Helper to get only the lot size."""
+        info = self.get_symbol_info(symbol)
+        if info:
+            try:
+                # OpenAlgo usually returns 'lotsize' as string or int
+                return int(info.get('lotsize', 50))
+            except:
+                return 50
+        return 50 # Fallback

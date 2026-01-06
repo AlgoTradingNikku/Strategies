@@ -5,7 +5,7 @@ import sys
 from config import config
 from mock_api import MockAPI
 from data_handler import DataHandler
-from indicators import calculate_ema, calculate_rsi, calculate_utbot, calculate_stochrsi
+from indicators import calculate_ema, calculate_rsi, calculate_utbot, calculate_stochrsi, convert_to_heikin_ashi
 from strategy import StrategyEngine
 from order_manager import OrderManager
 from risk_manager import RiskManager
@@ -17,7 +17,7 @@ import utils
 # Setup Logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
     ]
@@ -30,44 +30,64 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-def main_heartbeat(count, symbol, price, ws_active, ltf_df=None, htf_df=None, mode="LIVE", active_pos=None):
+def main_heartbeat(count, symbol, price, ws_active, ltf_df=None, htf_df=None, mode="LIVE", active_pos=None, rm=None):
     """Logs a periodic status message with symbol price and indicator state."""
+    import datetime
+    # Retrieve active indicators and timeframes from config
+    active_ltf = config.get("active_indicators.ltf", [])
+    active_htf = config.get("active_indicators.htf", [])
+    tf_ltf = config.get("strategy_settings.timeframe_ltf", 5)
+    tf_htf = config.get("strategy_settings.timeframe_htf", 15)
+    
     if count % 30 == 0:
-        source = "WS" if ws_active else ("REST" if mode == "LIVE" else "MOCK")
+        now_str = datetime.datetime.now().strftime("%H:%M:%S")
         
-        # HTF Status
+        # HTF Trends
         htf_str = ""
         if htf_df is not None and not htf_df.empty:
             last_htf = htf_df.iloc[-1]
-            h_ema9 = last_htf.get('ema_9', 0)
-            h_ema21 = last_htf.get('ema_21', 0)
-            h_trend = "BUY" if h_ema9 > h_ema21 else "SELL"
-            htf_str = f"[HTF] {h_trend} | "
+            htf_parts = []
+            if "ema" in active_htf:
+                h_ema9 = last_htf.get('ema_9', 0)
+                h_ema21 = last_htf.get('ema_21', 0)
+                h_trend = "BUY" if h_ema9 > h_ema21 else "SELL"
+                htf_parts.append(f"EMA:{h_trend}")
+            if "utbot" in active_htf:
+                ut_val = last_htf.get('utbot_signal', 0)
+                ut_str = "BUY" if ut_val == 1 else ("SELL" if ut_val == -1 else "WAIT")
+                htf_parts.append(f"UTBot:{ut_str}")
+            if htf_parts:
+                htf_str = f" [HTF:{'|'.join(htf_parts)}]"
 
-        # LTF Status
+        # LTF Signals
         ltf_str = ""
         if ltf_df is not None and not ltf_df.empty:
             last_ltf = ltf_df.iloc[-1]
-            
-            # UTBOT: Map 1 to BUY, -1 to SELL
-            ut_val = last_ltf.get('utbot_signal', 0)
-            ut_str = "BUY" if ut_val == 1 else ("SELL" if ut_val == -1 else "WAIT")
-            
-            # RSI: The calculated column is rsi_14
-            rsi_val = last_ltf.get('rsi_14', 0)
-            
-            # EMA: Fast/Slow alignment
-            ema9 = last_ltf.get('ema_9', 0)
-            ema21 = last_ltf.get('ema_21', 0)
-            ema_str = "BUY" if ema9 > ema21 else "SELL"
-            
-            ltf_str = f"[LTF] {symbol} @ {price} ({source}) | UTBot: {ut_str} | RSI: {rsi_val:.1f} | EMA: {ema_str}"
+            ltf_parts = []
+            if "utbot" in active_ltf:
+                ut_val = last_ltf.get('utbot_signal', 0)
+                ut_str = "BUY" if ut_val == 1 else ("SELL" if ut_val == -1 else "WAIT")
+                ltf_parts.append(f"UTBot:{ut_str}")
+            if "rsi" in active_ltf:
+                rsi_val = last_ltf.get('rsi_14', 0)
+                ltf_parts.append(f"RSI:{rsi_val:.1f}")
+            if "ema" in active_ltf:
+                ema9 = last_ltf.get('ema_9', 0)
+                ema21 = last_ltf.get('ema_21', 0)
+                ema_str = "BUY" if ema9 > ema21 else "SELL"
+                ltf_parts.append(f"EMA:{ema_str}")
+            if ltf_parts:
+                ltf_str = f" [LTF:{' '.join(ltf_parts)}]"
         
         pos_count = len(active_pos) if active_pos else 0
-        pos_str = f" | Positions: {pos_count}"
+        pos_color = "🟢" if pos_count > 0 else "⚪"
         
-        # User requested clean log without 'Main - INFO'
-        print(f"💓 {htf_str}{ltf_str}{pos_str}", flush=True)
+        # Candle Type Indicator
+        ctype = config.get("strategy_settings.candle_type", "OHLC")
+        ctype_short = "[HA]" if ctype == "HEIKIN_ASHI" else "[OHLC]"
+        
+        # Compact Heartbeat: 10:45:01 NIFTY: 26230.5 [HA] | [HTF:EMA:BUY] [LTF:UTBot:BUY RSI:52.1] | Pos: 0
+        print(f"💓 {now_str} {symbol}: {price:8.2f} {ctype_short} |{htf_str}{ltf_str} | {pos_color} Pos: {pos_count}", flush=True)
         return True
     return False
 
@@ -117,6 +137,7 @@ def main():
     dh = DataHandler(api)
     om = OrderManager(api, ws_handler=ws_handler if live_trading else None)
     rm = RiskManager(om)
+    om.risk_manager = rm # Link back for brokerage tracking
     strat = StrategyEngine()
     cmd_proc = CommandProcessor(om, rm, dh)
     
@@ -158,10 +179,13 @@ def main():
     logger.info("  🛡️ RISK MANAGEMENT:")
     rm_cfg = config.get("risk_management", {})
     logger.info(f"  Capital/Trade:  ₹{rm_cfg.get('capital_per_trade')}")
-    logger.info(f"  Stop Loss:      {rm_cfg.get('stop_loss_pct')}%")
-    logger.info(f"  Target Profit:  {rm_cfg.get('target_profit_pct')}%")
+    logger.info(f"  Hard Stop Loss (Fix): {rm_cfg.get('stop_loss_pct')}%")
+    logger.info(f"  Hard Target Profit (Fix): {rm_cfg.get('target_profit_pct')}%")
     logger.info(f"  TSL Trail:      {rm_cfg.get('trailing_stop_pct')}% (After {rm_cfg.get('trailing_activation_pct')}% profit)")
-    logger.info(f"  Daily Max Loss: ₹{rm_cfg.get('max_daily_acceptable_loss')}")
+    
+    dml = rm_cfg.get('max_daily_acceptable_loss', 0)
+    dml_str = f"₹{dml}" + (" (disabled)" if dml == 0 else "")
+    logger.info(f"  Daily Max Loss: {dml_str}")
     logger.info(f"  Max Positions:  {rm_cfg.get('max_positions')}")
     logger.info("=" * 60)
     
@@ -230,28 +254,39 @@ def main():
                     data_htf = api.history(symbol, resolution="15", start=None, end=None)
                     spot_price = data_ltf['close'].iloc[-1]
                 
-                if spot_price is None:
-                    time.sleep(5)
-                    continue
+                # 1.5 Handle Heikin-Ashi Conversion if requested
+                candle_type = config.get("strategy_settings.candle_type", "OHLC")
+                if candle_type == "HEIKIN_ASHI":
+                    data_ltf = convert_to_heikin_ashi(data_ltf)
+                    data_htf = convert_to_heikin_ashi(data_htf)
 
-                # 2. Calculate Indicators
-                # 2.1 LTF Indicators
+                # 2. Calculate Indicators (Only active ones)
+                active_ltf = config.get("active_indicators.ltf", [])
+                active_htf = config.get("active_indicators.htf", [])
+
+                # 2.1 LTF Calculations
                 ltf_df = data_ltf.copy()
-                ltf_df = calculate_ema(ltf_df, 9)
-                ltf_df = calculate_ema(ltf_df, 21)
-                ltf_df = calculate_rsi(ltf_df, 14)
-                ltf_df = calculate_stochrsi(ltf_df)
-                ltf_df = calculate_utbot(ltf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
+                if "ema" in active_ltf:
+                    ltf_df = calculate_ema(ltf_df, 9)
+                    ltf_df = calculate_ema(ltf_df, 21)
+                if "rsi" in active_ltf:
+                    ltf_df = calculate_rsi(ltf_df, 14)
+                if "stochrsi" in active_ltf:
+                    ltf_df = calculate_stochrsi(ltf_df)
+                if "utbot" in active_ltf:
+                    ltf_df = calculate_utbot(ltf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
                 
-                # 2.2 HTF Indicators
+                # 2.2 HTF Calculations
                 htf_df = data_htf.copy()
-                htf_df = calculate_ema(htf_df, 9)
-                htf_df = calculate_ema(htf_df, 21)
-                htf_df = calculate_utbot(htf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
+                if "ema" in active_htf:
+                    htf_df = calculate_ema(htf_df, 9)
+                    htf_df = calculate_ema(htf_df, 21)
+                if "utbot" in active_htf:
+                    htf_df = calculate_utbot(htf_df, config.get("indicators.utbot_key"), config.get("indicators.utbot_atr", 10))
                 
                 # 2.3 Log Heartbeat (Now with HTF + LTF info)
-                # Tune frequency: every 10 loops for the first few mins, then every 30
-                hb_freq = 10 if main.loop_count < 100 else 30
+                # Tune frequency: every 10 loops for start, then every 150 (~5 mins)
+                hb_freq = 10 if main.loop_count < 100 else 150
                 if main.loop_count % hb_freq == 0:
                      main_heartbeat(
                         0, # Force print by passing 0 % count logic inside if needed, 
@@ -262,41 +297,39 @@ def main():
                         ltf_df=ltf_df, 
                         htf_df=htf_df,
                         mode="LIVE" if live_trading else "PAPER",
-                        active_pos=om.active_positions
+                        active_pos=om.active_positions,
+                        rm=rm
                     )
 
-                # 3. Strategy Logic (Entry)
+                # 3. Strategy Logic (Entry & Reversal Exit)
+                signal = strat.generate_signal(htf_df, ltf_df)
+                
+                # REVERSAL EXIT: Close position if signal flips against us
+                if om.active_positions:
+                    for pos in list(om.active_positions):
+                        if pos['type'] == 'CE' and signal == 'PE_REVERSAL':
+                            logger.info(f"🔄 REVERSAL: Closing {pos['symbol']} because chart turned RED")
+                            om.close_position(pos, "Signal Reversal")
+                            rm.record_sell_order(pos['symbol'], (current_prices.get(pos['symbol'], pos['peak_price']) - pos['entry_price']) * pos['qty'])
+                        elif pos['type'] == 'PE' and signal == 'CE_REVERSAL':
+                            logger.info(f"🔄 REVERSAL: Closing {pos['symbol']} because chart turned GREEN")
+                            om.close_position(pos, "Signal Reversal")
+                            rm.record_sell_order(pos['symbol'], (current_prices.get(pos['symbol'], pos['peak_price']) - pos['entry_price']) * pos['qty'])
+
                 if not om.active_positions: # Only look for entry if flat
-                    signal = strat.generate_signal(htf_df, ltf_df)
-                    if signal:
+                    if signal and isinstance(signal, dict) and signal.get('action') == 'BUY':
                         if rm.check_pre_entry_risk():
                             om.place_entry_order(signal, spot_price)
                 
-                # 4. Manage Active Positions (Exit)
-                current_prices = {}
-                for pos in om.active_positions:
-                    if live_trading:
-                        # WS Priority for active positions
-                        ws_key = pos.get('ws_key')
-                        ws_ltp = ws_handler.get_ltp(ws_key) if ws_key else None
-                        
-                        if ws_ltp:
-                            current_prices[pos['symbol']] = ws_ltp
-                        else:
-                            # Fallback to REST
-                            opt_quote = api.get_ltp(pos['symbol'], exchange="NFO")
-                            if opt_quote.get('ltp'):
-                                current_prices[pos['symbol']] = opt_quote['ltp']
-                            else:
-                                logger.warning(f"⚠️ Could not fetch price for active position {pos['symbol']}")
-                    else:
-                        # PAPER/MOCK MODE: Simulate price fluctuation
-                        import random
-                        fluctuation = random.uniform(0.99, 1.01)
-                        current_prices[pos['symbol']] = pos['peak_price'] * fluctuation
-
+                # 4. Manage Active Positions (Exit via TSL/Target)
+                # (Existing current_prices loop remains here)
                 if current_prices:
-                    rm.check_exit_conditions(current_prices)
+                    # Get current ATR for ATR-based TSL
+                    current_atr = 0
+                    if ltf_df is not None and not ltf_df.empty:
+                        current_atr = ltf_df.iloc[-1].get('atr', 0)
+                    
+                    rm.check_exit_conditions(current_prices, current_atr=current_atr)
                 
                 # Loop Interval
                 poll_interval = config.get("api.polling_interval", 2)

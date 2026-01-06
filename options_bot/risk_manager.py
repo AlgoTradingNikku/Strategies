@@ -3,17 +3,35 @@ import time
 from config import config
 
 class RiskManager:
+    # Trailing Stop Loss (TSL) settings are linked to config.json:
+    # trailing_stop_pct: Distance to follow. trailing_activation_pct: When to start.
     def __init__(self, order_manager):
         self.om = order_manager
         self.logger = logging.getLogger("RiskManager")
         self.daily_pnl = 0.0
+        self.realized_pnl_map = {} # {symbol: total_pnl}
+        self.total_brokerage = 0.0
+        self.brokerage_per_order = 7.0 # ₹7 per buy/sell order
         
-    def check_exit_conditions(self, current_prices: dict):
+    def record_buy_order(self):
+        """Deducts brokerage for a buy order."""
+        self.total_brokerage += self.brokerage_per_order
+        self.daily_pnl -= self.brokerage_per_order
+
+    def record_sell_order(self, symbol: str, net_trade_pnl: float):
+        """Records a sell order, deducts brokerage and updates PnL."""
+        self.total_brokerage += self.brokerage_per_order
+        final_pnl = net_trade_pnl - self.brokerage_per_order
+        self.daily_pnl += final_pnl
+        self.realized_pnl_map[symbol] = self.realized_pnl_map.get(symbol, 0) + final_pnl
+
+    def check_exit_conditions(self, current_prices: dict, current_atr: float = 0):
         """
         Iterates active positions and checks SL/Target/TSL.
         current_prices: {'NIFTY28DEC...': 120.5, ...}
+        current_atr: Current ATR from the index (NIFTY)
         """
-        max_daily_loss = config.get("risk_management.max_daily_loss", 1000)
+        max_daily_loss = config.get("risk_management.max_daily_acceptable_loss", 0)
         
         # 1. Circuit Breaker Check
         if max_daily_loss > 0 and self.daily_pnl < -max_daily_loss:
@@ -33,38 +51,28 @@ class RiskManager:
                 
             entry = pos['entry_price']
             qty = pos['qty']
-            pnl_pct = ((ltp - entry) / entry) * 100
             
-            # --- TSL LOGIC: "HIGHEST WINS" SYSTEM ---
-            # The bot uses THREE protective lines and takes the MAXIMUM (safest exit price):
-            #
-            # WHY WE NEED ALL THREE:
-            # 1. Fixed SL protects against IMMEDIATE gap-downs (e.g., bad news, market crash)
-            #    - TSL hasn't activated yet because price never moved up
-            #    - Without this, you could lose 50%+ instantly
-            #
-            # 2. TSL protects GROWING profits as price rises
-            #    - Trails 5% behind the peak price
-            #    - Gives the trade "room to breathe" while locking in gains
-            #
-            # 3. Profit Lock creates a BREAKEVEN floor after initial profit
-            #    - Activates after 3% profit is reached
-            #    - Ensures you don't give back all gains on a reversal
-            #    - The 1:2 ratio (3% profit → 1% lock) prevents premature exits
+            # --- 1. SL & TSL LOGIC ---
             
-            # LINE A: Fixed Hard Stop Loss (Default: 30%)
-            # Purpose: Worst-case backstop for immediate bad trades
-            sl_price = entry * (1 - (config.get("risk_management.stop_loss_pct", 30) / 100))
+            # LINE A: Fixed Hard Stop Loss (Percentage based)
+            sl_pct = pos.get('sl_pct', config.get("risk_management.stop_loss_pct", 30))
+            sl_price = entry * (1 - (sl_pct / 100))
             
-            # LINE B: Trailing Stop Loss (Default: 5%)
-            # Purpose: Protect profits as they grow, trailing behind peak
-            tsl_pct = config.get("risk_management.trailing_stop_pct", 5)
-            tsl_price = pos['peak_price'] * (1 - (tsl_pct / 100))
+            # LINE B: Trailing Stop Loss (Dynamic)
+            tsl_mode = config.get("risk_management.tsl_mode", "PERCENT")
+            if tsl_mode == "ATR" and current_atr > 0:
+                multiplier = config.get("risk_management.tsl_atr_multiplier", 2.0)
+                # Distance = ATR * Multiplier (applied to option price)
+                # Note: Index ATR is used as a proxy for option volatility here
+                tsl_price = pos['peak_price'] - (current_atr * multiplier)
+            else:
+                # PERCENT Mode
+                tsl_pct = pos.get('tsl_pct', config.get("risk_management.trailing_stop_pct", 10))
+                tsl_price = pos['peak_price'] * (1 - (tsl_pct / 100))
             
-            # LINE C: Profit Lock (Default: 1% lock after 3% profit)
-            # Purpose: Create breakeven protection after initial profit threshold
-            activation = config.get("risk_management.trailing_activation_pct", 3)
-            lock = config.get("risk_management.profit_lock_pct", 1)
+            # LINE C: Profit Lock (Floor)
+            activation = pos.get('tsl_activation_pct', config.get("risk_management.trailing_activation_pct", 10))
+            lock = pos.get('profit_lock_pct', config.get("risk_management.profit_lock_pct", 2))
             
             profit_lock_price = 0
             curr_peak_pct = ((pos['peak_price'] - entry) / entry) * 100
@@ -77,19 +85,25 @@ class RiskManager:
             
             # CHECK EXIT
             if ltp <= effective_stop:
-                self.logger.info(f"🔻 TSL HIT: {symbol} @ {ltp} (Stop: {effective_stop:.2f})")
-                self.om.close_position(pos, "TSL Hit")
-                # Update Mock PnL
-                self.daily_pnl += (ltp - entry) * qty
+                reason = "TSL Hit"
+                if effective_stop == sl_price: reason = "SL Hit"
+                if effective_stop == profit_lock_price: reason = "Profit Lock Hit"
                 
-            # TARGET CHECK
-            target_pct = config.get("risk_management.target_profit_pct", 50)
-            target_price = entry * (1 + (target_pct / 100))
+                self.logger.info(f"🔻 {reason.upper()}: {symbol} @ {ltp} (Stop: {effective_stop:.2f})")
+                self.om.close_position(pos, reason)
+                self.record_sell_order(symbol, (ltp - entry) * qty)
+                continue # Position closed, skip target check
+                
+            # --- 2. TARGET CHECK ---
+            target_pct = pos.get('target_pct', config.get("risk_management.target_profit_pct", 0))
             
-            if ltp >= target_price:
-                 self.logger.info(f"🎯 TARGET HIT: {symbol} @ {ltp}")
-                 self.om.close_position(pos, "Target Hit")
-                 self.daily_pnl += (ltp - entry) * qty
+            # Zero Target = Unlimited (Skip this block)
+            if target_pct > 0:
+                target_price = entry * (1 + (target_pct / 100))
+                if ltp >= target_price:
+                     self.logger.info(f"🎯 TARGET HIT: {symbol} @ {ltp}")
+                     self.om.close_position(pos, "Target Hit")
+                     self.record_sell_order(symbol, (ltp - entry) * qty)
 
     def check_pre_entry_risk(self) -> bool:
         """Checks if we are allowed to enter new trades."""

@@ -74,3 +74,40 @@ def format_time_value(minutes):
             return f"{int(hours)}h"
         else:
             return f"{minutes}m"
+def get_expiry_date(base_symbol: str, expiry_type: str = "CURRENT_WEEKLY") -> str:
+    """
+    Calculates the expiry date string in DDMMMYY format (e.g., 08JAN26).
+    Supports: NIFTY, BANKNIFTY (Thursdays), FINNIFTY (Tuesdays).
+    """
+    import datetime
+    
+    now = datetime.datetime.now()
+    
+    # Define primary expiry days (0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri...)
+    expiry_days = {
+        "NIFTY": 1,      # Tuesday (Updated based on user feedback)
+        "BANKNIFTY": 3,  # Thursday
+        "FINNIFTY": 1,   # Tuesday
+        "MIDCPNIFTY": 0  # Monday
+    }
+    
+    target_weekday = expiry_days.get(base_symbol, 3) # Default to Thursday
+    
+    # Find the CURRENT weekly expiry
+    days_ahead = target_weekday - now.weekday()
+    if days_ahead < 0:
+        days_ahead += 7
+    
+    # If today is expiry day, check time. Usually 3:30 PM is cutoff.
+    # For safety, if it's after 3:25 PM on expiry day, move to next.
+    if days_ahead == 0 and now.hour >= 15 and now.minute >= 25:
+        days_ahead = 7
+
+    expiry_date = now + datetime.timedelta(days=days_ahead)
+    
+    # Handle NEXT_WEEKLY
+    if expiry_type == "NEXT_WEEKLY":
+        expiry_date = expiry_date + datetime.timedelta(days=7)
+    
+    # Format: DDMMMYY (e.g., 08JAN26)
+    return expiry_date.strftime("%d%b%y").upper()
