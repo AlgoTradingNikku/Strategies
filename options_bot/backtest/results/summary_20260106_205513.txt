@@ -1,0 +1,13 @@
+BACKTEST PERFORMANCE SUMMARY
+======================================================================
+
+Initial Capital:    Rs.100,000.00
+Final Equity:       Rs.99,490.00
+Total P&L:          Rs.-510.00
+Total Return:       -0.51%
+Max Drawdown:       2.90%
+
+Total Trades:       12
+Win Rate:           50.0%
+Profit Factor:      0.84
+Total Brokerage:    Rs.168.00

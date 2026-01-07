@@ -18,7 +18,7 @@
         "_comment_late_entry": "If true, bot enters anytime a signal is active. If false, it ONLY enters on the very first candle of a new signal.",
         "enable_pullback_entry": true,
         "max_reentries": 3,
-        "min_gap_time": "3m",
+        "min_gap_time": "0m",
         "_comment_gap": "Wait 3m (one full candle) before re-entering to avoid whipsaws.",
         "order_type": "LIMIT",
         "_comment_order_type": "Options: LIMIT, MARKET. Limit orders reduce slippage but may not fill in fast markets."
@@ -74,7 +74,7 @@
         "_comment_capital": "Capital in ₹ to allocate per trade (e.g., 10000).",
         "capital_per_trade": 10000,
         "_comment_sl": "Fixed Stop Loss % from entry price (e.g., 30 = 30%).",
-        "stop_loss_pct": 30,
+        "entry_stop_loss_pct": 30,
         "_comment_target": "Target Profit % from entry price. Set to 0 for UNLIMITED target (ride the trend with TSL).",
         "target_profit_pct": 0,
         "_comment_tsl": "TSL Mode: PERCENT (uses trailing_stop_pct) or ATR (uses tsl_atr_multiplier x ATR).",

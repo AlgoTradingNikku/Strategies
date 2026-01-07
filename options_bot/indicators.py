@@ -86,7 +86,7 @@ def calculate_utbot(df: pd.DataFrame, key: float = 2.0, period: int = 10) -> pd.
     
     ranges = pd.concat([high_low, high_close, low_close], axis=1)
     true_range = np.max(ranges, axis=1)
-    atr = true_range.ewm(span=period, adjust=False).mean()
+    atr = true_range.ewm(alpha=1/period, adjust=False).mean()
     df['atr'] = atr
     
     # 2. Calculate Trailing Stop

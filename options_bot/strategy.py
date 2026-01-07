@@ -17,8 +17,8 @@ class StrategyEngine:
             return None
 
         # 1. Retrieve Configuration
-        active_htf = config.get("active_indicators.htf", [])
-        active_ltf = config.get("active_indicators.ltf", [])
+        active_htf = [x for x in (config.get("active_indicators.htf") or []) if x]
+        active_ltf = [x for x in (config.get("active_indicators.ltf") or []) if x]
         allow_late_entry = config.get("strategy_settings.allow_late_entry", False)
         
         # 2. Extract Latest Data

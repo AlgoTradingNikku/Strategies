@@ -218,6 +218,13 @@ class OrderManager:
                 self.logger.warning(f"⚠️ Capital ₹{capital} insufficient for {trading_symbol} @ ₹{option_ltp}. Minimum 1 Lot ({lot_size}) forced.")
             
             self.logger.info(f"💰 sizing_mode: CAPITAL | Capital=₹{capital} | Calculated Qty={qty}")        
+        # --- NEW: MAX PRICE CHECK ---
+        max_price = config.get("risk_management.max_entry_price", 0)
+        if max_price > 0 and option_ltp > max_price:
+            self.logger.warning(f"⛔ Skipped Trade: Price {option_ltp} > Limit {max_price}")
+            return False # Don't place order
+        
+        # 5. Place the Order via API
         self.logger.info(f"🚀 BUY ORDER: {trading_symbol} | Price={option_ltp} | Qty={qty} {signal['type']}")
         
         # 5. Subscribe to this option in WebSocket for real-time tracking
@@ -272,7 +279,7 @@ class OrderManager:
                 'order_id': order_id,
                 
                 # Snapshot current risk settings for this specific position
-                'sl_pct': config.get("risk_management.stop_loss_pct", 30),
+                'sl_pct': config.get("risk_management.entry_stop_loss_pct", 30),
                 'target_pct': config.get("risk_management.target_profit_pct", 50),
                 'tsl_pct': config.get("risk_management.trailing_stop_pct", 5),
                 'tsl_activation_pct': config.get("risk_management.trailing_activation_pct", 3),

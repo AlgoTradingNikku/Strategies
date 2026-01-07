@@ -1,6 +1,7 @@
 import requests
 import json
 import logging
+from config import config
 
 logger = logging.getLogger("OpenAlgoREST")
 
@@ -76,11 +77,9 @@ class OpenAlgoREST:
             "quantity": kwargs.get('quantity'),
             "price": kwargs.get('price', 0),
             "pricetype": pricetype,
-            "product": kwargs.get('product', 'NRML'),
-            "mode": "live" # Explicitly tell bridge to go live
+            "product": kwargs.get('product', 'NRML')
         }
         
-        from config import config # Ensure config can be used for fallback strategy name
         
         try:
             r = requests.post(f"{self.base_url}/placeorder", json=payload, timeout=10)
