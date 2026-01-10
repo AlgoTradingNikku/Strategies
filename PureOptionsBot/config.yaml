@@ -1,0 +1,66 @@
+# ========================================
+# 1. ASSET SELECTION
+# ========================================
+index_query: "NIFTY"           # Underlying index symbol
+index_exchange: "NSE_INDEX"    # Exchange for index data
+signal_source: "OPTION"        # Signal source: "INDEX" or "OPTION"
+
+# Option Contract Selection
+strike_selection:
+  mode: "AUTO"               # "AUTO" or "MANUAL"
+  step: 0                      # 0=ATM, -1=ITM1, 1=OTM1
+  expiry: "WEEKLY"             # "WEEKLY", "NEXT_WEEK"
+
+trade_symbol: "NIFTY13JAN2626000PE" # Manual fallback symbol
+
+index:
+  ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
+  htf: {timeframe: "15m", sensitivity: 1.0, atr: 10, enabled: True}
+
+option:
+  ltf: {timeframe: "1m", sensitivity: 1.5, atr: 10}
+  htf: {timeframe: "15m", sensitivity: 1.0, atr: 10, enabled: False}
+
+option_signal_timeout: 5        # Candles to wait for Option signal
+use_heikin_ashi: True           # Use Heikin Ashi candles for signals
+
+# ========================================
+# 3. TRADE EXECUTION
+# ========================================
+quantity: 65                    # Order quantity (lot size multiple)
+capital: 100000                 # Initial capital for backtesting
+lookback_days: 5                # Historical data window
+trading_mode: "long"            # "long" or "short"
+
+# ========================================
+# 4. RISK MANAGEMENT (TRAILING STOP LOSS)
+# ========================================
+# TSL Mode Selection
+use_tsl: True                   # Enable trailing stop loss
+tsl_mode: "HYBRID"              # "PCT", "ATR", or "HYBRID"
+ 
+# ATR-Based TSL when tsl_mode is ATR
+tsl_atr_multiplier: 1.5         # ATR multiplier for volatility-based TSL
+
+# Hybrid TSL when tsl mode is hybrid
+tsl_hybrid_threshold: 5.0       # Profit % to switch from PCT to ATR in HYBRID mode (used if trigger is PCT)
+tsl_hybrid_trigger: "POINTS"    # "PCT" or "POINTS"
+tsl_hybrid_point_tiers:        # Tiered points required to switch based on entry price
+  - {max_entry_price: 30,  tsl_points: 1.5}
+  - {max_entry_price: 60,  tsl_points: 2.5}
+  - {max_entry_price: 100, tsl_points: 3.5}
+  - {max_entry_price: 200, tsl_points: 5.0}
+  - {max_entry_price: 9999, tsl_points: 8.0} 
+
+# Percentage-Based TSL when tsl_mode is PCT
+tsl_pct: 5.0                    # Default TSL % (if stepped TSL disabled)
+use_stepped_tsl: True           # Use dynamic stepped TSL
+tsl_steps:
+  - {profit: 3.0, tsl: 1.5}     # 0-3% profit -> 1.5% TSL
+  - {profit: 5.0, tsl: 2.0}     # 3-5% profit -> 2.0% TSL
+  - {profit: 10.0, tsl: 2.5}    # 5-10% profit -> 2.5% TSL
+  - {profit: 20.0, tsl: 3.0}    # 10-20% profit -> 3.0% TSL
+  - {profit: 100.0, tsl: 3.5}   # >20% profit -> 3.5% TSL
+
+api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
+api_host: "http://127.0.0.1:5000"

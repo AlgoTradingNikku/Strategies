@@ -9,7 +9,8 @@ calculates indicators, and places real orders.
 from PureOptionsStrategy import (
     CONFIG, client, resolve_symbol_from_query, 
     fetch_history, get_hybrid_point_threshold,
-    get_contract_type, get_strike_symbol
+    get_contract_type, get_strike_symbol,
+    update_config_globally
 )
 import backtrader as bt
 import pandas as pd
@@ -99,14 +100,42 @@ class LiveTrader:
             
         print(f"\n[INFO] Strategy started.")
         
-        print("[INFO] Fetching security master...")
-        try:
-            self.master_df = client.instruments()
-            print(f"[INFO] Master fetched ({len(self.master_df)} instruments).")
-        except Exception as e:
-            print(f"[WARN] Failed to fetch instruments master: {e}")
+        cache_file = "instruments_cache.pkl"
+        use_cache = False
+        
+        if os.path.exists(cache_file):
+            mtime = datetime.fromtimestamp(os.path.getmtime(cache_file)).date()
+            if mtime == datetime.now().date():
+                use_cache = True
+        
+        if use_cache:
+            print("[INFO] Loading security master from local cache...")
+            try:
+                import pickle
+                with open(cache_file, "rb") as f:
+                    self.master_df = pickle.load(f)
+                print(f"[INFO] Master loaded from cache ({len(self.master_df)} instruments).")
+            except Exception as e:
+                print(f"[WARN] Cache load failed: {e}. Falling back to API.")
+                use_cache = False
 
-        print(f"[INFO] Source: {CONFIG.get('signal_source', 'INDEX')} | LTFs: Index({CONFIG['index']['ltf']['timeframe']}) / Option({CONFIG['option']['ltf']['timeframe']})")
+        if not use_cache:
+            print("[INFO] Fetching security master from API (This may take 10-20s)...")
+            try:
+                self.master_df = client.instruments()
+                print(f"[INFO] Master fetched ({len(self.master_df)} instruments).")
+                # Save to cache
+                import pickle
+                with open(cache_file, "wb") as f:
+                    pickle.dump(self.master_df, f)
+            except Exception as e:
+                print(f"[WARN] Failed to fetch instruments master: {e}")
+
+        idx_conf = CONFIG.get("index", {})
+        opt_conf = CONFIG.get("option", {})
+        # Format the source nicely (e.g. OPTION -> Option)
+        sig_src = str(CONFIG.get('signal_source', 'INDEX')).capitalize()
+        print(f"[INFO] Index [HTF:{idx_conf['htf']['timeframe']}, LTF:{idx_conf['ltf']['timeframe']}] | Options [HTF:{opt_conf['htf']['timeframe']}, LTF:{opt_conf['ltf']['timeframe']}, Source: {sig_src} Data]")
         print("Press Ctrl+C to stop.\n")
         return True
 
@@ -712,6 +741,25 @@ class LiveTrader:
             try: client.disconnect() 
             except: pass
 
+    def config_worker(self):
+        """Monitors config.yaml for changes and reloads it dynamically"""
+        config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+        last_mtime = os.path.getmtime(config_path) if os.path.exists(config_path) else 0
+        
+        while self.is_running:
+            try:
+                if os.path.exists(config_path):
+                    current_mtime = os.path.getmtime(config_path)
+                    if current_mtime > last_mtime:
+                        print(f"\n[CONFIG] Change detected in {os.path.basename(config_path)}. Reloading...")
+                        if update_config_globally():
+                            print("[CONFIG] Reload successful. Logic updated.")
+                        last_mtime = current_mtime
+            except Exception as e:
+                print(f"[CONFIG ERROR] Failed to reload: {e}")
+            
+            time.sleep(2) # Check every 2 seconds
+
 if __name__ == "__main__":
     trader = LiveTrader()
     if trader.initialize():
@@ -721,9 +769,12 @@ if __name__ == "__main__":
             t_scan = threading.Thread(target=trader.scanner_worker, daemon=True)
             t_ws = threading.Thread(target=trader.websocket_worker, daemon=True)
             
+            t_config = threading.Thread(target=trader.config_worker, daemon=True)
+            
             t_risk.start()
             t_scan.start()
             t_ws.start()
+            t_config.start()
             
             try:
                 while True:

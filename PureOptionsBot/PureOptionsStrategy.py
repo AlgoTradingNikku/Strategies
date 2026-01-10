@@ -12,6 +12,7 @@ from openalgo import api
 import sys
 import os
 import time
+import yaml
 
 # Add project root to path if running standalone
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
@@ -19,79 +20,27 @@ if project_root not in sys.path:
     # Append to prioritize installed packages
     sys.path.append(project_root)
 
-# ======================
-# CONFIGURATION
-# ======================
-CONFIG = {
-    # ========================================
-    # 1. ASSET SELECTION
-    # ========================================
-    "index_query": "NIFTY",           # Underlying index symbol
-    "index_exchange": "NSE_INDEX",    # Exchange for index data
-    "signal_source": "OPTION",        # Signal source: "INDEX" or "OPTION"
-    
-    # Option Contract Selection
-    "strike_selection": {
-        "mode": "AUTO",               # "AUTO" or "MANUAL"
-        "step": 0,                    # 0=ATM, -1=ITM1, 1=OTM1
-        "expiry": "WEEKLY",           # "WEEKLY", "NEXT_WEEK"
-    },
-    "trade_symbol": "", # Manual fallback symbol
-    
-    "index": {
-        "ltf": {"timeframe": "3m", "sensitivity": 1.0, "atr": 10},
-        "htf": {"timeframe": "15m", "sensitivity": 1.0, "atr": 10, "enabled": True}
-    },
-    "option": {
-        "ltf": {"timeframe": "1m", "sensitivity": 1.5, "atr": 10},
-        "htf": {"timeframe": "15m", "sensitivity": 1.0, "atr": 10, "enabled": False}
-    },
-    "option_signal_timeout": 5,        # Candles to wait for Option signal
-    "use_heikin_ashi": True,           # Use Heikin Ashi candles for signals
-    
-    # ========================================
-    # 3. TRADE EXECUTION
-    # ========================================
-    "quantity": 65,                    # Order quantity (lot size multiple)
-    "capital": 100000,                 # Initial capital for backtesting
-    "lookback_days": 5,                # Historical data window
-    "trading_mode": "long",            # "long" or "short"
-    
-    # ========================================
-    # 4. RISK MANAGEMENT (TRAILING STOP LOSS)
-    # ========================================
-    # TSL Mode Selection
-    "use_tsl": True,                   # Enable trailing stop loss
-    "tsl_mode": "HYBRID",              # "PCT", "ATR", or "HYBRID"
-     
-    # ATR-Based TSL when tsl_mode is ATR
-    "tsl_atr_multiplier": 1.5,         # ATR multiplier for volatility-based TSL
-    
-    # Hybrid TSL when tsl mode is hybrid
-    "tsl_hybrid_threshold": 5.0,      # Profit % to switch from PCT to ATR in HYBRID mode (used if trigger is PCT)
-    "tsl_hybrid_trigger": "POINTS",    # "PCT" or "POINTS"
-    "tsl_hybrid_point_tiers": [        # Tiered points required to switch based on entry price
-        {"max_entry_price": 30,  "tsl_points": 1.5},
-        {"max_entry_price": 60,  "tsl_points": 2.5},
-        {"max_entry_price": 100, "tsl_points": 3.5},
-        {"max_entry_price": 200, "tsl_points": 5.0},
-        {"max_entry_price": 9999,"tsl_points": 8.0} 
-    ],
-    
-     # Percentage-Based TSL when tsl_mode is PCT
-    "tsl_pct": 5.0,                    # Default TSL % (if stepped TSL disabled)
-    "use_stepped_tsl": True,           # Use dynamic stepped TSL
-    "tsl_steps": [
-        {"profit": 3.0, "tsl": 1.5},   # 0-3% profit → 1.5% TSL
-        {"profit": 5.0, "tsl": 2.0},   # 3-5% profit → 2.0% TSL
-        {"profit": 10.0, "tsl": 2.5},  # 5-10% profit → 2.5% TSL
-        {"profit": 20.0, "tsl": 3.0},  # 10-20% profit → 3.0% TSL
-        {"profit": 100.0, "tsl": 3.5}  # >20% profit → 3.5% TSL
-    ],
-    
-    "api_key": "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf",
-    "api_host": "http://127.0.0.1:5000",
-}
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    try:
+        with open(config_path, 'r') as f:
+            new_config = yaml.safe_load(f)
+            if new_config:
+                return new_config
+    except Exception as e:
+        print(f"[RELOAD ERROR] Could not load config.yaml: {e}")
+    return {}
+
+def update_config_globally():
+    global CONFIG
+    new_cfg = load_config()
+    if new_cfg:
+        CONFIG.update(new_cfg)
+        return True
+    return False
+
+CONFIG = load_config()
+# If initial load fails, we might have issues, but let's assume config.yaml exists now.
 
 # ======================
 # API CLIENT
@@ -244,16 +193,12 @@ def resolve_symbol_from_query(query, exchange="NFO"):
     """
     Resolves a descriptive query to an actionable Symbol Token.
     """
-    print(f"SEARCHING for: '{query}' in {exchange}...")
-    
     # Special handling for Nifty Index which might not appear in standard search
     # If using NSE_INDEX, trust the symbol directly
     if exchange == "NSE_INDEX":
-        print(f"Assuming Index Symbol: {query}")
         return query
         
     if exchange == "NSE" and "NIFTY" in query.upper() and ("50" in query or len(query) < 10):
-        print(f"Assuming Index/Equity Symbol: {query}")
         return query
 
     # --- DIRECT RESOLUTION PATH (Bypass Search API) ---
@@ -265,7 +210,6 @@ def resolve_symbol_from_query(query, exchange="NFO"):
             raw_sym = query_parts[0]
             # Heuristic: Raw NFO symbols are usually NIFTY + DDMMMYY + STRIKE + TYPE
             if raw_sym.startswith("NIFTY") and len(raw_sym) > 10:
-                print(f"Bypassing Search: Trusting direct symbol '{raw_sym}'")
                 return raw_sym
 
         # 2. Local Concatenation for standard format: "NIFTY 13JAN26 26200 PE"
@@ -283,11 +227,10 @@ def resolve_symbol_from_query(query, exchange="NFO"):
                     strike = p
             
             if root and expiry and strike and opt_type:
-                direct_sym = f"{root}{expiry}{strike}{opt_type}"
-                print(f"Direct Format Conversion: {query} -> {direct_sym}")
-                return direct_sym
+                return f"{root}{expiry}{strike}{opt_type}"
     # --------------------------------------------------
 
+    print(f"SEARCHING for: '{query}' in {exchange}...")
     try:
         response = client.search(query=query, exchange=exchange)
         
