@@ -249,14 +249,8 @@ class LiveTrader:
                         current_tsl_pct = step["tsl"]
                         break
             
-            # --- LEASH TIGHTENER ---
+            # --- LEASH TIGHTENER (REMOVED: Using direct trend exit) ---
             is_profit_locked = (highest >= entry * 1.01)
-            applied_tsl_pct = current_tsl_pct
-            leash_active = False
-            
-            if trend_reversed and is_profit_locked and CONFIG.get("use_reversal_leash"):
-                applied_tsl_pct = CONFIG.get("reversal_leash_pct", 1.5)
-                leash_active = True
             
             # Calculate Stop Price
             tsl_price = 0.0
@@ -298,7 +292,7 @@ class LiveTrader:
                             pts_required = get_hybrid_point_threshold(entry)
                             safety_stop = highest - pts_required
                         else:
-                            safety_stop = highest * (1 - applied_tsl_pct / 100.0)
+                            safety_stop = highest * (1 - current_tsl_pct / 100.0)
                         
                         tsl_price = max(atr_stop, safety_stop)
                     else:
@@ -310,14 +304,13 @@ class LiveTrader:
                     tsl_price = highest - pts_required
                 else:
                     # Percentage Logic
-                    tsl_price = highest * (1 - applied_tsl_pct / 100.0)
+                    tsl_price = highest * (1 - current_tsl_pct / 100.0)
             
             # --- NEW: Cost Protection (Break-Even) ---
             if is_profit_locked:
                 tsl_price = max(tsl_price, entry)
                 
-            status_line = f"   Entry: {entry:.2f} | PnL: {pnl_pct:+.2f}% | TSL: {tsl_price:.2f} (High: {highest:.2f}, {applied_tsl_pct}%)"
-            if leash_active: status_line += " [LEASH ACTIVE]"
+            status_line = f"   Entry: {entry:.2f} | PnL: {pnl_pct:+.2f}% | TSL: {tsl_price:.2f} (High: {highest:.2f}, {current_tsl_pct}%)"
             print(status_line)
             
             if curr_price <= tsl_price:
@@ -327,25 +320,10 @@ class LiveTrader:
         else:
             print(f"   Entry: {entry:.2f} | Current PnL: {pnl_pct:+.2f}%")
 
-        # Fixed SL
-        if CONFIG.get("use_sl") and pnl_pct <= -CONFIG["sl_pct"]:
-            print(f"   [EXIT] Stop Loss Hit!")
-            self.execute_trade("SELL", curr_price)
-            return True
-        # Fixed TP
-        if CONFIG.get("use_tp") and pnl_pct >= CONFIG["tp_pct"]:
-            print(f"   [EXIT] Take Profit Hit!")
-            self.execute_trade("SELL", curr_price)
-            return True
-        
+        # --- MANAGE EXITS ---
         # Trend Reversal Exit (If not profit-protected)
         if trend_reversed:
             should_exit_priority = True
-            if CONFIG.get("use_tsl") and highest > 0:
-                if not (is_profit_locked and CONFIG.get("use_reversal_leash")):
-                     if is_profit_locked:
-                         should_exit_priority = False
-                         print("   [FILTERED] Trend Reversed but Profit Locked. Holding...")
             
             if should_exit_priority:
                 print(f"   [SIGNAL] 3m Trend Reversed. Closing Position.")
@@ -364,33 +342,41 @@ class LiveTrader:
             idx_conf = CONFIG.get("index", {})
             opt_conf = CONFIG.get("option", {})
             
-            # --- 0. SESSION CHECK ---
-            now = datetime.now()
-            is_weekday = now.weekday() < 5
-            is_hours = 9 <= now.hour < 16 # Broad window
-            if not is_weekday or not is_hours:
-                # Every 5 minutes or so in Scanning mode, we can show a heartbeat
-                if self.bot_state == "SCANNING" and now.minute % 5 != 0:
-                    return
-                print(f"[{now.strftime('%H:%M:%S')}] [SESSION] Market Closed. Bot is idling...")
-                if self.bot_state == "SCANNING":
-                    # In scanning mode we might still want to fetch history once to show latest price
-                    pass 
-                else: 
-                    # If in position or observing, we MUST continue to handle risk if prices were to move (WS)
-                    pass
-            
-            # --- 1. DATA FETCHING BASED ON STATE ---
+            # --- 1. DATA FETCHING (START WITH INDEX LTF FOR FRESHNESS CHECK) ---
             df_idx_ltf = pd.DataFrame()
             df_idx_htf = pd.DataFrame()
             df_opt_ltf = pd.DataFrame()
             df_opt_htf = pd.DataFrame()
             
-            # Always fetch Index LTF for logic/state reference
+            # Always fetch Index LTF first to verify market activity
             df_idx_ltf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['ltf']['timeframe'], silent=True)
             if df_idx_ltf.empty: return
             fetch_stats.append(f"IDX-LTF({idx_conf['ltf']['timeframe']})/{len(df_idx_ltf)}")
+            
+            last_bar_time = df_idx_ltf.index[-1]
             index_price = df_idx_ltf['Close'].iloc[-1]
+            
+            # --- 0. DYNAMIC SESSION CHECK ---
+            now = datetime.now()
+            # Ensure last_bar_time is offset-naive for comparison
+            if last_bar_time.tzinfo is not None:
+                last_bar_time = last_bar_time.replace(tzinfo=None)
+                
+            # If the last bar is more than 15 minutes old, assume market is closed/idle
+            data_age_mins = (now - last_bar_time).total_seconds() / 60
+            is_stale = data_age_mins > 15
+            
+            if is_stale and not CONFIG.get("ignore_session_check", False):
+                # Idle every 5 minutes in SCANNING, but continue if in POSITION (risk management)
+                if self.bot_state == "SCANNING":
+                    if now.minute % 5 != 0:
+                        return
+                    print(f"[{now.strftime('%H:%M:%S')}] [IDLE] No fresh data (Last bar: {last_bar_time.strftime('%H:%M:%S')}). Pending...")
+                    return
+                else:
+                    # If in POSITION or OBSERVING, we still process the cycle (TSL/Risk)
+                    # even if historical data is slightly stale (WS might still be active)
+                    pass
             
             if self.bot_state == "SCANNING":
                 if idx_conf['htf']['enabled']:
@@ -455,7 +441,13 @@ class LiveTrader:
                         # Auto Select Strike
                         ss = CONFIG.get("strike_selection", {})
                         if ss.get("mode") == "AUTO":
-                            target_symbol = get_strike_symbol(index_price, side, ss.get("step", 0), ss.get("expiry", "WEEKLY"))
+                            target_symbol = get_strike_symbol(
+                                index_price, 
+                                side, 
+                                offset=ss.get("step", 0), 
+                                expiry_type=ss.get("expiry", "WEEKLY"),
+                                expiry_offset=ss.get("offset", 0)
+                            )
                         else:
                             target_symbol = CONFIG["trade_symbol"]
                             
@@ -740,26 +732,3 @@ if __name__ == "__main__":
                 trader.is_running = False
                 print("\n[INFO] Stopping threads...")
                 sys.exit(0)
-        else:
-            # Single-Threaded Periodic Mode (Legacy fallback)
-            last_full_cycle = 0
-            slow_interval = int(CONFIG.get("fetch_interval_seconds", 15))
-            fast_interval = int(CONFIG.get("fast_check_seconds", 2))
-            
-            while True:
-                try:
-                    now = time.time()
-                    if now - last_full_cycle >= slow_interval:
-                        trader.run_cycle()
-                        last_full_cycle = time.time()
-                    elif trader.position != 0:
-                        lp = trader.get_live_option_price()
-                        if lp > 0:
-                            trader.manage_risk(lp)
-                    time.sleep(fast_interval)
-                except KeyboardInterrupt:
-                    print("\n[INFO] Stopped by user.")
-                    sys.exit(0)
-                except Exception as e:
-                    print(f"[ERROR] Runtime Error: {e}")
-                    time.sleep(fast_interval)

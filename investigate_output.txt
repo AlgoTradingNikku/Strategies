@@ -1,4 +1,0 @@
---- Getting NIFTY LTP ---
-NIFTY LTP: {'ltp': {}}
---- Listing NIFTY Symbols ---
-Done. Check search_results.txt
