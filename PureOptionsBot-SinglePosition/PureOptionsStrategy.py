@@ -468,7 +468,7 @@ class PureOptionsStrategy(bt.Strategy):
     """
     params = (
         ("signal_source", CONFIG.get("signal_source", "OPTION")),
-        ("lots", CONFIG.get("lots", 1)),
+        ("quantity", CONFIG["quantity"]),
         
         # Index Params
         ("idx_ltf_sens", CONFIG["index"]["ltf"]["sensitivity"]),
@@ -748,7 +748,7 @@ class PureOptionsStrategy(bt.Strategy):
                     
                     # Buy Option (data1)
                     if self.option_data.close[0] > 0:
-                        self.order = self.buy(data=self.option_data, size=self.params.lots * 75)
+                        self.order = self.buy(data=self.option_data, size=self.params.quantity)
                         if self.params.verbose:
                             self.log(f"   >>> BUYING {c_type.upper()} @ {self.option_data.close[0]:.2f}")
                         
@@ -778,7 +778,7 @@ class PureOptionsStrategy(bt.Strategy):
                     self.log(f"[SIGNAL] Index {sig_name} detected @ {self.datas[0].close[0]:.2f}")
                     # Sell Option (data1)
                     if self.option_data.close[0] > 0:
-                        self.order = self.sell(data=self.option_data, size=self.params.lots * 75)
+                        self.order = self.sell(data=self.option_data, size=self.params.quantity)
                         if self.params.verbose:
                             self.log(f"   >>> SELLING {c_type.upper()} @ {self.option_data.close[0]:.2f}")
                         

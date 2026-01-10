@@ -8,9 +8,8 @@ calculates indicators, and places real orders.
 
 from PureOptionsStrategy import (
     CONFIG, client, resolve_symbol_from_query, 
-    fetch_history, get_hybrid_point_threshold,
-    get_contract_type, get_strike_symbol,
-    update_config_globally
+    fetch_history, get_contract_type, 
+    get_strike_symbol, update_config_globally
 )
 import backtrader as bt
 import pandas as pd
@@ -23,28 +22,18 @@ import threading
 class LiveTrader:
     def __init__(self):
         self.idx_symbol = None
-        self.opt_symbol = None
-        self.position = 0 # 1=Long, 0=Flat
-        self.entry_price = 0.0
-        self.highest_price = 0.0 # Track max price for TSL
+        self.trades = {} # key: symbol, value: dict of trade state
         self.last_exit_time = None
-        self.bot_state = "SCANNING" # SCANNING, OBSERVING, POSITION
-        self.observed_symbol = None
-        self.observed_side = None # "CALL" or "PUT"
-        self.observation_start_time = None
-        self.observation_candles = 0 # Track candles spent in OBSERVING
-        self.cached_index_price = 0.0
         self.last_index_fetch_time = None
         
         # --- THREADING & WEBSOCKET ---
         self.lock = threading.Lock()
-        self.is_trend_reversed = False
         self.is_running = True
-        self.ws_ltp = 0.0
-        self.ws_last_update = 0
-        self.current_subscribed_symbol = None
+        self.ws_data = {} # key: symbol, value: {'ltp': 0.0, 'time': 0}
         self.master_df = None
-        self.current_option_atr = 0.0 # Store ATR for risk management
+        
+        # Track historical data for active/observed symbols to avoid re-fetching
+        self.history_cache = {} # symbol -> {interval -> df}
         
         # --- FORCE BUY TRACKING ---
 
@@ -68,8 +57,8 @@ class LiveTrader:
         print(f"{'Option HTF:':<17} {opt['htf']['timeframe']} (Sens: {opt['htf']['sensitivity']}, ATR: {opt['htf']['atr']}) [{'ENABLED' if opt['htf']['enabled'] else 'DISABLED'}]")
 
         print(f"{'Bot Mode:':<17} {'LIVE TRADE' if CONFIG.get('live_trade') else 'PAPER TRADE'}")
-        print(f"{'Quantity:':<17} {CONFIG['quantity']}")
-        print(f"{'Heikin Ashi:':<17} {'ENABLED' if CONFIG['use_heikin_ashi'] else 'DISABLED'}")
+        print(f"{'Lots (Mult):':<17} {CONFIG.get('lots', 1)}")
+        print(f"{'Heikin Ashi:':<17} Index: {'ON' if CONFIG.get('index_use_ha') else 'OFF'}, Option: {'ON' if CONFIG.get('option_use_ha') else 'OFF'}")
         
         if CONFIG.get('use_sl'):
             print(f"{'Stop Loss:':<17} ENABLED ({CONFIG.get('sl_pct')}%)")
@@ -86,15 +75,8 @@ class LiveTrader:
         # Always resolve Index symbol for reference/display
         self.idx_symbol = resolve_symbol_from_query(CONFIG["index_query"], exchange=CONFIG["index_exchange"])
             
-        ss_mode = CONFIG.get("strike_selection", {}).get("mode", "MANUAL")
-        if ss_mode == "MANUAL":
-            self.opt_symbol = resolve_symbol_from_query(CONFIG["trade_symbol"], exchange="NFO")
-        else:
-            self.opt_symbol = None
-            print(f"   [INFO] Auto-Strike Mode: Manual symbol resolution skipped.")
-        
-        if (not self.idx_symbol) or (ss_mode == "MANUAL" and not self.opt_symbol):
-            print("[ERROR] Critical Error: Could not resolve required symbols. Exiting.")
+        if not self.idx_symbol:
+            print("[ERROR] Critical Error: Could not resolve index symbol. Exiting.")
             return False
 
             
@@ -217,392 +199,323 @@ class LiveTrader:
         atr = tr.ewm(alpha=1/period, adjust=False).mean()
         return atr.iloc[-1]
 
-    def get_live_option_price(self):
+    def get_live_option_price(self, symbol):
         """High-speed LTP fetch for the option contract with Websocket priority"""
-        if not self.opt_symbol: return 0.0
+        if not symbol: return 0.0
         
         # 1. Try Websocket Cache First (Zero Latency)
         with self.lock:
-            ws_price = self.ws_ltp
-            last_upd = self.ws_last_update
+            data = self.ws_data.get(symbol, {})
+            ws_price = data.get('ltp', 0.0)
+            last_upd = data.get('time', 0)
             
         # Use WS price if it's fresh (within last 5 seconds)
         if ws_price > 0 and (time.time() - last_upd) < 5:
             return ws_price
-
+ 
         # 2. Fallback to REST API (2s Safety Net)
         try:
-            res = client.get_ltp(self.opt_symbol, "NFO")
+            res = client.get_ltp(symbol, "NFO")
             if isinstance(res, dict):
                 if 'ltp' in res and res['ltp']:
                     return float(res['ltp'])
-                elif self.opt_symbol in res:
-                    return float(res[self.opt_symbol])
-            return 0.0
-        except:
-            return 0.0
+        except Exception:
+            pass
+        return 0.0
 
-    def manage_risk(self, curr_price, is_trend_reversed_input=None):
+    def manage_risk(self, symbol, curr_price, is_trend_reversed_input=None):
         """
-        Handles SL, TP, TSL, and Trend Reversal exits.
+        Handles SL, TP, 3-Stage Profit Guard, and Trend Reversal exits for a specific symbol.
         Returns True if position was closed, False otherwise.
         """
-        # Load shared state under lock
+        # Load trade state under lock
         with self.lock:
-            pos = self.position
-            entry = self.entry_price
-            highest = self.highest_price
-            trend_reversed = is_trend_reversed_input if is_trend_reversed_input is not None else self.is_trend_reversed
+            if symbol not in self.trades:
+                return False
+            trade = self.trades[symbol]
+            entry = trade["entry_price"]
+            highest = trade["highest_price"]
+            trend_reversed = is_trend_reversed_input if is_trend_reversed_input is not None else trade.get("trend_reversed", False)
 
-        if pos == 0 or curr_price <= 0:
+        if curr_price <= 0:
             return False
 
+        rm_conf = CONFIG.get("risk_management", {})
         pnl_pct = (curr_price - entry) / entry * 100
         
-        # --- TRAILING STOP LOGIC ---
+        # --- 0. UPDATE HIGH WATER MARK ---
+        if highest < curr_price:
+            with self.lock:
+                if symbol in self.trades:
+                    self.trades[symbol]["highest_price"] = curr_price
+            highest = curr_price
+
+        # --- 3-STAGE PROFIT GUARD LOGIC ---
+        tsl_price = 0.0
+        stage = "INIT"
+        
         if CONFIG.get("use_tsl"):
-            # Update High Water Mark (Shared state update)
-            if highest < curr_price:
-                with self.lock:
-                    self.highest_price = curr_price
-                highest = curr_price
+            # A. Calculate Base Distance (ATR or TIERED)
+            dist_pts = 0.0
+            mode = rm_conf.get("mode", "ATR")
             
-            # Calculate Dynamic TSL %
-            base_tsl_pct = CONFIG.get("tsl_pct", 5.0)
-            current_tsl_pct = base_tsl_pct
-            
-            if CONFIG.get("use_stepped_tsl"):
-                profit_at_high = (highest - entry) / entry * 100
-                for step in CONFIG.get("tsl_steps", []):
-                    if profit_at_high < step["profit"]:
-                        current_tsl_pct = step["tsl"]
-                        break
-            
-            # --- LEASH TIGHTENER (REMOVED: Using direct trend exit) ---
-            is_profit_locked = (highest >= entry * 1.01)
-            
-            # Calculate Stop Price
-            tsl_price = 0.0
-            tsl_mode = CONFIG.get('tsl_mode', 'PCT')
-            use_atr = False
-
-            # Check Hybrid Switch
-            if tsl_mode == 'HYBRID':
-                trigger_type = CONFIG.get("tsl_hybrid_trigger", "PCT")
-                if trigger_type == "POINTS":
-                    pts_gained = highest - entry
-                    pts_required = get_hybrid_point_threshold(entry)
-                    if pts_gained >= pts_required:
-                        use_atr = True
-                else:
-                    # Percentage Based Trigger (Default)
-                    threshold = CONFIG.get('tsl_hybrid_threshold', 10.0)
-                    if pnl_pct >= threshold:
-                        use_atr = True
-                    else:
-                        use_atr = False
-            elif tsl_mode == 'ATR':
-                use_atr = True
-
-            if use_atr:
-                # ATR Logic
-                current_atr = self.current_option_atr
-                multiplier = CONFIG.get('tsl_atr_multiplier', 1.5)
-                
-                if current_atr <= 0:
-                     # Fallback to PCT if no ATR available
-                     tsl_price = highest * (1 - base_tsl_pct / 100.0)
-                else:
-                    atr_stop = highest - (current_atr * multiplier)
-                    
-                    # HYBRID SAFETY: Take MAX of PCT/Points vs ATR to never lower the stop
-                    if tsl_mode == 'HYBRID':
-                        if CONFIG.get("tsl_hybrid_trigger") == "POINTS":
-                            pts_required = get_hybrid_point_threshold(entry)
-                            safety_stop = highest - pts_required
-                        else:
-                            safety_stop = highest * (1 - current_tsl_pct / 100.0)
-                        
-                        tsl_price = max(atr_stop, safety_stop)
-                    else:
-                        tsl_price = atr_stop
+            if mode == "ATR":
+                atr = trade.get("atr", 0.0)
+                mult = rm_conf.get("tsl_atr_multiplier", 2.0)
+                dist_pts = atr * mult
+                # Fallback if ATR is missing
+                if dist_pts <= 0:
+                    dist_pts = entry * 0.05 
             else:
-                # Phase 1: Point-Based or Percentage-Based Trail
-                if tsl_mode == 'HYBRID' and CONFIG.get("tsl_hybrid_trigger") == "POINTS":
-                    pts_required = get_hybrid_point_threshold(entry)
-                    tsl_price = highest - pts_required
-                else:
-                    # Percentage Logic
-                    tsl_price = highest * (1 - current_tsl_pct / 100.0)
-            
-            # --- NEW: Cost Protection (Break-Even) ---
-            if is_profit_locked:
-                tsl_price = max(tsl_price, entry)
-                
-            status_line = f"   Entry: {entry:.2f} | PnL: {pnl_pct:+.2f}% | TSL: {tsl_price:.2f} (High: {highest:.2f}, {current_tsl_pct}%)"
-            print(status_line)
+                # TIERED MODE
+                dist_pts = rm_conf.get("tsl_points_trail", 5.0)
+                if rm_conf.get("tsl_use_dynamic_tiers"):
+                    for tier in rm_conf.get("tsl_point_tiers", []):
+                        if entry <= tier["max_entry"]:
+                            dist_pts = tier["trail"]
+                            break
+
+            # B. Apply Profit Tightener (Stage 3)
+            tighten_threshold = rm_conf.get("tighten_trigger_pct", 15.0)
+            if pnl_pct >= tighten_threshold:
+                stage = "TIGHTEN"
+                ratio = rm_conf.get("tighten_ratio", 0.5)
+                dist_pts *= ratio
+            else:
+                stage = "TRAILING"
+
+            # C. Preliminary TSL Price
+            tsl_price = highest - dist_pts
+
+            # D. Apply Break-Even Guard (Stage 1)
+            be_trigger = rm_conf.get("be_trigger_pct", 2.0)
+            if pnl_pct >= be_trigger:
+                be_buffer = rm_conf.get("be_buffer_pts", 1.0)
+                be_level = entry + be_buffer
+                if tsl_price < be_level:
+                    stage = "BREAK-EVEN"
+                    tsl_price = be_level
+
+            # E. Execution & Heartbeat
+            with self.lock:
+                prev_stage = trade.get("last_stage", "INIT")
+                if prev_stage != stage:
+                    print(f"\n   >>> [GUARD] {symbol} Stage Transition: {prev_stage} -> {stage} <<<")
+                    self.trades[symbol]["last_stage"] = stage
+
+            if time.time() % 10 < 2: # Reduce log verbosity for multi-position
+                status_line = (
+                    f"   [HEARTBEAT:{symbol}] Price: {curr_price:.2f} | "
+                    f"PnL: {pnl_pct:+.2f}% | "
+                    f"Stage: {stage} | "
+                    f"TSL: {tsl_price:.2f}"
+                )
+                print(status_line)
             
             if curr_price <= tsl_price:
-                print(f"   [EXIT] Trailing Stop Hit! (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})")
-                self.execute_trade("SELL", curr_price)
+                print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
+                print(f"   (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})\n")
+                self.execute_trade("SELL", curr_price, symbol)
                 return True
-        else:
-            print(f"   Entry: {entry:.2f} | Current PnL: {pnl_pct:+.2f}%")
-
+        
         # --- MANAGE EXITS ---
-        # Trend Reversal Exit (If not profit-protected)
         if trend_reversed:
-            should_exit_priority = True
-            
-            if should_exit_priority:
-                print(f"   [SIGNAL] 3m Trend Reversed. Closing Position.")
-                self.execute_trade("SELL", curr_price)
-                return True
+            print(f"   [SIGNAL] Trend Reversed for {symbol}. Closing Position.")
+            self.execute_trade("SELL", curr_price, symbol)
+            return True
 
         return False
 
     def run_cycle(self):
-        """Standard Check Cycle - Dual Chart State Machine (4-Way Precision)"""
+        """Standard Check Cycle - Portfolio Management for Multiple Positions"""
         try:
             end = datetime.now().strftime("%Y-%m-%d")
             start = (datetime.now() - timedelta(days=CONFIG['lookback_days'])).strftime("%Y-%m-%d")
-            fetch_stats = []
             
             idx_conf = CONFIG.get("index", {})
             opt_conf = CONFIG.get("option", {})
+            max_pos = CONFIG.get("max_positions", 1)
             
-            # --- 1. DATA FETCHING (START WITH INDEX LTF FOR FRESHNESS CHECK) ---
-            df_idx_ltf = pd.DataFrame()
-            df_idx_htf = pd.DataFrame()
-            df_opt_ltf = pd.DataFrame()
-            df_opt_htf = pd.DataFrame()
-            
-            # Always fetch Index LTF first to verify market activity
+            # --- 1. DATA FETCHING: INDEX ---
             df_idx_ltf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['ltf']['timeframe'], silent=True)
             if df_idx_ltf.empty: return
-            fetch_stats.append(f"IDX-LTF({idx_conf['ltf']['timeframe']})/{len(df_idx_ltf)}")
             
             last_bar_time = df_idx_ltf.index[-1]
             index_price = df_idx_ltf['Close'].iloc[-1]
             
-            # --- 0. DYNAMIC SESSION CHECK ---
+            # --- SESSION / STALE DATA CHECK ---
             now = datetime.now()
-            # Ensure last_bar_time is offset-naive for comparison
-            if last_bar_time.tzinfo is not None:
-                last_bar_time = last_bar_time.replace(tzinfo=None)
-                
-            # If the last bar is more than 15 minutes old, assume market is closed/idle
+            if last_bar_time.tzinfo is not None: last_bar_time = last_bar_time.replace(tzinfo=None)
             data_age_mins = (now - last_bar_time).total_seconds() / 60
-            is_stale = data_age_mins > 15
-            
-            if is_stale and not CONFIG.get("ignore_session_check", False):
-                # Idle every 5 minutes in SCANNING, but continue if in POSITION (risk management)
-                if self.bot_state == "SCANNING":
-                    if now.minute % 5 != 0:
-                        return
-                    print(f"[{now.strftime('%H:%M:%S')}] [IDLE] No fresh data (Last bar: {last_bar_time.strftime('%H:%M:%S')}). Pending...")
+            if data_age_mins > 15 and not CONFIG.get("ignore_session_check", False):
+                if len(self.trades) == 0:
+                    if now.minute % 5 == 0:
+                        print(f"[{now.strftime('%H:%M:%S')}] [IDLE] Scanning {self.idx_symbol} @ {index_price:.2f}... (No positions)")
                     return
-                else:
-                    # If in POSITION or OBSERVING, we still process the cycle (TSL/Risk)
-                    # even if historical data is slightly stale (WS might still be active)
-                    pass
-            
-            if self.bot_state == "SCANNING":
-                if idx_conf['htf']['enabled']:
-                    df_idx_htf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
-                    fetch_stats.append(f"IDX-HTF({idx_conf['htf']['timeframe']})/{len(df_idx_htf)}")
-            
-            elif self.bot_state == "OBSERVING":
-                df_opt_ltf = fetch_history(self.observed_symbol, "NFO", start, end, interval=opt_conf['ltf']['timeframe'], silent=True)
-                fetch_stats.append(f"OPT-LTF({opt_conf['ltf']['timeframe']})/{len(df_opt_ltf)}")
-                if opt_conf['htf']['enabled']:
-                    df_opt_htf = fetch_history(self.observed_symbol, "NFO", start, end, interval=opt_conf['htf']['timeframe'], silent=True)
-                    fetch_stats.append(f"OPT-HTF({opt_conf['htf']['timeframe']})/{len(df_opt_htf)}")
-            
-            elif self.bot_state == "POSITION":
-                df_opt_ltf = fetch_history(self.opt_symbol, "NFO", start, end, interval=opt_conf['ltf']['timeframe'], silent=True)
-                fetch_stats.append(f"OPT-LTF({opt_conf['ltf']['timeframe']})/{len(df_opt_ltf)}")
-                if opt_conf['htf']['enabled']:
-                    df_opt_htf = fetch_history(self.opt_symbol, "NFO", start, end, interval=opt_conf['htf']['timeframe'], silent=True)
-                    fetch_stats.append(f"OPT-HTF({opt_conf['htf']['timeframe']})/{len(df_opt_htf)}")
 
-            # --- 2. INDICATOR CALCULATION ---
-            def get_trend_data(df, stream_conf):
-                if df.empty or len(df) < 5: return None, None
-                pos, trail = self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], CONFIG['use_heikin_ashi'])
-                return pos, trail
-
-            # --- 3. LOGGING STATUS ---
-            now_time = datetime.now().strftime("%H:%M:%S")
-            # Compact one-liner status
-            status_line = f"[{now_time}] {self.bot_state} | "
-            if self.bot_state == "SCANNING":
-                status_line += f"IDX: {index_price:.2f}"
-            elif self.bot_state == "OBSERVING":
-                status_line += f"{self.observed_symbol}: {df_opt_ltf['Close'].iloc[-1] if not df_opt_ltf.empty else 'N/A'}"
-            elif self.bot_state == "POSITION":
-                status_line += f"{self.opt_symbol}: {df_opt_ltf['Close'].iloc[-1]}"
-            
-            # Append fetch stats to the end
-            status_line += f" | {', '.join(fetch_stats)}"
-            print(status_line)
-
-            if self.bot_state == "SCANNING":
-                pos_idx, _ = get_trend_data(df_idx_ltf, idx_conf['ltf'])
-                if pos_idx is None: return
-                
-                curr_idx_ltf = pos_idx.iloc[-2]
-                prev_idx_ltf = pos_idx.iloc[-3]
-                
-                # Check for Signal
-                idx_f_entry = (curr_idx_ltf != prev_idx_ltf)
-                if idx_f_entry:
-                    # Index HTF Alignment
-                    htf_ok = True
-                    if idx_conf['htf']['enabled']:
-                        pos_htf, _ = get_trend_data(df_idx_htf, idx_conf['htf'])
-                        if pos_htf is not None:
-                            htf_ok = (pos_htf.iloc[-2] == curr_idx_ltf)
-                    
-                    if htf_ok:
-                        side = "CALL" if curr_idx_ltf == 1 else "PUT"
-                        print(f"   [SIGNAL] Index {side} Cross! HTF Aligned.")
-                        # Auto Select Strike
-                        ss = CONFIG.get("strike_selection", {})
-                        if ss.get("mode") == "AUTO":
-                            target_symbol = get_strike_symbol(
-                                index_price, 
-                                side, 
-                                offset=ss.get("step", 0), 
-                                expiry_type=ss.get("expiry", "WEEKLY"),
-                                expiry_offset=ss.get("offset", 0)
-                            )
-                        else:
-                            target_symbol = CONFIG["trade_symbol"]
-                            
-                        if target_symbol:
-                            self.bot_state = "OBSERVING"
-                            self.observed_symbol = target_symbol
-                            self.observed_side = side
-                            self.observation_candles = 0
-                            print(f"   >>> Transition to OBSERVING: {target_symbol}")
-                    else:
-                        print(f"   [FILTERED] Index cross ignored: Index HTF conflict.")
-
-            elif self.bot_state == "OBSERVING":
-                if df_opt_ltf.empty: return
-                pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'])
-                if pos_opt is None: return
-                
-                curr_opt_ltf = pos_opt.iloc[-2]
-                prev_opt_ltf = pos_opt.iloc[-3]
-                opt_price = df_opt_ltf['Close'].iloc[-1]
-                
-                # Confirmation Signal (UTBot Buy on Option Chart)
-                is_confirm = (curr_opt_ltf == 1 and prev_opt_ltf == -1)
-                
-                # Option HTF Alignment
-                htf_ok = True
-                if opt_conf['htf']['enabled']:
-                    pos_opt_htf, _ = get_trend_data(df_opt_htf, opt_conf['htf'])
-                    if pos_opt_htf is not None:
-                        htf_ok = (pos_opt_htf.iloc[-2] == 1)
-
-                if is_confirm and htf_ok:
-                    print(f"   [CONFIRM] Option {self.observed_side} Chart BUY Signal! Entering trade.")
-                    self.opt_symbol = self.observed_symbol
-                    self.execute_trade("BUY", opt_price)
-                    self.bot_state = "POSITION"
-                else:
-                    self.observation_candles += 1
-                    timeout = CONFIG.get("option_signal_timeout", 5)
-                    print(f"   [WAIT] Watching {self.observed_symbol} ({opt_conf['ltf']['timeframe']}) signal... ({self.observation_candles}/{timeout})")
-                    
-                    # Check for Index Trend Reversal (Invalidates setup)
-                    pos_idx, _ = get_trend_data(df_idx_ltf, idx_conf['ltf'])
-                    if pos_idx is not None:
-                        idx_trend = pos_idx.iloc[-2]
-                        target_idx_trend = 1 if self.observed_side == "CALL" else -1
-                        if idx_trend != target_idx_trend:
-                            print(f"   [RESET] Index trend reversed. Setup invalidated.")
-                            self.bot_state = "SCANNING"
-                    
-                    if self.observation_candles >= timeout:
-                        print(f"   [TIMEOUT] Option signal delayed too long. Resetting to Scanning.")
-                        self.bot_state = "SCANNING"
-
-            elif self.bot_state == "POSITION":
-                if df_opt_ltf.empty: return
-                pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'])
-                if pos_opt is None: return
-                
-                curr_opt_ltf = pos_opt.iloc[-2]
-                prev_opt_ltf = pos_opt.iloc[-3]
-                opt_price = df_opt_ltf['Close'].iloc[-1]
-                
-                # Risk Management
-                is_exit = (curr_opt_ltf == -1 and prev_opt_ltf == 1)
+            # --- 2. MANAGE EXISTING TRADES ---
+            # Use list of keys because trades might be deleted during iteration
+            active_symbols = list(self.trades.keys())
+            for symbol in active_symbols:
                 with self.lock:
-                    self.is_trend_reversed = is_exit
+                    trade = self.trades.get(symbol)
+                if not trade: continue
+
+                # Fetch Option Data
+                df_opt_ltf = fetch_history(symbol, "NFO", start, end, interval=opt_conf['ltf']['timeframe'], silent=True)
+                if df_opt_ltf.empty: continue
                 
-                print(f"   [POSITION] Price: {opt_price:.2f} | Exit Signal: {'Yes' if is_exit else 'No'}")
-                self.manage_risk(opt_price, is_trend_reversed_input=is_exit)
+                df_opt_htf = pd.DataFrame()
+                if opt_conf['htf']['enabled']:
+                    df_opt_htf = fetch_history(symbol, "NFO", start, end, interval=opt_conf['htf']['timeframe'], silent=True)
+
+                def get_trend_data(df, stream_conf, use_ha):
+                    if df.empty or len(df) < 5: return None, None
+                    return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
+
+                # --- A. OBSERVING STATE ---
+                if trade["state"] == "OBSERVING":
+                    pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
+                    if pos_opt is None: continue
+                    
+                    is_confirm = (pos_opt.iloc[-2] == 1 and pos_opt.iloc[-3] == -1)
+                    
+                    htf_ok = True
+                    if opt_conf['htf']['enabled'] and not df_opt_htf.empty:
+                        pos_opt_htf, _ = get_trend_data(df_opt_htf, opt_conf['htf'], CONFIG.get('option_use_ha', False))
+                        if pos_opt_htf is not None: htf_ok = (pos_opt_htf.iloc[-2] == 1)
+
+                    if is_confirm and htf_ok:
+                        print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
+                        self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
+                                          side=trade['side'], expiry_params=trade['expiry_params'], 
+                                          idx_at_res=trade['idx_at_res'])
+                    else:
+                        with self.lock:
+                            self.trades[symbol]["obs_candles"] = trade.get("obs_candles", 0) + 1
+                        
+                        # Timeouts
+                        candles = self.trades[symbol]["obs_candles"]
+                        timeout = CONFIG.get("option_signal_timeout", 5)
+                        if candles >= timeout:
+                            print(f"   [TIMEOUT] {symbol} signal delayed. Clearing.")
+                            with self.lock: del self.trades[symbol]
+                            continue
+                        
+                        # Drift Guard
+                        drift_limit = CONFIG.get("drift_guard_threshold", 25.0)
+                        drift = abs(index_price - trade["idx_at_res"])
+                        if drift > drift_limit and CONFIG.get("strike_selection", {}).get("mode") == "AUTO":
+                            print(f"   [DRIFT] Index moved {drift:.2f} pts. Updating {symbol} Focus...")
+                            new_target = get_strike_symbol(index_price, trade["side"], 
+                                                        offset=trade["expiry_params"]["step"], 
+                                                        expiry_type=trade["expiry_params"]["expiry"],
+                                                        expiry_offset=trade["expiry_params"]["offset"])
+                            if new_target and new_target != symbol:
+                                with self.lock:
+                                    # Swap registry entry
+                                    old_trade = self.trades.pop(symbol)
+                                    old_trade["idx_at_res"] = index_price
+                                    self.trades[new_target] = old_trade
+                                print(f"   >>> Target Shift: {symbol} -> {new_target}")
+                                continue
+
+                # --- B. POSITION STATE ---
+                elif trade["state"] == "POSITION":
+                    pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
+                    if pos_opt is None: continue
+                    
+                    is_exit = (pos_opt.iloc[-2] == -1 and pos_opt.iloc[-3] == 1)
+                    
+                    # Update ATR in trade dictionary
+                    new_atr = self.calculate_atr(df_opt_ltf, period=opt_conf['ltf']['atr'])
+                    with self.lock:
+                        if symbol in self.trades:
+                            self.trades[symbol]["atr"] = new_atr
+                            self.trades[symbol]["trend_reversed"] = is_exit
+                    
+                    self.manage_risk(symbol, df_opt_ltf['Close'].iloc[-1], is_trend_reversed_input=is_exit)
+
+            # --- 3. SCAN FOR NEW OPPORTUNITIES ---
+            if len(self.trades) < max_pos:
+                now_str = datetime.now().strftime("%H:%M:%S")
+                # Periodic Portfolio Status (only if no active positions being tracked)
+                if len(self.trades) == 0 and time.time() % 60 < 15:
+                    print(f"[{now_str}] SCANNING (Portfolio: {len(self.trades)}/{max_pos} Slots Used) | Index: {index_price:.2f}")
                 
-                if self.position == 0:
-                    print("   [INFO] Position exited. Returning to SCANNING.")
-                    self.bot_state = "SCANNING"
+                def get_trend_data(df, stream_conf, use_ha):
+                    if df.empty or len(df) < 5: return None, None
+                    return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
+
+                pos_idx, _ = get_trend_data(df_idx_ltf, idx_conf['ltf'], CONFIG.get('index_use_ha', True))
+                if pos_idx is not None:
+                    curr_idx = pos_idx.iloc[-2]
+                    prev_idx = pos_idx.iloc[-3]
+                    
+                    if curr_idx != prev_idx:
+                        # Check HTF
+                        htf_ok = True
+                        if idx_conf['htf']['enabled']:
+                            df_idx_htf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
+                            pos_htf, _ = get_trend_data(df_idx_htf, idx_conf['htf'], CONFIG.get('index_use_ha', True))
+                            if pos_htf is not None: htf_ok = (pos_htf.iloc[-2] == curr_idx)
+                        
+                        if htf_ok:
+                            side = "CALL" if curr_idx == 1 else "PUT"
+                            ss = CONFIG.get("strike_selection", {})
+                            target = get_strike_symbol(index_price, side, offset=ss.get("step", 0), 
+                                                     expiry_type=ss.get("expiry", "WEEKLY"), 
+                                                     expiry_offset=ss.get("offset", 0)) if ss.get("mode") == "AUTO" else CONFIG["trade_symbol"]
+                            
+                            if target and target not in self.trades:
+                                with self.lock:
+                                    self.trades[target] = {
+                                        "state": "OBSERVING",
+                                        "side": side,
+                                        "obs_candles": 0,
+                                        "idx_at_res": index_price,
+                                        "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
+                                        "atr": 0.0
+                                    }
+                                print("\n" + "="*50)
+                                print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
+                                print(f"   Instrument: {target}")
+                                print(f"   Index Ref:  {index_price:.2f}")
+                                print("="*50 + "\n")
 
         except Exception as e:
-            print(f"[ERROR] Cycle Error: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"[ERROR] Portfolio Cycle Error: {e}")
+            import traceback; traceback.print_exc()
 
-    def execute_trade(self, action, price):
-        """Place Order via API"""
-        print(f"   [ORDER] Placing {action} for {CONFIG['quantity']} qty...")
-        
-        # Check Safety Toggle
-        if not CONFIG.get("live_trade", False):
-            print(f"   [PAPER] Live Trade is OFF. Simulated {action} @ {price}")
-            with self.lock:
-                if action == "BUY":
-                    self.position = 1
-                    self.entry_price = price
-                    self.highest_price = price
-                    self.is_trend_reversed = False
-                else:
-                    self.position = 0
-                    self.highest_price = 0.0
-                    self.is_trend_reversed = False
-            return
-
+    def execute_trade(self, action, price, symbol, side=None, expiry_params=None, idx_at_res=None):
+        """Execute Buy/Sell order via OpenAlgo with Dynamic Lot Sizing"""
         try:
-            # --- AUTO LOT SIZE CORRECTION ---
-            lot_size = 1 # Default
-            try:
-                if self.master_df is not None and not self.master_df.empty:
-                    # Filter for this symbol
-                    match = self.master_df[(self.master_df['symbol'] == self.opt_symbol) & 
-                                          (self.master_df['exchange'] == 'NFO')]
-                    if not match.empty:
-                        lot_size = int(match.iloc[0]['lotsize'])
-            except: pass
-
-            base_qty = int(CONFIG['quantity'])
-            qty = (base_qty // lot_size) * lot_size
+            # 1. Resolve Dynamic Quantity from Security Master
+            lot_size = 0
+            if self.master_df is not None and not self.master_df.empty:
+                # Find instrument by symbol
+                match = self.master_df[self.master_df['symbol'] == symbol]
+                if not match.empty:
+                    # Defensive check for column name variants
+                    col = 'lot_size' if 'lot_size' in match.columns else 'lotsize' if 'lotsize' in match.columns else None
+                    if col:
+                        lot_size = int(match[col].iloc[0])
             
-            if qty == 0:
-                print(f"   [ERROR] Quantity {base_qty} is less than Lot Size {lot_size}. Order skipped.")
+            # Fallback if master lookup fails
+            if lot_size <= 0:
+                print(f"   [WARN] Could not resolve lot_size for {symbol}. Falling back to 75...")
+                lot_size = 75
+
+            lots = int(CONFIG.get("lots", 1))
+            qty = lots * lot_size
+            
+            if qty <= 0:
+                print(f"   [ERROR] Invalid Quantity: {qty}. Check configuration.")
                 return
-
-            if qty != base_qty:
-                print(f"   [SAFETY] Adjusted Quantity {base_qty} -> {qty} (Multiple of Lot Size {lot_size})")
-
-            # Reset Force Buy flag if it was active
 
             order_payload = {
                 "strategy": CONFIG['strategy_name'],
-                "symbol": self.opt_symbol,
+                "symbol": symbol,
                 "action": action, 
                 "exchange": "NFO",
                 "pricetype": "MARKET",
@@ -612,16 +525,19 @@ class LiveTrader:
             }
             
             if action == "SELL":
-                print(f"\n   >>> [EXITING POSITION] Selling {qty} {self.opt_symbol} <<<")
+                print(f"\n   >>> [EXITING POSITION] Selling {qty} ({lots} Lots) of {symbol} <<<")
                 
-            response = client.placesmartorder(**order_payload)
-            print(f"   [API] SmartOrder Response: {response}")
+            if CONFIG.get("live_trade", False):
+                print(f"   [LIVE] Executing {action} Order for {qty} {symbol}...")
+                response = client.placesmartorder(**order_payload)
+                print(f"   [API] SmartOrder Response: {response}")
+            else:
+                print(f"   [PAPER] Simulated {action} Order for {qty} ({lots} Lots) {symbol}")
+                # Minimal mock response for logic to continue
+                response = {"status": "success", "data": {"status": "success"}}
             
-            # --- SYNC PROTECTION ---
-            # Only update internal state if the broker accepted the order
             is_success = False
             if isinstance(response, dict):
-                # Check for OpenAlgo success status
                 if response.get('status') == 'success':
                     is_success = True
                 elif 'data' in response and isinstance(response['data'], dict):
@@ -631,40 +547,47 @@ class LiveTrader:
             if is_success:
                 with self.lock:
                     if action == "BUY":
-                        self.position = 1
-                        self.entry_price = price
-                        self.highest_price = price # Initialize TSL base
-                        self.is_trend_reversed = False
+                        self.trades[symbol] = {
+                            "state": "POSITION",
+                            "position": 1,
+                            "entry_price": price,
+                            "highest_price": price,
+                            "side": side,
+                            "idx_at_res": idx_at_res,
+                            "expiry_params": expiry_params,
+                            "atr": self.current_option_atr if hasattr(self, 'current_option_atr') else 0.0,
+                            "trend_reversed": False
+                        }
                     else:
-                        self.position = 0
-                        self.highest_price = 0.0
-                        self.is_trend_reversed = False
-                        self.last_exit_time = datetime.now() # Start Cooldown
-                        print(f"   [INFO] Position Closed. Cooldown active for {CONFIG.get('cooldown_seconds', 300)}s.")
+                        # SELL
+                        if symbol in self.trades:
+                            del self.trades[symbol]
+                        self.last_exit_time = datetime.now()
+                        print(f"   [INFO] Position Closed for {symbol}. Cooldown active.")
                 
                 sys.stdout.flush()
-                time.sleep(1) # Ensure log visibility
+                time.sleep(1)
             else:
-                print(f"   [CRITICAL] Order was REJECTED by API. Keeping Position = {self.position}")
+                print(f"   [CRITICAL] Order REJECTED for {symbol}")
 
         except Exception as e:
-            print(f"   [ERROR] Order Failed: {e}")
+            print(f"   [ERROR] Order Failed for {symbol}: {e}")
 
     # --- THREADED WORKERS ---
     def risk_worker(self):
-        """Dedicated thread for high-speed risk monitoring"""
+        """Dedicated thread for high-speed risk monitoring of all active positions"""
         print("[INFO] Risk Worker (Bodyguard) started.")
         fast_interval = int(CONFIG.get("fast_check_seconds", 2))
         while self.is_running:
             try:
-                # Check position under lock
+                # Iterate through a snapshot of active positions
                 with self.lock:
-                    pos = self.position
+                    pos_symbols = [s for s, t in self.trades.items() if t.get("state") == "POSITION"]
                 
-                if pos != 0:
-                    lp = self.get_live_option_price()
+                for symbol in pos_symbols:
+                    lp = self.get_live_option_price(symbol)
                     if lp > 0:
-                        self.manage_risk(lp)
+                        self.manage_risk(symbol, lp)
                 
                 time.sleep(fast_interval)
             except Exception as e:
@@ -685,58 +608,59 @@ class LiveTrader:
 
     # --- WEBSOCKET LOGIC ---
     def on_ws_data(self, data):
-        """Websocket Callback - Updates live price in real-time"""
+        """Websocket Callback - Updates live price in real-time for any tracked symbol"""
         try:
-            # OpenAlgo WS format: {'symbol': '...', 'ltp': ...}
             if isinstance(data, dict):
                 sym = data.get('symbol')
                 ltp = data.get('ltp')
-                if sym == self.opt_symbol and ltp:
+                if sym and ltp:
                     with self.lock:
-                        self.ws_ltp = float(ltp)
-                        self.ws_last_update = time.time()
-        except Exception as e:
+                        self.ws_data[sym] = {'ltp': float(ltp), 'time': time.time()}
+        except Exception:
             pass
 
     def websocket_worker(self):
-        """Manages Websocket connection and subscriptions"""
+        """Manages Websocket connection and multiple subscriptions for portfolio"""
         if not CONFIG.get("use_websocket", True):
             return
 
         ws_url = CONFIG.get("ws_url", "ws://127.0.0.1:8765")
-        print(f"[INFO] Connecting to Websocket: {ws_url}")
+        current_subscriptions = set()
         
         try:
-            # Update client with ws_url if provided
             client.ws_url = ws_url
             client.connect()
             print("[INFO] Websocket Connected.")
             
             while self.is_running:
-                # Synchronize subscription with opt_symbol
+                # 1. Identify what we NEED to be subscribed to
                 with self.lock:
-                    target_sym = self.opt_symbol
+                    needed_syms = set(self.trades.keys())
                 
-                if target_sym and target_sym != self.current_subscribed_symbol:
-                    # Unsubscribe from old
-                    if self.current_subscribed_symbol:
-                        try:
-                            client.unsubscribe_ltp([{"exchange": "NFO", "symbol": self.current_subscribed_symbol}])
-                        except: pass
-                    
-                    # Subscribe to new
-                    print(f"[WS] Subscribing to: {target_sym}")
+                # 2. Identify Deltas
+                to_sub = needed_syms - current_subscriptions
+                to_unsub = current_subscriptions - needed_syms
+                
+                # 3. Apply Changes
+                if to_unsub:
                     try:
-                        client.subscribe_ltp([{"exchange": "NFO", "symbol": target_sym}], 
-                                           on_data_received=self.on_ws_data)
-                        self.current_subscribed_symbol = target_sym
-                    except Exception as e:
-                        print(f"[ERROR] WS Subscription Failed: {e}")
+                        client.unsubscribe_ltp([{"exchange": "NFO", "symbol": s} for s in to_unsub])
+                        current_subscriptions -= to_unsub
+                    except: pass
                 
-                time.sleep(1) # Check for symbol changes every 1s
+                if to_sub:
+                    try:
+                        client.subscribe_ltp([{"exchange": "NFO", "symbol": s} for s in to_sub], 
+                                           on_data_received=self.on_ws_data)
+                        current_subscriptions |= to_sub
+                        print(f"[WS] Subscribed to new symbols: {list(to_sub)}")
+                    except Exception as e:
+                        print(f"[ERROR] WS Sub Failed: {e}")
+                
+                time.sleep(2) # Re-sync every 2 seconds
                 
         except Exception as e:
-            print(f"[ERROR] Websocket Worker Error: {e}. Falling back to REST.")
+            print(f"[ERROR] Websocket Worker Error: {e}")
         finally:
             try: client.disconnect() 
             except: pass
@@ -751,9 +675,12 @@ class LiveTrader:
                 if os.path.exists(config_path):
                     current_mtime = os.path.getmtime(config_path)
                     if current_mtime > last_mtime:
-                        print(f"\n[CONFIG] Change detected in {os.path.basename(config_path)}. Reloading...")
+                        print(f"\n[CONFIG] Change detected in {os.path.basename(config_path)}.")
+                        old_keys = set(CONFIG.keys())
                         if update_config_globally():
-                            print("[CONFIG] Reload successful. Logic updated.")
+                            new_keys = set(CONFIG.keys())
+                            # Simple key diff (ignoring deep values for brevity in log)
+                            print(f"[CONFIG] Reload successful. Logic updated.")
                         last_mtime = current_mtime
             except Exception as e:
                 print(f"[CONFIG ERROR] Failed to reload: {e}")
