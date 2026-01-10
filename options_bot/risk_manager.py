@@ -25,6 +25,41 @@ class RiskManager:
         self.daily_pnl += final_pnl
         self.realized_pnl_map[symbol] = self.realized_pnl_map.get(symbol, 0) + final_pnl
 
+    def get_effective_stop(self, pos: dict, current_price: float, current_atr: float = 0):
+        """Calculates the current effective stop level (MAX of SL, TSL, and Profit Lock)."""
+        entry = pos['entry_price']
+        
+        # 1. Update Peak Price if this is a live check
+        if current_price > pos.get('peak_price', 0):
+            pos['peak_price'] = current_price
+
+        # LINE A: Fixed Hard Stop Loss (Percentage based)
+        sl_pct = pos.get('sl_pct', config.get("risk_management.stop_loss_pct", 30))
+        sl_price = entry * (1 - (sl_pct / 100))
+        
+        # LINE B: Trailing Stop Loss (Dynamic)
+        tsl_mode = config.get("risk_management.tsl_mode", "PERCENT")
+        if tsl_mode == "ATR" and current_atr > 0:
+            multiplier = config.get("risk_management.tsl_atr_multiplier", 2.0)
+            tsl_price = pos['peak_price'] - (current_atr * multiplier)
+        else:
+            # PERCENT Mode
+            tsl_pct = pos.get('tsl_pct', config.get("risk_management.trailing_stop_pct", 10))
+            tsl_price = pos['peak_price'] * (1 - (tsl_pct / 100))
+        
+        # LINE C: Profit Lock (Floor)
+        activation = pos.get('tsl_activation_pct', config.get("risk_management.trailing_activation_pct", 10))
+        lock = pos.get('profit_lock_pct', config.get("risk_management.profit_lock_pct", 2))
+        
+        profit_lock_price = 0
+        curr_peak_pct = ((pos['peak_price'] - entry) / entry) * 100
+        
+        if curr_peak_pct >= activation:
+            profit_lock_price = entry * (1 + (lock / 100))
+        
+        # Effective Stop = MAX(Fixed SL, TSL Line, Profit Lock)
+        return max(sl_price, tsl_price, profit_lock_price)
+
     def check_exit_conditions(self, current_prices: dict, current_atr: float = 0):
         """
         Iterates active positions and checks SL/Target/TSL.
@@ -45,53 +80,26 @@ class RiskManager:
             
             if ltp == 0: continue # No data
             
-            # Update Peak Price (For TSL)
-            if ltp > pos['peak_price']:
-                pos['peak_price'] = ltp
-                
-            entry = pos['entry_price']
-            qty = pos['qty']
-            
-            # --- 1. SL & TSL LOGIC ---
-            
-            # LINE A: Fixed Hard Stop Loss (Percentage based)
-            sl_pct = pos.get('sl_pct', config.get("risk_management.stop_loss_pct", 30))
-            sl_price = entry * (1 - (sl_pct / 100))
-            
-            # LINE B: Trailing Stop Loss (Dynamic)
-            tsl_mode = config.get("risk_management.tsl_mode", "PERCENT")
-            if tsl_mode == "ATR" and current_atr > 0:
-                multiplier = config.get("risk_management.tsl_atr_multiplier", 2.0)
-                # Distance = ATR * Multiplier (applied to option price)
-                # Note: Index ATR is used as a proxy for option volatility here
-                tsl_price = pos['peak_price'] - (current_atr * multiplier)
-            else:
-                # PERCENT Mode
-                tsl_pct = pos.get('tsl_pct', config.get("risk_management.trailing_stop_pct", 10))
-                tsl_price = pos['peak_price'] * (1 - (tsl_pct / 100))
-            
-            # LINE C: Profit Lock (Floor)
-            activation = pos.get('tsl_activation_pct', config.get("risk_management.trailing_activation_pct", 10))
-            lock = pos.get('profit_lock_pct', config.get("risk_management.profit_lock_pct", 2))
-            
-            profit_lock_price = 0
-            curr_peak_pct = ((pos['peak_price'] - entry) / entry) * 100
-            
-            if curr_peak_pct >= activation:
-                profit_lock_price = entry * (1 + (lock / 100))
-            
-            # Effective Stop = MAX(Fixed SL, TSL Line, Profit Lock)
-            effective_stop = max(sl_price, tsl_price, profit_lock_price)
+            effective_stop = self.get_effective_stop(pos, ltp, current_atr)
             
             # CHECK EXIT
             if ltp <= effective_stop:
+                # Determine which stop triggered for logging
+                entry = pos['entry_price']
+                sl_pct = pos.get('sl_pct', config.get("risk_management.stop_loss_pct", 30))
+                sl_price = entry * (1 - (sl_pct / 100))
+                
+                activation = pos.get('tsl_activation_pct', config.get("risk_management.trailing_activation_pct", 10))
+                lock = pos.get('profit_lock_pct', config.get("risk_management.profit_lock_pct", 2))
+                profit_lock_price = entry * (1 + (lock / 100)) if ((pos['peak_price'] - entry) / entry) * 100 >= activation else 0
+
                 reason = "TSL Hit"
                 if effective_stop == sl_price: reason = "SL Hit"
-                if effective_stop == profit_lock_price: reason = "Profit Lock Hit"
+                elif effective_stop == profit_lock_price: reason = "Profit Lock Hit"
                 
                 self.logger.info(f"🔻 {reason.upper()}: {symbol} @ {ltp} (Stop: {effective_stop:.2f})")
                 self.om.close_position(pos, reason)
-                self.record_sell_order(symbol, (ltp - entry) * qty)
+                self.record_sell_order(symbol, (ltp - pos['entry_price']) * pos['qty'])
                 continue # Position closed, skip target check
                 
             # --- 2. TARGET CHECK ---

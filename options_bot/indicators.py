@@ -108,18 +108,24 @@ def calculate_utbot(df: pd.DataFrame, key: float = 2.0, period: int = 10) -> pd.
     prev_stop = 0.0
     
     for i in range(1, len(df)):
-        c = closes[i]
-        l = loss_val[i]
+        c = closes[i]          # src
+        prev_c = closes[i-1]   # src[1]
+        l = loss_val[i]        # nLoss
         
-        # Determine strict stop
-        if c > prev_stop:
+        # Pine Script Logic:
+        # if (src > prev_stop and src[1] > prev_stop) -> max(prev_stop, src - nLoss)
+        # else if (src < prev_stop and src[1] < prev_stop) -> min(prev_stop, src + nLoss)
+        # else if (src > prev_stop) -> src - nLoss
+        # else -> src + nLoss
+        
+        if c > prev_stop and prev_c > prev_stop:
+            curr_stop = max(prev_stop, c - l)
+        elif c < prev_stop and prev_c < prev_stop:
+            curr_stop = min(prev_stop, c + l)
+        elif c > prev_stop:
             curr_stop = c - l
-            if curr_stop < prev_stop:
-                 curr_stop = prev_stop
         else:
             curr_stop = c + l
-            if curr_stop > prev_stop:
-                curr_stop = prev_stop
                 
         # Update
         traj[i] = curr_stop
@@ -134,6 +140,64 @@ def calculate_utbot(df: pd.DataFrame, key: float = 2.0, period: int = 10) -> pd.
     df['utbot_signal'] = 0
     df.loc[df['close'] > df['utbot_stop'], 'utbot_signal'] = 1  # Buy Zone
     df.loc[df['close'] < df['utbot_stop'], 'utbot_signal'] = -1 # Sell Zone
+    
+    return df
+
+def calculate_supertrend(df: pd.DataFrame, period: int = 10, multiplier: float = 3.0) -> pd.DataFrame:
+    """
+    Calculates SuperTrend indicator.
+    Returns:
+        - supertrend_signal: 1 for Buy, -1 for Sell
+        - supertrend_line: The indicator line value
+    """
+    # Calculate ATR
+    high_low = df['high'] - df['low']
+    high_close = np.abs(df['high'] - df['close'].shift())
+    low_close = np.abs(df['low'] - df['close'].shift())
+    
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = np.max(ranges, axis=1)
+    atr = true_range.ewm(alpha=1/period, adjust=False).mean()
+    
+    # Calculate Basic Upper and Lower Bands
+    hl_avg = (df['high'] + df['low']) / 2
+    basic_upper = hl_avg + (multiplier * atr)
+    basic_lower = hl_avg - (multiplier * atr)
+    
+    # Calculate Final Bands with trailing logic
+    final_upper = basic_upper.copy()
+    final_lower = basic_lower.copy()
+    
+    for i in range(1, len(df)):
+        # Upper Band: if basic_upper < final_upper[-1] or close[-1] > final_upper[-1], use basic_upper, else use final_upper[-1]
+        if basic_upper.iloc[i] < final_upper.iloc[i-1] or df['close'].iloc[i-1] > final_upper.iloc[i-1]:
+            final_upper.iloc[i] = basic_upper.iloc[i]
+        else:
+            final_upper.iloc[i] = final_upper.iloc[i-1]
+            
+        # Lower Band: if basic_lower > final_lower[-1] or close[-1] < final_lower[-1], use basic_lower, else use final_lower[-1]
+        if basic_lower.iloc[i] > final_lower.iloc[i-1] or df['close'].iloc[i-1] < final_lower.iloc[i-1]:
+            final_lower.iloc[i] = basic_lower.iloc[i]
+        else:
+            final_lower.iloc[i] = final_lower.iloc[i-1]
+    
+    # Determine SuperTrend Line and Signal
+    supertrend = pd.Series(index=df.index, dtype='float64')
+    signal = pd.Series(index=df.index, dtype='int64')
+    
+    supertrend.iloc[0] = final_upper.iloc[0]
+    signal.iloc[0] = -1
+    
+    for i in range(1, len(df)):
+        if df['close'].iloc[i] <= final_upper.iloc[i]:
+            supertrend.iloc[i] = final_upper.iloc[i]
+            signal.iloc[i] = -1  # Sell
+        else:
+            supertrend.iloc[i] = final_lower.iloc[i]
+            signal.iloc[i] = 1   # Buy
+            
+    df['supertrend_line'] = supertrend
+    df['supertrend_signal'] = signal
     
     return df
 

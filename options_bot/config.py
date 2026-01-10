@@ -1,4 +1,3 @@
-import json
 import yaml
 import os
 import time
@@ -9,7 +8,6 @@ from utils import parse_time_value
 
 # Prioritize YAML for better comment support
 YAML_FILE = "config.yaml"
-JSON_FILE = "config.json"
 
 class Config:
     _instance = None
@@ -44,23 +42,15 @@ class Config:
         self._initialized = True
 
     def load_config(self) -> None:
-        """Loads configuration from YAML (priority) or JSON file."""
-        # Determine which file to use
-        if os.path.exists(YAML_FILE):
-            self._active_file = YAML_FILE
-        elif os.path.exists(JSON_FILE):
-            self._active_file = JSON_FILE
-        else:
-            self.logger.error("No configuration file (config.yaml or config.json) found!")
+        """Loads configuration from YAML file only."""
+        if not os.path.exists(YAML_FILE):
+            self.logger.error(f"Configuration file {YAML_FILE} not found!")
             return
 
         try:
             with self._file_lock:
                 with open(self._active_file, 'r') as f:
-                    if self._active_file.endswith('.yaml'):
-                        new_config = yaml.safe_load(f)
-                    else:
-                        new_config = json.load(f)
+                    new_config = yaml.safe_load(f)
                     
                 # Basic Validation (ensure keys exist)
                 self._validate_structure(new_config)

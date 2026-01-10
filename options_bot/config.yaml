@@ -6,7 +6,7 @@ api:
   api_key: "a2edab0147e5058617b63b677c82c5c44533d356d8b8f33734127d6c5f029a55"
   host: "http://127.0.0.1:5000"
   websocket_url: "ws://127.0.0.1:8765"
-  strategy_name: "OptionsScalper_HA"  # Optional: Used to identify trades in OpenAlgo dashboard
+  strategy_name: "OptionsBot-OHLC-Test-1"  # Optional: Used to identify trades in OpenAlgo dashboard
 
 paper_trading: false
 live_trading: true
@@ -16,10 +16,59 @@ strategy_settings:
   timeframe_ltf: "3m"    # Low Time Frame for trade entry signals (e.g., 3m, 5m)
   wait_for_candle_close: true  # If true, signals only trigger after a candle finishes
   candle_type: "HEIKIN_ASHI"   # Options: OHLC (Standard), HEIKIN_ASHI (Smoothed)
-  allow_late_entry: false      # If true, bot enters anytime a signal is active. False = ONLY on fresh signal.
-  enable_pullback_entry: true  # Experimental: Wait for minor pullback before entry
-  max_reentries: 3             # Limit number of attempts for the same signal
-  min_gap_time: "0m"           # Cool-down between trades (e.g., '3m', '5m')
+  
+  # Option Type Filter: Choose which option types to trade
+  # ["CE", "PE"] = Trade both Calls and Puts (default)
+  # ["CE"] = Only trade Call options (bullish trades only)
+  # ["PE"] = Only trade Put options (bearish trades only)
+  allowed_option_types: ["CE", "PE"]
+  
+  # MODE 1: PULLBACK RE-ENTRY (Smart entry on dips)
+  # Logic: "I am late to the trend (just started or after exit). I will wait for a dip to enter."
+  pullback_strategy_settings:
+    enabled: true
+    
+    
+    # The Final Logic that connects the groups below
+    # "OR" means: If Group 1 is True OR Group 2 is True -> BUY
+    master_operator: "OR"
+    
+    groups:
+      # Group 1: (A and B)
+      - name: "Technical Pullback"
+        active: true
+        operator: "AND"          # All triggers in this group must be true (A and B)
+        triggers:
+          - "EMA_TOUCH"
+          #- "RSI_DIP"
+          
+      # Group 2: (C and D)
+      - name: "Volume Breakout"
+        active: false
+        operator: "AND"          # Both must be true
+        triggers:
+          - "FIB_RETRACEMENT"
+          - "VOLUME_SPIKE"
+          
+    definitions:
+      ema_touch: { period: 9 }
+      rsi_dip:   { value: 40 }
+      fib_retracement: { level: 0.618 }
+      volume_spike: { multiplier: 2.0 }
+
+  max_reentries: 2           # Max consecutive losses allowed before lockout (999 = unlimited). Bot waits for trend reversal or next fresh signal. Resets on Profit or Trend Flip.
+  
+  # Reversal Exit Refinement (Applies to LTF - Trend reversal is based on the fast chart flipping)
+  # Prevents immediate whipsaws after entry.
+  reversal_exit_refinement:
+    min_hold_time:
+      enabled: false             # If true, prevents reversal exits within X seconds of entry
+      seconds: 180               # Minimum hold time (3 minutes) before allowing reversal exit
+    
+    confirmation_candles:
+      enabled: true             # If true, requires N consecutive opposite candles before exiting
+      count: 2                   # Number of consecutive confirmation candles required
+  
   order_type: "LIMIT"          # Options: LIMIT (less slippage), MARKET (instant fill)
 
 strike_selection:
@@ -42,6 +91,8 @@ indicators:
   stoch_oversold: 20
   utbot_key: 1
   utbot_atr: 10
+  supertrend_period: 10      # ATR period for SuperTrend calculation
+  supertrend_multiplier: 3.0 # Multiplier for ATR bands (higher = wider bands)
 
 active_indicators:
   # HTF Indicators for trend filtering
@@ -63,7 +114,7 @@ risk_management:
   tsl_mode: "PERCENT"          # Options: PERCENT, ATR
   tsl_atr_multiplier: 2.0      # Only used in ATR mode
 
-  entry_stop_loss_pct: 3            # Intial Stop Loss %
+  entry_stop_loss_pct: 3.5            # Intial Stop Loss %
   trailing_activation_pct: 2  # Activate TSL only after 10% profit
   trailing_stop_pct: 4       #  TSL: Trailing distance in PERCENT mode
   profit_lock_pct: 1           # Lock 2% profit as a floor once activation is hit

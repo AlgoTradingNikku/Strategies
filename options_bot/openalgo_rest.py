@@ -11,6 +11,9 @@ class OpenAlgoREST:
         self.host = host.rstrip('/')
         self.base_url = f"{self.host}/api/v1"
         self._symbol_cache = {}
+        import time as t_time
+        self._last_error_time = 0
+        self._error_mute_interval = 60 # Mute HTTP errors for 60s
         logger.info(f"OpenAlgo REST Client Initialized at {self.base_url}")
 
     def get_ltp(self, symbol, exchange):
@@ -25,18 +28,26 @@ class OpenAlgoREST:
             if r.status_code == 200:
                 resp = r.json()
                 if resp.get('status') == 'success':
-                    # REST returns {"data": {"ltp": 123}, "status": "success"}
-                    # The SDK logic expects the inner data dict? 
-                    # Actually, our SDK test returned {'ltp': {}}
-                    # Let's return exactly what the bot expects: {'ltp': value}
                     data = resp.get('data', {})
                     return {"ltp": data.get('ltp')}
                 else:
-                    logger.error(f"LTP API Error: {resp.get('message')}")
+                    import time as t_time
+                    if t_time.time() - self._last_error_time > self._error_mute_interval:
+                        logger.error(f"LTP API Error: {resp.get('message')}")
+                        self._last_error_time = t_time.time()
             else:
-                logger.error(f"LTP HTTP Error: {r.status_code} - {r.text}")
+                import time as t_time
+                if t_time.time() - self._last_error_time > self._error_mute_interval:
+                    logger.error(f"LTP HTTP Error: {r.status_code} - {r.text}")
+                    self._last_error_time = t_time.time()
         except Exception as e:
-            logger.error(f"LTP Exception: {e}")
+            import time as t_time
+            if "timeout" in str(e).lower():
+                if t_time.time() - self._last_error_time > self._error_mute_interval:
+                    logger.warning(f"LTP API Timeout (mStock might be slow)")
+                    self._last_error_time = t_time.time()
+            else:
+                logger.error(f"LTP Exception: {e}")
         return {"ltp": None}
 
     def get_quotes(self, symbol, exchange):

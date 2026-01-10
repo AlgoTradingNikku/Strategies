@@ -1,0 +1,3 @@
+backtrader
+pandas
+openalgo==1.0.45

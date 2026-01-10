@@ -111,3 +111,29 @@ def get_expiry_date(base_symbol: str, expiry_type: str = "CURRENT_WEEKLY") -> st
     
     # Format: DDMMMYY (e.g., 08JAN26)
     return expiry_date.strftime("%d%b%y").upper()
+
+def get_signal_col(df, active_indicators):
+    """Returns the signal column name for the first active signal-based indicator."""
+    if not df.empty:
+        for ind in ["utbot", "supertrend"]:
+            if ind in active_indicators:
+                col = f"{ind}_signal"
+                if col in df.columns:
+                    return col
+    return None
+
+def detect_trend(df, active_indicators, default=False):
+    """
+    Returns (is_bullish, is_bearish) based on active indicators.
+    If multiple signal indicators are active, the first one found wins.
+    """
+    is_bullish = default
+    is_bearish = default
+    
+    if df is not None and not df.empty:
+        col = get_signal_col(df, active_indicators)
+        if col:
+            val = df.iloc[-1][col]
+            is_bullish = val == 1
+            is_bearish = val == -1
+    return is_bullish, is_bearish

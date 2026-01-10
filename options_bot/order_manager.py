@@ -11,10 +11,60 @@ class OrderManager:
         self.active_positions = [] # List of dicts
         self.trade_history = []
         
-        # Gap Timer Tracker: {'NIFTY': last_exit_time_timestamp}
-        self.last_exit_times = {} 
-        self.last_gap_log_time = {} # {symbol: last_log_timestamp}
+        # Gap Timer Tracker: REMOVED
+        self.traded_candles = {} # {symbol: 'timestamp_str'} - NEW: One Trade Per Candle
         self.risk_manager = None # Will be set during main initialization
+        self.consecutive_loss_count = 0 # Track consecutive losses for Re-entry Limit
+        self.closed_positions_count = 0 # Track total closed trades (Used to distinguish Recovery vs Pullback)
+        self.reversal_confirmation_count = 0 # Track consecutive opposite signals for confirmation
+
+    def sync_positions(self):
+        """Fetches active positions from the broker and populates active_positions."""
+        try:
+            live_trading = config.get("live_trading", False)
+            if not live_trading:
+                return
+
+            self.logger.info("🔄 Syncing active positions from broker...")
+            # OpenAlgo API: positions() returns list of dicts
+            positions = self.api.positions()
+            
+            if not positions:
+                self.logger.info("ℹ️ No active positions found in broker.")
+                return
+
+            # Filter for NIFTY options (or relevant symbols)
+            # Position typically has: symbol, quantity, average_price, product, etc.
+            for pos in positions:
+                qty = float(pos.get('quantity', 0))
+                if qty != 0:
+                    symbol = pos.get('symbol', '')
+                    # Simplified matching: if it's an option symbol (contains CE/PE and NIFTY)
+                    if "NIFTY" in symbol and ("CE" in symbol or "PE" in symbol):
+                        # Don't add if already tracked
+                        if not any(p['symbol'] == symbol for p in self.active_positions):
+                            self.active_positions.append({
+                                'symbol': symbol,
+                                'ws_key': f"{symbol}.NFO",
+                                'qty': abs(qty),
+                                'entry_price': float(pos.get('average_price', 0)),
+                                'entry_time': time.time(), # We don't know exact time, so use now
+                                'peak_price': float(pos.get('average_price', 0)),
+                                'type': 'CE' if "CE" in symbol else 'PE',
+                                'order_id': 'SYNCED',
+                                # Use default risk settings
+                                'sl_pct': config.get("risk_management.entry_stop_loss_pct", 30),
+                                'target_pct': config.get("risk_management.target_profit_pct", 50),
+                                'tsl_pct': config.get("risk_management.trailing_stop_pct", 5),
+                                'tsl_activation_pct': config.get("risk_management.trailing_activation_pct", 3),
+                                'profit_lock_pct': config.get("risk_management.profit_lock_pct", 1)
+                            })
+                            self.logger.info(f"✅ Synced existing position: {symbol} | Qty: {qty}")
+                            # Subscribe to synced symbol
+                            if self.ws_handler:
+                                self.ws_handler.subscribe([f"{symbol}.NFO"])
+        except Exception as e:
+            self.logger.error(f"❌ Failed to sync positions: {e}")
 
     def get_atm_strike(self, spot_price: float, step: int = 50) -> int:
         """Calculates ATM strike based on spot price."""
@@ -39,7 +89,6 @@ class OrderManager:
         if not expiry_str:
             target_type = config.get("strike_selection.expiry_type", "CURRENT_WEEKLY")
             expiry_str = get_expiry_date(base_symbol, target_type)
-            self.logger.warning(f"⚠️ API expiry failed. Using calculated expiry for {base_symbol}: {expiry_str}")
         
         return f"{base_symbol}{expiry_str}{strike}{option_type}"
 
@@ -56,7 +105,8 @@ class OrderManager:
             Scans option chain to find strike with premium closest to target_premium
         """
         mode = config.get("strike_selection.mode", "ATM_OFFSET")
-        step = 100 if "BANKNIFTY" in self.last_exit_times else 50 # Simplification
+        # Default step size (Improvement: Pass symbol to select_strike to be accurate)
+        step = 50 # Default NIFTY
         
         atm = self.get_atm_strike(spot_price, step)
         
@@ -142,31 +192,36 @@ class OrderManager:
         
         return chain
 
-    def place_entry_order(self, signal: Dict[str, Any], spot_price: float) -> bool:
+    def place_entry_order(self, signal: Dict[str, Any], spot_price: float, candle_time: str = None, reason: str = "") -> bool:
         """
         Places entry order.
         """
-        # 1. GAP CHECK (Cool-down)
-        # Instrument-Specific (NIFTY vs BANKNIFTY)
+        # 1. Instrument-Specific (NIFTY vs BANKNIFTY)
         # In V1 we hardcode 'NIFTY' for simplicity inside select_strike but logic applies per symbol
         symbol = "NIFTY" 
-        
-        from utils import parse_time_value
-        min_gap_raw = config.get("strategy_settings.min_gap_time", 15)
-        min_gap_mins = parse_time_value(min_gap_raw)
-        
-        last_exit = self.last_exit_times.get(symbol, 0)
-        
-        if time.time() - last_exit < (min_gap_mins * 60):
-            # Throttle logging to once every 30 seconds to keep console clean
-            now = time.time()
-            if symbol not in self.last_gap_log_time or (now - self.last_gap_log_time[symbol] > 30):
-                self.logger.warning(f"⏳ Gap Timer Active for {symbol}. Ignoring Trade until cool-down ends.")
-                self.last_gap_log_time[symbol] = now
-            return False
+
+        # 1.5 ONE TRADE PER CANDLE CHECK
+        if candle_time:
+            last_traded = self.traded_candles.get(symbol)
+            if last_traded == candle_time:
+                 # Log only once every 30s to avoid spam... actually, since we removed last_gap_log_time, let's just log every time or use a simpler throttle if needed.
+                 # For now, standard logging is fine as main loop throttles checks.
+                 self.logger.warning(f"⏳ Trade ignored: Signal for candle {candle_time} already traded.")
+                 return False
+
+        # 2. MAX RE-ENTRIES CHECK
+        max_retries = config.get("strategy_settings.max_reentries", 3)
+        if self.consecutive_loss_count >= max_retries:
+             self.logger.warning(f"⛔ Max Re-entries ({max_retries}) reached. Waiting for fresh signal.")
+             # We only allow entry if it is a FRESH signal (i.e. trend changed), but logic for "Fresh" vs "Mid" is in strategy.py
+             # If we are here, Strategy sent a signal. If mid-entry is ON, we get signals continuously.
+             # We need to block "Mid" entries but allow "Fresh" entries. 
+             # For V1 simplicity: We just BLOCK everything until self.consecutive_loss_count is reset.
+             # AND we reset it externally when trend flips (in main.py).
+             return False
 
         # 1.5. Log Actionable Signal
-        self.logger.info(f"✅ SIGNAL GENERATED: BUY {signal['type']} (Gap Filter Passed)")
+        self.logger.info(f"✅ SIGNAL GENERATED: BUY {signal['type']} (One Trade Per Candle Passed)")
 
         # 2. Select Symbol
         trading_symbol = self.select_strike(spot_price, signal['type'])
@@ -189,7 +244,6 @@ class OrderManager:
         if sizing_mode == "LOTS":
             lots = config.get("position_sizing.lots_per_trade", 1)
             qty = lots * lot_size
-            self.logger.info(f"📦 sizing_mode: LOTS | Lots={lots} | Total Qty={qty}")
             
             # Fetch LTP just for logging/records
             option_ltp = 100.0
@@ -216,8 +270,6 @@ class OrderManager:
             if qty < lot_size:
                 qty = lot_size
                 self.logger.warning(f"⚠️ Capital ₹{capital} insufficient for {trading_symbol} @ ₹{option_ltp}. Minimum 1 Lot ({lot_size}) forced.")
-            
-            self.logger.info(f"💰 sizing_mode: CAPITAL | Capital=₹{capital} | Calculated Qty={qty}")        
         # --- NEW: MAX PRICE CHECK ---
         max_price = config.get("risk_management.max_entry_price", 0)
         if max_price > 0 and option_ltp > max_price:
@@ -225,7 +277,9 @@ class OrderManager:
             return False # Don't place order
         
         # 5. Place the Order via API
-        self.logger.info(f"🚀 BUY ORDER: {trading_symbol} | Price={option_ltp} | Qty={qty} {signal['type']}")
+        # Cleaner logic-focused logging
+        reason_short = "PB" if "Pullback" in reason else "FRESH"
+        self.logger.info(f"🚀 BUY ORDER [{reason_short}]: {trading_symbol} | Price={option_ltp} | Qty={qty} {signal['type']}")
         
         # 5. Subscribe to this option in WebSocket for real-time tracking
         if self.ws_handler:
@@ -233,7 +287,6 @@ class OrderManager:
                 # Format: SYMBOL.EXCHANGE
                 ws_key = f"{trading_symbol}.NFO"
                 self.ws_handler.subscribe([ws_key])
-                self.logger.info(f"📡 Subscribed to {ws_key} for real-time tracking.")
             except Exception as ws_err:
                 self.logger.error(f"Failed to subscribe to {trading_symbol} on WS: {ws_err}")
                 
@@ -255,7 +308,6 @@ class OrderManager:
                     product="NRML",
                     price_type=order_type
                 )
-                self.logger.info(f"📤 Entry {order_type} Order Sent @ ₹{limit_price if order_type == 'LIMIT' else 'MKT'} | Response: {response}")
                 # Assuming response carries order_id
                 # order_id = response['order_id'] or similar
                 order_id = f"REAL_{int(time.time())}"
@@ -285,6 +337,11 @@ class OrderManager:
                 'tsl_activation_pct': config.get("risk_management.trailing_activation_pct", 3),
                 'profit_lock_pct': config.get("risk_management.profit_lock_pct", 1)
             })
+            
+            # SUCCESS: Record this candle as traded
+            if candle_time:
+                self.traded_candles[symbol] = candle_time
+                
             return True
             
         except Exception as e:
@@ -295,49 +352,59 @@ class OrderManager:
         """Closes a specific position by placing a SELL order."""
         symbol = position['symbol']
         qty = position['qty']
-        
-        self.logger.info(f"🛑 CLOSING POSITION: {symbol} | Qty: {qty} | Reason: {reason}")
-        
-        # 1. Extract Base Symbol for Gap Timer (NIFTY, BANKNIFTY)
-        import re
-        base_match = re.match(r'^([A-Z]+)', symbol)
-        base_symbol = base_match.group(1) if base_match else "NIFTY"
-        
-        # 2. Place SELL Order (if live)
+
+        # 1. Place SELL Order
         live_trading = config.get("live_trading", False)
+        exit_price = position.get('entry_price', 0) # Fallback
+        
         if live_trading:
             try:
                 order_type = config.get("strategy_settings.order_type", "LIMIT")
-                exit_price = 0
                 
-                if order_type == "LIMIT":
-                    # Fetch latest LTP for the Limit price
-                    quote = self.api.get_ltp(symbol, "NFO")
-                    exit_price = quote.get('ltp', 0) if quote else 0
-                    
-                    if exit_price == 0:
-                         self.logger.error(f"❌ Could not fetch LTP for exit limit. Symbol: {symbol}. Falling back to MARKET.")
-                         order_type = "MARKET"
+                # Fetch latest LTP for the Limit price and Logging
+                quote = self.api.get_ltp(symbol, "NFO")
+                ltp = quote.get('ltp') if quote else 0
+                if ltp: exit_price = ltp
+                
+                if order_type == "LIMIT" and exit_price <= 0:
+                     self.logger.error(f"❌ Could not fetch LTP for exit limit. Symbol: {symbol}. Falling back to MARKET.")
+                     order_type = "MARKET"
 
                 response = self.api.placeorder(
                     symbol=symbol,
                     action="SELL",
                     exchange="NFO",
                     quantity=qty,
-                    price=exit_price,
+                    price=exit_price if order_type == "LIMIT" else 0,
                     product="NRML",
                     price_type=order_type
                 )
-                self.logger.info(f"📤 Exit {order_type} Order Sent @ ₹{exit_price if order_type == 'LIMIT' else 'MKT'} | Response: {response}")
+                
+                # VALIDATION: Check if order was accepted
+                if isinstance(response, dict) and response.get('status') == 'error':
+                    self.logger.error(f"❌ Critical: Exit Order Failed! Keeping position active. Message: {response.get('message')}")
+                    return
             except Exception as e:
                 self.logger.error(f"❌ Failed to place Exit Order: {e}")
+                self.logger.error(f"⚠️ Position retained in tracker due to failure.")
+                return
 
-        # 3. Update Gap Timer (Cooldown start)
-        self.last_exit_times[base_symbol] = time.time()
-        
-        # 4. Remove from active tracking
+        # 3. Final Exit Log (Visible to User)
+        self.logger.info(f"📤 SELL ORDER: {symbol} | Price={exit_price} | Qty={qty} | Reason: {reason}")
+
+        # 3. Remove from active tracking
         if position in self.active_positions:
             self.active_positions.remove(position)
+            self.closed_positions_count += 1 # Mark that we have traded this session
+            
+            # Update Consecutive Loss Counter
+            if reason in ["SL Hit", "TSL Hit"]:
+                 self.consecutive_loss_count += 1
+                 self.logger.info(f"📉 Loss Recorded. Consecutive Losses: {self.consecutive_loss_count}/{config.get('strategy_settings.max_reentries', 3)}")
+            elif reason in ["Target Hit", "Profit Lock Hit"]:
+                 self.consecutive_loss_count = 0 # Reset on Win/Profit Lock
+                 self.logger.info(f"🏆 Profit Hit ({reason})! Consecutive Losses Reset to 0.")
+            
             self.logger.info(f"✅ Trade cleared from tracker.")
 
     def close_all(self, reason: str = "Emergency"):
