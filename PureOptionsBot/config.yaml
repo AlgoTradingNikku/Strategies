@@ -19,11 +19,11 @@ trade_symbol: "NIFTY13JAN2626000PE" # Manual fallback symbol
 # 2. STRATEGY PARAMETERS
 # ========================================
 index:
-  ltf: {timeframe: "2m", sensitivity: 1.0, atr: 10}
+  ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
   htf: {timeframe: "10m", sensitivity: 1.0, atr: 10, enabled: True}
 
 option:
-  ltf: {timeframe: "2m", sensitivity: 1.5, atr: 10}
+  ltf: {timeframe: "3m", sensitivity: 1.5, atr: 10}
   htf: {timeframe: "10m", sensitivity: 1.0, atr: 10, enabled: False}
 
 option_signal_timeout: 5        # Candles to wait for Option signal
