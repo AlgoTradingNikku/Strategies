@@ -35,7 +35,16 @@ class LiveTrader:
         # Track historical data for active/observed symbols to avoid re-fetching
         self.history_cache = {} # symbol -> {interval -> df}
         
-        # --- FORCE BUY TRACKING ---
+        # --- PROFESSIONAL CONTROLS ---
+        self.daily_pnl = 0.0  # Track cumulative P&L for the day
+        self.daily_trades_count = 0
+        self.daily_losses_count = 0
+        self.last_loss_time = None
+        self.session_start_time = None
+        self.blocked_until = None  # Timestamp when trading is blocked until
+        
+        # --- RE-ENTRY PREVENTION (ANTI-WHIPSAW) ---
+        self.exit_blacklist = {}  # symbol -> {"exit_time": datetime, "pnl": float, "reason": str}
 
     def initialize(self):
         print("\n" + "="*60)
@@ -65,12 +74,16 @@ class LiveTrader:
         if CONFIG.get('use_tp'):
             print(f"{'Take Profit:':<17} ENABLED ({CONFIG.get('tp_pct')}%)")
         
-        tsl_mode = CONFIG.get("tsl_mode", "PCT")
+        # TSL Configuration
+        tsl_mode = CONFIG.get("tsl_mode", "ATR").upper()
         print(f"{'TSL Mode:':<17} {tsl_mode}")
-        if tsl_mode == 'HYBRID':
-            print(f"{'Hybrid Trig:':<17} > {CONFIG.get('tsl_hybrid_threshold', 10.0)}%")
         if tsl_mode == "ATR":
-            print(f"{'ATR Multiplier:':<17} {CONFIG.get('tsl_atr_multiplier', 1.5)}")
+            print(f"{'ATR Multiplier:':<17} {CONFIG.get('tsl_atr_multiplier', 2.5)}")
+        elif tsl_mode == "PERCENT":
+            print(f"{'TSL Percent:':<17} {CONFIG.get('tsl_percent', 4.0)}%")
+        elif tsl_mode == "POINTS":
+            print(f"{'TSL Points:':<17} {CONFIG.get('tsl_points', 8.0)} pts")
+        print(f"{'Min Trail Gap:':<17} {CONFIG.get('min_trailing_gap', 5.0)} points")
         
         # Always resolve Index symbol for reference/display
         self.idx_symbol = resolve_symbol_from_query(CONFIG["index_query"], exchange=CONFIG["index_exchange"])
@@ -113,11 +126,10 @@ class LiveTrader:
             except Exception as e:
                 print(f"[WARN] Failed to fetch instruments master: {e}")
 
-        idx_conf = CONFIG.get("index", {})
-        opt_conf = CONFIG.get("option", {})
-        # Format the source nicely (e.g. OPTION -> Option)
+        idx_htf_str = idx['htf']['timeframe'] if idx['htf'].get('enabled', True) else "OFF"
+        opt_htf_str = opt['htf']['timeframe'] if opt['htf'].get('enabled', True) else "OFF"
         sig_src = str(CONFIG.get('signal_source', 'INDEX')).capitalize()
-        print(f"[INFO] Index [HTF:{idx_conf['htf']['timeframe']}, LTF:{idx_conf['ltf']['timeframe']}] | Options [HTF:{opt_conf['htf']['timeframe']}, LTF:{opt_conf['ltf']['timeframe']}, Source: {sig_src} Data]")
+        print(f"[INFO] Index [HTF:{idx_htf_str}, LTF:{idx['ltf']['timeframe']}] | Options [HTF:{opt_htf_str}, LTF:{opt['ltf']['timeframe']}, Source: {sig_src} Data]")
         print("Press Ctrl+C to stop.\n")
         return True
 
@@ -223,6 +235,193 @@ class LiveTrader:
             pass
         return 0.0
 
+    # ========================================
+    # PROFESSIONAL TRADING CONTROLS
+    # ========================================
+    
+    def is_expiry_day(self, symbol):
+        """Check if the given option symbol expires today"""
+        try:
+            # Extract expiry date from symbol (format: NIFTY13JAN26...)
+            import re
+            match = re.search(r'(\d{2}[A-Z]{3}\d{2})', symbol)
+            if not match:
+                return False
+            
+            expiry_str = match.group(1)
+            expiry_date = datetime.strptime(expiry_str, "%d%b%y").date()
+            today = datetime.now().date()
+            
+            return expiry_date == today
+        except:
+            return False
+    
+    def get_days_to_expiry(self, symbol):
+        """Calculate days remaining until expiry"""
+        try:
+            import re
+            match = re.search(r'(\d{2}[A-Z]{3}\d{2})', symbol)
+            if not match:
+                return 999  # Unknown, allow trade
+            
+            expiry_str = match.group(1)
+            expiry_date = datetime.strptime(expiry_str, "%d%b%y").date()
+            today = datetime.now().date()
+            
+            return (expiry_date - today).days
+        except:
+            return 999
+
+    def is_within_trading_hours(self):
+        """Check if current time is within allowed trading window"""
+        th = CONFIG.get("trading_hours", {})
+        if not th.get("enabled", False):
+            return True, "Time checks disabled"
+        
+        now = datetime.now()
+        current_time = now.time()
+        
+        # Parse time strings
+        start = datetime.strptime(th.get("start_time", "09:30"), "%H:%M").time()
+        end = datetime.strptime(th.get("end_time", "15:00"), "%H:%M").time()
+        
+        if current_time < start:
+            return False, f"Before trading hours (starts at {th.get('start_time')})"
+        
+        if current_time > end:
+            return False, f"After trading hours (ends at {th.get('end_time')})"
+        
+        # Check lunch break
+        if th.get("avoid_lunch", False):
+            lunch_start = datetime.strptime(th.get("lunch_start", "12:30"), "%H:%M").time()
+            lunch_end = datetime.strptime(th.get("lunch_end", "13:30"), "%H:%M").time()
+            
+            if lunch_start <= current_time <= lunch_end:
+                return False, "Lunch break (avoid illiquid period)"
+        
+        return True, "OK"
+
+    def check_daily_limits(self):
+        """Verify if daily loss limits have been breached"""
+        rc = CONFIG.get("risk_controls", {})
+        if not rc.get("enabled", False):
+            return True, "Daily limits disabled"
+        
+        # Check if blocked due to cool-down
+        if self.blocked_until and datetime.now() < self.blocked_until:
+            remaining = (self.blocked_until - datetime.now()).seconds
+            return False, f"Cool-down active ({remaining}s remaining)"
+        
+        # Check daily loss limit
+        max_loss = rc.get("max_daily_loss", 999999)
+        if self.daily_pnl < -max_loss:
+            return False, f"Daily loss limit hit (₹{abs(self.daily_pnl):.2f} / ₹{max_loss})"
+        
+        return True, "Within limits"
+
+    def check_liquidity(self, symbol):
+        """Verify option has sufficient liquidity for safe entry/exit"""
+        exec_config = CONFIG.get("execution", {})
+        min_oi = exec_config.get("min_oi", 0)
+        max_spread = exec_config.get("max_spread_pct", 100.0)
+        
+        try:
+            # Fetch quotes
+            quote = client.get_quotes(symbol, "NFO")
+            
+            # Check Open Interest
+            oi = quote.get('oi', 0) if isinstance(quote, dict) else 0
+            if oi < min_oi:
+                return False, f"Low OI ({oi} < {min_oi})"
+            
+            # Check Bid-Ask Spread
+            bid = float(quote.get('bid', 0)) if isinstance(quote, dict) else 0
+            ask = float(quote.get('ask', 0)) if isinstance(quote, dict) else 0
+            
+            if ask <= 0 or bid <= 0:
+                return False, "No quotes available"
+            
+            spread_pct = ((ask - bid) / ask) * 100
+            if spread_pct > max_spread:
+                return False, f"Wide spread ({spread_pct:.2f}% > {max_spread}%)"
+            
+            return True, f"OK (OI:{oi}, Spread:{spread_pct:.2f}%)"
+            
+        except Exception as e:
+            # If quote fetch fails, allow trade (don't block on API issues)
+            print(f"   [WARN] Liquidity check failed for {symbol}: {e}")
+            return True, "Check skipped (API error)"
+    
+    def update_daily_pnl(self, pnl, symbol):
+        """Update daily P&L tracker and enforce trade limits"""
+        self.daily_pnl += pnl
+        self.daily_trades_count += 1
+        
+        if pnl < 0:
+            self.daily_losses_count += 1
+            self.last_loss_time = datetime.now()
+            
+            # Apply cool-down after loss
+            rc = CONFIG.get("risk_controls", {})
+            cool_down = rc.get("cool_down_after_loss_sec", 0)
+            if cool_down > 0:
+                self.blocked_until = datetime.now() + timedelta(seconds=cool_down)
+                print(f"   [CONTROL] Cool-down activated for {cool_down}s after loss")
+        
+        print(f"   [DAILY P&L] ₹{self.daily_pnl:+.2f} | Trades: {self.daily_trades_count} | Losses: {self.daily_losses_count}")
+
+    def get_greeks(self, symbol):
+        """Fetch Option Greeks from OpenAlgo API"""
+        try:
+            # Use OpenAlgo's optiongreeks endpoint
+            greeks_data = client.optiongreeks(symbol=symbol, exchange="NFO")
+            
+            if isinstance(greeks_data, dict) and greeks_data.get('status') == 'success':
+                return {
+                    'delta': float(greeks_data.get('delta', 0)),
+                    'gamma': float(greeks_data.get('gamma', 0)),
+                    'theta': float(greeks_data.get('theta', 0)),
+                    'vega': float(greeks_data.get('vega', 0)),
+                    'iv': float(greeks_data.get('implied_volatility', 0))
+                }
+        except Exception as e:
+            # Silently fail - Greeks are informational only
+            pass
+        
+        return None
+    
+    def format_greeks_warning(self, symbol, greeks, dte):
+        """Generate intelligent warnings based on Greeks values"""
+        warnings = []
+        
+        if greeks is None:
+            return []
+        
+        delta = greeks['delta']
+        gamma = greeks['gamma']
+        theta = greeks['theta']
+        vega = greeks['vega']
+        
+        # Delta warnings
+        if delta < 0.25:
+            warnings.append(f"⚠️ Low Delta ({delta:.2f}) - Option barely responding")
+        elif delta < 0.15:
+            warnings.append(f"🚨 Dead Strike (Δ={delta:.2f}) - Consider exit")
+        
+        # Gamma warnings (especially on expiry)
+        if dte == 0 and gamma > 0.001:
+            warnings.append(f"⚡ Expiry Gamma Risk - High volatility expected")
+        
+        # Theta decay warnings
+        if theta < -10:
+            warnings.append(f"📉 High theta decay ({theta:.1f}/day) - Time working against you")
+        
+        # Vega (IV) warnings
+        if vega > 20:
+            warnings.append(f"💨 High Vega ({vega:.1f}) - Watch for IV crush risk")
+        
+        return warnings
+
     def manage_risk(self, symbol, curr_price, is_trend_reversed_input=None):
         """
         Handles SL, TP, 3-Stage Profit Guard, and Trend Reversal exits for a specific symbol.
@@ -241,9 +440,25 @@ class LiveTrader:
             return False
 
         rm_conf = CONFIG.get("risk_management", {})
+        re_entry = CONFIG.get("re_entry_protection", {})  # Renamed for clarity
         pnl_pct = (curr_price - entry) / entry * 100
         
-        # --- 0. UPDATE HIGH WATER MARK ---
+        # --- 0. CHECK TIME-BASED EXIT (THETA PROTECTION) ---
+        # Prevents theta decay from eating profits on stagnant positions
+        if re_entry.get("enabled", False):
+            entry_time = trade.get("entry_time")
+            if entry_time:
+                hold_duration_mins = (datetime.now() - entry_time).seconds / 60
+                max_hold = re_entry.get("max_hold_mins", 999999)
+                min_profit = re_entry.get("min_profit_to_hold", 5.0)
+                
+                if hold_duration_mins > max_hold and pnl_pct < min_profit:
+                    print(f"\n   [TIME EXIT] {symbol} held {hold_duration_mins:.0f}m without sufficient profit")
+                    print(f"   (PnL: {pnl_pct:.2f}% < required {min_profit}% for extended hold)")
+                    self.execute_trade("SELL", curr_price, symbol)
+                    return True
+        
+        # --- 1. UPDATE HIGH WATER MARK ---
         if highest < curr_price:
             with self.lock:
                 if symbol in self.trades:
@@ -254,69 +469,111 @@ class LiveTrader:
         tsl_price = 0.0
         stage = "INIT"
         
-        if CONFIG.get("use_tsl"):
-            # A. Calculate Base Distance (ATR or TIERED)
-            dist_pts = 0.0
-            mode = rm_conf.get("mode", "ATR")
+        # --- TRAILING STOP LOSS LOGIC ---
+        # Calculate Base Distance based on Mode
+        mode = CONFIG.get("tsl_mode", "ATR").upper()
+        dist_pts = 0.0
+
+        if mode == "ATR":
+            atr = trade.get("atr", 0.0)
+            mult = CONFIG.get("tsl_atr_multiplier", 2.5)
+            dist_pts = atr * mult
             
-            if mode == "ATR":
-                atr = trade.get("atr", 0.0)
-                mult = rm_conf.get("tsl_atr_multiplier", 2.0)
-                dist_pts = atr * mult
-                # Fallback if ATR is missing
-                if dist_pts <= 0:
-                    dist_pts = entry * 0.05 
-            else:
-                # TIERED MODE
-                dist_pts = rm_conf.get("tsl_points_trail", 5.0)
-                if rm_conf.get("tsl_use_dynamic_tiers"):
-                    for tier in rm_conf.get("tsl_point_tiers", []):
-                        if entry <= tier["max_entry"]:
-                            dist_pts = tier["trail"]
-                            break
+            # IV ADJUSTMENT: Widen ATR-based TSL in high volatility markets
+            if re_entry.get("enabled", False) and re_entry.get("adapt_to_iv", False):
+                greeks = self.get_greeks(symbol)
+                if greeks and greeks['iv'] > 0:
+                    iv = greeks['iv']
+                    base_iv = 0.20  # Normal IV baseline (20%)
+                    iv_mult = 1.0 + ((iv - base_iv) * 2)  # Scale adjustment
+                    dist_pts *= max(1.0, iv_mult)  # Only widen, never tighten
+        
+        elif mode == "PERCENT":
+            dist_pts = highest * (CONFIG.get("tsl_percent", 4.0) / 100.0)
+        
+        elif mode == "POINTS":
+            dist_pts = CONFIG.get("tsl_points", 8.0)
+        
+        # Fallback if distance is zero
+        if dist_pts <= 0:
+            dist_pts = entry * 0.05
+        
+        # CRITICAL: Enforce minimum floor distance (Safety Gap)
+        min_gap = CONFIG.get("min_trailing_gap", 5.0)
+        dist_pts = max(dist_pts, min_gap)
 
-            # B. Apply Profit Tightener (Stage 3)
-            tighten_threshold = rm_conf.get("tighten_trigger_pct", 15.0)
-            if pnl_pct >= tighten_threshold:
-                stage = "TIGHTEN"
-                ratio = rm_conf.get("tighten_ratio", 0.5)
-                dist_pts *= ratio
-            else:
-                stage = "TRAILING"
+        # C. Preliminary TSL Price
+        tsl_price = highest - dist_pts
 
-            # C. Preliminary TSL Price
-            tsl_price = highest - dist_pts
+        # C2. EXPIRY DAY PROTECTION (Professional Safety)
+        er = CONFIG.get("expiry_rules", {})
+        if self.is_expiry_day(symbol):
+            expiry_mult = er.get("increase_tsl_on_expiry", 1.5)
+            # Tighten by reducing distance
+            tsl_price = highest - (dist_pts / expiry_mult)
+            stage = "TRAILING_EXPIRY"
+            print(f"   [EXPIRY] {symbol} expires today - TSL tightened {expiry_mult}x")
+        else:
+            stage = "TRAILING"
 
-            # D. Apply Break-Even Guard (Stage 1)
-            be_trigger = rm_conf.get("be_trigger_pct", 2.0)
-            if pnl_pct >= be_trigger:
-                be_buffer = rm_conf.get("be_buffer_pts", 1.0)
-                be_level = entry + be_buffer
-                if tsl_price < be_level:
-                    stage = "BREAK-EVEN"
-                    tsl_price = be_level
+        # D. Apply Break-Even Guard (Stage 1)
+        be_trigger = rm_conf.get("be_trigger_pct", 2.0)
+        if pnl_pct >= be_trigger:
+            be_buffer = rm_conf.get("be_buffer_pts", 1.0)
+            be_level = entry + be_buffer
+            if tsl_price < be_level:
+                stage = "BREAK-EVEN"
+                tsl_price = be_level
 
-            # E. Execution & Heartbeat
-            with self.lock:
-                prev_stage = trade.get("last_stage", "INIT")
-                if prev_stage != stage:
-                    print(f"\n   >>> [GUARD] {symbol} Stage Transition: {prev_stage} -> {stage} <<<")
-                    self.trades[symbol]["last_stage"] = stage
+        # E. Execution & Heartbeat
+        with self.lock:
+            prev_stage = trade.get("last_stage", "INIT")
+            if prev_stage != stage:
+                print(f"\n   >>> [GUARD] {symbol} Stage Transition: {prev_stage} -> {stage} <<<")
+                self.trades[symbol]["last_stage"] = stage
 
-            if time.time() % 10 < 2: # Reduce log verbosity for multi-position
-                status_line = (
-                    f"   [HEARTBEAT:{symbol}] Price: {curr_price:.2f} | "
-                    f"PnL: {pnl_pct:+.2f}% | "
-                    f"Stage: {stage} | "
-                    f"TSL: {tsl_price:.2f}"
+
+        if time.time() % 10 < 2: # Reduce log verbosity for multi-position
+            # Fetch Greeks for informational display (if enabled)
+            greeks = None
+            greeks_config = CONFIG.get("greeks_monitoring", {})
+            
+            if greeks_config.get("enabled", True):
+                greeks = self.get_greeks(symbol)
+                dte = self.get_days_to_expiry(symbol)
+            
+            # Base heartbeat
+            status_line = (
+                f"   [HEARTBEAT:{symbol}] LTP: {curr_price:.2f} | "
+                f"Entry: {entry:.2f} | "
+                f"PnL: {pnl_pct:+.2f}% | "
+                f"Stage: {stage} | "
+                f"TSL: {tsl_price:.2f}"
+            )
+            
+            # Add Greeks if available
+            if greeks:
+                greeks_line = (
+                    f"\n              Greeks: Δ={greeks['delta']:.2f} | "
+                    f"Γ={greeks['gamma']:.4f} | "
+                    f"θ={greeks['theta']:.1f}/day | "
+                    f"ν={greeks['vega']:.1f} | "
+                    f"IV={greeks['iv']*100:.1f}%"
                 )
-                print(status_line)
+                status_line += greeks_line
+                
+                # Display intelligent warnings
+                warnings = self.format_greeks_warning(symbol, greeks, dte)
+                if warnings:
+                    status_line += "\n              " + " | ".join(warnings)
             
-            if curr_price <= tsl_price:
-                print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
-                print(f"   (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})\n")
-                self.execute_trade("SELL", curr_price, symbol)
-                return True
+            print(status_line)
+        
+        if curr_price <= tsl_price:
+            print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
+            print(f"   (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})\n")
+            self.execute_trade("SELL", curr_price, symbol)
+            return True
         
         # --- MANAGE EXITS ---
         if trend_reversed:
@@ -463,25 +720,122 @@ class LiveTrader:
                         if htf_ok:
                             side = "CALL" if curr_idx == 1 else "PUT"
                             ss = CONFIG.get("strike_selection", {})
-                            target = get_strike_symbol(index_price, side, offset=ss.get("step", 0), 
-                                                     expiry_type=ss.get("expiry", "WEEKLY"), 
-                                                     expiry_offset=ss.get("offset", 0)) if ss.get("mode") == "AUTO" else CONFIG["trade_symbol"]
+                            base_step = ss.get("step", 0)
+                            
+                            # === INTELLIGENT STRIKE FALLBACK ===
+                            # Try primary strike, then fallback to adjacent if blocked by cooldown
+                            target = None
+                            re_entry = CONFIG.get("re_entry_protection", {})
+                            allow_fallback = re_entry.get("allow_adjacent_strikes", True)
+                            max_offset = re_entry.get("max_strike_offset", 1)
+                            
+                            # Build list of strikes to try: [primary, +1, -1]
+                            strike_attempts = [base_step]  # Primary (ATM)
+                            if allow_fallback:
+                                for offset in range(1, max_offset + 1):
+                                    strike_attempts.append(base_step + offset)  # OTM
+                                    strike_attempts.append(base_step - offset)  # ITM
+                            
+                            # Try each strike in order until finding one not blocked
+                            for attempt_step in strike_attempts:
+                                candidate = get_strike_symbol(index_price, side, offset=attempt_step, 
+                                                             expiry_type=ss.get("expiry", "WEEKLY"), 
+                                                             expiry_offset=ss.get("offset", 0)) if ss.get("mode") == "AUTO" else CONFIG["trade_symbol"]
+                                
+                                if not candidate:
+                                    continue
+                                
+                                # Check if this candidate is blocked by RE-ENTRY COOLDOWN
+                                is_blocked = False
+                                if re_entry.get("enabled", False) and candidate in self.exit_blacklist:
+                                    exit_info = self.exit_blacklist[candidate]
+                                    time_since_exit = (datetime.now() - exit_info["exit_time"]).seconds / 60
+                                    
+                                    # DYNAMIC COOLDOWN: Based on exit reason (profit/loss/reversal)
+                                    exit_reason = exit_info.get("reason", "UNKNOWN")
+                                    if "PROFIT" in exit_reason or exit_info.get("pnl", 0) > 0:
+                                        cooldown_mins = re_entry.get("cooldown_after_profit_mins", 5)
+                                    elif "LOSS" in exit_reason or exit_info.get("pnl", 0) < 0:
+                                        cooldown_mins = re_entry.get("cooldown_after_loss_mins", 30)
+                                    else:  # REVERSAL or other
+                                        cooldown_mins = re_entry.get("cooldown_after_reversal_mins", 15)
+                                    
+                                    if time_since_exit < cooldown_mins:
+                                        is_blocked = True
+                                        if attempt_step == base_step:
+                                            # Primary blocked, will try fallback
+                                            print(f"   [PRIMARY BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
+                                
+                                if not is_blocked:
+                                    target = candidate
+                                    if attempt_step != base_step:
+                                        # Used fallback
+                                        strike_type = "OTM" if attempt_step > base_step else "ITM"
+                                        print(f"   [FALLBACK] Primary blocked → Using {strike_type} strike: {target}")
+                                    break  # Found available strike
+                            
+                            # If all strikes blocked, target remains None and we skip entry
                             
                             if target and target not in self.trades:
-                                with self.lock:
-                                    self.trades[target] = {
-                                        "state": "OBSERVING",
-                                        "side": side,
-                                        "obs_candles": 0,
-                                        "idx_at_res": index_price,
-                                        "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
-                                        "atr": 0.0
-                                    }
-                                print("\n" + "="*50)
-                                print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
-                                print(f"   Instrument: {target}")
-                                print(f"   Index Ref:  {index_price:.2f}")
-                                print("="*50 + "\n")
+                                # ========================================
+                                # PROFESSIONAL PRE-ENTRY VALIDATIONS
+                                # ========================================
+                                validation_passed = True
+                                block_reason = ""
+                                
+                                # Note: Re-entry cooldown is handled in strike selection above
+                                # (with intelligent fallback to adjacent strikes)
+                                
+                                # 1. Check trading hours
+                                time_ok, time_msg = self.is_within_trading_hours()
+                                if not time_ok:
+                                    print(f"   [BLOCKED] {time_msg}")
+                                    validation_passed = False
+                                    block_reason = time_msg
+                                
+                                # 2. Check daily limits
+                                if validation_passed:
+                                    limits_ok, limits_msg = self.check_daily_limits()
+                                    if not limits_ok:
+                                        print(f"   [BLOCKED] {limits_msg}")
+                                        validation_passed = False
+                                        block_reason = limits_msg
+                                
+                                # 3. Check DTE (Days To Expiry)
+                                if validation_passed:
+                                    er = CONFIG.get("expiry_rules", {})
+                                    if er.get("avoid_new_entry_on_expiry", False):
+                                        dte = self.get_days_to_expiry(target)
+                                        min_dte = er.get("min_dte", 1)
+                                        if dte < min_dte:
+                                            print(f"   [BLOCKED] {target} expires in {dte} day(s) (min: {min_dte})")
+                                            validation_passed = False
+                                            block_reason = f"DTE={dte}"
+                                
+                                # 4. Check liquidity & spread
+                                if validation_passed:
+                                    liq_ok, liq_msg = self.check_liquidity(target)
+                                    if not liq_ok:
+                                        print(f"   [BLOCKED] {target} - {liq_msg}")
+                                        validation_passed = False
+                                        block_reason = liq_msg
+                                
+                                # All checks passed - add to observation
+                                if validation_passed:
+                                    with self.lock:
+                                        self.trades[target] = {
+                                            "state": "OBSERVING",
+                                            "side": side,
+                                            "obs_candles": 0,
+                                            "idx_at_res": index_price,
+                                            "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
+                                            "atr": 0.0
+                                        }
+                                    print("\n" + "="*50)
+                                    print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
+                                    print(f"   Instrument: {target}")
+                                    print(f"   Index Ref:  {index_price:.2f}")
+                                    print("="*50 + "\n")
 
         except Exception as e:
             print(f"[ERROR] Portfolio Cycle Error: {e}")
@@ -513,37 +867,138 @@ class LiveTrader:
                 print(f"   [ERROR] Invalid Quantity: {qty}. Check configuration.")
                 return
 
+
+            # ========================================
+            # 2. INTELLIGENT ORDER EXECUTION
+            # ========================================
+            exec_config = CONFIG.get("execution", {})
+            order_type = exec_config.get("order_type", "MARKET")
+            
+            # Determine order price
+            limit_price = price  # Default to input price
+            
+            if order_type == "LIMIT":
+                # Fetch current bid/ask for precise pricing
+                try:
+                    quote = client.get_quotes(symbol, "NFO")
+                    if isinstance(quote, dict):
+                        bid = float(quote.get('bid', 0))
+                        ask = float(quote.get('ask', 0))
+                        
+                        if bid > 0 and ask > 0:
+                            offset_pct = exec_config.get("limit_offset_pct", 0.5) / 100.0
+                            
+                            if action == "BUY":
+                                # Place limit slightly above ask for better fill probability
+                                limit_price = ask * (1 + offset_pct)
+                                print(f"   [LIMIT] Ask: ₹{ask:.2f} → Limit Buy: ₹{limit_price:.2f} (+{offset_pct*100:.1f}%)")
+                            else:
+                                # Place limit slightly below bid
+                                limit_price = bid * (1 - offset_pct)
+                                print(f"   [LIMIT] Bid: ₹{bid:.2f} → Limit Sell: ₹{limit_price:.2f} (-{offset_pct*100:.1f}%)")
+                        else:
+                            print(f"   [WARN] No valid quotes, falling back to MARKET order")
+                            order_type = "MARKET"
+                except Exception as e:
+                    print(f"   [WARN] Quote fetch failed: {e}, using MARKET order")
+                    order_type = "MARKET"
+
             order_payload = {
                 "strategy": CONFIG['strategy_name'],
                 "symbol": symbol,
                 "action": action, 
                 "exchange": "NFO",
-                "pricetype": "MARKET",
+                "pricetype": order_type,
                 "product": "NRML",
                 "quantity": qty,
                 "position_size": qty if action == "BUY" else 0
             }
             
+            # Add price for LIMIT orders
+            if order_type == "LIMIT":
+                order_payload["price"] = round(limit_price, 2)
+            
             if action == "SELL":
                 print(f"\n   >>> [EXITING POSITION] Selling {qty} ({lots} Lots) of {symbol} <<<")
                 
+            # ========================================
+            # 3. ORDER PLACEMENT & POLLING
+            # ========================================
+            is_success = False
+            actual_price = price
+            
             if CONFIG.get("live_trade", False):
-                print(f"   [LIVE] Executing {action} Order for {qty} {symbol}...")
+                print(f"   [LIVE] Executing {order_type} {action} Order for {qty} {symbol}...")
                 response = client.placesmartorder(**order_payload)
-                print(f"   [API] SmartOrder Response: {response}")
+                print(f"   [API] Order Response: {response}")
+                
+                # Handle LIMIT order polling
+                if order_type == "LIMIT" and isinstance(response, dict):
+                    order_id = response.get('orderid') or (response.get('data', {}).get('orderid') if isinstance(response.get('data'), dict) else None)
+                    
+                    if order_id:
+                        timeout = exec_config.get("order_timeout_sec", 5)
+                        print(f"   [POLLING] Waiting {timeout}s for LIMIT order fill...")
+                        
+                        filled = False
+                        poll_start = time.time()
+                        
+                        while (time.time() - poll_start) < timeout:
+                            try:
+                                status = client.orderbook()
+                                if isinstance(status, list):
+                                    for order in status:
+                                        if order.get('orderid') == order_id:
+                                            order_status = order.get('status', '').upper()
+                                            if 'COMPLETE' in order_status or 'FILL' in order_status:
+                                                actual_price = float(order.get('avgprice', limit_price))
+                                                print(f"   [FILLED] Order completed at ₹{actual_price:.2f}")
+                                                filled = True
+                                                is_success = True
+                                                break
+                                            elif 'REJECT' in order_status or 'CANCEL' in order_status:
+                                                print(f"   [REJECT] Order {order_status}")
+                                                break
+                                if filled:
+                                    break
+                                time.sleep(0.5)  # Poll every 500ms
+                            except:
+                                pass
+                        
+                        # Timeout - cancel and retry with MARKET
+                        if not filled:
+                            print(f"   [TIMEOUT] LIMIT order not filled in {timeout}s")
+                            try:
+                                client.cancelorder(order_id)
+                                print(f"   [CANCEL] LIMIT order cancelled, retrying with MARKET...")
+                                
+                                # Retry with MARKET order
+                                order_payload["pricetype"] = "MARKET"
+                                if "price" in order_payload:
+                                    del order_payload["price"]
+                                
+                                response = client.placesmartorder(**order_payload)
+                                print(f"   [API] MARKET Order Response: {response}")
+                            except Exception as e:
+                                print(f"   [ERROR] Cancel/Retry failed: {e}")
+                
+                # Check success for MARKET orders or retried orders
+                if not is_success:
+                    if isinstance(response, dict):
+                        if response.get('status') == 'success':
+                            is_success = True
+                        elif 'data' in response and isinstance(response['data'], dict):
+                            if response['data'].get('status') == 'success':
+                                is_success = True
             else:
-                print(f"   [PAPER] Simulated {action} Order for {qty} ({lots} Lots) {symbol}")
+                print(f"   [PAPER] Simulated {order_type} {action} Order for {qty} ({lots} Lots) {symbol}")
+                if order_type == "LIMIT":
+                    print(f"   [PAPER] Limit Price: ₹{limit_price:.2f}")
                 # Minimal mock response for logic to continue
                 response = {"status": "success", "data": {"status": "success"}}
-            
-            is_success = False
-            if isinstance(response, dict):
-                if response.get('status') == 'success':
-                    is_success = True
-                elif 'data' in response and isinstance(response['data'], dict):
-                    if response['data'].get('status') == 'success':
-                        is_success = True
+                is_success = True
 
+            # Continue with trade registry update
             if is_success:
                 with self.lock:
                     if action == "BUY":
@@ -556,11 +1011,35 @@ class LiveTrader:
                             "idx_at_res": idx_at_res,
                             "expiry_params": expiry_params,
                             "atr": self.current_option_atr if hasattr(self, 'current_option_atr') else 0.0,
-                            "trend_reversed": False
+                            "trend_reversed": False,
+                            "entry_time": datetime.now()  # Track entry time
                         }
                     else:
-                        # SELL
+                        # SELL - Calculate P&L
                         if symbol in self.trades:
+                            trade = self.trades[symbol]
+                            entry_price = trade.get("entry_price", price)
+                            pnl = (price - entry_price) * qty
+                            pnl_pct = ((price - entry_price) / entry_price) * 100 if entry_price > 0 else 0
+                            
+                            print(f"   [TRADE RESULT] Entry: ₹{entry_price:.2f} | Exit: ₹{price:.2f} | P&L: ₹{pnl:+.2f} ({pnl_pct:+.2f}%)")
+                            
+                            # Update daily P&L tracker
+                            self.update_daily_pnl(pnl, symbol)
+                            
+                            # TRACK EXIT FOR RE-ENTRY PROTECTION
+                            # Prevents immediately re-entering this same symbol
+                            re_entry = CONFIG.get("re_entry_protection", {})
+                            if re_entry.get("enabled", False):
+                                # Store exit info for dynamic cooldown calculation
+                                exit_reason = "PROFIT_EXIT" if pnl > 0 else "LOSS_EXIT"
+                                self.exit_blacklist[symbol] = {
+                                    "exit_time": datetime.now(),
+                                    "pnl": pnl_pct,
+                                    "reason": exit_reason
+                                }
+                                print(f"   [COOLDOWN] {symbol} added to re-entry blacklist (Reason: {exit_reason})")
+                            
                             del self.trades[symbol]
                         self.last_exit_time = datetime.now()
                         print(f"   [INFO] Position Closed for {symbol}. Cooldown active.")
