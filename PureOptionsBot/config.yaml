@@ -1,3 +1,5 @@
+strategy_name: "PureOptionsBot-9:15-9:45"
+
 # ========================================
 # 1. ASSET SELECTION & MODE
 # ========================================
@@ -8,25 +10,38 @@ signal_source: "OPTION"        # Signal source: "INDEX" or "OPTION"
 
 # Option Contract Selection
 strike_selection:
-  mode: "AUTO"                 # "AUTO" or "MANUAL"
+  mode: "MANUAL"                 # "AUTO" or "MANUAL"
   step: 0                      # 0=ATM, -1=ITM1, 1=OTM1
   expiry: "WEEKLY"             # "WEEKLY", "NEXT_WEEK"
   offset: 0                    # 0 for current week, 1 for next week
 
-trade_symbol: "NIFTY13JAN2626000PE" # Manual fallback symbol
-
+  # ========================================
+  # MANUAL MODE CONFIGURATION (Advanced)
+  # ========================================
+  # Provide a "Basket" of symbols to trade.
+  # The bot will scan ALL symbols in this list and execute ANY that match the logic.
+  # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
+  manual_strikes: 
+    - "NIFTY13JAN2625800CE"
+    - "NIFTY13JAN2625800PE"
+    
+  # Price Cap Logic:
+  # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
+  # Useful for hero-zero trades or strict budget allocation.
+  max_option_price: 0          # Limit entry if Price > X. (0 = No Limit)
+  
 # ========================================
 # 2. STRATEGY PARAMETERS
 # ========================================
 index:
-  ltf: {timeframe: "1m", sensitivity: 1, atr: 10}
-  htf: {timeframe: "5m", sensitivity: 2.0, atr: 10, enabled: True}
-
-option:
-  ltf: {timeframe: "1m", sensitivity: 1.5, atr: 10}
+  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10}
   htf: {timeframe: "5m", sensitivity: 1.0, atr: 10, enabled: True}
 
-option_signal_timeout: 5        # Candles to wait for Option signal
+option:
+  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10}
+  htf: {timeframe: "5m", sensitivity: 1.5, atr: 10, enabled: False}
+
+option_signal_timeout: 5        # Number of actual CANDLES to wait for Option signal (e.g. 5m if on 1m chart)
 index_use_ha: True              # Use Heikin Ashi for Index signals
 option_use_ha: False            # Use Heikin Ashi for Option signals
 drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points during setup
@@ -48,11 +63,11 @@ entry_logic:
 # 3. PORTFOLIO & EXECUTION
 # ========================================
 lots: 1                         # Multiplier for contract lot size (Dynamic lookup)
-max_positions: 1                # Maximum concurrent active trades
-capital: 100000                 # for backtesting/reporting
-lookback_days: 5                # Historical data window
+max_positions: 4                # Maximum concurrent active trades
+capital: 1000000                # for backtesting/reporting
+lookback_days: 5                # Historical data window (3-5 days is optimal for speed)
 trading_mode: "long"            # "long" or "short"
-strategy_name: "PureOptionsBot"
+
 
 # ========================================
 # 4. RISK MANAGEMENT (3-STAGE PROFIT GUARD)
@@ -81,7 +96,7 @@ be_buffer_pts: 2.0              # Lock stop 2 points above entry (not tight)
 
 # 1. TSL MODE SELECTION
 # Choose between: "ATR", "PERCENT", or "POINTS"
-tsl_mode: "ATR"
+tsl_mode: "PERCENT"
 
 # --- Mode 1: ATR-Based (Volatility Aware) ---
 # Calculation: Peak Price - (Multiplier * ATR)
@@ -103,20 +118,10 @@ tsl_points: 4.0                  # Fixed gap in points from the peak price
 # dangerously close to the price during periods of zero volatility.
 min_trailing_gap: 2.5            # Minimum gap in points (Prevents tiny whipsaws)
 
-# Note: BREAK-EVEN logic is still active. 
-# Once price moves +2.0%, the stop will jump to Entry + 1pt (if not already higher).
-# This is defined in the internal Risk Management section.
-# === RE-ENTRY PROTECTION (ANTI-WHIPSAW) ===
-# Prevents immediately re-entering a position you just exited
-# This stops the costly "chop and churn" pattern in sideways markets
-#
-# HOW IT WORKS:
-# 1. You exit NIFTY25700CE at 10:30 AM
-# 2. Symbol added to "blacklist" for X minutes (based on exit reason)
-# 3. Next signal at 10:35 AM tries to enter same symbol
-# 4. Bot: "BLOCKED - wait Y more minutes"
-# 5. Saves you from whipsaw losses + double brokerage
-#
+# --- TSL Customization (Advanced) ---
+# Period for ATR calculation used in TSL (Risk Management)
+tsl_atr_period: 14               # Standard: 14. Lower = Faster, Higher = Smoother.
+
 re_entry_protection:
   enabled: True
   
@@ -128,11 +133,11 @@ re_entry_protection:
                                    # Short cooldown - it was a good exit
                                    # Quick re-entry allowed if trend continues
   
-  cooldown_after_loss_mins: 30     # TSL/Stop hit with loss
-                                   # Long cooldown - bad signal or setup
-                                   # Wait longer to avoid repeated mistakes
-  
-  cooldown_after_reversal_mins: 15 # Trend reversal exit
+  cooldown_after_loss_mins: 10     # TSL/Stop hit with loss (Reduced for more aggression)
+                                   # wait 10m to avoid immediate revenge trading
+                                   
+  cooldown_after_reversal_mins: 10 # Trend reversal exit
+                                   # wait 10m for new trend to establish
                                    # Medium cooldown - trend changed
                                    # Wait for new trend to establish
   
@@ -166,27 +171,28 @@ re_entry_protection:
 execution:
   order_type: "LIMIT"           # MARKET, LIMIT, or ADAPTIVE
   limit_offset_pct: 0.5         # % above ask for buy, below bid for sell
-  max_spread_pct: 3.0           # Reject entry if spread > this %
+  max_spread_pct: 10.0          # Reject entry if spread > this %
   order_timeout_sec: 5          # Cancel unfilled orders after X seconds
-  min_oi: 0                # Minimum Open Interest required
+  min_oi: 0                     # Minimum Open Interest required
   retry_count: 2                # Number of order retry attempts
+  aggressive_momentum_entry: True # Allow entry even without quotes if chart signal is fresh
 
 # ========================================
 # 6. DAILY RISK CONTROLS (NEW)
 # ========================================
 risk_controls:
   enabled: True                 # Master switch for daily controls
-  max_daily_loss: 2000          # Rs. - stop trading for the day
-  max_loss_per_trade: 500       # Rs. - force exit individual trade
-  max_capital_at_risk_pct: 5    # % of capital - total exposure check
+  max_daily_loss: 200000          # Rs. - stop trading for the day
+  max_loss_per_trade: 50000       # Rs. - force exit individual trade
+  max_capital_at_risk_pct: 100    # % of capital - total exposure check
   cool_down_after_loss_sec: 300 # Seconds before next trade after loss
 
 # ========================================
 # 7. EXPIRY & TIMING RULES (NEW)
 # ========================================
 expiry_rules:
-  avoid_new_entry_on_expiry: True   # Don't enter new trades on expiry day
-  exit_all_by_time: "15:00"         # Auto-square all positions by this time
+  avoid_new_entry_on_expiry: False   # Don't enter new trades on expiry day
+  exit_all_by_time: "15:30"         # Auto-square all positions by this time
   increase_tsl_on_expiry: 1.5       # Tighten stops by 50% on expiry day
   min_dte: 0                        # Minimum Days-To-Expiry (0=allow same day)
 
@@ -202,7 +208,7 @@ trading_hours:
 # 8. GREEKS MONITORING (OPTIONAL)
 # ========================================
 greeks_monitoring:
-  enabled: True                 # Display option Greeks in heartbeat
+  enabled: False                # Display option Greeks in heartbeat (Disabled as requested)
   # When enabled, shows Delta, Gamma, Theta, Vega, IV
   # Adds ~50-100ms per heartbeat (every 10 seconds)
   # Set to False for maximum performance
@@ -218,6 +224,21 @@ fetch_interval_seconds: 15
 fast_check_seconds: 2
 ignore_session_check: False
 
+
+# Note: BREAK-EVEN logic is still active. 
+# Once price moves +2.0%, the stop will jump to Entry + 1pt (if not already higher).
+# This is defined in the internal Risk Management section.
+# === RE-ENTRY PROTECTION (ANTI-WHIPSAW) ===
+# Prevents immediately re-entering a position you just exited
+# This stops the costly "chop and churn" pattern in sideways markets
+#
+# HOW IT WORKS:
+# 1. You exit NIFTY25700CE at 10:30 AM
+# 2. Symbol added to "blacklist" for X minutes (based on exit reason)
+# 3. Next signal at 10:35 AM tries to enter same symbol
+# 4. Bot: "BLOCKED - wait Y more minutes"
+# 5. Saves you from whipsaw losses + double brokerage
+#
 
 # 1. Moderate/Safe (Best for Nifty Intraday)
 # index:

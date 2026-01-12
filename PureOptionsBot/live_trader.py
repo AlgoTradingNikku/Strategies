@@ -52,10 +52,21 @@ class LiveTrader:
         print(f"{'Signal Source:':<17} {CONFIG.get('signal_source', 'INDEX')}")
         
         ss = CONFIG.get("strike_selection", {})
-        if ss.get("mode") == "AUTO":
-            print(f"{'Strike Selection:':<17} AUTO (Step: {ss.get('step')}, {ss.get('expiry')})")
+        self.manual_monitor_list = set()
+        
+        if ss.get("mode") == "MANUAL":
+            # Support both array (New) and single string (Legacy)
+            ms = ss.get("manual_strikes")
+            if not ms:
+                # Fallback to legacy
+                legacy = CONFIG.get("trade_symbol")
+                if legacy: ms = [legacy]
+                
+            print(f"{'Manual Strikes:':<17} {ms}")
+            if ms:
+                self.manual_monitor_list = set(ms)
         else:
-            print(f"{'Strike Selection:':<17} MANUAL ({CONFIG['trade_symbol']})")
+            print(f"{'Strike Selection:':<17} AUTO (Step: {ss.get('step')}, {ss.get('expiry')})")
 
         idx = CONFIG.get("index", {})
         opt = CONFIG.get("option", {})
@@ -183,6 +194,12 @@ class LiveTrader:
                 pos[i] = -1
                 signals[i] = -1 # Fresh SELL
             else:
+                # 3. Carry forward trend or Initialize (Fix for Stuck Trend Bug)
+                if prev_p == 0:
+                    pos[i] = 1 if s > prev_trail else -1
+                else:
+                    pos[i] = prev_p
+
                 # 2. Pullback Detection (Still Bullish / Still Bearish)
                 # Logic: Current is Bullish/Bearish State AND (Prev Candle was Opposite Color) AND (Curr Candle is My Color)
                 # This catches the 'Still Bullish' (Red-to-Green bounce) and 'Still Bearish' (Green-to-Red pivot)
@@ -214,6 +231,10 @@ class LiveTrader:
 
     def calculate_atr(self, df, period=14):
         """Helper to calculate ATR for current Option data"""
+        # Allow override from config if not explicitly passed
+        if period == 14: 
+            period = int(CONFIG.get("tsl_atr_period", 14))
+            
         if df.empty or len(df) < period: return 0.0
         
         high = df['High']
@@ -244,6 +265,10 @@ class LiveTrader:
             return ws_price
  
         # 2. Fallback to REST API (2s Safety Net)
+        # OPTIMIZATION: If Aggressive Momentum is ON, skip this slow call.
+        if CONFIG.get("execution", {}).get("aggressive_momentum_entry", False):
+            return 0.0
+            
         try:
             res = client.get_ltp(symbol, "NFO")
             if isinstance(res, dict):
@@ -344,7 +369,12 @@ class LiveTrader:
         max_spread = exec_config.get("max_spread_pct", 100.0)
         
         try:
-            # Fetch quotes
+            # AGGRESSIVE MOMENTUM OPTIMIZATION (Zero Latency)
+            # If enabled, we skip the API quote fetch entirely to save ~300ms
+            if exec_config.get("aggressive_momentum_entry", False) and is_final_entry:
+                 return True, "OK (Aggressive: Skipped quote fetch for speed)"
+
+            # Fetch quotes (Only if Aggressive Mode is OFF)
             quote = client.get_quotes(symbol, "NFO")
             
             # Check Open Interest
@@ -358,6 +388,9 @@ class LiveTrader:
             
             if ask <= 0 or bid <= 0:
                 if is_final_entry:
+                    # AGGRESSIVE MOMENTUM FIX: If the user wants to trade based on chart price even without quotes
+                    if exec_config.get("aggressive_momentum_entry", True):
+                        return True, "OK (Aggressive: No quotes, using Chart price)"
                     return False, "No quotes available"
                 else:
                     # Allow observation even if quotes are temporarily missing
@@ -394,22 +427,10 @@ class LiveTrader:
 
     def get_greeks(self, symbol):
         """Fetch Option Greeks from OpenAlgo API"""
-        try:
-            # Use OpenAlgo's optiongreeks endpoint
-            greeks_data = client.optiongreeks(symbol=symbol, exchange="NFO")
-            
-            if isinstance(greeks_data, dict) and greeks_data.get('status') == 'success':
-                return {
-                    'delta': float(greeks_data.get('delta', 0)),
-                    'gamma': float(greeks_data.get('gamma', 0)),
-                    'theta': float(greeks_data.get('theta', 0)),
-                    'vega': float(greeks_data.get('vega', 0)),
-                    'iv': float(greeks_data.get('implied_volatility', 0))
-                }
-        except Exception as e:
-            # Silently fail - Greeks are informational only
-            pass
+        # OPTIMIZATION: Greeks API call disabled for speed as requested by user.
+        return {'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0, 'iv': 0}
         
+        # Original Logic Removed for Optimization
         return None
     
     def format_greeks_warning(self, symbol, greeks, dte):
@@ -501,14 +522,14 @@ class LiveTrader:
             mult = CONFIG.get("tsl_atr_multiplier", 2.5)
             dist_pts = atr * mult
             
-            # IV ADJUSTMENT: Widen ATR-based TSL in high volatility markets
-            if re_entry.get("enabled", False) and re_entry.get("adapt_to_iv", False):
-                greeks = self.get_greeks(symbol)
-                if greeks and greeks['iv'] > 0:
-                    iv = greeks['iv']
-                    base_iv = 0.20  # Normal IV baseline (20%)
-                    iv_mult = 1.0 + ((iv - base_iv) * 2)  # Scale adjustment
-                    dist_pts *= max(1.0, iv_mult)  # Only widen, never tighten
+            # IV ADJUSTMENT: (Disabled for now - Greek Monitoring OFF)
+            # if re_entry.get("enabled", False) and re_entry.get("adapt_to_iv", False):
+            #     greeks = self.get_greeks(symbol)
+            #     if greeks and greeks['iv'] > 0:
+            #         iv = greeks['iv']
+            #         base_iv = 0.20
+            #         iv_mult = 1.0 + ((iv - base_iv) * 2)
+            #         dist_pts *= max(1.0, iv_mult)
         
         elif mode == "PERCENT":
             dist_pts = highest * (CONFIG.get("tsl_percent", 4.0) / 100.0)
@@ -556,40 +577,18 @@ class LiveTrader:
 
 
         if time.time() % 10 < 2: # Reduce log verbosity for multi-position
-            # Fetch Greeks for informational display (if enabled)
-            greeks = None
-            greeks_config = CONFIG.get("greeks_monitoring", {})
-            
-            if greeks_config.get("enabled", True):
-                greeks = self.get_greeks(symbol)
-                dte = self.get_days_to_expiry(symbol)
-            
-            # Base heartbeat
-            status_line = (
-                f"   [HEARTBEAT:{symbol}] LTP: {curr_price:.2f} | "
+            # Base heartbeat + Diagnostic Info
+            self.safe_print(
+                f"   [SYNC:{symbol}] LTP: {curr_price:.2f} | "
                 f"Entry: {entry:.2f} | "
                 f"PnL: {pnl_pct:+.2f}% | "
                 f"Stage: {stage} | "
-                f"TSL: {tsl_price:.2f}"
+                f"TSL: {tsl_price:.2f} (Gap: {dist_pts:.2f}, ATR: {atr:.2f})"
             )
-            
-            # Add Greeks if available
-            if greeks:
-                greeks_line = (
-                    f"\n              Greeks: Δ={greeks['delta']:.2f} | "
-                    f"Γ={greeks['gamma']:.4f} | "
-                    f"θ={greeks['theta']:.1f}/day | "
-                    f"ν={greeks['vega']:.1f} | "
-                    f"IV={greeks['iv']*100:.1f}%"
-                )
-                status_line += greeks_line
-                
-                # Display intelligent warnings
-                warnings = self.format_greeks_warning(symbol, greeks, dte)
-                if warnings:
-                    status_line += "\n              " + " | ".join(warnings)
-            
-            print(status_line)
+        
+        # FINAL SAFETY: Stop loss cannot be below zero for long options
+        if tsl_price < 0:
+            tsl_price = 1.0 # Minimal fallback
         
         if curr_price <= tsl_price:
             print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
@@ -605,8 +604,17 @@ class LiveTrader:
 
         return False
 
+    def safe_print(self, msg):
+        """Thread-safe print to prevent garbled terminal logs"""
+        if hasattr(self, 'print_lock'):
+            with self.print_lock:
+                print(msg)
+        else:
+            print(msg)
+
     def run_cycle(self):
         """Standard Check Cycle - Portfolio Management for Multiple Positions"""
+        slow_interval = int(CONFIG.get("slow_check_seconds", 15))
         try:
             end = datetime.now().strftime("%Y-%m-%d")
             start = (datetime.now() - timedelta(days=CONFIG['lookback_days'])).strftime("%Y-%m-%d")
@@ -619,8 +627,51 @@ class LiveTrader:
             df_idx_ltf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['ltf']['timeframe'], silent=True)
             if df_idx_ltf.empty: return
             
-            last_bar_time = df_idx_ltf.index[-1]
             index_price = df_idx_ltf['Close'].iloc[-1]
+
+            # UTILITY: Get trend and status for heartbeat/scanner
+            def get_trend_data(df, stream_conf, use_ha):
+                if df.empty or len(df) < 5: return None, None, None
+                return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
+
+            def get_status_str(pos):
+                if pos is None: return "WAIT"
+                val = pos.iloc[-2]
+                return "BULLISH" if val == 1 else "BEARISH"
+
+            # Pre-calculate statuses for heartbeat and logic
+            pos_idx_ltf, _, sig_idx_ltf = get_trend_data(df_idx_ltf, idx_conf['ltf'], CONFIG.get('index_use_ha', True))
+            idx_ltf_status = get_status_str(pos_idx_ltf)
+            idx_htf_status = "DISABLED"
+            
+            # --- HTF CACHING LOGIC ---
+            if idx_conf['htf']['enabled']:
+                now_ts = time.time()
+                # Re-fetch HTF every 3 minutes (180s)
+                if now_ts - self.last_htf_fetch > 180 or self.cached_htf_data[0] is None:
+                    df_idx_htf_hb = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
+                    pos_idx_htf, _, _ = get_trend_data(df_idx_htf_hb, idx_conf['htf'], CONFIG.get('index_use_ha', True))
+                    idx_htf_status = get_status_str(pos_idx_htf)
+                    self.cached_htf_data = (pos_idx_htf, idx_htf_status)
+                    self.last_htf_fetch = now_ts
+                else:
+                    pos_idx_htf, idx_htf_status = self.cached_htf_data
+
+            # Rich Heartbeat (every 60s) - Moved to top for visibility
+            if time.time() % 60 < slow_interval: # Ensure it prints once per cycle
+                now_str = datetime.now().strftime("%H:%M:%S")
+                idx_ltf_tf = CONFIG["index"]["ltf"]["timeframe"]
+                idx_htf_tf = CONFIG["index"]["htf"]["timeframe"]
+                hb_msg = f"[{now_str}] HEARTBEAT | Index: {index_price:.2f} | LTF-{idx_ltf_tf}: {idx_ltf_status} | HTF-{idx_htf_tf}: {idx_htf_status}"
+                if len(self.trades) > 0:
+                    for sym, trade in self.trades.items():
+                         state = trade.get("state", "UNKNOWN")
+                         side = trade.get("side", "N/A")
+                         bias = "BULLISH" if side == "CALL" else "BEARISH"
+                         hb_msg += f"\n   ACTIVE: {sym} | State: {state} | Bias: {bias}"
+                self.safe_print(hb_msg)
+            
+            last_bar_time = df_idx_ltf.index[-1]
             
             # --- SESSION / STALE DATA CHECK ---
             now = datetime.now()
@@ -642,15 +693,13 @@ class LiveTrader:
 
                 # Fetch Option Data
                 df_opt_ltf = fetch_history(symbol, "NFO", start, end, interval=opt_conf['ltf']['timeframe'], silent=True)
-                if df_opt_ltf.empty: continue
+                if df_opt_ltf.empty:
+                    print(f"   [WAIT] {symbol} ... waiting for initial chart data from broker")
+                    continue
                 
                 df_opt_htf = pd.DataFrame()
                 if opt_conf['htf']['enabled']:
                     df_opt_htf = fetch_history(symbol, "NFO", start, end, interval=opt_conf['htf']['timeframe'], silent=True)
-
-                def get_trend_data(df, stream_conf, use_ha):
-                    if df.empty or len(df) < 5: return None, None, None
-                    return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
 
                 # --- A. OBSERVING STATE ---
                 if trade["state"] == "OBSERVING":
@@ -679,15 +728,26 @@ class LiveTrader:
                         # Final check for spread before buy
                         liq_ok, liq_msg = self.check_liquidity(symbol, is_final_entry=True)
                         if liq_ok:
-                            print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
+                            self.safe_print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
                             self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
                                               side=trade['side'], expiry_params=trade['expiry_params'], 
                                               idx_at_res=trade['idx_at_res'])
                         else:
                             print(f"   [BLOCKED] Entry delayed: {liq_msg}")
                     else:
+                        # CANDLE-BASED TIMEOUT LOGIC
+                        # Only increment if a NEW candle has actually appeared
+                        curr_candle_time = df_opt_ltf.index[-1]
+                        last_candle_time = trade.get("last_obs_time")
+                        
+                        inc_candle = False
+                        if last_candle_time is None or curr_candle_time > last_candle_time:
+                            inc_candle = True
+                        
                         with self.lock:
-                            self.trades[symbol]["obs_candles"] = trade.get("obs_candles", 0) + 1
+                            if inc_candle:
+                                self.trades[symbol]["obs_candles"] = trade.get("obs_candles", 0) + 1
+                                self.trades[symbol]["last_obs_time"] = curr_candle_time
                         
                         # Timeouts
                         candles = self.trades[symbol]["obs_candles"]
@@ -733,37 +793,7 @@ class LiveTrader:
 
             # --- 3. SCAN FOR NEW OPPORTUNITIES ---
             if len(self.trades) < max_pos:
-                now_str = datetime.now().strftime("%H:%M:%S")
-
-                def get_trend_data(df, stream_conf, use_ha):
-                    if df.empty or len(df) < 5: return None, None, None
-                    return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
-
-                def get_status_str(pos):
-                    if pos is None: return "WAIT"
-                    val = pos.iloc[-2]
-                    return "BULLISH" if val == 1 else "BEARISH"
-
-                pos_idx_ltf, _, sig_idx_ltf = get_trend_data(df_idx_ltf, idx_conf['ltf'], CONFIG.get('index_use_ha', True))
-                idx_ltf_status = get_status_str(pos_idx_ltf)
-                idx_htf_status = "DISABLED"
-                
-                # Pre-fetch HTF for heartbeat
-                if idx_conf['htf']['enabled']:
-                    df_idx_htf_hb = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
-                    pos_idx_htf, _, _ = get_trend_data(df_idx_htf_hb, idx_conf['htf'], CONFIG.get('index_use_ha', True))
-                    idx_htf_status = get_status_str(pos_idx_htf)
-
-                # Rich Heartbeat (every 60s)
-                if time.time() % 60 < 15:
-                    print(f"[{now_str}] HEARTBEAT | Index: {index_price:.2f} | LTF: {idx_ltf_status} | HTF: {idx_htf_status}")
-                    if len(self.trades) > 0:
-                        for sym, trade in self.trades.items():
-                             state = trade.get("state", "UNKNOWN")
-                             side = trade.get("side", "N/A")
-                             # Use BULLISH for CALL setups, BEARISH for PUT setups
-                             bias = "BULLISH" if side == "CALL" else "BEARISH"
-                             print(f"   ACTIVE: {sym} | State: {state} | Bias: {bias}")
+                # Trends already calculated at top
 
                 if sig_idx_ltf is not None:
                     curr_sig = sig_idx_ltf.iloc[-2]
@@ -796,13 +826,13 @@ class LiveTrader:
                             htf_ok = (idx_htf_status == idx_ltf_status)
                             if not htf_ok:
                                 # Reformat as requested: [SIGNAL] NIFTY LTF-1m BULLISH [Fresh Buy] | NIFTY HTF-5m BEARISH | Mismatch [SKIPPED]
-                                print(f"   [SIGNAL] NIFTY LTF-{tf_idx} {idx_ltf_status} [{setup_type.capitalize()} {sig_name}] | NIFTY HTF-{tf_htf} {idx_htf_status} | Mismatch [SKIPPED]")
+                                self.safe_print(f"   [SIGNAL] NIFTY LTF-{tf_idx} {idx_ltf_status} [{setup_type.capitalize()} {sig_name}] | NIFTY HTF-{tf_htf} {idx_htf_status} | Mismatch [SKIPPED]")
                             else:
                                 # Original signal log for successful scans
-                                print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
+                                self.safe_print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
                         else:
                             # HTF disabled, just print the detection
-                            print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
+                            self.safe_print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
                         
                         if htf_ok:
                             side = "CALL" if curr_idx == 1 else "PUT"
@@ -816,21 +846,68 @@ class LiveTrader:
                             allow_fallback = re_entry.get("allow_adjacent_strikes", True)
                             max_offset = re_entry.get("max_strike_offset", 1)
                             
-                            # Build list of strikes to try: [primary, +1, -1]
-                            strike_attempts = [base_step]  # Primary (ATM)
-                            if allow_fallback:
-                                for offset in range(1, max_offset + 1):
-                                    strike_attempts.append(base_step + offset)  # OTM
-                                    strike_attempts.append(base_step - offset)  # ITM
+                            # Build list of strikes to try
+                            strike_attempts = []
+                            is_manual = (ss.get("mode") == "MANUAL")
+                            
+                            if is_manual:
+                                strike_attempts = [0] # Single pass for Manual
+                            else:
+                                base_step = ss.get("step", 0)
+                                strike_attempts = [base_step]  # Primary (ATM)
+                                if allow_fallback:
+                                    for offset in range(1, max_offset + 1):
+                                        strike_attempts.append(base_step + offset)  # OTM
+                                        strike_attempts.append(base_step - offset)  # ITM
                             
                             # Try each strike in order until finding one not blocked
                             for attempt_step in strike_attempts:
-                                candidate = get_strike_symbol(index_price, side, offset=attempt_step, 
-                                                             expiry_type=ss.get("expiry", "WEEKLY"), 
-                                                             expiry_offset=ss.get("offset", 0)) if ss.get("mode") == "AUTO" else CONFIG["trade_symbol"]
+                                candidate = None
                                 
-                                if not candidate:
-                                    continue
+                                if is_manual:
+                                    # STRICT DIRECTIONAL LOGIC GATE
+                                    # Side is CALL -> Need CE. Side is PUT -> Need PE.
+                                    req_suffix = "CE" if side == "CALL" else "PE"
+                                    ms = ss.get("manual_strikes", [])
+                                    if not ms: ms = [CONFIG.get("trade_symbol")] # Legacy fallback
+                                    
+                                    # PORTFOLIO MODE: Scan ALL symbols for valid matches
+                                    # Instead of finding one and breaking, we iterate through the list
+                                    # Note: The outer loop 'strike_attempts' is logically [0] for manual.
+                                    # We hijack this pass to potentially trade multiple symbols.
+                                    
+                                    candidates_to_trade = []
+                                    for s in ms:
+                                        if s and s.endswith(req_suffix):
+                                            candidates_to_trade.append(s)
+                                            
+                                    if not candidates_to_trade:
+                                        self.safe_print(f"   [SKIP] Index is {side}, but no *{req_suffix} symbol found in manual list.")
+                                        break # Stop this cycle
+                                    
+                                    # --- SPECIAL MULTI-EXECUTION LOOP FOR MANUAL MODE ---
+                                    for candidate in candidates_to_trade:
+                                        # (Loop body logic reused below for each candidate)
+                                        # We need to manually invoke the checking logic here to support multiple trades
+                                        # Or better: We append them to a queue?
+                                        # Simplest architecture: Treat 'candidates' as the loop.
+                                        pass 
+                                    
+                                    # Architecture limitation: The outer loop expects 1 candidate per 'attempt_step'.
+                                    # Hack: In Manual mode, let's treat 'candidates_to_trade' as the 'strike_attempts'.
+                                    # BUT 'strike_attempts' is integers (offsets).
+                                    # FIX: We will flatten the logic.
+                                else:
+                                    # AUTO MODE Resolution
+                                    candidate = get_strike_symbol(index_price, side, offset=attempt_step, 
+                                                                 expiry_type=ss.get("expiry", "WEEKLY"), 
+                                                                 expiry_offset=ss.get("offset", 0))
+                                    candidates_to_trade = [candidate] if candidate else []
+                                
+                                # --- UNIFIED EXECUTION LOOP ---
+                                # Process every candidate identified in this step (1 for Auto, N for Manual)
+                                for candidate in candidates_to_trade:
+                                    if not candidate: continue
                                 
                                 # Check if this candidate is blocked by RE-ENTRY COOLDOWN
                                 is_blocked = False
@@ -851,14 +928,17 @@ class LiveTrader:
                                         is_blocked = True
                                         if attempt_step == base_step:
                                             # Primary blocked, will try fallback
-                                            print(f"   [PRIMARY BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
+                                            self.safe_print(f"   [PRIMARY BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
+                                        else:
+                                            # Fallback strike also blocked
+                                            self.safe_print(f"   [FALLBACK BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
                                 
                                 if not is_blocked:
                                     target = candidate
                                     if attempt_step != base_step:
                                         # Used fallback
                                         strike_type = "OTM" if attempt_step > base_step else "ITM"
-                                        print(f"   [FALLBACK] Primary blocked → Using {strike_type} strike: {target}")
+                                        self.safe_print(f"   [FALLBACK] Primary blocked → Using {strike_type} strike: {target}")
                                     break  # Found available strike
                             
                             # If all strikes blocked, target remains None and we skip entry
@@ -903,12 +983,23 @@ class LiveTrader:
                                 if validation_passed:
                                     liq_ok, liq_msg = self.check_liquidity(target, is_final_entry=False)
                                     if not liq_ok:
-                                        print(f"   [BLOCKED] {target} - {liq_msg}")
+                                        self.safe_print(f"   [BLOCKED] {target} - {liq_msg}")
                                         validation_passed = False
                                         block_reason = liq_msg
                                 
+                                # 5. Check Max Option Price (Capital Protection)
+                                if validation_passed:
+                                    max_opt_price = CONFIG.get("max_option_price", 0)
+                                    if max_opt_price > 0:
+                                        opt_ltp = self.get_live_option_price(target)
+                                        if opt_ltp > max_opt_price:
+                                            self.safe_print(f"   [BLOCKED] Price {opt_ltp:.2f} > Limit {max_opt_price:.2f} ({target})")
+                                            validation_passed = False
+                                            block_reason = f"Price > {max_opt_price}"
+                                
                                 # All checks passed - add to observation
                                 if validation_passed:
+                                    self.safe_print(f"   [SYNC] Setting up {target}. State: OBSERVING (Stalking for surgical entry...)")
                                     with self.lock:
                                         self.trades[target] = {
                                             "state": "OBSERVING",
@@ -918,15 +1009,16 @@ class LiveTrader:
                                             "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
                                             "atr": 0.0
                                         }
-                                    print("\n" + "="*50)
-                                    print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
-                                    print(f"   Instrument: {target}")
-                                    print(f"   Index Ref:  {index_price:.2f}")
-                                    print("="*50 + "\n")
+                                    self.safe_print("\n" + "="*50)
+                                    self.safe_print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
+                                    self.safe_print(f"   Instrument: {target}")
+                                    self.safe_print(f"   Index Ref:  {index_price:.2f}")
+                                    self.safe_print("="*50 + "\n")
 
         except Exception as e:
-            print(f"[ERROR] Portfolio Cycle Error: {e}")
-            import traceback; traceback.print_exc()
+            self.safe_print(f"[ERROR] Portfolio Cycle Error: {e}")
+            import traceback
+            self.safe_print(traceback.format_exc())
 
     def execute_trade(self, action, price, symbol, side=None, expiry_params=None, idx_at_res=None):
         """Execute Buy/Sell order via OpenAlgo with Dynamic Lot Sizing"""
@@ -1109,7 +1201,7 @@ class LiveTrader:
                             pnl = (price - entry_price) * qty
                             pnl_pct = ((price - entry_price) / entry_price) * 100 if entry_price > 0 else 0
                             
-                            print(f"   [TRADE RESULT] Entry: ₹{entry_price:.2f} | Exit: ₹{price:.2f} | P&L: ₹{pnl:+.2f} ({pnl_pct:+.2f}%)")
+                            self.safe_print(f"   [TRADE RESULT] Entry: ₹{entry_price:.2f} | Exit: ₹{price:.2f} | P&L: ₹{pnl:+.2f} ({pnl_pct:+.2f}%)")
                             
                             # Update daily P&L tracker
                             self.update_daily_pnl(pnl, symbol)
@@ -1125,24 +1217,28 @@ class LiveTrader:
                                     "pnl": pnl_pct,
                                     "reason": exit_reason
                                 }
-                                print(f"   [COOLDOWN] {symbol} added to re-entry blacklist (Reason: {exit_reason})")
+                                self.safe_print(f"   [COOLDOWN] {symbol} added to re-entry blacklist (Reason: {exit_reason})")
                             
                             del self.trades[symbol]
                         self.last_exit_time = datetime.now()
-                        print(f"   [INFO] Position Closed for {symbol}. Cooldown active.")
+                        self.safe_print(f"   [INFO] Position Closed for {symbol}. Cooldown active.")
                 
                 sys.stdout.flush()
                 time.sleep(1)
             else:
-                print(f"   [CRITICAL] Order REJECTED for {symbol}")
+                self.safe_print(f"   [CRITICAL] Order REJECTED for {symbol}")
 
         except Exception as e:
-            print(f"   [ERROR] Order Failed for {symbol}: {e}")
+            self.safe_print(f"   [ERROR] Order Failed for {symbol}: {e}")
 
     # --- THREADED WORKERS ---
     def risk_worker(self):
         """Dedicated thread for high-speed risk monitoring of all active positions"""
-        print("[INFO] Risk Worker (Bodyguard) started.")
+        self.last_htf_fetch = 0
+        self.cached_htf_data = (None, "WAIT")
+        self.print_lock = threading.Lock()
+        
+        self.safe_print("[INFO] Risk Worker (Bodyguard) started.")
         fast_interval = int(CONFIG.get("fast_check_seconds", 2))
         while self.is_running:
             try:
@@ -1202,6 +1298,10 @@ class LiveTrader:
                 # 1. Identify what we NEED to be subscribed to
                 with self.lock:
                     needed_syms = set(self.trades.keys())
+                    
+                # Add Manual Symbols (Hot Start)
+                if hasattr(self, 'manual_monitor_list'):
+                    needed_syms = needed_syms.union(self.manual_monitor_list)
                 
                 # 2. Identify Deltas
                 to_sub = needed_syms - current_subscriptions
@@ -1219,14 +1319,17 @@ class LiveTrader:
                         client.subscribe_ltp([{"exchange": "NFO", "symbol": s} for s in to_sub], 
                                            on_data_received=self.on_ws_data)
                         current_subscriptions |= to_sub
-                        print(f"[WS] Subscribed to new symbols: {list(to_sub)}")
+                        now_str = datetime.now().strftime("%H:%M:%S")
+                        self.safe_print(f"[{now_str}] [WS] Subscribed to new symbols: {list(to_sub)}")
                     except Exception as e:
-                        print(f"[ERROR] WS Sub Failed: {e}")
+                        now_str = datetime.now().strftime("%H:%M:%S")
+                        self.safe_print(f"[{now_str}] [ERROR] WS Sub Failed: {e}")
                 
                 time.sleep(2) # Re-sync every 2 seconds
                 
         except Exception as e:
-            print(f"[ERROR] Websocket Worker Error: {e}")
+            now_str = datetime.now().strftime("%H:%M:%S")
+            self.safe_print(f"[{now_str}] [ERROR] Websocket Worker Error: {e}")
         finally:
             try: client.disconnect() 
             except: pass

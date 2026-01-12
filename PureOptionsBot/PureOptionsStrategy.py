@@ -348,6 +348,16 @@ def fetch_history(symbol, exchange, start_date, end_date, interval=None, silent=
         if "timestamp" in df.columns:
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.set_index("timestamp")
+        
+        # PRESERVE OI (Case insensitive check)
+        oi_col = None
+        for col in df.columns:
+            if col.lower() in ['oi', 'openinterest', 'open_interest']:
+                oi_col = col
+                break
+        
+        if oi_col:
+            df['oi'] = df[oi_col]
         elif "time" in df.columns:
              df["timestamp"] = pd.to_datetime(df["time"])
              df = df.set_index("timestamp")
@@ -452,7 +462,11 @@ class UTBotIndicator(bt.Indicator):
         elif src_prev > prev_stop and src < prev_stop:
             current_pos = -1
         else:
-            current_pos = prev_pos
+            # FIX: Initialize trend based on price vs stop if state is neutral
+            if prev_pos == 0:
+                current_pos = 1 if src > current_stop else -1
+            else:
+                current_pos = prev_pos
         
         self.pos_state = current_pos
         self.l.pos[0] = float(current_pos)
