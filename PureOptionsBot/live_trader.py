@@ -153,6 +153,7 @@ class LiveTrader:
         
         trail = [0.0] * len(df)
         pos = [0] * len(df)
+        signals = [0] * len(df)
         
         for i in range(atr_period, len(df)):
             s = src.iloc[i]
@@ -171,16 +172,33 @@ class LiveTrader:
             
             trail[i] = curr_trail
             
-            # Position
+            # Position & Signal Calculation
             prev_p = pos[i-1]
+            
+            # 1. Fresh Crossover Detection
             if prev_s < prev_trail and s > prev_trail:
                 pos[i] = 1
+                signals[i] = 1 # Fresh BUY
             elif prev_s > prev_trail and s < prev_trail:
                 pos[i] = -1
+                signals[i] = -1 # Fresh SELL
             else:
-                pos[i] = prev_p
+                # 2. Pullback Detection (Still Bullish / Still Bearish)
+                # Logic: Current is Bullish/Bearish State AND (Prev Candle was Opposite Color) AND (Curr Candle is My Color)
+                # This catches the 'Still Bullish' (Red-to-Green bounce) and 'Still Bearish' (Green-to-Red pivot)
+                curr_open, curr_close = df['Open'].iloc[i], df['Close'].iloc[i]
+                prev_open, prev_close = df['Open'].iloc[i-1], df['Close'].iloc[i-1]
                 
-        return pd.Series(pos, index=df.index), pd.Series(trail, index=df.index)
+                if prev_p == 1: # Already Bullish
+                    # A pullback is a Red candle followed by a Green candle bounce
+                    if prev_close < prev_open and curr_close > curr_open: 
+                         signals[i] = 2 # Still Bullish (Pullback Entry)
+                elif prev_p == -1: # Already Bearish
+                    # A pullback is a Green candle followed by a Red candle reversal
+                    if prev_close > prev_open and curr_close < curr_open: 
+                         signals[i] = -2 # Still Bearish (Pullback Entry)
+                
+        return pd.Series(pos, index=df.index), pd.Series(trail, index=df.index), pd.Series(signals, index=df.index)
 
     def get_trend_age(self, pos_series):
         """Calculates distance from the start of the current trend"""
@@ -319,7 +337,7 @@ class LiveTrader:
         
         return True, "Within limits"
 
-    def check_liquidity(self, symbol):
+    def check_liquidity(self, symbol, is_final_entry=True):
         """Verify option has sufficient liquidity for safe entry/exit"""
         exec_config = CONFIG.get("execution", {})
         min_oi = exec_config.get("min_oi", 0)
@@ -339,7 +357,11 @@ class LiveTrader:
             ask = float(quote.get('ask', 0)) if isinstance(quote, dict) else 0
             
             if ask <= 0 or bid <= 0:
-                return False, "No quotes available"
+                if is_final_entry:
+                    return False, "No quotes available"
+                else:
+                    # Allow observation even if quotes are temporarily missing
+                    return True, "WAIT: No quotes (Observing price only)"
             
             spread_pct = ((ask - bid) / ask) * 100
             if spread_pct > max_spread:
@@ -627,26 +649,42 @@ class LiveTrader:
                     df_opt_htf = fetch_history(symbol, "NFO", start, end, interval=opt_conf['htf']['timeframe'], silent=True)
 
                 def get_trend_data(df, stream_conf, use_ha):
-                    if df.empty or len(df) < 5: return None, None
+                    if df.empty or len(df) < 5: return None, None, None
                     return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
 
                 # --- A. OBSERVING STATE ---
                 if trade["state"] == "OBSERVING":
-                    pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
-                    if pos_opt is None: continue
+                    pos_opt, _, sig_opt = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
+                    if sig_opt is None: continue
                     
-                    is_confirm = (pos_opt.iloc[-2] == 1 and pos_opt.iloc[-3] == -1)
+                    # Entry Confirmation:
+                    # 1. Fresh Crossover (sig == 1)
+                    # 2. Still Bullish (Pullback) (sig == 2) if enabled
+                    is_confirm = False
+                    if sig_opt.iloc[-2] == 1:
+                        is_confirm = True
+                    elif sig_opt.iloc[-2] == 2 and CONFIG.get("entry_logic", {}).get("allow_option_pullback", False):
+                        # Ensure we don't buy immediately after a trend change to avoid noise
+                        age = self.get_trend_age(pos_opt)
+                        if age >= CONFIG.get("entry_logic", {}).get("pullback_warmup_candles", 3):
+                            is_confirm = True
+                            print(f"   [PULLBACK] Option {trade['side']} Pivot Detect for {symbol}!")
                     
                     htf_ok = True
                     if opt_conf['htf']['enabled'] and not df_opt_htf.empty:
-                        pos_opt_htf, _ = get_trend_data(df_opt_htf, opt_conf['htf'], CONFIG.get('option_use_ha', False))
+                        pos_opt_htf, _, _ = get_trend_data(df_opt_htf, opt_conf['htf'], CONFIG.get('option_use_ha', False))
                         if pos_opt_htf is not None: htf_ok = (pos_opt_htf.iloc[-2] == 1)
 
                     if is_confirm and htf_ok:
-                        print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
-                        self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
-                                          side=trade['side'], expiry_params=trade['expiry_params'], 
-                                          idx_at_res=trade['idx_at_res'])
+                        # Final check for spread before buy
+                        liq_ok, liq_msg = self.check_liquidity(symbol, is_final_entry=True)
+                        if liq_ok:
+                            print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
+                            self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
+                                              side=trade['side'], expiry_params=trade['expiry_params'], 
+                                              idx_at_res=trade['idx_at_res'])
+                        else:
+                            print(f"   [BLOCKED] Entry delayed: {liq_msg}")
                     else:
                         with self.lock:
                             self.trades[symbol]["obs_candles"] = trade.get("obs_candles", 0) + 1
@@ -679,7 +717,7 @@ class LiveTrader:
 
                 # --- B. POSITION STATE ---
                 elif trade["state"] == "POSITION":
-                    pos_opt, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
+                    pos_opt, _, _ = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
                     if pos_opt is None: continue
                     
                     is_exit = (pos_opt.iloc[-2] == -1 and pos_opt.iloc[-3] == 1)
@@ -696,26 +734,75 @@ class LiveTrader:
             # --- 3. SCAN FOR NEW OPPORTUNITIES ---
             if len(self.trades) < max_pos:
                 now_str = datetime.now().strftime("%H:%M:%S")
-                # Periodic Portfolio Status (only if no active positions being tracked)
-                if len(self.trades) == 0 and time.time() % 60 < 15:
-                    print(f"[{now_str}] SCANNING (Portfolio: {len(self.trades)}/{max_pos} Slots Used) | Index: {index_price:.2f}")
-                
+
                 def get_trend_data(df, stream_conf, use_ha):
-                    if df.empty or len(df) < 5: return None, None
+                    if df.empty or len(df) < 5: return None, None, None
                     return self.calculate_utbot(df, stream_conf['sensitivity'], stream_conf['atr'], use_ha)
 
-                pos_idx, _ = get_trend_data(df_idx_ltf, idx_conf['ltf'], CONFIG.get('index_use_ha', True))
-                if pos_idx is not None:
-                    curr_idx = pos_idx.iloc[-2]
-                    prev_idx = pos_idx.iloc[-3]
+                def get_status_str(pos):
+                    if pos is None: return "WAIT"
+                    val = pos.iloc[-2]
+                    return "BULLISH" if val == 1 else "BEARISH"
+
+                pos_idx_ltf, _, sig_idx_ltf = get_trend_data(df_idx_ltf, idx_conf['ltf'], CONFIG.get('index_use_ha', True))
+                idx_ltf_status = get_status_str(pos_idx_ltf)
+                idx_htf_status = "DISABLED"
+                
+                # Pre-fetch HTF for heartbeat
+                if idx_conf['htf']['enabled']:
+                    df_idx_htf_hb = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
+                    pos_idx_htf, _, _ = get_trend_data(df_idx_htf_hb, idx_conf['htf'], CONFIG.get('index_use_ha', True))
+                    idx_htf_status = get_status_str(pos_idx_htf)
+
+                # Rich Heartbeat (every 60s)
+                if time.time() % 60 < 15:
+                    print(f"[{now_str}] HEARTBEAT | Index: {index_price:.2f} | LTF: {idx_ltf_status} | HTF: {idx_htf_status}")
+                    if len(self.trades) > 0:
+                        for sym, trade in self.trades.items():
+                             state = trade.get("state", "UNKNOWN")
+                             side = trade.get("side", "N/A")
+                             # Use BULLISH for CALL setups, BEARISH for PUT setups
+                             bias = "BULLISH" if side == "CALL" else "BEARISH"
+                             print(f"   ACTIVE: {sym} | State: {state} | Bias: {bias}")
+
+                if sig_idx_ltf is not None:
+                    curr_sig = sig_idx_ltf.iloc[-2]
+                    curr_idx = pos_idx_ltf.iloc[-2]
                     
-                    if curr_idx != prev_idx:
+                    # Signal Decision:
+                    # 1. Fresh Signal (curr_sig in [1, -1])
+                    # 2. Still State (curr_sig in [2, -2]) if mid-trend pullback is enabled
+                    is_valid_setup = False
+                    setup_type = ""
+                    
+                    if curr_sig in [1, -1]:
+                        is_valid_setup = True
+                        setup_type = "FRESH"
+                    elif curr_sig in [2, -2] and CONFIG.get("entry_logic", {}).get("allow_index_pullback", False):
+                        # Ensure trend is mature enough
+                        age = self.get_trend_age(pos_idx_ltf)
+                        if age >= CONFIG.get("entry_logic", {}).get("pullback_warmup_candles", 3):
+                            is_valid_setup = True
+                            setup_type = "PULLBACK"
+
+                    if is_valid_setup:
+                        sig_name = "BUY" if curr_idx == 1 else "SELL"
+                        tf_idx = idx_conf['ltf']['timeframe']
+                        tf_htf = idx_conf['htf']['timeframe']
+                        
                         # Check HTF
                         htf_ok = True
                         if idx_conf['htf']['enabled']:
-                            df_idx_htf = fetch_history(self.idx_symbol, CONFIG["index_exchange"], start, end, interval=idx_conf['htf']['timeframe'], silent=True)
-                            pos_htf, _ = get_trend_data(df_idx_htf, idx_conf['htf'], CONFIG.get('index_use_ha', True))
-                            if pos_htf is not None: htf_ok = (pos_htf.iloc[-2] == curr_idx)
+                            htf_ok = (idx_htf_status == idx_ltf_status)
+                            if not htf_ok:
+                                # Reformat as requested: [SIGNAL] NIFTY LTF-1m BULLISH [Fresh Buy] | NIFTY HTF-5m BEARISH | Mismatch [SKIPPED]
+                                print(f"   [SIGNAL] NIFTY LTF-{tf_idx} {idx_ltf_status} [{setup_type.capitalize()} {sig_name}] | NIFTY HTF-{tf_htf} {idx_htf_status} | Mismatch [SKIPPED]")
+                            else:
+                                # Original signal log for successful scans
+                                print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
+                        else:
+                            # HTF disabled, just print the detection
+                            print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({idx_ltf_status})")
                         
                         if htf_ok:
                             side = "CALL" if curr_idx == 1 else "PUT"
@@ -812,9 +899,9 @@ class LiveTrader:
                                             validation_passed = False
                                             block_reason = f"DTE={dte}"
                                 
-                                # 4. Check liquidity & spread
+                                # 4. Check liquidity & spread (Relaxed for observation)
                                 if validation_passed:
-                                    liq_ok, liq_msg = self.check_liquidity(target)
+                                    liq_ok, liq_msg = self.check_liquidity(target, is_final_entry=False)
                                     if not liq_ok:
                                         print(f"   [BLOCKED] {target} - {liq_msg}")
                                         validation_passed = False

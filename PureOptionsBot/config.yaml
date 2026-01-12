@@ -19,17 +19,25 @@ trade_symbol: "NIFTY13JAN2626000PE" # Manual fallback symbol
 # 2. STRATEGY PARAMETERS
 # ========================================
 index:
-  ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
-  htf: {timeframe: "10m", sensitivity: 1.0, atr: 10, enabled: True}
+  ltf: {timeframe: "1m", sensitivity: 1, atr: 10}
+  htf: {timeframe: "5m", sensitivity: 2.0, atr: 10, enabled: True}
 
 option:
-  ltf: {timeframe: "3m", sensitivity: 1.5, atr: 10}
-  htf: {timeframe: "10m", sensitivity: 1.0, atr: 10, enabled: False}
+  ltf: {timeframe: "1m", sensitivity: 1.5, atr: 10}
+  htf: {timeframe: "5m", sensitivity: 1.0, atr: 10, enabled: True}
 
 option_signal_timeout: 5        # Candles to wait for Option signal
 index_use_ha: True              # Use Heikin Ashi for Index signals
 option_use_ha: False            # Use Heikin Ashi for Option signals
 drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points during setup
+
+# ========================================
+# 3. ENTRY LOGIC CONTROLS
+# ========================================
+entry_logic:
+  allow_index_pullback: True      # Enable mid-trend setup detection on Index (Red-to-Green bounce)
+  allow_option_pullback: True     # Enable mid-trend entry on Option Premium (Red-to-Green bounce)
+  pullback_warmup_candles: 3      # Wait for X candles in trend before allowing pullback entries
                                 # Bot signals a CALL entry when Nifty is at 22,000
                                 # Bot calculates ATM or OTM strike (say 22,050 CE)
                                 # During order preparation, Nifty suddenly jumps to 22,030 (30 point move)
@@ -78,7 +86,7 @@ tsl_mode: "ATR"
 # --- Mode 1: ATR-Based (Volatility Aware) ---
 # Calculation: Peak Price - (Multiplier * ATR)
 # Automatically widens in high volatility, tightens in calm markets.
-tsl_atr_multiplier: 2.5          # Standard: 1.5 (Aggressive) to 3.5 (Conservative)
+tsl_atr_multiplier: 3.5          # Standard: 1.5 (Aggressive) to 3.5 (Conservative)
 
 # --- Mode 2: Percentage-Based ---
 # Calculation: Peak Price - (Peak Price * Percentage/100)
@@ -160,7 +168,7 @@ execution:
   limit_offset_pct: 0.5         # % above ask for buy, below bid for sell
   max_spread_pct: 3.0           # Reject entry if spread > this %
   order_timeout_sec: 5          # Cancel unfilled orders after X seconds
-  min_oi: 5000                  # Minimum Open Interest required
+  min_oi: 0                # Minimum Open Interest required
   retry_count: 2                # Number of order retry attempts
 
 # ========================================
@@ -209,6 +217,27 @@ use_threading: True
 fetch_interval_seconds: 15
 fast_check_seconds: 2
 ignore_session_check: False
+
+
+# 1. Moderate/Safe (Best for Nifty Intraday)
+# index:
+#   ltf: {timeframe: "3m", sensitivity: 1.5, atr: 10}
+#   htf: {timeframe: "15m", sensitivity: 2.0, atr: 14, enabled: True}
+
+# 2. Volatile Market (High IV / News Events)
+# index:
+#   ltf: {timeframe: "5m", sensitivity: 2.5, atr: 14}
+#   htf: {timeframe: "15m", sensitivity: 3.0, atr: 20, enabled: True}
+
+# 3. Trending/Momentum (Catching a Rally)
+# index:
+#   ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
+#   htf: {timeframe: "15m", sensitivity: 1.5, atr: 10, enabled: True}
+
+# Option Sensitivity: Since options move faster than the index (due to Delta/Gamma), I recommend keeping the option sensitivity 0.5 higher than the index sensitivity if you are using signal_source: "OPTION".
+# HTF Alignment: Always keep htf: enabled: True. It acts as a safety filter. If the 3m chart says "Buy" but the 15m chart says "Sell," the bot will stay out, saving you from "fake" rallies in a downtrend.
+# ATR Multiplier for TSL: In your config.yaml , the tsl_atr_multiplier is at 2.5. In volatile markets, if you find yourself getting stopped out too early, increase this to 3.5.
+
 
   
 # strike_selection (New Enhancement):
