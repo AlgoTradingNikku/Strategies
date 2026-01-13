@@ -141,6 +141,23 @@ class LiveTrader:
         opt_htf_str = opt['htf']['timeframe'] if opt['htf'].get('enabled', True) else "OFF"
         sig_src = str(CONFIG.get('signal_source', 'INDEX')).capitalize()
         print(f"[INFO] Index [HTF:{idx_htf_str}, LTF:{idx['ltf']['timeframe']}] | Options [HTF:{opt_htf_str}, LTF:{opt['ltf']['timeframe']}, Source: {sig_src} Data]")
+        
+        # Display Trigger Mode Configuration
+        entry_logic = CONFIG.get("entry_logic", {})
+        idx_trigger = entry_logic.get("index_trigger_mode", "SIGNAL").upper()
+        opt_trigger = entry_logic.get("option_trigger_mode", "SIGNAL").upper()
+        idx_max_age = entry_logic.get("index_max_trend_age", 8)
+        opt_max_age = entry_logic.get("option_max_trend_age", 5)
+        
+        # Build trigger mode display string
+        trigger_info = f"[INFO] Trigger Modes: Index={idx_trigger}"
+        if idx_trigger == "STATE":
+            trigger_info += f" (max_age={idx_max_age})"
+        trigger_info += f", Option={opt_trigger}"
+        if opt_trigger == "STATE":
+            trigger_info += f" (max_age={opt_max_age})"
+        print(trigger_info)
+        
         print("Press Ctrl+C to stop.\n")
         return True
 
@@ -476,6 +493,11 @@ class LiveTrader:
             if symbol not in self.trades:
                 return False
             trade = self.trades[symbol]
+            
+            # RACE CONDITION FIX: Abort if already handling exit
+            if trade.get("state") == "EXITING":
+                return False
+
             entry = trade["entry_price"]
             highest = trade["highest_price"]
             trend_reversed = is_trend_reversed_input if is_trend_reversed_input is not None else trade.get("trend_reversed", False)
@@ -499,6 +521,13 @@ class LiveTrader:
                 if hold_duration_mins > max_hold and pnl_pct < min_profit:
                     print(f"\n   [TIME EXIT] {symbol} held {hold_duration_mins:.0f}m without sufficient profit")
                     print(f"   (PnL: {pnl_pct:.2f}% < required {min_profit}% for extended hold)")
+                    
+                    # RACE CONDITION FIX: Mark as EXITING
+                    with self.lock:
+                        if symbol in self.trades:
+                             if self.trades[symbol].get("state") == "EXITING": return False
+                             self.trades[symbol]["state"] = "EXITING"
+
                     self.execute_trade("SELL", curr_price, symbol)
                     return True
         
@@ -597,12 +626,26 @@ class LiveTrader:
         if curr_price <= tsl_price:
             print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
             print(f"   (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})\n")
+            
+            # RACE CONDITION FIX: Mark as EXITING immediately under lock
+            with self.lock:
+                if symbol in self.trades:
+                     if self.trades[symbol].get("state") == "EXITING": return False
+                     self.trades[symbol]["state"] = "EXITING"
+            
             self.execute_trade("SELL", curr_price, symbol)
             return True
         
         # --- MANAGE EXITS ---
         if trend_reversed:
             print(f"   [SIGNAL] Trend Reversed for {symbol}. Closing Position.")
+            
+            # RACE CONDITION FIX: Mark as EXITING immediately under lock
+            with self.lock:
+                if symbol in self.trades:
+                     if self.trades[symbol].get("state") == "EXITING": return False
+                     self.trades[symbol]["state"] = "EXITING"
+
             self.execute_trade("SELL", curr_price, symbol)
             return True
 
@@ -710,18 +753,39 @@ class LiveTrader:
                     pos_opt, _, sig_opt = get_trend_data(df_opt_ltf, opt_conf['ltf'], CONFIG.get('option_use_ha', False))
                     if sig_opt is None: continue
                     
-                    # Entry Confirmation:
-                    # 1. Fresh Crossover (sig == 1)
-                    # 2. Still Bullish (Pullback) (sig == 2) if enabled
+                    # === OPTION TRIGGER MODE ===
+                    # Read trigger mode from config
+                    entry_logic = CONFIG.get("entry_logic", {})
+                    option_trigger_mode = entry_logic.get("option_trigger_mode", "SIGNAL").upper()
+                    
                     is_confirm = False
-                    if sig_opt.iloc[-2] == 1:
-                        is_confirm = True
-                    elif sig_opt.iloc[-2] == 2 and CONFIG.get("entry_logic", {}).get("allow_option_pullback", False):
-                        # Ensure we don't buy immediately after a trend change to avoid noise
-                        age = self.get_trend_age(pos_opt)
-                        if age >= CONFIG.get("entry_logic", {}).get("pullback_warmup_candles", 3):
+                    confirm_type = ""
+                    
+                    if option_trigger_mode == "STATE":
+                        # STATE-BASED: Check if Option is currently in bullish state
+                        # ⚠️ Advisory: SIGNAL mode recommended for better entry prices
+                        is_bullish_state = (pos_opt.iloc[-2] == 1)
+                        opt_trend_age = self.get_trend_age(pos_opt)
+                        max_age = entry_logic.get("option_max_trend_age", 5)  # Option-specific setting
+                        
+                        if is_bullish_state and opt_trend_age <= max_age:
                             is_confirm = True
-                            print(f"   [PULLBACK] Option {trade['side']} Pivot Detect for {symbol}!")
+                            confirm_type = f"STATE (age:{opt_trend_age})"
+                    else:
+                        # SIGNAL-BASED (Default/Recommended): Wait for fresh crossover
+                        # Entry Confirmation:
+                        # 1. Fresh Crossover (sig == 1)
+                        # 2. Still Bullish (Pullback) (sig == 2) if enabled
+                        if sig_opt.iloc[-2] == 1:
+                            is_confirm = True
+                            confirm_type = "FRESH"
+                        elif sig_opt.iloc[-2] == 2 and entry_logic.get("allow_option_pullback", False):
+                            # Ensure we don't buy immediately after a trend change to avoid noise
+                            age = self.get_trend_age(pos_opt)
+                            if age >= entry_logic.get("pullback_warmup_candles", 3):
+                                is_confirm = True
+                                confirm_type = "PULLBACK"
+                                print(f"   [PULLBACK] Option {trade['side']} Pivot Detect for {symbol}!")
                     
                     htf_ok = True
                     if opt_conf['htf']['enabled'] and not df_opt_htf.empty:
@@ -732,7 +796,7 @@ class LiveTrader:
                         # Final check for spread before buy
                         liq_ok, liq_msg = self.check_liquidity(symbol, is_final_entry=True)
                         if liq_ok:
-                            self.safe_print(f"   [CONFIRM] Option {trade['side']} Signal for {symbol}! Entering.")
+                            self.safe_print(f"   [CONFIRM] Option {trade['side']} {confirm_type} for {symbol}! Entering.")
                             self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
                                               side=trade['side'], expiry_params=trade['expiry_params'], 
                                               idx_at_res=trade['idx_at_res'])
@@ -798,215 +862,247 @@ class LiveTrader:
             # --- 3. SCAN FOR NEW OPPORTUNITIES ---
             if len(self.trades) < max_pos:
                 # Trends already calculated at top
-
-                if sig_idx_ltf is not None:
-                    curr_sig = sig_idx_ltf.iloc[-2]
-                    curr_idx = pos_idx_ltf.iloc[-2]
-                    
-                    # Signal Decision:
-                    # 1. Fresh Signal (curr_sig in [1, -1])
-                    # 2. Still State (curr_sig in [2, -2]) if mid-trend pullback is enabled
-                    is_valid_setup = False
-                    setup_type = ""
-                    
-                    if curr_sig in [1, -1]:
-                        is_valid_setup = True
-                        setup_type = "FRESH"
-                    elif curr_sig in [2, -2] and CONFIG.get("entry_logic", {}).get("allow_index_pullback", False):
-                        # Ensure trend is mature enough
-                        age = self.get_trend_age(pos_idx_ltf)
-                        if age >= CONFIG.get("entry_logic", {}).get("pullback_warmup_candles", 3):
+                
+                # === INDEX TRIGGER MODE ===
+                entry_logic = CONFIG.get("entry_logic", {})
+                index_trigger_mode = entry_logic.get("index_trigger_mode", "SIGNAL").upper()
+                
+                is_valid_setup = False
+                setup_type = ""
+                curr_idx = pos_idx_ltf.iloc[-2] if pos_idx_ltf is not None and len(pos_idx_ltf) > 1 else 0
+                
+                if index_trigger_mode == "STATE":
+                    # STATE-BASED: Check if both LTF and HTF are currently aligned
+                    # This mode never misses opportunities when both timeframes agree
+                    if pos_idx_ltf is not None and len(pos_idx_ltf) > 1:
+                        ltf_bullish = (pos_idx_ltf.iloc[-2] == 1)
+                        
+                        # Check HTF alignment (if enabled)
+                        htf_bullish = True  # Default if HTF disabled
+                        if idx_conf['htf']['enabled'] and self.cached_htf_data[0] is not None:
+                            pos_idx_htf = self.cached_htf_data[0]
+                            htf_bullish = (pos_idx_htf.iloc[-2] == 1) if len(pos_idx_htf) > 1 else True
+                        
+                        # Apply trend age filter (using index-specific setting)
+                        max_age = entry_logic.get("index_max_trend_age", 8)
+                        trend_age = self.get_trend_age(pos_idx_ltf)
+                        
+                        # Aligned BULLISH
+                        if ltf_bullish and htf_bullish and trend_age <= max_age:
                             is_valid_setup = True
-                            setup_type = "PullBack"
+                            setup_type = f"STATE (age:{trend_age})"
+                            curr_idx = 1  # BULLISH
+                        # Aligned BEARISH
+                        elif not ltf_bullish and not htf_bullish and trend_age <= max_age:
+                            is_valid_setup = True
+                            setup_type = f"STATE (age:{trend_age})"
+                            curr_idx = -1  # BEARISH
+                else:
+                    # SIGNAL-BASED (Default): Wait for fresh UTBot crossover
+                    if sig_idx_ltf is not None:
+                        curr_sig = sig_idx_ltf.iloc[-2]
+                        curr_idx = pos_idx_ltf.iloc[-2]
+                        
+                        # Signal Decision:
+                        # 1. Fresh Signal (curr_sig in [1, -1])
+                        # 2. Still State (curr_sig in [2, -2]) if mid-trend pullback is enabled
+                        if curr_sig in [1, -1]:
+                            is_valid_setup = True
+                            setup_type = "FRESH"
+                        elif curr_sig in [2, -2] and entry_logic.get("allow_index_pullback", False):
+                            # Ensure trend is mature enough
+                            age = self.get_trend_age(pos_idx_ltf)
+                            if age >= entry_logic.get("pullback_warmup_candles", 3):
+                                is_valid_setup = True
+                                setup_type = "PULLBACK"
 
-                    if is_valid_setup:
-                        sig_name = "BUY" if curr_idx == 1 else "SELL"
-                        tf_idx = idx_conf['ltf']['timeframe']
-                        tf_htf = idx_conf['htf']['timeframe']
+                if is_valid_setup:
+                    sig_name = "BUY" if curr_idx == 1 else "SELL"
+                    tf_idx = idx_conf['ltf']['timeframe']
+                    tf_htf = idx_conf['htf']['timeframe']
+                    
+                    # Check HTF (for SIGNAL mode, STATE mode already checked above)
+                    htf_ok = True
+                    status_label = f"{idx_ltf_status} [{setup_type}]"
+                    
+                    # ANTI-SPAM: Check if we're already stalking a symbol for this side
+                    target_side = "CALL" if curr_idx == 1 else "PUT"
+                    already_stalking_side = any(
+                        t.get("side") == target_side for t in self.trades.values()
+                    )
+                    
+                    # For SIGNAL mode, verify HTF alignment
+                    if index_trigger_mode != "STATE" and idx_conf['htf']['enabled']:
+                        htf_ok = (idx_htf_status == idx_ltf_status)
+                        if not htf_ok:
+                            self.safe_print(f"   [TRIGGER] NIFTY LTF-{tf_idx} {status_label} | HTF-{tf_htf} {idx_htf_status} | Mismatch [SKIPPED]")
+                        elif not already_stalking_side:
+                            self.safe_print(f"   [TRIGGER] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected ({idx_ltf_status})")
+                    elif not already_stalking_side:
+                        # STATE mode or HTF disabled - just print the detection
+                        self.safe_print(f"   [TRIGGER] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected ({idx_ltf_status})")
+                    
+                    # Proceed with strike selection if HTF aligned (or STATE mode)
+                    if htf_ok:
+                        side = "CALL" if curr_idx == 1 else "PUT"
+                        ss = CONFIG.get("strike_selection", {})
+                        base_step = ss.get("step", 0)
                         
-                        # Check HTF
-                        htf_ok = True
-                        status_label = f"Still {idx_ltf_status}" if setup_type == "PullBack" else idx_ltf_status
+                        # === INTELLIGENT STRIKE FALLBACK ===
+                        # Try primary strike, then fallback to adjacent if blocked by cooldown
+                        target = None
+                        re_entry = CONFIG.get("re_entry_protection", {})
+                        allow_fallback = re_entry.get("allow_adjacent_strikes", True)
+                        max_offset = re_entry.get("max_strike_offset", 1)
                         
-                        # ANTI-SPAM: Check if we're already stalking a symbol for this side
-                        target_side = "CALL" if curr_idx == 1 else "PUT"
-                        already_stalking_side = any(
-                            t.get("side") == target_side for t in self.trades.values()
-                        )
+                        # Build list of strikes to try
+                        strike_attempts = []
+                        is_manual = (ss.get("mode") == "MANUAL")
                         
-                        if idx_conf['htf']['enabled']:
-                            htf_ok = (idx_htf_status == idx_ltf_status)
-                            if not htf_ok:
-                                # Reformat as requested: [SIGNAL] NIFTY LTF-1m BULLISH [Fresh Buy] | NIFTY HTF-5m BEARISH | Mismatch [SKIPPED]
-                                self.safe_print(f"   [SIGNAL] NIFTY LTF-{tf_idx} {status_label} [{setup_type} {sig_name}] | NIFTY HTF-{tf_htf} {idx_htf_status} | Mismatch [SKIPPED]")
-                            elif not already_stalking_side:
-                                # Only print signal log if not already stalking this side
-                                self.safe_print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({status_label})")
+                        if is_manual:
+                            strike_attempts = [0] # Single pass for Manual
                         else:
-                            # HTF disabled, just print the detection (if not already stalking)
-                            if not already_stalking_side:
-                                self.safe_print(f"   [SIGNAL] Index (NIFTY) {tf_idx} {setup_type} {sig_name} detected on LTF ({status_label})")
-                        
-                        if htf_ok:
-                            side = "CALL" if curr_idx == 1 else "PUT"
-                            ss = CONFIG.get("strike_selection", {})
                             base_step = ss.get("step", 0)
-                            
-                            # === INTELLIGENT STRIKE FALLBACK ===
-                            # Try primary strike, then fallback to adjacent if blocked by cooldown
-                            target = None
-                            re_entry = CONFIG.get("re_entry_protection", {})
-                            allow_fallback = re_entry.get("allow_adjacent_strikes", True)
-                            max_offset = re_entry.get("max_strike_offset", 1)
-                            
-                            # Build list of strikes to try
-                            strike_attempts = []
-                            is_manual = (ss.get("mode") == "MANUAL")
+                            strike_attempts = [base_step]  # Primary (ATM)
+                            if allow_fallback:
+                                for offset in range(1, max_offset + 1):
+                                    strike_attempts.append(base_step + offset)  # OTM
+                                    strike_attempts.append(base_step - offset)  # ITM
+                        
+                        # Try each strike in order until finding one not blocked
+                        for attempt_step in strike_attempts:
+                            candidate = None
                             
                             if is_manual:
-                                strike_attempts = [0] # Single pass for Manual
-                            else:
-                                base_step = ss.get("step", 0)
-                                strike_attempts = [base_step]  # Primary (ATM)
-                                if allow_fallback:
-                                    for offset in range(1, max_offset + 1):
-                                        strike_attempts.append(base_step + offset)  # OTM
-                                        strike_attempts.append(base_step - offset)  # ITM
-                            
-                            # Try each strike in order until finding one not blocked
-                            for attempt_step in strike_attempts:
-                                candidate = None
+                                # STRICT DIRECTIONAL LOGIC GATE
+                                # Side is CALL -> Need CE. Side is PUT -> Need PE.
+                                req_suffix = "CE" if side == "CALL" else "PE"
+                                ms = ss.get("manual_strikes", [])
+                                if not ms: ms = [CONFIG.get("trade_symbol")] # Legacy fallback
                                 
-                                if is_manual:
-                                    # STRICT DIRECTIONAL LOGIC GATE
-                                    # Side is CALL -> Need CE. Side is PUT -> Need PE.
-                                    req_suffix = "CE" if side == "CALL" else "PE"
-                                    ms = ss.get("manual_strikes", [])
-                                    if not ms: ms = [CONFIG.get("trade_symbol")] # Legacy fallback
-                                    
-                                    # PORTFOLIO MODE: Scan ALL symbols for valid matches
-                                    # Instead of finding one and breaking, we iterate through the list
-                                    # Note: The outer loop 'strike_attempts' is logically [0] for manual.
-                                    # We hijack this pass to potentially trade multiple symbols.
-                                    
-                                    candidates_to_trade = []
-                                    for s in ms:
-                                        if s and s.endswith(req_suffix):
-                                            candidates_to_trade.append(s)
-                                            
-                                    if not candidates_to_trade:
-                                        self.safe_print(f"   [SKIP] Index is {side}, but no *{req_suffix} symbol found in manual list.")
-                                        break # Stop this cycle
-                                    
-                                    # --- SPECIAL MULTI-EXECUTION LOOP FOR MANUAL MODE ---
-                                    for candidate in candidates_to_trade:
-                                        # (Loop body logic reused below for each candidate)
-                                        # We need to manually invoke the checking logic here to support multiple trades
-                                        # Or better: We append them to a queue?
-                                        # Simplest architecture: Treat 'candidates' as the loop.
-                                        pass 
-                                    
-                                    # Architecture limitation: The outer loop expects 1 candidate per 'attempt_step'.
-                                    # Hack: In Manual mode, let's treat 'candidates_to_trade' as the 'strike_attempts'.
-                                    # BUT 'strike_attempts' is integers (offsets).
-                                    # FIX: We will flatten the logic.
-                                else:
-                                    # AUTO MODE Resolution
-                                    candidate = get_strike_symbol(index_price, side, offset=attempt_step, 
-                                                                 expiry_type=ss.get("expiry", "WEEKLY"), 
-                                                                 expiry_offset=ss.get("offset", 0))
-                                    candidates_to_trade = [candidate] if candidate else []
+                                # PORTFOLIO MODE: Scan ALL symbols for valid matches
+                                # Instead of finding one and breaking, we iterate through the list
+                                # Note: The outer loop 'strike_attempts' is logically [0] for manual.
+                                # We hijack this pass to potentially trade multiple symbols.
                                 
-                                # --- UNIFIED EXECUTION LOOP ---
-                                # Process every candidate identified in this step (1 for Auto, N for Manual)
+                                candidates_to_trade = []
+                                for s in ms:
+                                    if s and s.endswith(req_suffix):
+                                        candidates_to_trade.append(s)
+                                        
+                                if not candidates_to_trade:
+                                    self.safe_print(f"   [SKIP] Index is {side}, but no *{req_suffix} symbol found in manual list.")
+                                    break # Stop this cycle
+                                
+                                # --- SPECIAL MULTI-EXECUTION LOOP FOR MANUAL MODE ---
                                 for candidate in candidates_to_trade:
-                                    if not candidate: continue
+                                    # (Loop body logic reused below for each candidate)
+                                    # We need to manually invoke the checking logic here to support multiple trades
+                                    # Or better: We append them to a queue?
+                                    # Simplest architecture: Treat 'candidates' as the loop.
+                                    pass 
                                 
-                                    # Check if this candidate is blocked by RE-ENTRY COOLDOWN
-                                    is_blocked = False
-                                    if re_entry.get("enabled", False) and candidate in self.exit_blacklist:
-                                        exit_info = self.exit_blacklist[candidate]
-                                        time_since_exit = (datetime.now() - exit_info["exit_time"]).seconds / 60
-                                        
-                                        # DYNAMIC COOLDOWN: Based on exit reason (profit/loss/reversal)
-                                        exit_reason = exit_info.get("reason", "UNKNOWN")
-                                        if "PROFIT" in exit_reason or exit_info.get("pnl", 0) > 0:
-                                            cooldown_mins = re_entry.get("cooldown_after_profit_mins", 5)
-                                        elif "LOSS" in exit_reason or exit_info.get("pnl", 0) < 0:
-                                            cooldown_mins = re_entry.get("cooldown_after_loss_mins", 30)
-                                        else:  # REVERSAL or other
-                                            cooldown_mins = re_entry.get("cooldown_after_reversal_mins", 15)
-                                        
-                                        if time_since_exit < cooldown_mins:
-                                            is_blocked = True
-                                            self.safe_print(f"   [BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
+                                # Architecture limitation: The outer loop expects 1 candidate per 'attempt_step'.
+                                # Hack: In Manual mode, let's treat 'candidates_to_trade' as the 'strike_attempts'.
+                                # BUT 'strike_attempts' is integers (offsets).
+                                # FIX: We will flatten the logic.
+                            else:
+                                # AUTO MODE Resolution
+                                candidate = get_strike_symbol(index_price, side, offset=attempt_step, 
+                                                             expiry_type=ss.get("expiry", "WEEKLY"), 
+                                                             expiry_offset=ss.get("offset", 0))
+                                candidates_to_trade = [candidate] if candidate else []
+                            
+                            # --- UNIFIED EXECUTION LOOP ---
+                            # Process every candidate identified in this step (1 for Auto, N for Manual)
+                            for candidate in candidates_to_trade:
+                                if not candidate: continue
+                            
+                                # Check if this candidate is blocked by RE-ENTRY COOLDOWN
+                                is_blocked = False
+                                if re_entry.get("enabled", False) and candidate in self.exit_blacklist:
+                                    exit_info = self.exit_blacklist[candidate]
+                                    time_since_exit = (datetime.now() - exit_info["exit_time"]).seconds / 60
                                     
-                                    if not is_blocked:
-                                        target = candidate
+                                    # DYNAMIC COOLDOWN: Based on exit reason (profit/loss/reversal)
+                                    exit_reason = exit_info.get("reason", "UNKNOWN")
+                                    if "PROFIT" in exit_reason or exit_info.get("pnl", 0) > 0:
+                                        cooldown_mins = re_entry.get("cooldown_after_profit_mins", 5)
+                                    elif "LOSS" in exit_reason or exit_info.get("pnl", 0) < 0:
+                                        cooldown_mins = re_entry.get("cooldown_after_loss_mins", 30)
+                                    else:  # REVERSAL or other
+                                        cooldown_mins = re_entry.get("cooldown_after_reversal_mins", 15)
+                                    
+                                    if time_since_exit < cooldown_mins:
+                                        is_blocked = True
+                                        self.safe_print(f"   [BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
+                                
+                                if not is_blocked:
+                                    target = candidate
+                                    
+                                    # --- INTEGRATED VALIDATION & ENTRY ---
+                                    if target and target not in self.trades and len(self.trades) < max_pos:
+                                        validation_passed = True
                                         
-                                        # --- INTEGRATED VALIDATION & ENTRY ---
-                                        if target and target not in self.trades and len(self.trades) < max_pos:
-                                            validation_passed = True
-                                            
-                                            # 1. Check trading hours
-                                            time_ok, time_msg = self.is_within_trading_hours()
-                                            if not time_ok:
-                                                print(f"   [BLOCKED] {time_msg}")
+                                        # 1. Check trading hours
+                                        time_ok, time_msg = self.is_within_trading_hours()
+                                        if not time_ok:
+                                            print(f"   [BLOCKED] {time_msg}")
+                                            validation_passed = False
+                                        
+                                        # 2. Check daily limits
+                                        if validation_passed:
+                                            limits_ok, limits_msg = self.check_daily_limits()
+                                            if not limits_ok:
+                                                print(f"   [BLOCKED] {limits_msg}")
                                                 validation_passed = False
-                                            
-                                            # 2. Check daily limits
-                                            if validation_passed:
-                                                limits_ok, limits_msg = self.check_daily_limits()
-                                                if not limits_ok:
-                                                    print(f"   [BLOCKED] {limits_msg}")
+                                        
+                                        # 3. Check DTE
+                                        if validation_passed:
+                                            er = CONFIG.get("expiry_rules", {})
+                                            if er.get("avoid_new_entry_on_expiry", False):
+                                                dte = self.get_days_to_expiry(target)
+                                                min_dte = er.get("min_dte", 1)
+                                                if dte < min_dte:
+                                                    print(f"   [BLOCKED] {target} expires in {dte} day(s) (min: {min_dte})")
                                                     validation_passed = False
-                                            
-                                            # 3. Check DTE
-                                            if validation_passed:
-                                                er = CONFIG.get("expiry_rules", {})
-                                                if er.get("avoid_new_entry_on_expiry", False):
-                                                    dte = self.get_days_to_expiry(target)
-                                                    min_dte = er.get("min_dte", 1)
-                                                    if dte < min_dte:
-                                                        print(f"   [BLOCKED] {target} expires in {dte} day(s) (min: {min_dte})")
-                                                        validation_passed = False
-                                            
-                                            # 4. Check liquidity
-                                            if validation_passed:
-                                                liq_ok, liq_msg = self.check_liquidity(target, is_final_entry=False)
-                                                if not liq_ok:
-                                                    self.safe_print(f"   [BLOCKED] {target} - {liq_msg}")
+                                        
+                                        # 4. Check liquidity
+                                        if validation_passed:
+                                            liq_ok, liq_msg = self.check_liquidity(target, is_final_entry=False)
+                                            if not liq_ok:
+                                                self.safe_print(f"   [BLOCKED] {target} - {liq_msg}")
+                                                validation_passed = False
+                                        
+                                        # 5. Check Max Option Price
+                                        if validation_passed:
+                                            max_opt_price = CONFIG.get("max_option_price", 0)
+                                            if max_opt_price > 0:
+                                                opt_ltp = self.get_live_option_price(target)
+                                                if opt_ltp > max_opt_price:
+                                                    self.safe_print(f"   [BLOCKED] Price {opt_ltp:.2f} > Limit {max_opt_price:.2f} ({target})")
                                                     validation_passed = False
-                                            
-                                            # 5. Check Max Option Price
-                                            if validation_passed:
-                                                max_opt_price = CONFIG.get("max_option_price", 0)
-                                                if max_opt_price > 0:
-                                                    opt_ltp = self.get_live_option_price(target)
-                                                    if opt_ltp > max_opt_price:
-                                                        self.safe_print(f"   [BLOCKED] Price {opt_ltp:.2f} > Limit {max_opt_price:.2f} ({target})")
-                                                        validation_passed = False
-                                            
-                                            if validation_passed:
-                                                self.safe_print(f"   [SYNC] Setting up {target}. State: OBSERVING (Stalking for surgical entry...)")
-                                                with self.lock:
-                                                    self.trades[target] = {
-                                                        "state": "OBSERVING",
-                                                        "side": side,
-                                                        "obs_candles": 0,
-                                                        "idx_at_res": index_price,
-                                                        "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
-                                                        "atr": 0.0
-                                                    }
-                                                self.safe_print("\n" + "="*50)
-                                                self.safe_print(f"   [SIGNAL] NEW {side} SETUP DETECTED!")
-                                                self.safe_print(f"   Instrument: {target}")
-                                                self.safe_print(f"   Index Ref:  {index_price:.2f}")
-                                                self.safe_print("="*50 + "\n")
-                                    
-                                    # In AUTO mode, stop after first successful resolution
-                                    if not is_manual and target in self.trades:
-                                        break
+                                        
+                                        if validation_passed:
+                                            self.safe_print(f"   [SYNC] Setting up {target}. State: OBSERVING (Stalking for surgical entry...)")
+                                            with self.lock:
+                                                self.trades[target] = {
+                                                    "state": "OBSERVING",
+                                                    "side": side,
+                                                    "obs_candles": 0,
+                                                    "idx_at_res": index_price,
+                                                    "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
+                                                    "atr": 0.0
+                                                }
+                                            self.safe_print("\n" + "="*50)
+                                            self.safe_print(f"   [TRIGGER] NEW {side} SETUP DETECTED!")
+                                            self.safe_print(f"   Instrument: {target}")
+                                            self.safe_print(f"   Index Ref:  {index_price:.2f}")
+                                            self.safe_print("="*50 + "\n")
+                                
+                                # In AUTO mode, stop after first successful resolution
+                                if not is_manual and target in self.trades:
+                                    break
 
 
         except Exception as e:

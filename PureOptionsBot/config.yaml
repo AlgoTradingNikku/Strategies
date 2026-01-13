@@ -1,4 +1,4 @@
-strategy_name: "PureOptionsBot-9:15-9:45"
+strategy_name: "PureOptionsBot"
 
 # ========================================
 # 1. ASSET SELECTION & MODE
@@ -54,15 +54,41 @@ drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points du
 # 3. ENTRY LOGIC CONTROLS
 # ========================================
 entry_logic:
-  allow_index_pullback: False      # Enable mid-trend setup detection on Index (Red-to-Green bounce)
+  # === TRIGGER MODE SELECTION ===
+  # Controls HOW the bot decides to enter trades
+  # 
+  # "SIGNAL" = Wait for fresh UTBot crossover (precise but can miss if HTF lags)
+  # "STATE"  = Enter when both timeframes are aligned (never miss, may enter slightly late)
+  
+  # -----------------------------------------
+  # INDEX TRIGGER (Phase 1 - CE/PE Strike Selection)
+  # -----------------------------------------
+  # Determines when to START looking at CE or PE strikes based on NIFTY direction.
+  # STATE mode recommended: Never miss alignment when LTF and HTF agree.
+  index_trigger_mode: "STATE"
+  index_max_trend_age: 8          # For Index STATE mode only
+                                  # Only enter if Index trend is younger than X candles
+                                  # Prevents entering exhausted/late Index trends
+  
+  # -----------------------------------------
+  # OPTION TRIGGER (Phase 2 - BUY Order Execution)
+  # -----------------------------------------
+  # Determines when to actually EXECUTE the BUY order on the selected strike.
+  # ADVISORY: SIGNAL mode is STRONGLY RECOMMENDED for options.
+  #           STATE mode may result in chasing premium at worse prices.
+  #           Only use STATE for hero-zero or high-conviction news trades.
+  option_trigger_mode: "SIGNAL"
+  option_max_trend_age: 5         # For Option STATE mode only
+                                  # Only enter if Option trend is younger than X candles
+                                  # Lower value recommended (options move faster)
+  
+  # -----------------------------------------
+  # PULLBACK ENTRY SETTINGS
+  # -----------------------------------------
+  # Works in both SIGNAL and STATE modes
+  allow_index_pullback: False     # Enable mid-trend setup detection on Index (Red-to-Green bounce)
   allow_option_pullback: True     # Enable mid-trend entry on Option Premium (Red-to-Green bounce)
-  pullback_warmup_candles: 3      # Wait for X candles in trend before allowing pullback entries
-                                # Bot signals a CALL entry when Nifty is at 22,000
-                                # Bot calculates ATM or OTM strike (say 22,050 CE)
-                                # During order preparation, Nifty suddenly jumps to 22,030 (30 point move)
-                                # Since 30 > 25 (threshold), the bot re-resolves the strike to match the new 22,030 level
-                                # Ensures you enter at an appropriately positioned strike for current market conditions
-                                # This is particularly important during volatile periods or at market open when prices can gap or move rapidly. 
+  pullback_warmup_candles: 3      # Wait for X candles in trend before allowing pullback entries 
 # ========================================
 # 3. PORTFOLIO & EXECUTION
 # ========================================
@@ -70,7 +96,7 @@ lots: 1                         # Multiplier for contract lot size (Dynamic look
 max_positions: 4                # Maximum concurrent active trades
 capital: 1000000                # for backtesting/reporting
 lookback_days: 5                # Historical data window (3-5 days is optimal for speed)
-trading_mode: "long"            # "long" or "short"
+trading_mode: "BUY"            # "BUY" (Long Options) or "SELL" (Short/Write Options)
 
 
 # ========================================
