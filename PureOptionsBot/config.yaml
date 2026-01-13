@@ -22,8 +22,12 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY13JAN2625800CE"
-    - "NIFTY13JAN2625800PE"
+    - "NIFTY20JAN2625900CE"
+    - "NIFTY20JAN2625900PE"
+    - "NIFTY20JAN2625800CE"
+    - "NIFTY20JAN2625800PE"
+    - "NIFTY20JAN2625700CE"
+    - "NIFTY20JAN2625700PE"
     
   # Price Cap Logic:
   # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
@@ -34,23 +38,23 @@ strike_selection:
 # 2. STRATEGY PARAMETERS
 # ========================================
 index:
-  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10}
-  htf: {timeframe: "5m", sensitivity: 1.0, atr: 10, enabled: True}
+  ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
+  htf: {timeframe: "15m", sensitivity: 1.0, atr: 10, enabled: True}
 
 option:
   ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10}
-  htf: {timeframe: "5m", sensitivity: 1.5, atr: 10, enabled: False}
+  htf: {timeframe: "3m", sensitivity: 1.0, atr: 10, enabled: False}
 
 option_signal_timeout: 5        # Number of actual CANDLES to wait for Option signal (e.g. 5m if on 1m chart)
 index_use_ha: True              # Use Heikin Ashi for Index signals
-option_use_ha: False            # Use Heikin Ashi for Option signals
+option_use_ha: True            # Use Heikin Ashi for Option signals
 drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points during setup
 
 # ========================================
 # 3. ENTRY LOGIC CONTROLS
 # ========================================
 entry_logic:
-  allow_index_pullback: True      # Enable mid-trend setup detection on Index (Red-to-Green bounce)
+  allow_index_pullback: False      # Enable mid-trend setup detection on Index (Red-to-Green bounce)
   allow_option_pullback: True     # Enable mid-trend entry on Option Premium (Red-to-Green bounce)
   pullback_warmup_candles: 3      # Wait for X candles in trend before allowing pullback entries
                                 # Bot signals a CALL entry when Nifty is at 22,000
@@ -79,7 +83,7 @@ trading_mode: "long"            # "long" or "short"
 #
 # ANTI-WHIPSAW TIP: Don't lock too early! Options oscillate ±3-5% normally
 be_trigger_pct: 3.0             # Wait for +3% profit before activating BE
-be_buffer_pts: 2.0              # Lock stop 2 points above entry (not tight)
+be_buffer_pts: 4.0              # Lock stop 4 points above entry (Tighter)
                                 # Example: Entry ₹120 → BE locks at ₹122
 
 # Trail distance adapts to market volatility automatically
@@ -106,17 +110,17 @@ tsl_atr_multiplier: 3.5          # Standard: 1.5 (Aggressive) to 3.5 (Conservati
 # --- Mode 2: Percentage-Based ---
 # Calculation: Peak Price - (Peak Price * Percentage/100)
 # Example: If Peak is 100 and TSL is 4%, Stop is at 96.
-tsl_percent: 4.0                 # Gap as a percentage of the peak price
+tsl_percent: 3.0                 # Tightened from 10.0% to 4.0%
 
 # --- Mode 3: Point-Based ---
 # Calculation: Peak Price - Fixed Points
 # Example: If Peak is 100 and Points is 8, Stop is at 92.
-tsl_points: 4.0                  # Fixed gap in points from the peak price
+tsl_points: 8.0                  # Fixed gap in points from the peak price
 
 # --- Safety Gap (Applicable to ALL modes) ---
 # This is the "Safety Floor". It ensures your stop loss never gets 
 # dangerously close to the price during periods of zero volatility.
-min_trailing_gap: 2.5            # Minimum gap in points (Prevents tiny whipsaws)
+min_trailing_gap: 2.0            # Increased safety floor
 
 # --- TSL Customization (Advanced) ---
 # Period for ATR calculation used in TSL (Risk Management)
