@@ -348,6 +348,16 @@ def fetch_history(symbol, exchange, start_date, end_date, interval=None, silent=
         if "timestamp" in df.columns:
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.set_index("timestamp")
+        
+        # PRESERVE OI (Case insensitive check)
+        oi_col = None
+        for col in df.columns:
+            if col.lower() in ['oi', 'openinterest', 'open_interest']:
+                oi_col = col
+                break
+        
+        if oi_col:
+            df['oi'] = df[oi_col]
         elif "time" in df.columns:
              df["timestamp"] = pd.to_datetime(df["time"])
              df = df.set_index("timestamp")
@@ -452,7 +462,11 @@ class UTBotIndicator(bt.Indicator):
         elif src_prev > prev_stop and src < prev_stop:
             current_pos = -1
         else:
-            current_pos = prev_pos
+            # FIX: Initialize trend based on price vs stop if state is neutral
+            if prev_pos == 0:
+                current_pos = 1 if src > current_stop else -1
+            else:
+                current_pos = prev_pos
         
         self.pos_state = current_pos
         self.l.pos[0] = float(current_pos)
@@ -486,9 +500,6 @@ class PureOptionsStrategy(bt.Strategy):
 
         ("index_use_ha", CONFIG.get("index_use_ha", True)),
         ("option_use_ha", CONFIG.get("option_use_ha", False)),
-        ("use_tsl", CONFIG.get("use_tsl", True)),
-        ("tsl_pct", CONFIG.get("tsl_pct", 5.0)),
-        ("live_trade", CONFIG.get("live_trade", False)),
         ("verbose", True),
     )
 
@@ -583,135 +594,67 @@ class PureOptionsStrategy(bt.Strategy):
             pct_change = (curr_price - entry_price) / entry_price if pos_dir == 1 else (entry_price - curr_price) / entry_price
             
             # --- TRAILING STOP LOSS ---
-            if self.params.use_tsl:
-                # Update Highest/Lowest Price for Trail
-                if pos_dir == 1:
-                    if self.highest_price < curr_price: self.highest_price = curr_price
+            # Update Highest/Lowest Price for Trail
+            if pos_dir == 1:
+                if self.highest_price < curr_price: self.highest_price = curr_price
 
-                    # Calculate TSL Value based on MODE
-                    tsl_val = 0.0
-                    tsl_mode = CONFIG.get('tsl_mode', 'PCT')
-                    use_atr = False
+                # Multi-Mode Trailing Stop Loss
+                mode = CONFIG.get("tsl_mode", "ATR").upper()
+                dist_pts = 0.0
 
-                    # Check Hybrid Switch
-                    if tsl_mode == 'HYBRID':
-                        trigger_type = CONFIG.get("tsl_hybrid_trigger", "PCT")
-                        if trigger_type == "POINTS":
-                            pts_gained = self.highest_price - entry_price
-                            pts_required = get_hybrid_point_threshold(entry_price)
-                            if pts_gained >= pts_required:
-                                use_atr = True
-                                if self.params.verbose:
-                                    self.log(f"   [HYBRID] Switch to ATR triggered by Points (+{pts_gained:.2f} >= {pts_required:.2f})")
-                        else:
-                            # Percentage Based Trigger
-                            profit_pct_high = (self.highest_price - entry_price) / entry_price * 100
-                            if profit_pct_high >= CONFIG.get('tsl_hybrid_threshold', 10.0):
-                                use_atr = True # Switch to ATR logic
-                                if self.params.verbose:
-                                    self.log(f"   [HYBRID] Switch to ATR triggered by % ({profit_pct_high:.2f}% >= {CONFIG.get('tsl_hybrid_threshold'):.2f}%)")
-                            else:
-                                use_atr = False # Stay on PCT logic
-                    elif tsl_mode == 'ATR':
-                        use_atr = True
+                if mode == "ATR" and len(self.atr_tsl) > 0:
+                    dist_pts = self.atr_tsl[0] * CONFIG.get('tsl_atr_multiplier', 2.5)
+                elif mode == "PERCENT":
+                    dist_pts = self.highest_price * (CONFIG.get('tsl_percent', 4.0) / 100.0)
+                elif mode == "POINTS":
+                    dist_pts = CONFIG.get('tsl_points', 8.0)
+                
+                # Enforce minimum distance
+                min_gap = CONFIG.get('min_trailing_gap', 5.0)
+                dist_pts = max(dist_pts, min_gap)
+                
+                tsl_val = self.highest_price - dist_pts
 
-                    # Calculate Stop Price
-                    if use_atr:
-                        # ATR Based Trail
-                        if len(self.atr_tsl) > 0:
-                            current_atr = self.atr_tsl[0]
-                            multiplier = CONFIG.get('tsl_atr_multiplier', 1.5)
-                            atr_stop = self.highest_price - (current_atr * multiplier)
-                            
-                            # HYBRID SAFETY: If switching from PCT to ATR, ensure we don't drop the stop
-                            if tsl_mode == 'HYBRID':
-                                # Calculate what PCT stop would be to compare
-                                pct_val_equiv = 0.0
-                                tsl_pct_equiv = self.params.tsl_pct
-                                if CONFIG.get('use_stepped_tsl'):
-                                    profit_at_high = (self.highest_price - entry_price) / entry_price * 100
-                                    for step in CONFIG.get('tsl_steps', []):
-                                        if profit_at_high < step['profit']:
-                                            tsl_pct_equiv = step['tsl']
-                                            break
-                                pct_val_equiv = self.highest_price * (1 - tsl_pct_equiv/100.0)
-                                
-                                # Take the HIGHER of the two (Safety Net)
-                                tsl_val = max(atr_stop, pct_val_equiv)
-                            else:
-                                tsl_val = atr_stop
-                        else:
-                            tsl_val = self.highest_price * 0.99 # Fallback
-                    else:
-                        # Phase 1: Point-Based or Percentage-Based Trail
-                        if tsl_mode == 'HYBRID' and CONFIG.get("tsl_hybrid_trigger") == "POINTS":
-                            # Use same points required for switch as the TSL buffer
-                            pts_required = get_hybrid_point_threshold(entry_price)
-                            tsl_val = self.highest_price - pts_required
-                        else:
-                            # Standard Percentage Based Trail (Default)
-                            tsl_pct = self.params.tsl_pct
-                            if CONFIG.get('use_stepped_tsl'):
-                                profit_at_high = (self.highest_price - entry_price) / entry_price * 100
-                                for step in CONFIG.get('tsl_steps', []):
-                                    if profit_at_high < step['profit']:
-                                        tsl_pct = step['tsl']
-                                        break
-                            tsl_val = self.highest_price * (1 - tsl_pct/100.0)
+                # --- Cost Protection (Break-Even) ---
+                if self.highest_price >= entry_price * 1.01:
+                    tsl_val = max(tsl_val, entry_price)
 
-                    # --- Cost Protection (Break-Even) ---
-                    if self.highest_price >= entry_price * 1.01:
-                        tsl_val = max(tsl_val, entry_price)
+                if curr_price <= tsl_val:
+                    self.log(f'TRAILING STOP HIT! PnL: {pct_change*100:.2f}% | Price: {curr_price:.2f} (High: {self.highest_price:.2f})')
+                    self.order = self.close(data=self.option_data)
+                    self.highest_price = 0.0
+                    return
 
-                    if curr_price <= tsl_val:
-                        self.log(f'TRAILING STOP HIT! PnL: {pct_change*100:.2f}% | Price: {curr_price:.2f} (High: {self.highest_price:.2f}, Mode: {tsl_mode})')
-                        self.order = self.close(data=self.option_data)
-                        self.highest_price = 0.0
-                        return
+            else:
+                # Short Logic
+                if self.highest_price == 0 or self.highest_price > curr_price: self.highest_price = curr_price
 
-                else:
-                    # Short Logic
-                    if self.highest_price == 0 or self.highest_price > curr_price: self.highest_price = curr_price
+                # Multi-Mode Trailing Stop Loss (Short)
+                mode = CONFIG.get("tsl_mode", "ATR").upper()
+                dist_pts = 0.0
 
-                    # Logic for Short is symmetric (Hybrid logic omitted for brevity as user mainly trades Long, but best to include basic support)
-                    # Simplified Short Logic (Supports ATR/PCT switch but skipped full hybrid safety for code brevity in this prompt context)
-                    tsl_val = 0.0
-                    tsl_mode = CONFIG.get('tsl_mode', 'PCT')
-                    use_atr = False
-                    
-                    if tsl_mode == 'HYBRID':
-                         # Simply check profit threshold for Short
-                         profit_pct_low = (entry_price - self.highest_price) / entry_price * 100
-                         use_atr = (profit_pct_low >= CONFIG.get('tsl_hybrid_threshold', 10.0))
-                    elif tsl_mode == 'ATR':
-                         use_atr = True
+                if mode == "ATR" and len(self.atr_tsl) > 0:
+                    dist_pts = self.atr_tsl[0] * CONFIG.get('tsl_atr_multiplier', 2.5)
+                elif mode == "PERCENT":
+                    dist_pts = self.highest_price * (CONFIG.get('tsl_percent', 4.0) / 100.0)
+                elif mode == "POINTS":
+                    dist_pts = CONFIG.get('tsl_points', 8.0)
 
-                    if use_atr:
-                        if len(self.atr_tsl) > 0:
-                            current_atr = self.atr_tsl[0]
-                            multiplier = CONFIG.get('tsl_atr_multiplier', 1.5)
-                            tsl_val = self.highest_price + (current_atr * multiplier)
-                        else:
-                            tsl_val = self.highest_price * 1.01
-                    else:
-                        tsl_pct = self.params.tsl_pct
-                        if CONFIG.get('use_stepped_tsl'):
-                            profit_at_low = (entry_price - self.highest_price) / entry_price * 100
-                            for step in CONFIG.get('tsl_steps', []):
-                                if profit_at_low < step['profit']:
-                                    tsl_pct = step['tsl']
-                                    break
-                        tsl_val = self.highest_price * (1 + tsl_pct/100.0)
+                # Enforce minimum distance
+                min_gap = CONFIG.get('min_trailing_gap', 5.0)
+                dist_pts = max(dist_pts, min_gap)
+                
+                tsl_val = self.highest_price + dist_pts
 
-                    # --- Cost Protection (Break-Even) ---
-                    if self.highest_price <= entry_price * 0.99:
-                        tsl_val = min(tsl_val, entry_price)
+                # --- Cost Protection (Break-Even) ---
+                if self.highest_price <= entry_price * 0.99:
+                    tsl_val = min(tsl_val, entry_price)
 
-                    if curr_price >= tsl_val:
-                        self.log(f'TRAILING STOP HIT (SHORT)! PnL: {pct_change*100:.2f}% | Price: {curr_price:.2f} (Mode: {tsl_mode})')
-                        self.order = self.close(data=self.option_data)
-                        self.highest_price = 0.0
-                        return
+                if curr_price >= tsl_val:
+                    self.log(f'TRAILING STOP HIT (SHORT)! PnL: {pct_change*100:.2f}% | Price: {curr_price:.2f}')
+                    self.order = self.close(data=self.option_data)
+                    self.highest_price = 0.0
+                    return
         
         # ENTRY LOGIC (On Index Signals)
         # ---------------------------
@@ -799,28 +742,28 @@ class PureOptionsStrategy(bt.Strategy):
                     exit_signal = self.utbot.sell_signal[0] if c_type == "Call" else self.utbot.buy_signal[0]
                 if exit_signal:
                     should_exit = True
-                     # TSL PRIORITY
-                    if self.params.use_tsl and self.highest_price > 0:
-                         # Calculate current dynamic TSL val
-                         tsl_val = 0.0
-                         tsl_mode = CONFIG.get("tsl_mode", "PCT")
-                         
-                         if tsl_mode == "ATR":
-                              tsl_val = self.highest_price - (self.atr_tsl[0] * CONFIG.get("tsl_atr_multiplier", 1.5))
-                         else:
-                             tsl_pct = self.params.tsl_pct
-                             if CONFIG.get("use_stepped_tsl"):
-                                 profit_at_high = (self.highest_price - entry_price) / entry_price * 100
-                                 for step in CONFIG.get("tsl_steps", []):
-                                     if profit_at_high < step["profit"]:
-                                         tsl_pct = step["tsl"]
-                                         break
-                             tsl_val = self.highest_price * (1 - tsl_pct/100.0)
-                         curr_price = self.option_data.close[0]
-                         # Profit-Protected: Only ignore if TSL has moved above entry
-                         if curr_price > tsl_val and tsl_val > entry_price:
-                             should_exit = False
-                             self.log(f"[FILTERED] Trend Reversed but Profit Locked (TSL {tsl_val:.2f} > Entry {entry_price:.2f}, {tsl_pct}%). Holding...")
+                    # TSL PRIORITY: Ignore exit signal if we are in profit and TSL is above entry
+                    if self.highest_price > 0:
+                        # Calculate current dynamic TSL distance based on mode
+                        mode = CONFIG.get("tsl_mode", "ATR").upper()
+                        dist_pts = 0.0
+                        if mode == "ATR" and len(self.atr_tsl) > 0:
+                             dist_pts = self.atr_tsl[0] * CONFIG.get("tsl_atr_multiplier", 2.5)
+                        elif mode == "PERCENT":
+                             dist_pts = self.highest_price * (CONFIG.get("tsl_percent", 4.0) / 100.0)
+                        elif mode == "POINTS":
+                             dist_pts = CONFIG.get("tsl_points", 8.0)
+                        
+                        min_gap = CONFIG.get("min_trailing_gap", 2.5)
+                        dist_pts = max(dist_pts, min_gap)
+                        
+                        tsl_val = self.highest_price - dist_pts
+                        curr_price = self.option_data.close[0]
+                        
+                        # Profit-Protected: Only ignore if TSL has moved above entry
+                        if curr_price > tsl_val and tsl_val > entry_price:
+                            should_exit = False
+                            self.log(f"[FILTERED] Trend Reversed but Profit Locked (TSL {tsl_val:.2f} > Entry {entry_price:.2f}). Holding...")
                     
                     if should_exit:
                         self.log(f"[EXIT SIGNAL] Index flipped @ {self.datas[0].close[0]:.2f}")
@@ -839,28 +782,28 @@ class PureOptionsStrategy(bt.Strategy):
                     exit_signal = self.utbot.buy_signal[0] if c_type == "Call" else self.utbot.sell_signal[0]
                 if exit_signal:
                     should_exit = True
-                     # TSL PRIORITY
-                    if self.params.use_tsl and self.highest_price > 0:
-                         # Calculate current dynamic TSL val
-                         tsl_val = 0.0
-                         tsl_mode = CONFIG.get("tsl_mode", "PCT")
-                         
-                         if tsl_mode == "ATR":
-                              tsl_val = self.highest_price + (self.atr_tsl[0] * CONFIG.get("tsl_atr_multiplier", 1.5))
-                         else:
-                             tsl_pct = self.params.tsl_pct
-                             if CONFIG.get("use_stepped_tsl"):
-                                 profit_at_low = (entry_price - self.highest_price) / entry_price * 100
-                                 for step in CONFIG.get("tsl_steps", []):
-                                     if profit_at_low < step["profit"]:
-                                         tsl_pct = step["tsl"]
-                                         break
-                             tsl_val = self.highest_price * (1 + tsl_pct/100.0)
-                         curr_price = self.option_data.close[0]
-                         # Short logic: Profit Locked if TSL floor is BELOW entry
-                         if curr_price < tsl_val and tsl_val < entry_price:
-                             should_exit = False
-                             self.log(f"[FILTERED] Trend Reversed but Profit Locked (TSL {tsl_val:.2f} < Entry {entry_price:.2f}, {tsl_pct}%). Holding...")
+                    # TSL PRIORITY (Short): Ignore cover signal if TSL floor is below entry
+                    if self.highest_price > 0:
+                        # Calculate current dynamic TSL distance based on mode
+                        mode = CONFIG.get("tsl_mode", "ATR").upper()
+                        dist_pts = 0.0
+                        if mode == "ATR" and len(self.atr_tsl) > 0:
+                             dist_pts = self.atr_tsl[0] * CONFIG.get("tsl_atr_multiplier", 2.5)
+                        elif mode == "PERCENT":
+                             dist_pts = self.highest_price * (CONFIG.get("tsl_percent", 4.0) / 100.0)
+                        elif mode == "POINTS":
+                             dist_pts = CONFIG.get("tsl_points", 8.0)
+                        
+                        min_gap = CONFIG.get("min_trailing_gap", 2.5)
+                        dist_pts = max(dist_pts, min_gap)
+
+                        tsl_val = self.highest_price + dist_pts
+                        curr_price = self.option_data.close[0]
+                        
+                        # Short logic: Profit Locked if TSL floor is BELOW entry
+                        if curr_price < tsl_val and tsl_val < entry_price:
+                            should_exit = False
+                            self.log(f"[FILTERED] Trend Reversed but Profit Locked (TSL {tsl_val:.2f} < Entry {entry_price:.2f}). Holding...")
                     
                     if should_exit:
                         self.log(f"[COVER SIGNAL] Index flipped @ {self.datas[0].close[0]:.2f}")
