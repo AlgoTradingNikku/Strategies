@@ -19,6 +19,42 @@ import os
 import sys
 import threading
 
+import csv
+
+class TradeReporter:
+    """
+    Handles CSV reporting for signals and trades.
+    Saves daily reports to 'reports/report_YYYY-MM-DD.csv'
+    """
+    def __init__(self):
+        self.reports_dir = os.path.join(os.path.dirname(__file__), "reports")
+        if not os.path.exists(self.reports_dir):
+            os.makedirs(self.reports_dir)
+            
+    def get_report_file(self):
+        today = datetime.now().strftime("%Y-%m-%d")
+        return os.path.join(self.reports_dir, f"report_{today}.csv")
+        
+    def log_event(self, event_type, symbol, price, details=""):
+        try:
+            filepath = self.get_report_file()
+            file_exists = os.path.exists(filepath)
+            
+            with open(filepath, 'a', newline='') as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(["Time", "Event Type", "Symbol", "Price", "Details"])
+                
+                writer.writerow([
+                    datetime.now().strftime("%H:%M:%S"),
+                    event_type,
+                    symbol,
+                    f"{price:.2f}",
+                    details
+                ])
+        except Exception as e:
+            print(f"[REPORT ERROR] {e}")
+
 class LiveTrader:
     def __init__(self):
         self.idx_symbol = None
@@ -29,6 +65,7 @@ class LiveTrader:
         # --- THREADING & WEBSOCKET ---
         self.lock = threading.Lock()
         self.is_running = True
+        self.reporter = TradeReporter() # NEW: Initialize Reporter
         self.ws_data = {} # key: symbol, value: {'ltp': 0.0, 'time': 0}
         self.master_df = None
         
@@ -231,7 +268,18 @@ class LiveTrader:
                     # A pullback is a Green candle followed by a Red candle reversal
                     if prev_close > prev_open and curr_close < curr_open: 
                          signals[i] = -2 # Still Bearish (Pullback Entry)
-                
+        
+        # DEBUG: Dump last calculation for inspection
+        if CONFIG.get("index_debug", False) and len(df) > 5:
+            last_idx = df.index[-1]
+            print(f"\n[DEBUG DEBUG] Time: {last_idx}")
+            print(f"Close: {df['Close'].iloc[-1]}, HA_Close: {df['HA_Close'].iloc[-1]}")
+            print(f"HA_High: {df['HA_High'].iloc[-1]}, HA_Low: {df['HA_Low'].iloc[-1]}")
+            print(f"ATR: {atr.iloc[-1]:.4f}, nLoss: {nLoss.iloc[-1]:.4f}")
+            print(f"Trail: {trail[-1]:.2f}, Pos: {pos[-1]}")
+            print(f"PrevTrail: {trail[-2]:.2f}, PrevPos: {pos[-2]}")
+            print("-" * 30)
+
         return pd.Series(pos, index=df.index), pd.Series(trail, index=df.index), pd.Series(signals, index=df.index)
 
     def get_trend_age(self, pos_series):
@@ -482,6 +530,20 @@ class LiveTrader:
         
         return warnings
 
+    def _try_set_exiting(self, symbol):
+        """
+        Thread-safe atomic check-and-set for EXITING state.
+        Returns True if successfully set to EXITING (caller should execute trade).
+        Returns False if already EXITING or symbol not found (caller should abort).
+        """
+        with self.lock:
+            if symbol not in self.trades:
+                return False
+            if self.trades[symbol].get("state") == "EXITING":
+                return False
+            self.trades[symbol]["state"] = "EXITING"
+            return True
+
     def manage_risk(self, symbol, curr_price, is_trend_reversed_input=None):
         """
         Handles SL, TP, 3-Stage Profit Guard, and Trend Reversal exits for a specific symbol.
@@ -493,9 +555,13 @@ class LiveTrader:
             if symbol not in self.trades:
                 return False
             trade = self.trades[symbol]
-            
-            # RACE CONDITION FIX: Abort if already handling exit
+        
+            # If already exiting or manual exit pending, skip
             if trade.get("state") == "EXITING":
+                return False
+            
+            if trade.get("manual_exit_pending", False):
+                # We already alerted user to sell. Waiting for sync to kill it.
                 return False
 
             entry = trade["entry_price"]
@@ -522,11 +588,9 @@ class LiveTrader:
                     print(f"\n   [TIME EXIT] {symbol} held {hold_duration_mins:.0f}m without sufficient profit")
                     print(f"   (PnL: {pnl_pct:.2f}% < required {min_profit}% for extended hold)")
                     
-                    # RACE CONDITION FIX: Mark as EXITING
-                    with self.lock:
-                        if symbol in self.trades:
-                             if self.trades[symbol].get("state") == "EXITING": return False
-                             self.trades[symbol]["state"] = "EXITING"
+                    # RACE CONDITION FIX: Atomic check-and-set
+                    if not self._try_set_exiting(symbol):
+                        return False
 
                     self.execute_trade("SELL", curr_price, symbol)
                     return True
@@ -627,11 +691,9 @@ class LiveTrader:
             print(f"\n   !!! [EXIT] {symbol} 3-Stage Guard: {stage} Hit !!!")
             print(f"   (Price: {curr_price:.2f} <= TSL: {tsl_price:.2f})\n")
             
-            # RACE CONDITION FIX: Mark as EXITING immediately under lock
-            with self.lock:
-                if symbol in self.trades:
-                     if self.trades[symbol].get("state") == "EXITING": return False
-                     self.trades[symbol]["state"] = "EXITING"
+            # RACE CONDITION FIX: Atomic check-and-set
+            if not self._try_set_exiting(symbol):
+                return False
             
             self.execute_trade("SELL", curr_price, symbol)
             return True
@@ -640,11 +702,9 @@ class LiveTrader:
         if trend_reversed:
             print(f"   [SIGNAL] Trend Reversed for {symbol}. Closing Position.")
             
-            # RACE CONDITION FIX: Mark as EXITING immediately under lock
-            with self.lock:
-                if symbol in self.trades:
-                     if self.trades[symbol].get("state") == "EXITING": return False
-                     self.trades[symbol]["state"] = "EXITING"
+            # RACE CONDITION FIX: Atomic check-and-set
+            if not self._try_set_exiting(symbol):
+                return False
 
             self.execute_trade("SELL", curr_price, symbol)
             return True
@@ -797,6 +857,7 @@ class LiveTrader:
                         liq_ok, liq_msg = self.check_liquidity(symbol, is_final_entry=True)
                         if liq_ok:
                             self.safe_print(f"   [CONFIRM] Option {trade['side']} {confirm_type} for {symbol}! Entering.")
+                            self.reporter.log_event("ENTRY_CONFIRMED", symbol, df_opt_ltf['Close'].iloc[-1], f"{trade['side']} - {confirm_type}")
                             self.execute_trade("BUY", df_opt_ltf['Close'].iloc[-1], symbol, 
                                               side=trade['side'], expiry_params=trade['expiry_params'], 
                                               idx_at_res=trade['idx_at_res'])
@@ -1038,6 +1099,17 @@ class LiveTrader:
                                         self.safe_print(f"   [BLOCKED] {candidate} (exited {time_since_exit:.1f}m ago, {cooldown_mins}m cooldown)")
                                 
                                 if not is_blocked:
+                                    # --- PRICE CAP CHECK ---
+                                    # Check if option is too expensive before proceeding
+                                    max_price = CONFIG.get("strike_selection", {}).get("max_option_price", 0)
+                                    if max_price > 0:
+                                        # Quick fetch of LTP to validate price
+                                        # Note: We might fetch again later for signals, but this cheap check saves processing
+                                        check_ltp = self.get_live_option_price(target)
+                                        if check_ltp > max_price:
+                                            self.safe_print(f"   [SKIP] {target} Price {check_ltp} > Cap {max_price}")
+                                            continue
+
                                     target = candidate
                                     
                                     # --- INTEGRATED VALIDATION & ENTRY ---
@@ -1094,6 +1166,10 @@ class LiveTrader:
                                                     "expiry_params": {"step": ss.get("step", 0), "expiry": ss.get("expiry", "WEEKLY"), "offset": ss.get("offset", 0)},
                                                     "atr": 0.0
                                                 }
+                                            
+                                            # REPORTING: Log Signal Detection
+                                            self.reporter.log_event("SIGNAL_DETECTED", target, index_price, f"{side} Setup ({setup_type})")
+                                            
                                             self.safe_print("\n" + "="*50)
                                             self.safe_print(f"   [TRIGGER] NEW {side} SETUP DETECTED!")
                                             self.safe_print(f"   Instrument: {target}")
@@ -1202,7 +1278,35 @@ class LiveTrader:
             is_success = False
             actual_price = price
             
+            # --- AUTO-SELL CHECK ---
+            if action == "SELL":
+                enable_auto_sell = CONFIG.get("execution", {}).get("enable_bot_auto_sell", True)
+                if not enable_auto_sell:
+                    # MANUAL MODE: Alert User, Skip API, Wait for Sync to Close
+                    msg = f"\n   [ALERT] SELL SIGNAL ({reason}) : Please Exit {symbol} Manually!"
+                    print("="*60)
+                    print(msg)
+                    print("="*60)
+                    self.safe_print(msg)
+                    
+                    # Log to report
+                    self.reporter.log_event("MANUAL_EXIT_ALERT", symbol, price, f"Exit Triggered: {reason}")
+                    
+                    with self.lock:
+                        if symbol in self.trades:
+                            # Mark as pending manual exit so we don't spam alerts
+                            # But keep state as POSITION so sync_positions can track it
+                            self.trades[symbol]["manual_exit_pending"] = True
+                            
+                            # Reset exiting state if it was set temporarily
+                            if self.trades[symbol].get("state") == "EXITING":
+                                self.trades[symbol]["state"] = "POSITION" 
+
+                    return True # Pretend success
+
             if CONFIG.get("live_trade", False):
+                self.reporter.log_event("ORDER_PLACED", symbol, price, f"{action} {qty} ({order_type})")
+                
                 print(f"   [LIVE] Executing {order_type} {action} Order for {qty} {symbol}...")
                 response = client.placesmartorder(**order_payload)
                 print(f"   [API] Order Response: {response}")
@@ -1299,6 +1403,9 @@ class LiveTrader:
                             
                             self.safe_print(f"   [TRADE RESULT] Entry: ₹{entry_price:.2f} | Exit: ₹{price:.2f} | P&L: ₹{pnl:+.2f} ({pnl_pct:+.2f}%)")
                             
+                            # REPORTING: Log Trade Result
+                            self.reporter.log_event("TRADE_EXIT", symbol, price, f"PnL: {pnl:.2f} ({pnl_pct:.2f}%)")
+                            
                             # Update daily P&L tracker
                             self.update_daily_pnl(pnl, symbol)
                             
@@ -1327,6 +1434,89 @@ class LiveTrader:
         except Exception as e:
             self.safe_print(f"   [ERROR] Order Failed for {symbol}: {e}")
 
+    def sync_positions(self):
+        """
+        Reconciles internal trade state with broker's position book.
+        Detects if a position was closed externally and removes it from memory to prevent ghost actions.
+        """
+        # HEADLESS SYNC: Only run if there are active trades to check
+        # This optimization prevents API calls when we are flat
+        if len(self.trades) == 0:
+            return
+
+        # Throttle to max once per 2 seconds (even if called faster)
+        now_ts = time.time()
+        if hasattr(self, '_last_sync_time') and (now_ts - self._last_sync_time < 2.0):
+            return
+        self._last_sync_time = now_ts
+        
+        try:
+            positions = client.positionbook()
+            if not positions:
+                # If truly empty or error, we can't reliably sync (or maybe user has NO positions). 
+                # If list is empty, it means closed or no positions.
+                # Careful: API might return error or None on failure.
+                # If API returns success but empty list, we assume 0 positions.
+                pass
+            
+            # Map Symbol -> Net Quantity
+            broker_map = {}
+            
+            # Handle API variations
+            data_list = []
+            if isinstance(positions, list):
+                data_list = positions
+            elif isinstance(positions, dict):
+                data_list = positions.get('data', [])
+            
+            if data_list:
+                for pos in data_list:
+                    sym = pos.get('symbol') or pos.get('tradingsymbol')
+                    netqty = int(pos.get('netqty', 0))
+                    if sym:
+                        broker_map[sym] = netqty
+                        
+            # Check internal trades against broker map
+            # Use list(keys) to modify dictionary safely during iteration
+            active_symbols = list(self.trades.keys())
+            
+            for sym in active_symbols:
+                with self.lock:
+                    if sym not in self.trades: continue
+                    idx_trade = self.trades[sym] 
+                    
+                    # Only check if we think we are in a POSITION (not just observing)
+                    if idx_trade.get("state") == "POSITION":
+                        curr_qty = broker_map.get(sym, 0)
+                        
+                        expected_side = idx_trade.get("side") # CALL/PUT
+                        # If we bought (Long), NetQty should be > 0. If we Sold (Short), NetQty < 0.
+                        # Actually logic:
+                        # If NetQty is 0, it is CLOSED.
+                        
+                        if curr_qty == 0:
+                            msg = f"DETECTED EXTERNAL CLOSURE for {sym} (NetQty: 0)"
+                            self.safe_print(f"\n   [SYNC] {msg}. removing...")
+                            
+                            # REPORTING: Log External Exit
+                            self.reporter.log_event("EXTERNAL_EXIT", sym, 0, "Manual/Broker Closure")
+
+                            # Add to cooldown so we don't immediately re-enter
+                            re_entry = CONFIG.get("re_entry_protection", {})
+                            if re_entry.get("enabled", False):
+                                self.exit_blacklist[sym] = {
+                                    "exit_time": datetime.now(),
+                                    "pnl": 0.0,
+                                    "reason": "EXTERNAL_EXIT"
+                                }
+                            
+                            del self.trades[sym]
+                            self.last_exit_time = datetime.now()
+
+        except Exception as e:
+            # Don't spam errors
+            pass
+
     # --- THREADED WORKERS ---
     def risk_worker(self):
         """Dedicated thread for high-speed risk monitoring of all active positions"""
@@ -1336,9 +1526,16 @@ class LiveTrader:
         
         self.safe_print("[INFO] Risk Worker (Bodyguard) started.")
         fast_interval = int(CONFIG.get("fast_check_seconds", 2))
+        
+        # Ensure fast interval isn't too fast for API
+        if fast_interval < 1: fast_interval = 1
+        
         while self.is_running:
             try:
-                # Iterate through a snapshot of active positions
+                # 1. Sync Positions first (Detect external changes)
+                self.sync_positions()
+                
+                # 2. Iterate through a snapshot of active positions
                 with self.lock:
                     pos_symbols = [s for s, t in self.trades.items() if t.get("state") == "POSITION"]
                 

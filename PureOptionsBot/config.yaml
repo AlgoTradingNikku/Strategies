@@ -22,17 +22,18 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY20JAN2625900CE"
-    - "NIFTY20JAN2625900PE"
     - "NIFTY20JAN2625800CE"
     - "NIFTY20JAN2625800PE"
     - "NIFTY20JAN2625700CE"
     - "NIFTY20JAN2625700PE"
-    
+    - "NIFTY20JAN2625600CE"
+    - "NIFTY20JAN2625600PE"
+    #- "NIFTY20JAN2625900CE"
+    #- "NIFTY20JAN2625900PE"
   # Price Cap Logic:
   # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
   # Useful for hero-zero trades or strict budget allocation.
-  max_option_price: 0          # Limit entry if Price > X. (0 = No Limit)
+  max_option_price: 100          # Limit entry if Price > X. (0 = No Limit)
   
 # ========================================
 # 2. STRATEGY PARAMETERS
@@ -48,7 +49,11 @@ option:
 option_signal_timeout: 5        # Number of actual CANDLES to wait for Option signal (e.g. 5m if on 1m chart)
 index_use_ha: True              # Use Heikin Ashi for Index signals
 option_use_ha: True            # Use Heikin Ashi for Option signals
+
 drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points during setup
+fetch_interval_seconds: 5       # Scanner Loop: Frequency of checking for NEW signals (Seconds)
+fast_check_seconds: 2           # Risk Loop: Freq of checking TSL/Exits/Sync (Bodyguard speed)
+ignore_session_check: False     # Safety: Verify API token validity (one time when bot starts) before trading (Keep False)
 
 # ========================================
 # 3. ENTRY LOGIC CONTROLS
@@ -78,7 +83,7 @@ entry_logic:
   #           STATE mode may result in chasing premium at worse prices.
   #           Only use STATE for hero-zero or high-conviction news trades.
   option_trigger_mode: "SIGNAL"
-  option_max_trend_age: 5         # For Option STATE mode only
+  option_max_trend_age: 8         # For Option STATE mode only
                                   # Only enter if Option trend is younger than X candles
                                   # Lower value recommended (options move faster)
   
@@ -163,10 +168,10 @@ re_entry_protection:
                                    # Short cooldown - it was a good exit
                                    # Quick re-entry allowed if trend continues
   
-  cooldown_after_loss_mins: 10     # TSL/Stop hit with loss (Reduced for more aggression)
+  cooldown_after_loss_mins: 5      # TSL/Stop hit with loss (Reduced for more aggression)
                                    # wait 10m to avoid immediate revenge trading
                                    
-  cooldown_after_reversal_mins: 10 # Trend reversal exit
+  cooldown_after_reversal_mins: 5  # Trend reversal exit
                                    # wait 10m for new trend to establish
                                    # Medium cooldown - trend changed
                                    # Wait for new trend to establish
@@ -205,7 +210,14 @@ execution:
   order_timeout_sec: 5          # Cancel unfilled orders after X seconds
   min_oi: 0                     # Minimum Open Interest required
   retry_count: 2                # Number of order retry attempts
+  retry_count: 2                # Number of order retry attempts
   aggressive_momentum_entry: True # Allow entry even without quotes if chart signal is fresh
+  
+  # AUTO-SELL CONTROL
+  # True: Bot places SELL orders automatically (Hands-free).
+  # False: Bot only ALERTS you to sell. You must exit manually on broker.
+  #        (Bot will sync and remove position once you close it).
+  enable_bot_auto_sell: True
 
 # ========================================
 # 6. DAILY RISK CONTROLS (NEW)
@@ -229,7 +241,7 @@ expiry_rules:
 trading_hours:
   enabled: True                 # Enforce time-based restrictions
   start_time: "09:00"           # Don't trade before (avoid opening volatility)
-  end_time: "15:30"             # Don't enter new trades after
+  end_time: "15:15"             # Don't enter new trades after
   avoid_lunch: false            # True: Pause during lunch hour
   lunch_start: "12:30"
   lunch_end: "13:30"
@@ -249,10 +261,7 @@ greeks_monitoring:
 api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
-use_threading: True
-fetch_interval_seconds: 15
-fast_check_seconds: 2
-ignore_session_check: False
+use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
 
 
 # Note: BREAK-EVEN logic is still active. 
