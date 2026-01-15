@@ -72,7 +72,7 @@ entry_logic:
   # STATE mode recommended: Never miss alignment when LTF and HTF agree.
   index_trigger_mode: "STATE"
   index_max_trend_age: 8          # For Index STATE mode only
-                                  # Only enter if Index trend is younger than X candles
+                                  # Only enter if Index trend (in ltf) is younger than X candles
                                   # Prevents entering exhausted/late Index trends
   
   # -----------------------------------------

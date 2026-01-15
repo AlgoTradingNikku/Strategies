@@ -1584,8 +1584,27 @@ class LiveTrader:
         
         try:
             client.ws_url = ws_url
-            client.connect()
-            print("[INFO] Websocket Connected.")
+            
+            # Try to connect
+            try:
+                client.connect()
+                
+                # Wait for connection to establish
+                time.sleep(2)
+                
+                # Robust verification
+                if hasattr(client, 'ws') and client.ws and hasattr(client.ws, 'sock') and client.ws.sock:
+                    print("[INFO] Websocket Connected.")
+                else:
+                    now_str = datetime.now().strftime("%H:%M:%S")
+                    print(f"[{now_str}] [WARN] WebSocket connection failed (No Socket). Is OpenAlgo server running?")
+                    return # Exit worker
+                
+            except Exception as e:
+                now_str = datetime.now().strftime("%H:%M:%S")
+                self.safe_print(f"[{now_str}] [WARN] WebSocket connection failed: {e}")
+                logger.warning(f"WebSocket connection failed: {e}")
+                return  # Exit worker if connection fails
             
             while self.is_running:
                 # 1. Identify what we NEED to be subscribed to

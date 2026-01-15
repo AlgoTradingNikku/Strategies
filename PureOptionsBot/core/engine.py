@@ -15,6 +15,9 @@ import asyncio
 from typing import Dict, Optional
 from datetime import datetime
 import logging
+import time
+
+from core.state_machine import Trade, TradeState, TradeStateMachine
 
 from core.state_machine import Trade, TradeState, TradeStateMachine
 from core.persistence import TradePersistence
@@ -153,13 +156,18 @@ class TradingEngine:
         
         # Setup WebSocket if enabled
         if self.config.get("use_websocket", True):
-            await self._setup_websocket()
+            success = await self._setup_websocket()
+            if not success:
+                logger.critical("WebSocket connection failed. Aborting startup.")
+                print("\n[CRITICAL] WebSocket connection failed. Aborting startup.")
+                return # Exit start method immediately
         
         # Launch background tasks
         tasks = [
             self.signal_scanner_task(),
             self.risk_monitor_task(),
             self.position_sync_task(),
+            self.monitor_websocket_task(),
         ]
         
         try:
@@ -168,11 +176,17 @@ class TradingEngine:
             logger.info("Shutting down...")
             await self.stop()
         except Exception as e:
-            logger.error(f"Engine error: {e}", exc_info=True)
+            logger.critical(f"Engine CRASHED: {e}", exc_info=True)
+            print(f"\n[CRITICAL] Engine crashed: {e}")
             await self.stop()
     
-    async def _setup_websocket(self):
-        """Setup WebSocket connection and subscribe to symbols"""
+    async def _setup_websocket(self) -> bool:
+        """
+        Setup WebSocket connection and subscribe to symbols.
+        
+        Returns:
+            bool: True if connected successfully, False otherwise
+        """
         try:
             # Get manual strikes from config
             strike_cfg = self.config.get("strike_selection", {})
@@ -185,7 +199,7 @@ class TradingEngine:
                 symbols_to_subscribe = manual_strikes
             
             if not symbols_to_subscribe:
-                return
+                return True # No symbols needed, proceed
             
             # Build instruments list for WebSocket
             instruments = [
@@ -199,26 +213,47 @@ class TradingEngine:
             # Try to connect and subscribe
             try:
                 self.client.connect()
-                self._ws_connected = True
-                print("[INFO] Websocket Connected.")
                 
-                # Subscribe to LTP for all symbols
-                self.client.subscribe_ltp(
-                    instruments,
-                    on_data_received=self._on_ws_ltp_update
-                )
+                # Wait for connection to establish (non-blocking in client, but handshake takes time)
+                time.sleep(2)
                 
-                self._ws_subscribed_symbols = symbols_to_subscribe
-                now = datetime.now().strftime("%H:%M:%S")
-                print(f"[{now}] [WS] Subscribed to new symbols: {symbols_to_subscribe}")
+                # Robustly check if connection actually succeeded by inspecting the socket
+                if self.client.ws and self.client.ws.sock:
+                    self._ws_connected = True
+                    print("[INFO] Websocket Connected.")
+                    
+                    # Subscribe to LTP for all symbols
+                    try:
+                        self.client.subscribe_ltp(
+                            instruments,
+                            on_data_received=self._on_ws_ltp_update
+                        )
+                        
+                        self._ws_subscribed_symbols = symbols_to_subscribe
+                        now = datetime.now().strftime("%H:%M:%S")
+                        print(f"[{now}] [WS] Subscribed to new symbols: {symbols_to_subscribe}")
+                        return True
+                        
+                    except Exception as sub_error:
+                        logger.warning(f"WebSocket subscription failed: {sub_error}")
+                        print(f"[WARN] WebSocket subscription failed: {sub_error}")
+                        # Connection is up but subscription failed, treated as partial success
+                        return True
+                else:
+                    logger.warning("WebSocket connection failed: No active socket found after connect()")
+                    print("[WARN] WebSocket connection failed. Is OpenAlgo server running?")
+                    self._ws_connected = False
+                    return False
                 
             except Exception as e:
                 logger.warning(f"WebSocket connection failed: {e}")
                 print(f"[WARN] WebSocket connection failed: {e}")
                 self._ws_connected = False
+                return False
                 
         except Exception as e:
             logger.debug(f"WebSocket setup error: {e}")
+            return False
     
     def _on_ws_ltp_update(self, data):
         """Handle LTP updates from WebSocket"""
@@ -325,17 +360,53 @@ class TradingEngine:
             print(f"[{now}] HEARTBEAT | Index: {index_price:.2f} | LTF-{idx_ltf_tf}: {ltf_trend_str} | HTF-{self.config['index']['htf']['timeframe']}: {htf_trend_str}")
             print(f"[{now}] [IDLE] Scanning {index_query} @ {index_price:.2f}... ({pos_status})")
         
-        # Check for new signal
-        if signal_ltf.has_fresh_buy() or signal_ltf.has_fresh_sell():
-            if htf_aligned:
-                logger.info(
-                    f"[SIGNAL] Index {index_query}: "
-                    f"{'BUY' if signal_ltf.trend == 1 else 'SELL'} "
-                    f"Signal={signal_ltf.signal}, HTF Aligned={htf_aligned}"
-                )
+        # Check trigger mode
+        entry_logic = self.config.get("entry_logic", {})
+        index_trigger_mode = entry_logic.get("index_trigger_mode", "SIGNAL").upper()
+        
+        should_scan_options = False
+        
+        if index_trigger_mode == "SIGNAL":
+            # Original Mode: Only on FRESH signal
+            if signal_ltf.has_fresh_buy() or signal_ltf.has_fresh_sell():
+                if htf_aligned:
+                    logger.info(
+                        f"[SIGNAL] Index {index_query}: "
+                        f"{'BUY' if signal_ltf.trend == 1 else 'SELL'} "
+                        f"Signal={signal_ltf.signal}, HTF Aligned={htf_aligned}"
+                    )
+                    should_scan_options = True
+                    
+        elif index_trigger_mode == "STATE":
+            # State Mode: Continuous scanning as long as trend is valid
+            # Valid means: Trend is NOT Neutral AND HTF is Aligned
+            if signal_ltf.trend != 0 and htf_aligned:
+                # Check Trend Age
+                max_age = entry_logic.get("index_max_trend_age", 0)
                 
-                # Execute entry logic: scan manual strikes for matching setup
-                await self._scan_manual_strikes(signal_ltf, signal_htf if "index_htf" in self.indicators else None)
+                # Calculate age from trend_series in metadata
+                age = 0
+                if "trend_series" in signal_ltf.metadata:
+                    ts = signal_ltf.metadata["trend_series"]
+                    if len(ts) >= 2:
+                        curr_trend = ts.iloc[-1]
+                        # Count backwards
+                        for i in range(1, len(ts)):
+                            if ts.iloc[-i] == curr_trend:
+                                age += 1
+                            else:
+                                break
+                
+                if max_age > 0 and age > max_age:
+                    # Log rejection (throttled by loop time)
+                    # print(f"[SKIP] Index trend too old (Age: {age} > Max: {max_age})")
+                    pass
+                else:
+                    should_scan_options = True
+
+        if should_scan_options:
+            # Execute entry logic: scan manual strikes for matching setup
+            await self._scan_manual_strikes(signal_ltf, signal_htf if "index_htf" in self.indicators else None)
 
     # ========== ENTRY EXECUTION LOGIC ==========
     
@@ -426,6 +497,10 @@ class TradingEngine:
         
         # Determine which strikes to consider based on index trend
         index_trend = index_ltf_signal.trend
+        trend_str = "BULLISH" if index_trend == 1 else "BEARISH"
+        
+        # Log start of scan cycle
+        print(f"\n[SCAN] Index is {trend_str}. Checking manual strikes...")
         
         for symbol in manual_strikes:
             # Skip if already in position
@@ -442,10 +517,15 @@ class TradingEngine:
             is_pe = "PE" in symbol
             
             # Match CE with bullish index, PE with bearish index
-            if (is_ce and index_trend != 1) or (is_pe and index_trend != -1):
+            if (is_ce and index_trend != 1):
+                # print(f"[SKIP] {symbol}: Wrong side for BULLISH index")
+                continue
+            if (is_pe and index_trend != -1):
+                # print(f"[SKIP] {symbol}: Wrong side for BEARISH index")
                 continue
             
             # Fetch option data and check option-level trigger
+            print(f"[CHECK] Analyzing {symbol}...")
             await self._check_and_execute_entry(symbol, index_ltf_signal, index_htf_signal, 
                                                 index_trigger_mode, option_trigger_mode)
     
@@ -462,6 +542,7 @@ class TradingEngine:
             )
             
             if df_opt_ltf is None or len(df_opt_ltf) < 20:
+                print(f"[SKIP] {symbol}: Insufficient data")
                 return
             
             # Calculate option LTF indicator
@@ -479,25 +560,52 @@ class TradingEngine:
                 if df_opt_htf is not None:
                     opt_signal_htf = self.indicators["option_htf"].calculate(df_opt_htf, use_ha=use_ha)
                     opt_htf_aligned = (opt_signal_htf.trend == opt_signal_ltf.trend)
+                    
+                    if not opt_htf_aligned:
+                        print(f"[SKIP] {symbol}: HTF Mismatch (LTF={opt_signal_ltf.trend}, HTF={opt_signal_htf.trend})")
             
             # Apply trigger mode logic for OPTION
             option_entry_valid = False
+            rejection_reason = "No Signal"
             
             if option_trigger_mode == "SIGNAL":
                 # Wait for fresh signal
-                option_entry_valid = opt_signal_ltf.has_fresh_buy()
+                if opt_signal_ltf.has_fresh_buy():
+                    option_entry_valid = True
+                else:
+                    rejection_reason = "Waiting for fresh BUY signal"
+
             elif option_trigger_mode == "STATE":
                 # Check if in correct state (both LTF+HTF aligned)
-                option_entry_valid = (opt_signal_ltf.trend == 1 and opt_htf_aligned)
+                if opt_signal_ltf.trend == 1 and opt_htf_aligned:
+                    option_entry_valid = True
+                else:
+                    rejection_reason = "Not in BULLISH state"
                 
                 # Apply trend age filter if configured
-                max_age = self.config.get("entry_logic", {}).get("option_max_trend_age", 8)
-                if option_entry_valid and max_age > 0:
-                    # Would need to implement trend age calculation like old bot
-                    # For now, skip age check
-                    pass
+                if option_entry_valid:
+                    entry_logic = self.config.get("entry_logic", {})
+                    max_age_opt = entry_logic.get("option_max_trend_age", 8)
+                    
+                    if max_age_opt > 0:
+                        age = 0
+                        if "trend_series" in opt_signal_ltf.metadata:
+                            ts = opt_signal_ltf.metadata["trend_series"]
+                            if len(ts) >= 2:
+                                curr_trend = ts.iloc[-1]
+                                # Count backwards
+                                for i in range(1, len(ts)):
+                                    if ts.iloc[-i] == curr_trend:
+                                        age += 1
+                                    else:
+                                        break
+                        
+                        if age > max_age_opt:
+                            option_entry_valid = False
+                            rejection_reason = f"Trend too old (Age: {age} > Max: {max_age_opt})"
             
             if not option_entry_valid:
+                print(f"[SKIP] {symbol}: {rejection_reason}")
                 return
             
             # Check max option price cap
@@ -505,9 +613,11 @@ class TradingEngine:
             max_price = self.config.get("strike_selection", {}).get("max_option_price", 0)
             if max_price > 0 and current_price > max_price:
                 logger.info(f"[SKIP] {symbol} price {current_price:.2f} > max {max_price}")
+                print(f"[SKIP] {symbol}: Price {current_price:.2f} > Limit {max_price}")
                 return
             
             # All conditions met - execute entry!
+            print(f"[TRIGGER] {symbol}: Valid setup found! Executing BUY...")
             await self._execute_entry(symbol, current_price, index_ltf_signal.trend)
             
         except Exception as e:
@@ -581,28 +691,31 @@ class TradingEngine:
     async def risk_monitor_task(self):
         """
         Monitor active positions for risk management (every 1s).
-        
-        Flow:
-        1. Get live prices for all active positions
-        2. Evaluate TSL/profit guards
-        3. Execute exits if needed
         """
         logger.info("[TASK] Risk monitor started")
         
+        counter = 0
         while self.running:
             try:
-                await self._monitor_risk()
+                await self._monitor_risk(report=(counter % 10 == 0))
+                counter += 1
             except Exception as e:
                 logger.error(f"Risk monitor error: {e}", exc_info=True)
             
             # Run every 1 second (fast for TSL)
             await asyncio.sleep(1)
     
-    async def _monitor_risk(self):
+    async def _monitor_risk(self, report: bool = False):
         """Monitor risk for all active positions"""
-        for symbol, trade in list(self.trades.items()):
-            if trade.state != TradeState.POSITION:
-                continue
+        active_trades = [t for t in self.trades.values() if t.state == TradeState.POSITION]
+        
+        # Periodic "Still Alive" log for risk monitor if positions exist
+        if report and active_trades:
+            # print(".", end="", flush=True) # Minimalist heartbeat
+            pass
+
+        for trade in active_trades:
+            symbol = trade.symbol
             
             # Get live price
             price = await self.data_provider.get_live_price(symbol, exchange="NFO")
@@ -612,8 +725,15 @@ class TradingEngine:
             # Evaluate risk
             decision = self.risk_manager.evaluate(trade, price, is_trend_reversed=False)
             
+            # Calculate current P&L for display
+            curr_pnl = (price - trade.entry_price) * trade.quantity
+            if trade.side == "PUT":
+                 curr_pnl = (trade.entry_price - price) * trade.quantity
+            curr_pnl_pct = (curr_pnl / (trade.entry_price * trade.quantity)) * 100
+            
             # Update TSL level
             if decision.new_tsl_level > 0:
+                print(f"[RISK] {symbol}: TSL moved to {decision.new_tsl_level:.2f} (Stage: {decision.new_stage})")
                 trade = Trade(**{
                     **trade.__dict__,
                     "tsl_level": decision.new_tsl_level,
@@ -624,12 +744,18 @@ class TradingEngine:
             
             # Exit if needed
             if decision.should_exit:
+                print(f"[RISK] Triggering EXIT for {symbol}: {decision.message}")
                 logger.info(f"[EXIT] {symbol}: {decision.message}")
                 await self._execute_exit(trade, decision.reason.value)
-    
+            
+            # Periodic status report per position
+            if report:
+                print(f"[STATUS] {symbol} @ {price:.2f} | P&L: ₹{curr_pnl:.2f} ({curr_pnl_pct:.2f}%) | TSL: {trade.tsl_level:.2f}")
+
     async def _execute_exit(self, trade: Trade, reason: str):
         """Execute exit order"""
         # Transition to EXITING
+        print(f"[EXIT] Sending Market Order for {trade.symbol}...")
         trade = TradeStateMachine.transition(trade, TradeState.EXITING)
         self.trades[trade.symbol] = trade
         self.persistence.save_trade(trade)
@@ -731,3 +857,63 @@ class TradingEngine:
                 trade = TradeStateMachine.transition(trade, TradeState.EXITED, "External Closure")
                 self.persistence.archive_trade(trade)
                 del self.trades[symbol]
+                
+    async def monitor_websocket_task(self):
+        """
+        Monitor WebSocket connection and reconnect if dropped (every 5s).
+        """
+        logger.info("[TASK] WebSocket monitor started")
+        
+        while self.running:
+            try:
+                # If WebSocket functionality is enabled but not connected
+                if self.config.get("use_websocket", True):
+                    # Check connection state
+                    is_connected = False
+                    if self.client and hasattr(self.client, 'ws') and self.client.ws:
+                        if hasattr(self.client.ws, 'sock') and self.client.ws.sock:
+                            is_connected = True
+                            self._ws_connected = True # Update internal flag
+                    
+                    if not is_connected:
+                        if self._ws_connected:
+                            logger.warning("WebSocket disconnection detected!")
+                            print("\n[WARN] WebSocket lost! Attempting reconnect...")
+                            self._ws_connected = False
+                        
+                        # Attempt reconnection
+                        await self._reconnect_websocket()
+                    
+            except Exception as e:
+                logger.error(f"WebSocket monitor error: {e}")
+            
+            # Run every 5 seconds
+            await asyncio.sleep(5)
+
+    async def _reconnect_websocket(self):
+        """Attempt to reconnect WebSocket"""
+        try:
+            print("[INFO] Reconnecting to WebSocket...")
+            
+            # 1. Disconnect existing if any
+            try:
+                if self.client:
+                    self.client.disconnect()
+            except:
+                pass
+                
+            # 2. Wait a bit before reconnecting
+            await asyncio.sleep(2)
+            
+            # 3. Setup again (connect + subscribe)
+            success = await self._setup_websocket()
+            
+            if success:
+                logger.info("WebSocket successfully reconnected")
+                print("[INFO] WebSocket successfully reconnected.")
+            else:
+                logger.warning("WebSocket reconnection failed")
+                # print("[WARN] WebSocket reconnection failed.")
+                
+        except Exception as e:
+            logger.error(f"Reconnection error: {e}")

@@ -29,7 +29,7 @@ def setup_logging():
     """Configure logging"""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('bot.log'),
             logging.StreamHandler()
@@ -178,15 +178,71 @@ async def main():
         logger.warning("Running in mock mode - no real orders will be placed")
         client = None
     
-    # Fetch security master (optional info)
+    # Fetch security master (with caching)
     if client:
         try:
-            print("[INFO] Fetching security master from API...")
-            instruments = client.instruments(exchange="NSE")
-            if instruments is not None and len(instruments) > 0:
-                print(f"[INFO] Master fetched ({len(instruments)} instruments).")
+            import pickle
+            import os
+            from datetime import date
+            
+            cache_file = "instruments_cache.pkl"
+            instruments = None
+            loaded_from_cache = False
+            
+            # Check cache validity
+            if os.path.exists(cache_file):
+                mtime = date.fromtimestamp(os.path.getmtime(cache_file))
+                if mtime == date.today():
+                    try:
+                        with open(cache_file, "rb") as f:
+                            instruments = pickle.load(f)
+                        print(f"[INFO] Master loaded from cache ({len(instruments)} instruments).")
+                        loaded_from_cache = True
+                    except Exception as e:
+                        logger.warning(f"Failed to load cache: {e}")
+            
+            # Fetch from API if not in cache
+            should_fetch = False
+            if instruments is None:
+                should_fetch = True
+            elif isinstance(instruments, list) and len(instruments) == 0:
+                should_fetch = True
+            elif hasattr(instruments, 'empty') and instruments.empty:
+                should_fetch = True
+
+            if should_fetch:
+                print("[INFO] Fetching security master from API (this may take a moment)...")
+                instruments = client.instruments(exchange="NSE")
+                
+                has_data = False
+                if instruments is not None:
+                    if isinstance(instruments, list) and len(instruments) > 0:
+                        has_data = True
+                    elif hasattr(instruments, 'empty') and not instruments.empty:
+                        has_data = True
+                
+                if has_data:
+                    count = len(instruments)
+                    print(f"[INFO] Master fetched from API ({count} instruments).")
+                    
+                    # Save to cache
+                    try:
+                        with open(cache_file, "wb") as f:
+                            pickle.dump(instruments, f)
+                        print(f"[INFO] Master saved to {cache_file}")
+                    except Exception as e:
+                        logger.warning(f"Failed to write cache: {e}")
+                else:
+                    print("[WARN] API returned empty instrument list.")
+
+            # Pass instruments to engine if needed (currently engine doesn't explicitly take it, 
+            # but we can set it on the client or engine if the architecture supports it.
+            # The original code just printed the count, so we'll stick to that for now 
+            # unless we need to inject it into the engine)
+            
         except Exception as e:
-            logger.debug(f"Could not fetch instruments: {e}")
+            logger.debug(f"Could not fetch/cache instruments: {e}")
+            print(f"[WARN] Security master error: {e}")
     
     # Create and start trading engine
     try:
