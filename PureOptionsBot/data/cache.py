@@ -141,6 +141,21 @@ class MarketDataCache:
         key = f"{symbol}_{indicator_name}_{params}"
         self._indicator_cache[key] = result
     
+    # === MASTER CONTRACT CACHE ===
+    
+    def get_master_info(self, symbol: str) -> Optional[Dict]:
+        """Get cached master info (lot size, etc.)"""
+        # Master cache is simple dict (no TTL needed for session)
+        if not hasattr(self, "_master_cache"):
+            self._master_cache = {}
+        return self._master_cache.get(symbol)
+
+    def set_master_info(self, symbol: str, info: Dict):
+        """Cache master info"""
+        if not hasattr(self, "_master_cache"):
+            self._master_cache = {}
+        self._master_cache[symbol] = info
+    
     # === UTILITIES ===
     
     def invalidate_symbol(self, symbol: str):

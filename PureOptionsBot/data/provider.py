@@ -260,6 +260,70 @@ class MarketDataProvider:
         
         return df
     
+    # === MASTER / INSTRUMENT DATA ===
+    
+    async def get_lot_size(self, symbol: str, exchange: str = "NFO") -> int:
+        """
+        Get lot size for a symbol (cached).
+        
+        Args:
+            symbol: Symbol (e.g., "NIFTY24JAN21500CE")
+            exchange: Exchange
+            
+        Returns:
+            Lot size (int) or 75 (default)
+        """
+        # Check cache
+        cached = self.cache.get_master_info(symbol)
+        if cached:
+            return int(cached.get("lotsize", 75))
+            
+        # Cache miss: Fetch FULL master from API (once per session ideally)
+        print(f"[INFO] Cache miss for {symbol}. Fetching Security Master for {exchange}...")
+        try:
+             # Run sync API call in executor
+            loop = asyncio.get_event_loop()
+            
+            # CORRECT METHOD: instruments (not get_master)
+            master = await loop.run_in_executor(
+                None,
+                lambda: self.client.instruments(exchange=exchange)
+            )
+            
+            if master:
+                count = 0
+                target_lot_size = 75
+                
+                # Check format of 'master'
+                # usually it's a list of dicts: [{'token':..., 'symbol':..., 'lotsize':...}, ...]
+                
+                iterator = master
+                if isinstance(master, dict) and 'data' in master:
+                    iterator = master['data']
+                
+                if isinstance(iterator, list):
+                    for details in iterator:
+                        sym = details.get("symbol")
+                        # Some APIs use 'trading_symbol' or 'symbol'
+                        if not sym:
+                            sym = details.get("trading_symbol")
+                            
+                        if sym:
+                            self.cache.set_master_info(sym, details)
+                            count += 1
+                            if sym == symbol:
+                                target_lot_size = int(details.get("lotsize", 75))
+                    
+                    print(f"[INFO] Security Master cached {count} instruments.")
+                    return target_lot_size
+                else:
+                    print(f"[WARN] Unknown master format: {type(master)}")
+
+        except Exception as e:
+            print(f"[WARN] Failed to fetch Security Master: {e}")
+            
+        return 75 # Default fallback
+    
     # === WEBSOCKET (Future) ===
     
     async def subscribe_symbols(self, symbols: List[str]):

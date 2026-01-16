@@ -266,6 +266,21 @@ class RiskManager:
         self.daily_pnl = 0.0
         self.daily_trades = 0
     
+    def update_config(self, new_config: dict):
+        """Update configuration dynamically"""
+        self.config = new_config
+        
+        # Re-initialize TSL manager with new config
+        tsl_config = new_config.get("tsl", {})
+        self.tsl_manager = TrailingStopManager(tsl_config)
+        
+        # Update other params
+        self.enable_time_exit = new_config.get("enable_time_based_exit", False)
+        self.max_hold_minutes = new_config.get("max_hold_minutes", 60)
+        self.daily_loss_limit = new_config.get("daily_loss_limit", -5000)
+        self.daily_profit_target = new_config.get("daily_profit_target", 10000)
+        self.exit_on_reversal = new_config.get("exit_on_reversal", True)
+
     def get_daily_stats(self) -> dict:
         """Get current daily statistics"""
         return {

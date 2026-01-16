@@ -22,12 +22,12 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY20JAN2625800CE"
-    - "NIFTY20JAN2625800PE"
     - "NIFTY20JAN2625700CE"
     - "NIFTY20JAN2625700PE"
     - "NIFTY20JAN2625600CE"
     - "NIFTY20JAN2625600PE"
+    - "NIFTY20JAN2625500CE"
+    - "NIFTY20JAN2625500PE"
     #- "NIFTY20JAN2625900CE"
     #- "NIFTY20JAN2625900PE"
   # Price Cap Logic:
@@ -59,33 +59,33 @@ ignore_session_check: False     # Safety: Verify API token validity (one time wh
 # 3. ENTRY LOGIC CONTROLS
 # ========================================
 entry_logic:
-  # === TRIGGER MODE SELECTION ===
-  # Controls HOW the bot decides to enter trades
-  # 
-  # "SIGNAL" = Wait for fresh UTBot crossover (precise but can miss if HTF lags)
-  # "STATE"  = Enter when both timeframes are aligned (never miss, may enter slightly late)
-  
   # -----------------------------------------
   # INDEX TRIGGER (Phase 1 - CE/PE Strike Selection)
   # -----------------------------------------
-  # Determines when to START looking at CE or PE strikes based on NIFTY direction.
-  # STATE mode recommended: Never miss alignment when LTF and HTF agree.
-  index_trigger_mode: "STATE"
-  index_max_trend_age: 8          # For Index STATE mode only
-                                  # Only enter if Index trend (in ltf) is younger than X candles
-                                  # Prevents entering exhausted/late Index trends
+  # Determines when to start looking at strikes based on Nifty trend.
+  # NIFTY: "The Green Light"
+  # Set to a huge number (e.g., 50 candles = 150 mins).
+  # Meaning: "As long as Nifty is Bullish, keep scanning."
+
+  # index_max_trend_age:
+  #   0 = SNIPER MODE: Only triggers on the exact candle Nifty turns Green.
+  #   X = WINDOW MODE: Triggers if Nifty is Green and trend is <= X candles old.
+  #       (Recommended: 2 for 3m chart = 9 min window)
+  index_max_trend_age: 50  # ltf candels 
   
   # -----------------------------------------
   # OPTION TRIGGER (Phase 2 - BUY Order Execution)
   # -----------------------------------------
-  # Determines when to actually EXECUTE the BUY order on the selected strike.
-  # ADVISORY: SIGNAL mode is STRONGLY RECOMMENDED for options.
-  #           STATE mode may result in chasing premium at worse prices.
-  #           Only use STATE for hero-zero or high-conviction news trades.
-  option_trigger_mode: "SIGNAL"
-  option_max_trend_age: 8         # For Option STATE mode only
-                                  # Only enter if Option trend is younger than X candles
-                                  # Lower value recommended (options move faster)
+  # Determines when to actually EXECUTE the BUY order.
+
+  # OPTION: "The Trigger"
+  # Keep this tight! We only want FRESH momentum.
+
+  # option_max_trend_age:
+  #   0 = SNIPER MODE: Only Buy on exact crossover candle. (Risk: Misses fast moves)
+  #   X = WINDOW MODE: Buy if Option is Bullish and trend is <= X candles old.
+  #       (Recommended: 2 for 1m chart = 3 min window)
+  option_max_trend_age: 50 # ltf candels
   
   # -----------------------------------------
   # PULLBACK ENTRY SETTINGS
@@ -234,14 +234,14 @@ risk_controls:
 # ========================================
 expiry_rules:
   avoid_new_entry_on_expiry: False   # Don't enter new trades on expiry day
-  exit_all_by_time: "15:30"         # Auto-square all positions by this time
+  exit_all_by_time: "23:30"         # Auto-square all positions by this time
   increase_tsl_on_expiry: 1.5       # Tighten stops by 50% on expiry day
   min_dte: 0                        # Minimum Days-To-Expiry (0=allow same day)
 
 trading_hours:
   enabled: True                 # Enforce time-based restrictions
   start_time: "09:00"           # Don't trade before (avoid opening volatility)
-  end_time: "15:15"             # Don't enter new trades after
+  end_time: "23:30"             # Don't enter new trades after
   avoid_lunch: false            # True: Pause during lunch hour
   lunch_start: "12:30"
   lunch_end: "13:30"

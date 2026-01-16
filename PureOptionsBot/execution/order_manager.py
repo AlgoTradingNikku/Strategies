@@ -85,6 +85,14 @@ class OrderManager:
         
         # Order tracking
         self._pending_orders: Dict[str, OrderResult] = {}
+        
+    def update_config(self, new_config: dict):
+        """Update configuration dynamically"""
+        self.config = new_config
+        self.max_retries = new_config.get("max_order_retries", 3)
+        self.retry_delay_ms = new_config.get("retry_delay_ms", 500)
+        self.limit_timeout_sec = new_config.get("limit_order_timeout", 5)
+        self.limit_poll_interval = new_config.get("limit_poll_interval", 0.5)
     
     async def place_order(
         self,
@@ -154,8 +162,8 @@ class OrderManager:
                         "price": 0,  # Market order
                         "trigger_price": 0,
                         "price_type": "MARKET",
-                        "product": product,
-                        "order_tag": "PureOptionsBot"
+                        "product": product
+                        # "order_tag": "PureOptionsBot" # Removed: Not supported by broker API
                     }
                 )
                 
@@ -238,9 +246,8 @@ class OrderManager:
                     "quantity": quantity,
                     "price": limit_price,
                     "trigger_price": 0,
-                    "price_type": "LIMIT",
-                    "product": product,
-                    "order_tag": "PureOptionsBot_LIMIT"
+                    "product": product
+                    # "order_tag": "PureOptionsBot_LIMIT" # Removed due to API error
                 }
             )
             
