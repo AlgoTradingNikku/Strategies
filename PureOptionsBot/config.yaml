@@ -36,15 +36,47 @@ strike_selection:
   max_option_price: 100          # Limit entry if Price > X. (0 = No Limit)
   
 # ========================================
-# 2. STRATEGY PARAMETERS
+# 2. STRATEGY PARAMETERS (EMA/ADX/RSI Logic)
 # ========================================
+
+# Timeframe Layers
+trend_tf: "15m"                  # Used for Bias (EMA Cross) and Trend Filter (ADX)
+execution_tf: "3m"               # Used for Entry Filters (RSI, ADX, EMA50) and UTBot Trigger
+
+strategy:
+  # Bias (Trend TF)
+  bias:
+    ema_fast: 50
+    ema_slow: 200
+  
+  # Filters (Execution TF)
+  filters:
+    adx_threshold_trend_tf: 25   # ADX on 15m must be > this
+    adx_threshold_exec_tf: 20    # ADX on 3m must be > this
+    rsi_threshold_buy: 50        # RSI on 3m must be > this for CE
+    rsi_threshold_sell: 50       # RSI on 3m must be < this for PE
+    ema_signal: 50               # Price must be same side of EMA 50 on 3m
+  
+  # Distance Guard (Execution TF)
+  # Prevents entry if too far from EMA50 (No FOMO)
+  distance_guard:
+    enabled: True
+    multiplier: 1.5              # Distance <= X * ATR_3m
+                                 # 3m: 1.5, 5m: 1.7, 10m: 2.0, 15m: 2.3
+
+# Indicator Reference Tables (From Images):
+# ---------------------------------------------------------
+# ADX Thresholds | Exec (3m/5m: 20, 10m/15m: 18) | Trend (3m: 25, 5m: 23, 10m: 22, 15m: 20)
+# RSI Buy/Sell   | 3m: 50/50 | 5m: 52/48 | 10m: 53/47 | 15m: 55/45
+# UTBot (Index)  | 3m: 10/2.0 | 5m: 10/2.2 | 10m: 14/2.5 | 15m: 14/3.0
+# ---------------------------------------------------------
+
 index:
-  ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
-  htf: {timeframe: "15m", sensitivity: 1.0, atr: 10, enabled: True}
+  ltf: {timeframe: "3m", sensitivity: 2.0, atr: 10, min_bars: 50}
+  htf: {timeframe: "15m", sensitivity: 3.0, atr: 14, min_bars: 100} #For EMA200 min bar 200. For testing kept 100
 
 option:
-  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10}
-  htf: {timeframe: "3m", sensitivity: 1.0, atr: 10, enabled: False}
+  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10, min_bars: 20}
 
 option_signal_timeout: 5        # Number of actual CANDLES to wait for Option signal (e.g. 5m if on 1m chart)
 index_use_ha: True              # Use Heikin Ashi for Index signals
@@ -295,7 +327,6 @@ use_threading: True             # Run Scanner & Risk Manager in parallel (Recomm
 #   htf: {timeframe: "15m", sensitivity: 1.5, atr: 10, enabled: True}
 
 # Option Sensitivity: Since options move faster than the index (due to Delta/Gamma), I recommend keeping the option sensitivity 0.5 higher than the index sensitivity if you are using signal_source: "OPTION".
-# HTF Alignment: Always keep htf: enabled: True. It acts as a safety filter. If the 3m chart says "Buy" but the 15m chart says "Sell," the bot will stay out, saving you from "fake" rallies in a downtrend.
 # ATR Multiplier for TSL: In your config.yaml , the tsl_atr_multiplier is at 2.5. In volatile markets, if you find yourself getting stopped out too early, increase this to 3.5.
 
 

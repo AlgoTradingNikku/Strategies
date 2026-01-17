@@ -8,6 +8,7 @@ To add a new indicator, just register it here and use it in config.yaml.
 from typing import Type, Dict
 from .base import BaseIndicator
 from .utbot import UTBotIndicator
+from .technical import TechnicalIndicator
 
 
 class IndicatorRegistry:
@@ -31,10 +32,8 @@ class IndicatorRegistry:
     # Registry of available indicators
     _registry: Dict[str, Type[BaseIndicator]] = {
         "utbot": UTBotIndicator,
+        "technical": TechnicalIndicator,
         # Add new indicators here:
-        # "rsi": RSIIndicator,
-        # "supertrend": SupertrendIndicator,
-        # "macd": MACDIndicator,
     }
     
     @classmethod

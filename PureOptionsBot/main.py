@@ -82,11 +82,6 @@ def print_startup_banner(config: dict, logger):
     opt_ltf_sens = opt_ltf_cfg.get("sensitivity", 1.0)
     opt_ltf_atr = opt_ltf_cfg.get("atr_period", 10)
     
-    opt_htf_tf = opt_htf_cfg.get("timeframe", "3m")
-    opt_htf_sens = opt_htf_cfg.get("sensitivity", 1.0)
-    opt_htf_atr = opt_htf_cfg.get("atr_period", 10)
-    opt_htf_enabled = opt_htf_cfg.get("enabled", False)
-    
     # TSL settings
     tsl_mode = config.get("tsl_mode", "ATR").upper()
     tsl_detail = ""
@@ -97,11 +92,9 @@ def print_startup_banner(config: dict, logger):
     elif tsl_mode == "POINTS":
         tsl_detail = f"{config.get('tsl_points', 8.0)} points"
     
-    # Trigger modes
+    # Age settings
     entry_logic = config.get("entry_logic", {})
-    idx_trigger = entry_logic.get("index_trigger_mode", "SIGNAL")
     idx_max_age = entry_logic.get("index_max_trend_age", 8)
-    opt_trigger = entry_logic.get("option_trigger_mode", "SIGNAL")
     opt_max_age = entry_logic.get("option_max_trend_age", 8)
     
     # Bot mode
@@ -111,20 +104,18 @@ def print_startup_banner(config: dict, logger):
     # Print banner
     print("")
     print("=" * 60)
-    print("  PureOptionsBot v2.0 - Modular Architecture")
+    print("  PureOptionsBot v2.0 - [EMA/ADX/RSI Strategy]")
     print("=" * 60)
     print(f"Index Source:     {index_query} ({index_exchange})")
+    print(f"Trend TF:         {config.get('trend_tf', '15m')}")
+    print(f"Execution TF:     {config.get('execution_tf', '3m')}")
     print(f"Signal Source:    {signal_source}")
     if manual_strikes:
         print(f"Manual Strikes:   {manual_strikes}")
     
     # Indicator details
     print(f"utbot Index LTF:        {idx_ltf_tf} (Sens: {idx_ltf_sens}, ATR: {idx_ltf_atr})")
-    htf_status = "[ENABLED]" if idx_htf_enabled else "[DISABLED]"
-    print(f"utbot Index HTF:        {idx_htf_tf} (Sens: {idx_htf_sens}, ATR: {idx_htf_atr}) {htf_status}")
     print(f"utbot Option LTF:       {opt_ltf_tf} (Sens: {opt_ltf_sens}, ATR: {opt_ltf_atr})")
-    opt_htf_status = "[ENABLED]" if opt_htf_enabled else "[DISABLED]"
-    print(f"utbot Option HTF:       {opt_htf_tf} (Sens: {opt_htf_sens}, ATR: {opt_htf_atr}) {opt_htf_status}")
     
     # Trading config
     print(f"Bot Mode:         {mode_str}")
@@ -137,7 +128,7 @@ def print_startup_banner(config: dict, logger):
         print(f"TSL {tsl_mode}:        {tsl_detail}")
     print(f"Min Trail Gap:    {config.get('min_trailing_gap', 2.0)} points")
     print("")
-    print(f"[INFO] Trigger Modes: Index={idx_trigger} (max_age={idx_max_age}), Option={opt_trigger}" + (f" (max_age={opt_max_age})" if opt_trigger == "STATE" else ""))
+    print(f"[INFO] Trend Persistence: Index Max Age={idx_max_age}, Option Max Age={opt_max_age}")
     print("Press Ctrl+C to stop.")
     print("")
     

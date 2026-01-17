@@ -107,35 +107,35 @@ class TradingEngine:
         """Load indicators from config"""
         indicators = {}
         
-        # Index LTF
+        # --- INDEX INDICATORS ---
         idx_ltf_config = self.config.get("index", {}).get("ltf", {})
-        indicators["index_ltf"] = IndicatorRegistry.create("utbot", {
-            "sensitivity": idx_ltf_config.get("sensitivity", 1.0),
+        idx_htf_config = self.config.get("index", {}).get("htf", {})
+        
+        # Index UTBot (Execution TF)
+        indicators["index_utbot"] = IndicatorRegistry.create("utbot", {
+            "sensitivity": idx_ltf_config.get("sensitivity", 2.0),
             "atr_period": idx_ltf_config.get("atr", 10)
         })
         
-        # Index HTF (if enabled)
-        if self.config.get("index", {}).get("htf", {}).get("enabled", False):
-            idx_htf_config = self.config["index"]["htf"]
-            indicators["index_htf"] = IndicatorRegistry.create("utbot", {
-                "sensitivity": idx_htf_config.get("sensitivity", 1.0),
-                "atr_period": idx_htf_config.get("atr", 10)
-            })
+        # Index Technicals (Execution TF)
+        indicators["index_tech_ltf"] = IndicatorRegistry.create("technical", {
+            "ema_periods": [50],
+            "rsi_period": 14,
+            "adx_period": 14
+        })
         
-        # Option LTF
+        # Index Technicals (Trend TF)
+        indicators["index_tech_htf"] = IndicatorRegistry.create("technical", {
+            "ema_periods": [50, 200],
+            "adx_period": 14
+        })
+        
+        # --- OPTION INDICATORS ---
         opt_ltf_config = self.config.get("option", {}).get("ltf", {})
         indicators["option_ltf"] = IndicatorRegistry.create("utbot", {
             "sensitivity": opt_ltf_config.get("sensitivity", 1.0),
             "atr_period": opt_ltf_config.get("atr", 10)
         })
-        
-        # Option HTF (if enabled)
-        if self.config.get("option", {}).get("htf", {}).get("enabled", False):
-            opt_htf_config = self.config["option"]["htf"]
-            indicators["option_htf"] = IndicatorRegistry.create("utbot", {
-                "sensitivity": opt_htf_config.get("sensitivity", 1.0),
-                "atr_period": opt_htf_config.get("atr", 10)
-            })
         
         return indicators
     
@@ -381,139 +381,134 @@ class TradingEngine:
             await asyncio.sleep(5)
     
     async def _scan_for_signals(self):
-        """Scan index for trading signals with heartbeat logging"""
-        # Get index symbol and exchange from config
+        """Scan index for trading signals with new EMA/ADX/RSI strategy logic"""
+        # Get index config
         index_query = self.config.get("index_query", "NIFTY")
         index_exchange = self.config.get("index_exchange", "NSE_INDEX")
+        trend_tf = self.config.get("trend_tf", "15m")
+        exec_tf = self.config.get("execution_tf", "3m")
+        use_ha = self.config.get("index_use_ha", True)
         
-        # Fetch index data (LTF)
-        idx_ltf_tf = self.config["index"]["ltf"]["timeframe"]
-        df_ltf = await self.data_provider.fetch_history(
-            index_query, idx_ltf_tf, bars=100, exchange=index_exchange
-        )
+        # 1. Fetch Historical Data (Trend and Execution TFs)
+        df_trend = await self.data_provider.fetch_history(index_query, trend_tf, bars=250, exchange=index_exchange)
+        df_exec = await self.data_provider.fetch_history(index_query, exec_tf, bars=100, exchange=index_exchange)
         
-        if df_ltf is None or len(df_ltf) < 20:
+        if df_trend is None or df_exec is None:
+            if self._heartbeat_counter % 12 == 0: # Log every minute
+                print(f"[DEBUG] Historical data fetch returned None for {index_query}. Market might be closed or API down.")
+            self._heartbeat_counter += 1
+            return
+            
+        if len(df_trend) < self.config["index"]["htf"].get("min_bars", 100) or \
+           len(df_exec) < self.config["index"]["ltf"].get("min_bars", 50):
+            if self._heartbeat_counter % 12 == 0:
+                h_min = self.config["index"]["htf"].get("min_bars", 100)
+                l_min = self.config["index"]["ltf"].get("min_bars", 50)
+                print(f"[DEBUG] Insufficient data for {index_query} (Trend: {len(df_trend)}, Exec: {len(df_exec)}). Need {h_min}/{l_min} bars.")
+            self._heartbeat_counter += 1
             return
         
-        # Get current index price
-        index_price = df_ltf['Close'].iloc[-1]
-        self._last_index_price = index_price
+        if len(df_trend) < 200:
+             if self._heartbeat_counter % 60 == 0: # Log every 5 mins
+                logger.warning(f"Using partial data for EMA200 ({len(df_trend)} bars). Bias calculation may be slightly inaccurate.")
+
+        # 2. Calculate Indicators (Trend TF)
+        tech_htf = self.indicators["index_tech_htf"].calculate(df_trend, use_ha=use_ha)
+        htf_meta = tech_htf.metadata
         
-        # Calculate LTF indicator
-        use_ha = self.config.get("index_use_ha", True)
-        signal_ltf = self.indicators["index_ltf"].calculate(df_ltf, use_ha=use_ha)
-        index_trend = signal_ltf.trend
+        # Bias Logic (15m EMA Cross)
+        ema50_htf = htf_meta["emas"].get(50)
+        ema200_htf = htf_meta["emas"].get(200)
+        adx_htf = htf_meta["adx"]
         
-        # Determine trend strings
-        ltf_trend_str = "BULLISH" if index_trend == 1 else "BEARISH" if index_trend == -1 else "NEUTRAL"
-        self._last_ltf_trend = ltf_trend_str
+        nifty_bias = "BULL" if ema50_htf > ema200_htf else "BEAR" if ema50_htf < ema200_htf else "NEUTRAL"
+        self._last_htf_trend = nifty_bias
         
-        # Check HTF alignment (if enabled)
-        htf_aligned = True
-        htf_trend_str = "OFF"
-        if "index_htf" in self.indicators:
-            idx_htf_tf = self.config["index"]["htf"]["timeframe"]
-            df_htf = await self.data_provider.fetch_history(
-                index_query, idx_htf_tf, bars=50, exchange=index_exchange
-            )
+        # 3. Calculate Indicators (Execution TF)
+        tech_ltf = self.indicators["index_tech_ltf"].calculate(df_exec, use_ha=use_ha)
+        ltf_meta = tech_ltf.metadata
+        
+        utbot_ltf = self.indicators["index_utbot"].calculate(df_exec, use_ha=use_ha)
+        self._last_ltf_trend = "BULLISH" if utbot_ltf.trend == 1 else "BEARISH" if utbot_ltf.trend == -1 else "NEUTRAL"
+        
+        price_exec = df_exec['Close'].iloc[-1]
+        self._last_index_price = price_exec
+        
+        ema50_exec = ltf_meta["emas"].get(50)
+        adx_exec = ltf_meta["adx"]
+        rsi_exec = ltf_meta["rsi"]
+        atr_exec = ltf_meta["atr"]
+        
+        # 4. Strategy Evaluation
+        strat_cfg = self.config.get("strategy", {})
+        filters_cfg = strat_cfg.get("filters", {})
+        dg_cfg = strat_cfg.get("distance_guard", {})
+        
+        # Filter Conditions
+        adx_trend_ok = adx_htf > filters_cfg.get("adx_threshold_trend_tf", 25)
+        adx_exec_ok = adx_exec > filters_cfg.get("adx_threshold_exec_tf", 20)
+        
+        # Side-specific filters
+        rsi_ok = False
+        ema50_exec_ok = False
+        if nifty_bias == "BULL":
+            rsi_ok = rsi_exec > filters_cfg.get("rsi_threshold_buy", 50)
+            ema50_exec_ok = price_exec > ema50_exec
+        elif nifty_bias == "BEAR":
+            rsi_ok = rsi_exec < filters_cfg.get("rsi_threshold_sell", 50)
+            ema50_exec_ok = price_exec < ema50_exec
             
-            if df_htf is not None:
-                signal_htf = self.indicators["index_htf"].calculate(df_htf, use_ha=use_ha)
-                htf_aligned = (signal_htf.trend == signal_ltf.trend)
-                htf_trend_str = "BULLISH" if signal_htf.trend == 1 else "BEARISH" if signal_htf.trend == -1 else "NEUTRAL"
-                self._last_htf_trend = htf_trend_str
+        # Distance Guard
+        distance = abs(price_exec - ema50_exec)
+        max_dist = dg_cfg.get("multiplier", 1.5) * atr_exec
+        distance_ok = distance <= max_dist if dg_cfg.get("enabled", True) else True
         
-        # Heartbeat logging (every 2 cycles = ~10 seconds)
+        # Final Nifty Logic Gate
+        all_filters_ok = adx_trend_ok and adx_exec_ok and rsi_ok and ema50_exec_ok and distance_ok
+        
+        # Heartbeat logging
         self._heartbeat_counter += 1
         if self._heartbeat_counter % 2 == 0:
             now = datetime.now().strftime("%H:%M:%S")
-            pos_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
-            pos_status = f"{pos_count} active" if pos_count > 0 else "No positions"
-            
-            # Print heartbeat
-            print(f"[{now}] HEARTBEAT | Index: {index_price:.2f} | LTF-{idx_ltf_tf}: {ltf_trend_str} | HTF-{self.config['index']['htf']['timeframe']}: {htf_trend_str}")
-            
-            # Detailed Active/Observing Log (Legacy Style)
-            # 1. Show Active Trades
-            if self.trades:
-                for sym, trade in self.trades.items():
-                     state = trade.state.name
-                     bias = "BULLISH" if trade.side == "CALL" else "BEARISH"
-                     print(f"   ACTIVE: {sym} | State: {state} | Bias: {bias}")
-            # 2. Show Observing Symbols (if no active trade for that symbol)
-            else:
-                 manual_strikes = self.config.get("strike_selection", {}).get("manual_strikes", [])
-                 for sym in manual_strikes:
-                     # Only show if not already in active list
-                     if sym not in self.trades:
-                         # Filter based on Index Trend (Show only aligned strikes)
-                         is_ce = "CE" in sym
-                         is_pe = "PE" in sym
-                         if (is_ce and index_trend == -1) or (is_pe and index_trend == 1):
-                            continue
+            print(f"[{now}] HEARTBEAT | Index: {price_exec:.2f} | Bias: {nifty_bias} | Filters: {'OK' if all_filters_ok else 'SKIP'}")
+            if not all_filters_ok:
+                reasons = []
+                if not adx_trend_ok: reasons.append(f"ADX-15m({adx_htf:.1f} < 25)")
+                if not adx_exec_ok: reasons.append(f"ADX-3m({adx_exec:.1f} < 20)")
+                if not rsi_ok: reasons.append(f"RSI-3m({rsi_exec:.1f})")
+                if not ema50_exec_ok: reasons.append("Price side EMA50")
+                if not distance_ok: reasons.append(f"FOMO (Dist: {distance:.1f} > {max_dist:.1f})")
+                if reasons: print(f"   REASON: {', '.join(reasons)}")
 
-                         # Get details from last scan
-                         info = self._strike_states.get(sym, {})
-                         
-                         # Determine Actual Bias from Indicator
-                         trend_val = info.get('trend', 0)
-                         bias_str = "Up" if trend_val == 1 else "Down" if trend_val == -1 else "Flat"
-                         
-                         # Get max age for display context
-                         max_age = self.config.get("entry_logic", {}).get("option_max_trend_age", 8)
-                         
-                         age_val = info.get('age', 0)
-                         age_part = f" | Signal [LTF] Age: {age_val} (<{max_age})" if 'age' in info else ""
-                         
-                         print(f"   {sym} | OBSERVING | Bias: {bias_str}{age_part}")
-        
-        # Check trigger mode based on max_trend_age
-        entry_logic = self.config.get("entry_logic", {})
-        # Defaults to 8 if not specified (Backward compatibility or safe default)
-        index_max_age = entry_logic.get("index_max_trend_age", 8)
-        
+        # 5. Trigger Check (UTBot Signal)
         should_scan_options = False
-        
-        # LOGIC 1: Sniper Mode (Age = 0)
-        # Only enter on exact crossover signal
-        if index_max_age == 0:
-            if signal_ltf.has_fresh_buy() or signal_ltf.has_fresh_sell():
-                if htf_aligned:
-                    logger.info(
-                        f"[SIGNAL] Index {index_query}: "
-                        f"{'BUY' if signal_ltf.trend == 1 else 'SELL'} "
-                        f"Signal={signal_ltf.signal}, HTF Aligned={htf_aligned}"
-                    )
+        if all_filters_ok:
+            # Check for fresh signal or age-limited trend
+            entry_logic = self.config.get("entry_logic", {})
+            max_age = entry_logic.get("index_max_trend_age", 8)
+            
+            if max_age == 0:
+                if utbot_ltf.has_fresh_buy() or utbot_ltf.has_fresh_sell():
                     should_scan_options = True
-                    
-        # LOGIC 2: Window Mode (Age > 0)
-        # Enter if trend is active and young enough
-        else:
-            # Check if trend is valid (Not Neutral) and Aligned
-            if signal_ltf.trend != 0 and htf_aligned:
-                # Calculate Trend Age
+            else:
+                # Calculate Age
                 age = 0
-                if "trend_series" in signal_ltf.metadata:
-                    ts = signal_ltf.metadata["trend_series"]
+                if "trend_series" in utbot_ltf.metadata:
+                    ts = utbot_ltf.metadata["trend_series"]
                     if len(ts) >= 2:
                         curr_trend = ts.iloc[-1]
-                        # Count backwards (how many candles has this trend existed?)
                         for i in range(1, len(ts)):
-                            if ts.iloc[-i] == curr_trend:
-                                age += 1
-                            else:
-                                break
+                            if ts.iloc[-i] == curr_trend: age += 1
+                            else: break
                 
-                if age <= index_max_age:
-                     should_scan_options = True
-                else:
-                    # Optional: Log rejection if debugging
-                    # print(f"[SKIP] Index trend too old (Age: {age} > Max: {index_max_age})")
-                    pass
+                if age <= max_age and utbot_ltf.trend != 0:
+                    should_scan_options = True
 
         if should_scan_options:
-            # Execute entry logic: scan manual strikes for matching setup
-            await self._scan_manual_strikes(signal_ltf, signal_htf if "index_htf" in self.indicators else None)
+            # Match bias side only (Safety)
+            if (nifty_bias == "BULL" and utbot_ltf.trend == 1) or \
+               (nifty_bias == "BEAR" and utbot_ltf.trend == -1):
+                await self._scan_manual_strikes(utbot_ltf)
 
     # ========== ENTRY EXECUTION LOGIC ==========
     
@@ -567,13 +562,12 @@ class TradingEngine:
         del self._exit_cooldowns[symbol]
         return False
     
-    async def _scan_manual_strikes(self, index_ltf_signal, index_htf_signal):
+    async def _scan_manual_strikes(self, index_ltf_signal):
         """
         Scan manual strikes basket for entry opportunities.
         
         Args:
             index_ltf_signal: Index LTF signal object
-            index_htf_signal: Index HTF signal object (or None)
         """
         # Check trading hours
         if not self._is_within_trading_hours():
@@ -590,17 +584,11 @@ class TradingEngine:
         mode = strike_cfg.get("mode", "AUTO").upper()
         
         if mode != "MANUAL":
-            return  # AUTO mode not implemented in modular bot yet
+            return
         
         manual_strikes = strike_cfg.get("manual_strikes", [])
         if not manual_strikes:
-            logger.warning("Manual mode enabled but no manual_strikes configured")
             return
-        
-        # Get entry logic config
-        entry_logic = self.config.get("entry_logic", {})
-        index_trigger_mode = entry_logic.get("index_trigger_mode", "SIGNAL").upper()
-        option_trigger_mode = entry_logic.get("option_trigger_mode", "SIGNAL").upper()
         
         # Determine which strikes to consider based on index trend
         index_trend = index_ltf_signal.trend
@@ -625,19 +613,15 @@ class TradingEngine:
             
             # Match CE with bullish index, PE with bearish index
             if (is_ce and index_trend != 1):
-                # print(f"[SKIP] {symbol}: Wrong side for BULLISH index")
                 continue
             if (is_pe and index_trend != -1):
-                # print(f"[SKIP] {symbol}: Wrong side for BEARISH index")
                 continue
             
             # Fetch option data and check option-level trigger
             # print(f"[CHECK] Analyzing {symbol}...")
-            await self._check_and_execute_entry(symbol, index_ltf_signal, index_htf_signal, 
-                                                index_trigger_mode, option_trigger_mode)
+            await self._check_and_execute_entry(symbol, index_ltf_signal)
     
-    async def _check_and_execute_entry(self, symbol: str, index_ltf_signal, index_htf_signal,
-                                       index_trigger_mode: str, option_trigger_mode: str):
+    async def _check_and_execute_entry(self, symbol: str, index_ltf_signal):
         """
         Check option-level conditions and execute entry if all criteria met.
         """
@@ -655,22 +639,6 @@ class TradingEngine:
             # Calculate option LTF indicator
             use_ha = self.config.get("option_use_ha", False)
             opt_signal_ltf = self.indicators["option_ltf"].calculate(df_opt_ltf, use_ha=use_ha)
-            
-            # Check option HTF alignment if enabled
-            opt_htf_aligned = True
-            opt_signal_htf = None  # Initialize to prevent UnboundLocalError
-            if "option_htf" in self.indicators:
-                opt_htf_tf = self.config["option"]["htf"]["timeframe"]
-                df_opt_htf = await self.data_provider.fetch_history(
-                    symbol, opt_htf_tf, bars=50, exchange="NFO"
-                )
-                
-                if df_opt_htf is not None:
-                    opt_signal_htf = self.indicators["option_htf"].calculate(df_opt_htf, use_ha=use_ha)
-                    opt_htf_aligned = (opt_signal_htf.trend == opt_signal_ltf.trend)
-                    
-                    if not opt_htf_aligned:
-                        pass # print(f"[SKIP] {symbol}: HTF Mismatch (LTF={opt_signal_ltf.trend}, HTF={opt_signal_htf.trend})")
             
             # Apply trigger logic for OPTION based on max_trend_age
             # Get settings (defaults to 8 for safety/backward compat)
@@ -691,7 +659,7 @@ class TradingEngine:
             # LOGIC 2: Window Mode (Age > 0)
             else:
                 # Check if in correctly aligned state
-                if opt_signal_ltf.trend == 1 and opt_htf_aligned:
+                if opt_signal_ltf.trend == 1:
                     # Calculate Age
                     # We want to know how many candles BEFORE the current one were also green.
                     age = 0
@@ -739,14 +707,14 @@ class TradingEngine:
             
             # Determine side
             side = "CALL" if "CE" in symbol else "PUT"
-            await self._execute_entry(symbol, side, current_price, opt_signal_ltf, opt_signal_htf)
+            await self._execute_entry(symbol, side, current_price, opt_signal_ltf)
             
         except Exception as e:
             logger.error(f"Entry check error for {symbol}: {e}", exc_info=True)
             self._set_cooldown(symbol, 60) # Cooldown on high-level failure
     
 
-    async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal, htf_signal):
+    async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal):
         """Execute entry order"""
         try:
             # Check cooldown again just in case
