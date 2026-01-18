@@ -1,0 +1,177 @@
+strategy_name: "Bot-Only-Strike-Chart"
+
+# ========================================
+# 1. ASSET SELECTION & MODE
+# ========================================
+live_trade: True               # Set to True for real orders, False for observation only
+index_query: "NIFTY"           # Underlying index symbol
+index_exchange: "NSE_INDEX"    # Exchange for index data
+index_use_ha: False            # False = OHLC (Recommended), True = Heikin-Ashi
+signal_source: "OPTION"        # Signal source: "INDEX" or "OPTION"
+
+# Option Contract Selection
+strike_selection:
+  mode: "MANUAL"                 # "AUTO" or "MANUAL"
+  step: 0                      # 0=ATM, -1=ITM1, 1=OTM1
+  expiry: "WEEKLY"             # "WEEKLY", "NEXT_WEEK"
+  offset: 0                    # 0 for current week, 1 for next week
+
+  # ========================================
+  # MANUAL MODE CONFIGURATION (Advanced)
+  # ========================================
+  # Provide a "Basket" of symbols to trade.
+  # The bot will scan ALL symbols in this list and execute ANY that match the logic.
+  # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
+  manual_strikes: 
+    - "NIFTY20JAN2625700CE"
+    - "NIFTY20JAN2625700PE"
+    - "NIFTY20JAN2625600CE"
+    - "NIFTY20JAN2625600PE"
+    - "NIFTY20JAN2625500CE"
+    - "NIFTY20JAN2625500PE"
+    #- "NIFTY20JAN2625900CE"
+    #- "NIFTY20JAN2625900PE"
+  # Price Cap Logic:
+  # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
+  # Useful for hero-zero trades or strict budget allocation.
+  max_option_price: 150          # Limit entry if Price > X. (0 = No Limit)
+  
+# ========================================
+# 2. STRATEGY PARAMETERS (Smart Momentum)
+# ========================================
+
+# Timeframe Layers
+trend_tf: "15m"                  # Used for Master Trend (Bias)
+execution_tf: "3m"               # Used for Signals and Confirmation
+
+# Option Chart Settings (for entry validation)
+option:
+  ltf:
+    timeframe: "3m"              # Option chart timeframe for VWAP/EMA/Volume checks
+    use_ha: False                # False = OHLC (Recommended for Options), True = HA
+
+strategy:
+  smart_momentum:
+    entry_mode: "ADVANCED"         # Options: "SIMPLE" (minimal checks) or "ADVANCED" (all filters)
+      
+# ========================================
+# ENTRY CONDITIONS (Option Chart - NEW)
+# ========================================
+# All checks are performed on the OPTION chart (3m) after UTBot signal
+entry_conditions:
+  # VWAP Checks
+  check_vwap_bullish: True       # LTP > VWAP (Entry above fair value)
+  check_vwap_cap: True           # LTP <= VWAP + (ATR * multiplier) (Not too expensive)
+  vwap_cap_atr_mult: 1.5         # Multiplier for ATR cap
+  
+  # EMA Trend Check
+  check_ema_trend: True          # EMA Fast > EMA Slow (Momentum confirmation)
+  ema_fast: 9
+  ema_slow: 21
+  
+  # Volume Check
+  check_volume: False             # Volume > Avg * multiplier
+  vol_multiplier: 1.2
+  vol_avg_period: 5              # SMA period for average volume
+  
+  # Candle Quality Check
+  check_wick_ratio: True         # Upper Wick <= Body (Reject rejection candles)
+  
+  # ADX Check (Optional - Trend Strength)
+  check_adx: True               # ADX > adx_min
+  adx_min: 20
+  adx_period: 14
+  
+  # RSI Check (Optional - Momentum)
+  check_rsi: True                # RSI > rsi_min AND RSI < rsi_max
+  rsi_min: 55                    # Minimum RSI for bullish entry
+  rsi_max: 100                   # Maximum RSI (100 = no upper limit)
+  rsi_period: 14
+
+# ========================================
+# AUTO RE-ENTRY LOGIC (Option Chart - NEW)
+# ========================================
+# Allows controlled re-entry on pullback after initial signal
+re_entry:
+  enabled: True
+  max_attempts: 2                # Max re-entry attempts per signal
+  # Pullback Conditions (all must be true):
+  # 1. Price pulls back into EMA9-EMA21 zone
+  # 2. No close below EMA21
+  # 3. Fresh bullish candle closes above EMA9
+  pullback_ema_fast: 9
+  pullback_ema_slow: 21
+
+# ========================================
+# EXIT CONDITIONS (NEW)
+# ========================================
+# Controls how trades are exited
+exit_conditions:
+  use_utbot_sell: False           # Exit on UTBot sell_signal
+  use_tsl: True                   # Keep TSL as safety net (Always recommended)
+  tsl_priority: "TSL_FIRST"    # "TSL_FIRST" = Ignore UTBot, wait for TSL
+                                  # "SIGNAL_FIRST" = Exit immediately on UTBot sell
+
+
+# ========================================
+# RE-ENTRY PROTECTION
+# ========================================
+re_entry_protection:
+  enabled: True
+  cooldown_after_loss_mins: 3    # Wait 3 mins (1 Candle3m) after a LOSS (Whipsaw protection)
+                                 # Lost on 25700CE? Cooldown for 25700CE ONLY.
+  cooldown_after_profit_mins: 0  # Wait 0 mins after a PROFIT (Immediate re-entry allowed)
+
+# ========================================
+# 3. TRADING HOURS & LIMITS
+# ========================================
+trading_hours:
+  enabled: True
+  start_time: "09:00"           # Post-opening settle
+  end_time: "23:00"             # No new trades after this
+  sq_off_time: "15:20"          # Hard exit all positions
+  avoid_lunch: False
+
+# ========================================
+# 4. EXECUTION
+# ========================================
+execution:
+  order_type: "LIMIT"           # Standard Limit Order (Capped at VWAP)
+  # limit_offset_pct removed (unused)
+  # max_spread_pct removed (unused)
+  order_timeout_sec: 8          # Wait 8s for fill then cancel
+  enable_bot_auto_sell: True    # If False, bot tracks PnL but DOES NOT SELL. User must exit manually.
+  
+  # Parallel Strike Scanning (NEW - Performance Enhancement)
+  parallel_scanning: True       # Scan all strikes simultaneously (4x faster for 4 strikes)
+  selection_mode: "PRICE"       # Options: "PRICE" (cheapest first), "CONFIG_ORDER" (list order)
+                                # Future Enhancement: "CONFIDENCE" (score-based selection)
+
+# SYSTEM CONFIGURATION (Advanced)
+system:
+  loop_intervals:
+    scanner: 5                  # Run signal scanner every 5s (Min 3s recommended)
+    risk_monitor: 1             # Run risk monitor every 1s (Min 1s recommended)
+    position_sync: 10           # Sync positions every 10s (Min 5s recommended)
+    config_monitor: 2           # Check config changes every 2s
+  
+  data_limits:
+    # trend_bars removed (unused)
+    exec_bars: 50               # Bars to fetch for Option Signal check
+    
+  cooldowns:
+    error_sec: 60               # Cooldown after error/crash (Safe mode)
+
+greeks_monitoring:
+  enabled: False                # Display option Greeks in heartbeat (Disabled as requested)
+  # When enabled, shows Delta, Gamma, Theta, Vega, IV
+  # Adds ~50-100ms per heartbeat (every 10 seconds)
+  # Set to False for maximum performance
+
+# ========================================
+# 9. API & SYSTEM
+# ========================================
+api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
+api_host: "http://127.0.0.1:5000"
+use_websocket: True
+use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
