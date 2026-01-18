@@ -6,6 +6,7 @@ strategy_name: "PureOptionsBot"
 live_trade: True               # Set to True for real orders, False for observation only
 index_query: "NIFTY"           # Underlying index symbol
 index_exchange: "NSE_INDEX"    # Exchange for index data
+index_use_ha: False            # False = OHLC (Recommended), True = Heikin-Ashi
 signal_source: "OPTION"        # Signal source: "INDEX" or "OPTION"
 
 # Option Contract Selection
@@ -33,14 +34,12 @@ strike_selection:
   # Price Cap Logic:
   # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
   # Useful for hero-zero trades or strict budget allocation.
-  max_option_price: 100          # Limit entry if Price > X. (0 = No Limit)
+  max_option_price: 150          # Limit entry if Price > X. (0 = No Limit)
   
 # ========================================
 # 2. STRATEGY PARAMETERS (Smart Momentum)
 # ========================================
 
-# Timeframe Layers
-# Timeframe Layers
 # Timeframe Layers
 trend_tf: "15m"                  # Used for Master Trend (Bias)
 execution_tf: "3m"               # Used for Signals and Confirmation
@@ -49,6 +48,7 @@ execution_tf: "3m"               # Used for Signals and Confirmation
 option:
   ltf:
     timeframe: "3m"              # Option chart timeframe for VWAP/EMA/Volume checks
+    use_ha: False                # False = OHLC (Recommended for Options), True = HA
 
 strategy:
   smart_momentum:
@@ -57,7 +57,7 @@ strategy:
     
     # MASTER TREND (NIFTY 15m/Trend TF)
     master_trend:
-      enabled: True              # Toggle: Enable/Disable Master Trend filter
+      enabled: False              # Toggle: Enable/Disable Master Trend filter
       ema_fast: 9                # Fast EMA (trend direction)
       ema_mid: 21                # Mid EMA (trend confirmation)
       ema_slow: 50               # Slow EMA (structure filter)
@@ -95,7 +95,15 @@ strategy:
       
     # WAIT LOGIC
     wait_candles: 1              # Wait X candles after signal before entering
-      
+
+# ========================================
+# RE-ENTRY PROTECTION
+# ========================================
+re_entry_protection:
+  enabled: True
+  cooldown_after_loss_mins: 3    # Wait 3 mins (1 Candle3m) after a LOSS (Whipsaw protection)
+                                 # Lost on 25700CE? Cooldown for 25700CE ONLY.
+  cooldown_after_profit_mins: 0  # Wait 0 mins after a PROFIT (Immediate re-entry allowed)
 
 # ========================================
 # 3. TRADING HOURS & LIMITS
@@ -116,6 +124,11 @@ execution:
   max_spread_pct: 0.3           # Strict spread check when check_spread: true
   order_timeout_sec: 8          # Wait 8s for fill then cancel
   enable_bot_auto_sell: True    # If False, bot tracks PnL but DOES NOT SELL. User must exit manually.
+  
+  # Parallel Strike Scanning (NEW - Performance Enhancement)
+  parallel_scanning: True       # Scan all strikes simultaneously (4x faster for 4 strikes)
+  selection_mode: "PRICE"       # Options: "PRICE" (cheapest first), "CONFIG_ORDER" (list order)
+                                # Future Enhancement: "CONFIDENCE" (score-based selection)
 
 # SYSTEM CONFIGURATION (Advanced)
 system:

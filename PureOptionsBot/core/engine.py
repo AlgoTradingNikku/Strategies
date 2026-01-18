@@ -227,16 +227,28 @@ class TradingEngine:
             
             if mode == "MANUAL":
                 manual_strikes = strike_cfg.get("manual_strikes", [])
-                symbols_to_subscribe = manual_strikes
+                symbols_to_subscribe.extend(manual_strikes)
+            
+            # Add Index to subscription list
+            index_query = self.config.get("index_query", "NIFTY")
+            if index_query and index_query not in symbols_to_subscribe:
+                symbols_to_subscribe.append(index_query)
             
             if not symbols_to_subscribe:
                 return True # No symbols needed, proceed
             
             # Build instruments list for WebSocket
-            instruments = [
-                {"exchange": "NFO", "symbol": sym}
-                for sym in symbols_to_subscribe
-            ]
+            instruments = []
+            index_exchange = self.config.get("index_exchange", "NSE_INDEX")
+            
+            for sym in symbols_to_subscribe:
+                # Determine exchange
+                if sym == index_query:
+                    exch = index_exchange
+                else:
+                    exch = "NFO"
+                
+                instruments.append({"exchange": exch, "symbol": sym})
             
             # Connect WebSocket
             ws_url = self.config.get("ws_url", "ws://127.0.0.1:8765")
@@ -288,6 +300,7 @@ class TradingEngine:
     
     def _on_ws_ltp_update(self, data):
         """Handle LTP updates from WebSocket"""
+        print(f"[DEBUG] WS Data: {data}") # Uncommented for debugging
         try:
             if isinstance(data, dict):
                 symbol = data.get("symbol", "")
@@ -663,7 +676,8 @@ class TradingEngine:
         if self._heartbeat_counter % 2 == 0:
             now = datetime.now().strftime("%H:%M:%S")
             wait_status = "WAITING" if self._signal_wait_state else "IDLE"
-            print(f"[{now}] HB | Trend: {nifty_direction} | Signal: {signal_side} | Status: {wait_status}")
+            live_nifty = self.cache.get_price(index_query) or 0.0
+            print(f"[{now}] HB | Trend: {nifty_direction} | Nifty: {live_nifty:.1f} | Signal: {signal_side} | Status: {wait_status}")
 
     # ========== ENTRY EXECUTION LOGIC ==========
     
@@ -695,22 +709,14 @@ class TradingEngine:
         """Check if symbol is in re-entry cooldown period"""
         if symbol not in self._exit_cooldowns:
             return False
-        
-        exit_time = self._exit_cooldowns[symbol]
+            
+        expiry_time = self._exit_cooldowns[symbol]
         now = datetime.now()
         
-        # Get cooldown duration from config (in minutes)
-        re_entry_cfg = self.config.get("re_entry_protection", {})
-        if not re_entry_cfg.get("enabled", True):
-            return False
-        
-        # Use a default cooldown (can be made dynamic based on exit reason)
-        cooldown_mins = re_entry_cfg.get("cooldown_after_loss_mins", 5)
-        cooldown_delta = timedelta(minutes=cooldown_mins)
-        
-        if now - exit_time < cooldown_delta:
-            remaining_secs = (exit_time + cooldown_delta - now).total_seconds()
-            logger.info(f"[COOLDOWN] {symbol} blocked for {int(remaining_secs)}s more")
+        if now < expiry_time:
+            # removing log to avoid spam
+            # remaining_secs = (expiry_time - now).total_seconds()
+            # logger.info(f"[COOLDOWN] {symbol} blocked for {int(remaining_secs)}s more")
             return True
         
         # Cooldown expired, remove from tracking
@@ -764,6 +770,25 @@ class TradingEngine:
         # Log start of scan cycle
         # print(f"\n[SCAN] Index is {trend_str} @ {self._last_index_price:.2f}. Checking manual strikes...")
         
+        # ============================================
+        # PARALLEL SCANNING (NEW)
+        # ============================================
+        exec_cfg = self.config.get("execution", {})
+        parallel_enabled = exec_cfg.get("parallel_scanning", True)
+        selection_mode = exec_cfg.get("selection_mode", "PRICE").upper()
+        
+        if parallel_enabled:
+            # Parallel Mode: Scan all strikes simultaneously
+            await self._scan_strikes_parallel(manual_strikes, target_trend, trend_str, selection_mode)
+        else:
+            # Sequential Mode (Legacy): Scan one by one
+            await self._scan_strikes_sequential(manual_strikes, target_trend, trend_str)
+    
+    async def _scan_strikes_sequential(self, manual_strikes, target_trend, trend_str):
+        """
+        Sequential strike scanning (original logic).
+        Scans strikes one by one until max_positions reached.
+        """
         for symbol in manual_strikes:
             # Skip if already in position
             if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
@@ -785,10 +810,154 @@ class TradingEngine:
                 continue
             
             # Fetch option data and check option-level trigger
-            # Pass the original signal object or a dummy structure if it was a string?
-            # _check_and_execute_entry doesn't use index_signal currently except for logging?
-            # Let's check signature.
             await self._check_and_execute_entry(symbol, "CALL" if target_trend == 1 else "PUT")
+    
+    async def _scan_strikes_parallel(self, manual_strikes, target_trend, trend_str, selection_mode):
+        """
+        Parallel strike scanning (NEW - Performance Enhancement).
+        
+        Scans all strikes simultaneously, sorts by selection criteria,
+        and executes top N based on max_positions.
+        
+        Args:
+            manual_strikes: List of strike symbols to scan
+            target_trend: 1 (CALL) or -1 (PUT)
+            trend_str: "BULLISH" or "BEARISH" (for logging)
+            selection_mode: "PRICE" or "CONFIG_ORDER"
+        """
+        # Filter strikes by direction (CE/PE match)
+        filtered_strikes = []
+        for symbol in manual_strikes:
+            # Skip if already in position
+            if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
+                continue
+            
+            # Skip if on cooldown
+            if self._is_symbol_on_cooldown(symbol):
+                continue
+            
+            # Check CE/PE match
+            is_ce = "CE" in symbol
+            is_pe = "PE" in symbol
+            
+            if (is_ce and target_trend == 1) or (is_pe and target_trend == -1):
+                filtered_strikes.append(symbol)
+        
+        if not filtered_strikes:
+            return
+        
+        # Create validation tasks for all filtered strikes
+        tasks = [
+            self._validate_single_strike(symbol, target_trend)
+            for symbol in filtered_strikes
+        ]
+        
+        # Execute all validations in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Filter valid candidates
+        valid_candidates = []
+        for result in results:
+            if isinstance(result, Exception):
+                logger.error(f"[PARALLEL] Strike validation error: {result}")
+                continue
+            
+            if result and result.get("valid", False):
+                valid_candidates.append(result)
+        
+        if not valid_candidates:
+            return
+        
+        # Sort candidates based on selection mode
+        if selection_mode == "PRICE":
+            # Sort by price (ascending = cheapest first)
+            valid_candidates.sort(key=lambda x: x.get("price", 999999))
+            logger.info(f"[PARALLEL] Sorted {len(valid_candidates)} valid strikes by PRICE")
+        elif selection_mode == "CONFIG_ORDER":
+            # Sort by original config order (preserve list order)
+            order_map = {s: i for i, s in enumerate(filtered_strikes)}
+            valid_candidates.sort(key=lambda x: order_map.get(x.get("symbol"), 999))
+            logger.info(f"[PARALLEL] Sorted {len(valid_candidates)} valid strikes by CONFIG_ORDER")
+        # Future Enhancement: "CONFIDENCE" mode
+        # elif selection_mode == "CONFIDENCE":
+        #     valid_candidates.sort(key=lambda x: x.get("conf_score", 0), reverse=True)
+        
+        # Determine how many positions we can open
+        max_positions = self.config.get("max_positions", 4)
+        active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
+        slots_available = max(0, max_positions - active_count)
+        
+        if slots_available == 0:
+            logger.info(f"[PARALLEL] No slots available ({active_count}/{max_positions})")
+            return
+        
+        # Select top N candidates
+        selected = valid_candidates[:slots_available]
+        
+        logger.info(f"[PARALLEL] Selected {len(selected)}/{len(valid_candidates)} strikes for entry")
+        
+        # Execute orders for selected strikes
+        for candidate in selected:
+            symbol = candidate.get("symbol")
+            limit_price = candidate.get("price", 0)
+            
+            # Execute entry
+            await self._execute_entry(
+                symbol=symbol,
+                quantity=50,  # TODO: Calculate from lot size
+                price=limit_price,
+                order_type_str="CALL" if target_trend == 1 else "PUT"
+            )
+    
+    async def _validate_single_strike(self, symbol, target_trend):
+        """
+        Validate a single strike for entry (used in parallel scanning).
+        
+        Returns:
+            dict: {
+                "symbol": str,
+                "valid": bool,
+                "price": float,
+                "conf_score": float,  # Future Enhancement
+                "reasons": list
+            }
+        """
+        try:
+            # Check option confirmation
+            valid, limit_price, reasons = await self._check_option_confirmation(
+                symbol,
+                price_check_mode="WAIT"
+            )
+            
+            if not valid:
+                return {
+                    "symbol": symbol,
+                    "valid": False,
+                    "price": 0,
+                    "conf_score": 0,
+                    "reasons": reasons
+                }
+            
+            # Future Enhancement: Calculate confidence score
+            # conf_score = self._calculate_confidence_score(symbol, limit_price, ...)
+            
+            return {
+                "symbol": symbol,
+                "valid": True,
+                "price": limit_price,
+                "conf_score": 0,  # Placeholder for future enhancement
+                "reasons": []
+            }
+        
+        except Exception as e:
+            logger.error(f"[VALIDATE] Error validating {symbol}: {e}")
+            return {
+                "symbol": symbol,
+                "valid": False,
+                "price": 0,
+                "conf_score": 0,
+                "reasons": [f"Exception: {str(e)}"]
+            }
     
     def _is_explosive_trend(self, df_exec, htf_adx_val):
         """
@@ -836,7 +1005,7 @@ class TradingEngine:
         
         # Calculate Indicators locally to ensure freshness
         # We need VWAP, EMA, etc.
-        use_ha = self.config.get("option_use_ha", True)
+        use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
         
         # Reuse existing indicator or create temp? 
         # Better to reuse from registry if possible or calc.
@@ -1241,7 +1410,19 @@ class TradingEngine:
                 del self.trades[trade.symbol]
                 
                 # Track exit for re-entry protection
-                self._exit_cooldowns[trade.symbol] = datetime.now()
+                re_entry_cfg = self.config.get("re_entry_protection", {})
+                if re_entry_cfg.get("enabled", True):
+                    # Check P&L to determine cooldown duration
+                    if pnl > 0:
+                        # PROFIT: Use profit cooldown (default 0)
+                        mins = re_entry_cfg.get("cooldown_after_profit_mins", 0)
+                    else:
+                        # LOSS: Use loss cooldown (default 5)
+                        mins = re_entry_cfg.get("cooldown_after_loss_mins", 5)
+                    
+                    self._exit_cooldowns[trade.symbol] = datetime.now() + timedelta(minutes=mins)
+                    if mins > 0:
+                        logger.info(f"[COOLDOWN] Set {mins}m cooldown for {trade.symbol} (PnL: {pnl:.2f})")
                 
                 # Update risk manager daily stats
                 self.risk_manager.update_daily_pnl(pnl)

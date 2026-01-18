@@ -38149,3 +38149,93 @@ AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
 2026-01-18 10:02:03,111 - INFO - Trading Engine stopped
 2026-01-18 10:02:03,111 - INFO - All engine tasks cleaned up
 2026-01-18 10:02:03,111 - INFO - Goodbye!
+2026-01-18 11:46:57,578 - INFO - Configuration banner printed
+2026-01-18 11:46:59,196 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 11:46:59,231 - INFO - Trading Engine initialized
+2026-01-18 11:46:59,231 - INFO - Trading Engine created successfully
+2026-01-18 11:46:59,231 - INFO - Starting Trading Engine...
+2026-01-18 11:47:06,927 - INFO - [TASK] Signal scanner started
+2026-01-18 11:47:06,942 - INFO - [TASK] Risk monitor started
+2026-01-18 11:47:06,943 - INFO - [TASK] Position sync started
+2026-01-18 11:47:06,945 - INFO - [TASK] WebSocket monitor started
+2026-01-18 11:47:06,946 - INFO - [TASK] Config monitor started
+2026-01-18 11:52:42,145 - INFO - Configuration reloaded successfully
+2026-01-18 11:55:24,781 - INFO - Configuration reloaded successfully
+2026-01-18 11:55:52,936 - INFO - Configuration reloaded successfully
+2026-01-18 12:00:40,577 - INFO - Shutting down...
+2026-01-18 12:00:40,578 - INFO - Trading Engine stopped
+2026-01-18 12:00:40,580 - INFO - All engine tasks cleaned up
+2026-01-18 12:00:40,580 - INFO - Goodbye!
+2026-01-18 12:00:47,007 - INFO - Configuration banner printed
+2026-01-18 12:00:47,538 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 12:00:47,548 - INFO - Trading Engine initialized
+2026-01-18 12:00:47,548 - INFO - Trading Engine created successfully
+2026-01-18 12:00:47,548 - INFO - Starting Trading Engine...
+2026-01-18 12:00:55,194 - INFO - [TASK] Signal scanner started
+2026-01-18 12:00:55,201 - INFO - [TASK] Risk monitor started
+2026-01-18 12:00:55,202 - INFO - [TASK] Position sync started
+2026-01-18 12:00:55,204 - INFO - [TASK] WebSocket monitor started
+2026-01-18 12:00:55,206 - INFO - [TASK] Config monitor started
+2026-01-18 12:01:55,432 - INFO - Configuration reloaded successfully
+2026-01-18 12:02:25,569 - INFO - Configuration reloaded successfully
+2026-01-18 12:03:09,709 - INFO - Configuration reloaded successfully
+2026-01-18 12:26:30,996 - INFO - Shutting down...
+2026-01-18 12:26:31,001 - INFO - Trading Engine stopped
+2026-01-18 12:26:31,001 - INFO - All engine tasks cleaned up
+2026-01-18 12:26:31,002 - INFO - Goodbye!
+2026-01-18 12:38:18,788 - INFO - Configuration banner printed
+2026-01-18 12:38:20,506 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 12:38:20,558 - INFO - Trading Engine initialized
+2026-01-18 12:38:20,558 - INFO - Trading Engine created successfully
+2026-01-18 12:38:20,558 - INFO - Starting Trading Engine...
+2026-01-18 12:38:28,240 - INFO - [TASK] Signal scanner started
+2026-01-18 12:38:28,370 - INFO - [TASK] Risk monitor started
+2026-01-18 12:38:28,371 - INFO - [TASK] Position sync started
+2026-01-18 12:38:28,374 - INFO - [TASK] WebSocket monitor started
+2026-01-18 12:38:28,376 - INFO - [TASK] Config monitor started
+2026-01-18 12:42:10,263 - INFO - Shutting down...
+2026-01-18 12:42:10,266 - INFO - Trading Engine stopped
+2026-01-18 12:42:10,266 - INFO - All engine tasks cleaned up
+2026-01-18 12:42:10,267 - INFO - Goodbye!
+2026-01-18 12:46:09,078 - INFO - Configuration banner printed
+2026-01-18 12:46:10,795 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 12:46:10,807 - INFO - Trading Engine initialized
+2026-01-18 12:46:10,808 - INFO - Trading Engine created successfully
+2026-01-18 12:46:10,808 - INFO - Starting Trading Engine...
+2026-01-18 12:46:18,503 - INFO - [TASK] Signal scanner started
+2026-01-18 12:46:18,666 - INFO - [TASK] Risk monitor started
+2026-01-18 12:46:18,672 - INFO - [TASK] Position sync started
+2026-01-18 12:46:18,675 - INFO - [TASK] WebSocket monitor started
+2026-01-18 12:46:18,677 - INFO - [TASK] Config monitor started
+2026-01-18 12:47:41,771 - INFO - Shutting down...
+2026-01-18 12:47:41,773 - INFO - Trading Engine stopped
+2026-01-18 12:47:41,774 - INFO - All engine tasks cleaned up
+2026-01-18 12:47:41,774 - INFO - Goodbye!
+2026-01-18 12:50:07,945 - INFO - Configuration banner printed
+2026-01-18 12:50:08,302 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 12:50:08,308 - INFO - Trading Engine initialized
+2026-01-18 12:50:08,309 - INFO - Trading Engine created successfully
+2026-01-18 12:50:08,309 - INFO - Starting Trading Engine...
+2026-01-18 12:50:16,033 - INFO - [TASK] Signal scanner started
+2026-01-18 12:50:16,038 - INFO - [TASK] Risk monitor started
+2026-01-18 12:50:16,038 - INFO - [TASK] Position sync started
+2026-01-18 12:50:16,038 - INFO - [TASK] WebSocket monitor started
+2026-01-18 12:50:16,040 - INFO - [TASK] Config monitor started
+2026-01-18 12:54:07,592 - INFO - Shutting down...
+2026-01-18 12:54:07,595 - INFO - Trading Engine stopped
+2026-01-18 12:54:07,595 - INFO - All engine tasks cleaned up
+2026-01-18 12:54:07,595 - INFO - Goodbye!
+2026-01-18 12:54:11,497 - INFO - Configuration banner printed
+2026-01-18 12:54:11,838 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 12:54:11,845 - INFO - Trading Engine initialized
+2026-01-18 12:54:11,846 - INFO - Trading Engine created successfully
+2026-01-18 12:54:11,846 - INFO - Starting Trading Engine...
+2026-01-18 12:54:19,570 - INFO - [TASK] Signal scanner started
+2026-01-18 12:54:19,575 - INFO - [TASK] Risk monitor started
+2026-01-18 12:54:19,575 - INFO - [TASK] Position sync started
+2026-01-18 12:54:19,575 - INFO - [TASK] WebSocket monitor started
+2026-01-18 12:54:19,580 - INFO - [TASK] Config monitor started
+2026-01-18 12:56:55,375 - INFO - Shutting down...
+2026-01-18 12:56:55,375 - INFO - Trading Engine stopped
+2026-01-18 12:56:55,375 - INFO - All engine tasks cleaned up
+2026-01-18 12:56:55,375 - INFO - Goodbye!
