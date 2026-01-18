@@ -35,11 +35,13 @@ class TechnicalIndicator(BaseIndicator):
         src = df['HA_Close'] if use_ha else df['Close']
         high = df['HA_High'] if use_ha else df['High']
         low = df['HA_Low'] if use_ha else df['Low']
+        open_ = df['HA_Open'] if use_ha else df['Open']
+        volume = df['Volume']
         
         results = {}
         
         # 1. EMA Calculations
-        ema_periods = self.params.get("ema_periods", [50, 200])
+        ema_periods = self.params.get("ema_periods", [9, 21, 50, 200])
         for p in ema_periods:
             results[f"ema_{p}"] = src.ewm(span=p, adjust=False).mean()
             
@@ -74,9 +76,25 @@ class TechnicalIndicator(BaseIndicator):
         dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di)
         results["adx"] = dx.ewm(alpha=1/adx_p, adjust=False).mean()
         
-        # Standard indicators don't have a single "trend" - they are filters.
-        # We return 0 (Neutral) trend/signal by default. 
-        # The Engine will extract the series from metadata.
+        # 4. VWAP Calculation (Anchored to start of dataframe for simplicity in this context)
+        # Note: True VWAP anchors to session start. We approximate using the loaded data window.
+        vwap = (df['Close'] * volume).cumsum() / volume.cumsum()
+        results["vwap"] = vwap
+        
+        # 5. Volume SMA (5-period)
+        results["vol_ma_5"] = volume.rolling(window=5).mean()
+        
+        # 6. Candle Analysis (Current Candle)
+        body_size = (src - open_).abs()
+        upper_wick = high - pd.concat([src, open_], axis=1).max(axis=1)
+        lower_wick = pd.concat([src, open_], axis=1).min(axis=1) - low
+        
+        # Upper Wick > Body? (Rejection)
+        results["wick_rejection"] = upper_wick > body_size
+        
+        # Higher Low? (Structure)
+        results["higher_low"] = low > low.shift(1)
+        
         return IndicatorSignal(
             trend=0,
             signal=0,
@@ -86,7 +104,12 @@ class TechnicalIndicator(BaseIndicator):
                 "rsi": results["rsi"].iloc[-1],
                 "adx": results["adx"].iloc[-1],
                 "atr": results["atr"].iloc[-1],
-                # Include full series for logging/charting if needed
+                "vwap": results["vwap"].iloc[-1],
+                "vol_ma_5": results["vol_ma_5"].iloc[-1],
+                "volume": volume.iloc[-1],
+                "wick_rejection": results["wick_rejection"].iloc[-1],
+                "higher_low": results["higher_low"].iloc[-1],
+                # Full series
                 "rsi_series": results["rsi"],
                 "adx_series": results["adx"],
                 "atr_series": results["atr"]

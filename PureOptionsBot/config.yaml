@@ -36,251 +36,102 @@ strike_selection:
   max_option_price: 100          # Limit entry if Price > X. (0 = No Limit)
   
 # ========================================
-# 2. STRATEGY PARAMETERS (EMA/ADX/RSI Logic)
+# 2. STRATEGY PARAMETERS (Smart Momentum)
 # ========================================
 
 # Timeframe Layers
-trend_tf: "15m"                  # Used for Bias (EMA Cross) and Trend Filter (ADX)
-execution_tf: "3m"               # Used for Entry Filters (RSI, ADX, EMA50) and UTBot Trigger
+# Timeframe Layers
+# Timeframe Layers
+trend_tf: "15m"                  # Used for Master Trend (Bias)
+execution_tf: "3m"               # Used for Signals and Confirmation
+
+# Option Chart Settings (for entry validation)
+option:
+  ltf:
+    timeframe: "3m"              # Option chart timeframe for VWAP/EMA/Volume checks
 
 strategy:
-  # Bias (Trend TF)
-  bias:
-    ema_fast: 50
-    ema_slow: 200
-  
-  # Filters (Execution TF)
-  filters:
-    adx_threshold_trend_tf: 25   # ADX on 15m must be > this
-    adx_threshold_exec_tf: 20    # ADX on 3m must be > this
-    rsi_threshold_buy: 50        # RSI on 3m must be > this for CE
-    rsi_threshold_sell: 50       # RSI on 3m must be < this for PE
-    ema_signal: 50               # Price must be same side of EMA 50 on 3m
-  
-  # Distance Guard (Execution TF)
-  # Prevents entry if too far from EMA50 (No FOMO)
-  distance_guard:
+  smart_momentum:
     enabled: True
-    multiplier: 1.5              # Distance <= X * ATR_3m
-                                 # 3m: 1.5, 5m: 1.7, 10m: 2.0, 15m: 2.3
+    entry_mode: "ADVANCED"         # Options: "SIMPLE" (minimal checks) or "ADVANCED" (all filters)
+    
+    # MASTER TREND (NIFTY 15m/Trend TF)
+    master_trend:
+      enabled: True              # Toggle: Enable/Disable Master Trend filter
+      ema_fast: 9                # Fast EMA (trend direction)
+      ema_mid: 21                # Mid EMA (trend confirmation)
+      ema_slow: 50               # Slow EMA (structure filter)
+      adx_period: 14             # ADX period
+      rsi_period: 14             # RSI period
+      adx_threshold: 20          # Minimum Trend Strength
+      rsi_bull_min: 55           # Minimum RSI for Bullish Trend
+      rsi_bear_max: 45           # Maximum RSI for Bearish Trend
+      
+    # Explosive Trend Detection (NIFTY)
+    explosive_trend:
+      enabled: True
+      adx_min: 30                # ADX > 30 on 15m
+      min_body_pct: 0.005        # Body >= 0.5% of Close
+      min_body_ratio: 0.6        # Body/Range >= 0.6
+      min_close_pos: 0.75        # (Close-Low)/Range >= 0.75
+      
+    wait_logic:                  # PATH 2: SMART WAIT (Conditional)
+      max_retrace_pct: 0.30      # Max retracement allowed (30% of signal candle body)
 
-# Indicator Reference Tables (From Images):
-# ---------------------------------------------------------
-# ADX Thresholds | Exec (3m/5m: 20, 10m/15m: 18) | Trend (3m: 25, 5m: 23, 10m: 22, 15m: 20)
-# RSI Buy/Sell   | 3m: 50/50 | 5m: 52/48 | 10m: 53/47 | 15m: 55/45
-# UTBot (Index)  | 3m: 10/2.0 | 5m: 10/2.2 | 10m: 14/2.5 | 15m: 14/3.0
-# ---------------------------------------------------------
+    # ENTRY CONFIRMATION (Option Chart)
+    entry_confirmation:
+      use_atr_price_cap: True    # Use ATR-based dynamic max price (Better than fixed %)
+      atr_multiplier: 1.5        # Max Price = VWAP + (1.5 × ATR)
+      vwap_max_buffer: 1.015     # Fallback if ATR disabled: Price <= VWAP * 1.015
+      check_spread: False        # Toggle: check Bid-Ask Spread (Requires API Call)
+      max_spread_pct: 0.003      # Spread <= 0.3%
+     
+      ema_fast: 9
+      ema_slow: 21
+      volume_multiplier: 1.2     # Current Volume > 1.2x Avg
+      check_upper_wick: True     # Reject if upper wick > body (Rejection candle)
+      check_delta: False         # Check Delta >= 0.50 (If Greeks available)
 
-index:
-  ltf: {timeframe: "3m", sensitivity: 2.0, atr: 10, min_bars: 50}
-  htf: {timeframe: "15m", sensitivity: 3.0, atr: 14, min_bars: 100} #For EMA200 min bar 200. For testing kept 100
-
-option:
-  ltf: {timeframe: "1m", sensitivity: 1.0, atr: 10, min_bars: 20}
-
-option_signal_timeout: 5        # Number of actual CANDLES to wait for Option signal (e.g. 5m if on 1m chart)
-index_use_ha: True              # Use Heikin Ashi for Index signals
-option_use_ha: True            # Use Heikin Ashi for Option signals
-
-drift_guard_threshold: 25.0     # Re-resolve strike if Index moves > X points during setup
-fetch_interval_seconds: 5       # Scanner Loop: Frequency of checking for NEW signals (Seconds)
-fast_check_seconds: 2           # Risk Loop: Freq of checking TSL/Exits/Sync (Bodyguard speed)
-ignore_session_check: False     # Safety: Verify API token validity (one time when bot starts) before trading (Keep False)
-
-# ========================================
-# 3. ENTRY LOGIC CONTROLS
-# ========================================
-entry_logic:
-  # -----------------------------------------
-  # INDEX TRIGGER (Phase 1 - CE/PE Strike Selection)
-  # -----------------------------------------
-  # Determines when to start looking at strikes based on Nifty trend.
-  # NIFTY: "The Green Light"
-  # Set to a huge number (e.g., 50 candles = 150 mins).
-  # Meaning: "As long as Nifty is Bullish, keep scanning."
-
-  # index_max_trend_age:
-  #   0 = SNIPER MODE: Only triggers on the exact candle Nifty turns Green.
-  #   X = WINDOW MODE: Triggers if Nifty is Green and trend is <= X candles old.
-  #       (Recommended: 2 for 3m chart = 9 min window)
-  index_max_trend_age: 50  # ltf candels 
-  
-  # -----------------------------------------
-  # OPTION TRIGGER (Phase 2 - BUY Order Execution)
-  # -----------------------------------------
-  # Determines when to actually EXECUTE the BUY order.
-
-  # OPTION: "The Trigger"
-  # Keep this tight! We only want FRESH momentum.
-
-  # option_max_trend_age:
-  #   0 = SNIPER MODE: Only Buy on exact crossover candle. (Risk: Misses fast moves)
-  #   X = WINDOW MODE: Buy if Option is Bullish and trend is <= X candles old.
-  #       (Recommended: 2 for 1m chart = 3 min window)
-  option_max_trend_age: 50 # ltf candels
-  
-  # -----------------------------------------
-  # PULLBACK ENTRY SETTINGS
-  # -----------------------------------------
-  # Works in both SIGNAL and STATE modes
-  allow_index_pullback: False     # Enable mid-trend setup detection on Index (Red-to-Green bounce)
-  allow_option_pullback: True     # Enable mid-trend entry on Option Premium (Red-to-Green bounce)
-  pullback_warmup_candles: 3      # Wait for X candles in trend before allowing pullback entries 
-# ========================================
-# 3. PORTFOLIO & EXECUTION
-# ========================================
-lots: 1                         # Multiplier for contract lot size (Dynamic lookup)
-max_positions: 4                # Maximum concurrent active trades
-capital: 1000000                # for backtesting/reporting
-lookback_days: 5                # Historical data window (3-5 days is optimal for speed)
-trading_mode: "BUY"            # "BUY" (Long Options) or "SELL" (Short/Write Options)
-
+      
+    # WAIT LOGIC
+    wait_candles: 1              # Wait X candles after signal before entering
+      
 
 # ========================================
-# 4. RISK MANAGEMENT (3-STAGE PROFIT GUARD)
+# 3. TRADING HOURS & LIMITS
 # ========================================
-
-# === STAGE 1: Break-Even (BE) Guard ===
-# Locks in profits once trade reaches a threshold
-# Purpose: Protect against giving back gains
-#
-# ANTI-WHIPSAW TIP: Don't lock too early! Options oscillate ±3-5% normally
-be_trigger_pct: 3.0             # Wait for +3% profit before activating BE
-be_buffer_pts: 4.0              # Lock stop 4 points above entry (Tighter)
-                                # Example: Entry ₹120 → BE locks at ₹122
-
-# Trail distance adapts to market volatility automatically
-# Formula: TSL Distance = Index_ATR × Multiplier (with minimum floor)
-#
-# How it works:
-# - Volatile market (ATR=20) → Trail at 50 points (20×2.5) → Room to breathe
-# ==============================================================================
-# TRAILING STOP LOSS (TSL) SETTINGS
-# ==============================================================================
-# TSL follows the price up (for Buy) and marks a "brick wall" fallback level.
-# It only moves in your favor, never against you.
-# 
-
-# 1. TSL MODE SELECTION
-# Choose between: "ATR", "PERCENT", or "POINTS"
-tsl_mode: "PERCENT"
-
-# --- Mode 1: ATR-Based (Volatility Aware) ---
-# Calculation: Peak Price - (Multiplier * ATR)
-# Automatically widens in high volatility, tightens in calm markets.
-tsl_atr_multiplier: 3.5          # Standard: 1.5 (Aggressive) to 3.5 (Conservative)
-
-# --- Mode 2: Percentage-Based ---
-# Calculation: Peak Price - (Peak Price * Percentage/100)
-# Example: If Peak is 100 and TSL is 4%, Stop is at 96.
-tsl_percent: 3.0                 # Tightened from 10.0% to 4.0%
-
-# --- Mode 3: Point-Based ---
-# Calculation: Peak Price - Fixed Points
-# Example: If Peak is 100 and Points is 8, Stop is at 92.
-tsl_points: 8.0                  # Fixed gap in points from the peak price
-
-# --- Safety Gap (Applicable to ALL modes) ---
-# This is the "Safety Floor". It ensures your stop loss never gets 
-# dangerously close to the price during periods of zero volatility.
-min_trailing_gap: 2.0            # Increased safety floor
-
-# --- TSL Customization (Advanced) ---
-# Period for ATR calculation used in TSL (Risk Management)
-tsl_atr_period: 14               # Standard: 14. Lower = Faster, Higher = Smoother.
-
-re_entry_protection:
+trading_hours:
   enabled: True
-  
-  # DYNAMIC COOLDOWN (Based on Exit Reason):
-  # Different wait times based on WHY you exited
-  # Logic: Good exits = short wait, Bad exits = long wait
-  #
-  cooldown_after_profit_mins: 5    # TSL hit with profit
-                                   # Short cooldown - it was a good exit
-                                   # Quick re-entry allowed if trend continues
-  
-  cooldown_after_loss_mins: 5      # TSL/Stop hit with loss (Reduced for more aggression)
-                                   # wait 10m to avoid immediate revenge trading
-                                   
-  cooldown_after_reversal_mins: 5  # Trend reversal exit
-                                   # wait 10m for new trend to establish
-                                   # Medium cooldown - trend changed
-                                   # Wait for new trend to establish
-  
-  # TIP: Set all three to same value (e.g., 15) for fixed cooldown
-  
-  # Time-Based Exit (Theta Protection):
-  # Exit if position goes nowhere for too long
-  max_hold_mins: 120            # Exit after 2 hours if profit < threshold
-  min_profit_to_hold: 5.0       # Must have 5%+ profit to hold beyond 2hrs
-                                # Prevents theta decay eating stagnant trades
-  
-  # Volatility Adjustment (Advanced):
-  # Widen TSL in high IV environments
-  adapt_to_iv: True             # Adjust TSL based on Implied Volatility
-  iv_multiplier: 1.0            # Base multiplier (1.0 = no adjustment)
-                                # At IV=30%, multiplier becomes 1.5
-                                # Gives more room when market is wild
-  
-  # Strike Fallback (Smart Re-Entry):
-  # If primary strike is blocked, try adjacent strikes
-  # Prevents missing rallies while still avoiding same-strike whipsaws
-  allow_adjacent_strikes: True  # Try next strike if primary blocked
-  max_strike_offset: 1          # How far to search (±1 strike max)
-                                # Example: ATM blocked → Try OTM, then ITM
-                                # Ensures you don't miss strong moves
-
+  start_time: "09:25"           # Post-opening settle
+  end_time: "15:00"             # No new trades after this
+  sq_off_time: "15:20"          # Hard exit all positions
+  avoid_lunch: False
 
 # ========================================
-# 5. PROFESSIONAL EXECUTION CONTROLS (NEW)
+# 4. EXECUTION (Smart Limit)
 # ========================================
 execution:
-  order_type: "LIMIT"           # MARKET, LIMIT, or ADAPTIVE
-  limit_offset_pct: 0.5         # % above ask for buy, below bid for sell
-  max_spread_pct: 10.0          # Reject entry if spread > this %
-  order_timeout_sec: 5          # Cancel unfilled orders after X seconds
-  min_oi: 0                     # Minimum Open Interest required
-  retry_count: 2                # Number of order retry attempts
-  retry_count: 2                # Number of order retry attempts
-  aggressive_momentum_entry: True # Allow entry even without quotes if chart signal is fresh
+  order_type: "SMART_LIMIT"     # New Logic: min(Bid, VWAP, PrevClose)
+  limit_offset_pct: 0.0         # No extra buffer, strictly strict
+  max_spread_pct: 0.3           # Strict spread check when check_spread: true
+  order_timeout_sec: 8          # Wait 8s for fill then cancel
+  enable_bot_auto_sell: True    # If False, bot tracks PnL but DOES NOT SELL. User must exit manually.
+
+# SYSTEM CONFIGURATION (Advanced)
+system:
+  loop_intervals:
+    scanner: 5                  # Run signal scanner every 5s (Min 3s recommended)
+    risk_monitor: 1             # Run risk monitor every 1s (Min 1s recommended)
+    position_sync: 10           # Sync positions every 10s (Min 5s recommended)
+    config_monitor: 2           # Check config changes every 2s
   
-  # AUTO-SELL CONTROL
-  # True: Bot places SELL orders automatically (Hands-free).
-  # False: Bot only ALERTS you to sell. You must exit manually on broker.
-  #        (Bot will sync and remove position once you close it).
-  enable_bot_auto_sell: True
+  data_limits:
+    trend_bars: 100             # Bars to fetch for Trend TF check (Min 100 for EMA50 × 2)
+    exec_bars: 50               # Bars to fetch for Exec TF check (Min 50 for indicators)
+    
+  cooldowns:
+    error_sec: 60               # Cooldown after error/crash (Safe mode)
 
-# ========================================
-# 6. DAILY RISK CONTROLS (NEW)
-# ========================================
-risk_controls:
-  enabled: True                 # Master switch for daily controls
-  max_daily_loss: 200000          # Rs. - stop trading for the day
-  max_loss_per_trade: 50000       # Rs. - force exit individual trade
-  max_capital_at_risk_pct: 100    # % of capital - total exposure check
-  cool_down_after_loss_sec: 300 # Seconds before next trade after loss
-
-# ========================================
-# 7. EXPIRY & TIMING RULES (NEW)
-# ========================================
-expiry_rules:
-  avoid_new_entry_on_expiry: False   # Don't enter new trades on expiry day
-  exit_all_by_time: "23:30"         # Auto-square all positions by this time
-  increase_tsl_on_expiry: 1.5       # Tighten stops by 50% on expiry day
-  min_dte: 0                        # Minimum Days-To-Expiry (0=allow same day)
-
-trading_hours:
-  enabled: True                 # Enforce time-based restrictions
-  start_time: "09:00"           # Don't trade before (avoid opening volatility)
-  end_time: "23:30"             # Don't enter new trades after
-  avoid_lunch: false            # True: Pause during lunch hour
-  lunch_start: "12:30"
-  lunch_end: "13:30"
-
-# ========================================
-# 8. GREEKS MONITORING (OPTIONAL)
-# ========================================
 greeks_monitoring:
   enabled: False                # Display option Greeks in heartbeat (Disabled as requested)
   # When enabled, shows Delta, Gamma, Theta, Vega, IV
@@ -294,45 +145,3 @@ api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
-
-
-# Note: BREAK-EVEN logic is still active. 
-# Once price moves +2.0%, the stop will jump to Entry + 1pt (if not already higher).
-# This is defined in the internal Risk Management section.
-# === RE-ENTRY PROTECTION (ANTI-WHIPSAW) ===
-# Prevents immediately re-entering a position you just exited
-# This stops the costly "chop and churn" pattern in sideways markets
-#
-# HOW IT WORKS:
-# 1. You exit NIFTY25700CE at 10:30 AM
-# 2. Symbol added to "blacklist" for X minutes (based on exit reason)
-# 3. Next signal at 10:35 AM tries to enter same symbol
-# 4. Bot: "BLOCKED - wait Y more minutes"
-# 5. Saves you from whipsaw losses + double brokerage
-#
-
-# 1. Moderate/Safe (Best for Nifty Intraday)
-# index:
-#   ltf: {timeframe: "3m", sensitivity: 1.5, atr: 10}
-#   htf: {timeframe: "15m", sensitivity: 2.0, atr: 14, enabled: True}
-
-# 2. Volatile Market (High IV / News Events)
-# index:
-#   ltf: {timeframe: "5m", sensitivity: 2.5, atr: 14}
-#   htf: {timeframe: "15m", sensitivity: 3.0, atr: 20, enabled: True}
-
-# 3. Trending/Momentum (Catching a Rally)
-# index:
-#   ltf: {timeframe: "3m", sensitivity: 1.0, atr: 10}
-#   htf: {timeframe: "15m", sensitivity: 1.5, atr: 10, enabled: True}
-
-# Option Sensitivity: Since options move faster than the index (due to Delta/Gamma), I recommend keeping the option sensitivity 0.5 higher than the index sensitivity if you are using signal_source: "OPTION".
-# ATR Multiplier for TSL: In your config.yaml , the tsl_atr_multiplier is at 2.5. In volatile markets, if you find yourself getting stopped out too early, increase this to 3.5.
-
-
-  
-# strike_selection (New Enhancement):
-#   mode: "DELTA_BASED"
-#   target_delta: 0.55     # Find strike closest to this Delta
-#   max_theta: -10         # Reject if theta worse than this
-#   min_liquidity_oi: 5000 # Already have this!

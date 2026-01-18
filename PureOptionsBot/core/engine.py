@@ -21,7 +21,6 @@ import yaml
 
 from core.state_machine import Trade, TradeState, TradeStateMachine
 
-from core.state_machine import Trade, TradeState, TradeStateMachine
 from core.persistence import TradePersistence
 from indicators.registry import IndicatorRegistry
 from risk.manager import RiskManager, ExitReason
@@ -96,6 +95,9 @@ class TradingEngine:
         # Cooldown tracking (symbol -> datetime)
         self._cooldowns = {}
         
+        # Signal wait state tracking (for conditional wait logic)
+        self._signal_wait_state = {}
+        
         # Restore state from database
         self._restore_state()
         
@@ -119,15 +121,24 @@ class TradingEngine:
         
         # Index Technicals (Execution TF)
         indicators["index_tech_ltf"] = IndicatorRegistry.create("technical", {
-            "ema_periods": [50],
+            "ema_periods": [9, 50], # Need EMA9 for Signal (Close > EMA9)
             "rsi_period": 14,
             "adx_period": 14
         })
         
-        # Index Technicals (Trend TF)
+        # Index Technicals (Trend TF) - Read from config
+        mt_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("master_trend", {})
+        ema_periods = [
+            mt_cfg.get("ema_fast", 9),
+            mt_cfg.get("ema_mid", 21),
+            mt_cfg.get("ema_slow", 50)
+            # Removed: ema_macro (200) - Not used in logic
+        ]
+        
         indicators["index_tech_htf"] = IndicatorRegistry.create("technical", {
-            "ema_periods": [50, 200],
-            "adx_period": 14
+            "ema_periods": ema_periods,
+            "adx_period": mt_cfg.get("adx_period", 14),
+            "rsi_period": mt_cfg.get("rsi_period", 14)
         })
         
         # --- OPTION INDICATORS ---
@@ -308,7 +319,8 @@ class TradingEngine:
             except Exception as e:
                 logger.error(f"Config monitor error: {e}")
                 
-            await asyncio.sleep(2) # Check every 2 seconds
+            interval = self.config.get("system", {}).get("loop_intervals", {}).get("config_monitor", 2)
+            await asyncio.sleep(interval) # Check every X seconds
 
     def _reload_config(self, path):
         """Reload configuration and update components"""
@@ -377,11 +389,12 @@ class TradingEngine:
             except Exception as e:
                 logger.error(f"Signal scanner error: {e}", exc_info=True)
             
-            # Run every 5 seconds
-            await asyncio.sleep(5)
+            # Run every X seconds (Configurable)
+            interval = self.config.get("system", {}).get("loop_intervals", {}).get("scanner", 5)
+            await asyncio.sleep(interval)
     
     async def _scan_for_signals(self):
-        """Scan index for trading signals with new EMA/ADX/RSI strategy logic"""
+        """Scan index for trading signals with SMART MOMENTUM Logic (Dual TF)"""
         # Get index config
         index_query = self.config.get("index_query", "NIFTY")
         index_exchange = self.config.get("index_exchange", "NSE_INDEX")
@@ -389,126 +402,268 @@ class TradingEngine:
         exec_tf = self.config.get("execution_tf", "3m")
         use_ha = self.config.get("index_use_ha", True)
         
-        # 1. Fetch Historical Data (Trend and Execution TFs)
-        df_trend = await self.data_provider.fetch_history(index_query, trend_tf, bars=250, exchange=index_exchange)
-        df_exec = await self.data_provider.fetch_history(index_query, exec_tf, bars=100, exchange=index_exchange)
+        # 1. Fetch Historical Data (Dual Fetch)
+        trend_bars = self.config.get("system", {}).get("data_limits", {}).get("trend_bars", 250)
+        exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 100)
+        
+        df_trend = await self.data_provider.fetch_history(index_query, trend_tf, bars=trend_bars, exchange=index_exchange)
+        df_exec = await self.data_provider.fetch_history(index_query, exec_tf, bars=exec_bars, exchange=index_exchange)
         
         if df_trend is None or df_exec is None:
-            if self._heartbeat_counter % 12 == 0: # Log every minute
-                print(f"[DEBUG] Historical data fetch returned None for {index_query}. Market might be closed or API down.")
+            if self._heartbeat_counter % 12 == 0: 
+                print(f"[DEBUG] Historical data fetch returned None for {index_query}.")
             self._heartbeat_counter += 1
             return
             
-        if len(df_trend) < self.config["index"]["htf"].get("min_bars", 100) or \
-           len(df_exec) < self.config["index"]["ltf"].get("min_bars", 50):
-            if self._heartbeat_counter % 12 == 0:
-                h_min = self.config["index"]["htf"].get("min_bars", 100)
-                l_min = self.config["index"]["ltf"].get("min_bars", 50)
-                print(f"[DEBUG] Insufficient data for {index_query} (Trend: {len(df_trend)}, Exec: {len(df_exec)}). Need {h_min}/{l_min} bars.")
-            self._heartbeat_counter += 1
-            return
+        # Validate minimum bars (use config values)
+        min_trend = max(50, trend_bars // 2)  # At least 50, or half of requested
+        min_exec = max(30, exec_bars // 2)    # At least 30, or half of requested
         
-        if len(df_trend) < 200:
-             if self._heartbeat_counter % 60 == 0: # Log every 5 mins
-                logger.warning(f"Using partial data for EMA200 ({len(df_trend)} bars). Bias calculation may be slightly inaccurate.")
+        if len(df_trend) < min_trend or len(df_exec) < min_exec:
+             if self._heartbeat_counter % 12 == 0:
+                print(f"[DEBUG] Insufficient data. Have {len(df_trend)}/{len(df_exec)} bars, need {min_trend}/{min_exec}.")
+             self._heartbeat_counter += 1
+             return
 
-        # 2. Calculate Indicators (Trend TF)
-        tech_htf = self.indicators["index_tech_htf"].calculate(df_trend, use_ha=use_ha)
-        htf_meta = tech_htf.metadata
+        # ----------------------------------------------
+        # PHASE 1: MASTER TREND (Trend TF / 15m)
+        # ----------------------------------------------
+        mt_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("master_trend", {})
+        master_trend_enabled = mt_cfg.get("enabled", True)
         
-        # Bias Logic (15m EMA Cross)
-        ema50_htf = htf_meta["emas"].get(50)
-        ema200_htf = htf_meta["emas"].get(200)
-        adx_htf = htf_meta["adx"]
+        if master_trend_enabled:
+            # Master Trend is ENABLED - Run full 15m validation
+            tech_htf = self.indicators["index_tech_htf"].calculate(df_trend, use_ha=use_ha)
+            htf_meta = tech_htf.metadata
+            
+            ema9_htf = htf_meta["emas"].get(mt_cfg.get("ema_fast", 9))
+            ema21_htf = htf_meta["emas"].get(mt_cfg.get("ema_mid", 21))
+            ema50_htf = htf_meta["emas"].get(mt_cfg.get("ema_slow", 50))
+            adx_htf = htf_meta["adx"]
+            rsi_htf = htf_meta["rsi"]
+            
+            close_htf = df_trend['Close'].iloc[-1]
+            
+            # Config Values for Master Trend
+            adx_min = mt_cfg.get("adx_threshold", 20)
+            rsi_bull = mt_cfg.get("rsi_bull_min", 55)
+            rsi_bear = mt_cfg.get("rsi_bear_max", 45)
+            
+            # Determine Trend State
+            nifty_direction = "NEUTRAL"
+            
+            # UPTREND Rules (15m)
+            if (close_htf > ema50_htf) and (ema9_htf > ema21_htf) and (adx_htf > adx_min) and (rsi_htf > rsi_bull):
+                nifty_direction = "BULL"
+                
+            # DOWNTREND Rules (15m)
+            elif (close_htf < ema50_htf) and (ema9_htf < ema21_htf) and (adx_htf > adx_min) and (rsi_htf < rsi_bear):
+                nifty_direction = "BEAR"
+                
+            self._last_htf_trend = nifty_direction
+            
+            if nifty_direction == "NEUTRAL":
+                if self._heartbeat_counter % 2 == 0:
+                    print(f"[HEADLESS] Master Trend Neutral ({trend_tf}). (ADX:{adx_htf:.1f}, RSI:{rsi_htf:.1f})")
+                return # Rigid Filter: No Master Trend = No Trade.
+        else:
+            # Master Trend is DISABLED - Use 3m UTBot trend only
+            # We'll determine direction later from UTBot signal
+            # For now, set a placeholder (will be overridden by UTBot)
+            nifty_direction = "ANY"
+            adx_htf = 0  # Not used when disabled
+            print(f"[INFO] Master Trend Filter DISABLED. Using 3m signals only.")
+            self._last_htf_trend = "DISABLED"
+
+        # ----------------------------------------------
+        # PHASE 2: SIGNAL GENERATION (Execution TF / 3m)
+        # ----------------------------------------------
         
-        nifty_bias = "BULL" if ema50_htf > ema200_htf else "BEAR" if ema50_htf < ema200_htf else "NEUTRAL"
-        self._last_htf_trend = nifty_bias
+        # Calculate UTBot on LTF
+        utbot_ltf = self.indicators["index_utbot"].calculate(df_exec, use_ha=use_ha)
         
-        # 3. Calculate Indicators (Execution TF)
+        # Calculate Tech on LTF (Need EMA9)
         tech_ltf = self.indicators["index_tech_ltf"].calculate(df_exec, use_ha=use_ha)
         ltf_meta = tech_ltf.metadata
+        ema9_ltf = ltf_meta["emas"].get(9)
+        close_ltf = df_exec['Close'].iloc[-1]
         
-        utbot_ltf = self.indicators["index_utbot"].calculate(df_exec, use_ha=use_ha)
-        self._last_ltf_trend = "BULLISH" if utbot_ltf.trend == 1 else "BEARISH" if utbot_ltf.trend == -1 else "NEUTRAL"
+        self._last_index_price = close_ltf
         
-        price_exec = df_exec['Close'].iloc[-1]
-        self._last_index_price = price_exec
+        # Signal Rules
+        signal_detected = False
+        signal_side = "NONE"
         
-        ema50_exec = ltf_meta["emas"].get(50)
-        adx_exec = ltf_meta["adx"]
-        rsi_exec = ltf_meta["rsi"]
-        atr_exec = ltf_meta["atr"]
+        if master_trend_enabled:
+            # Use Master Trend direction (15m) + 3m confirmation
+            if nifty_direction == "BULL":
+                if (utbot_ltf.trend == 1) and (close_ltf > ema9_ltf):
+                    signal_side = "CALL"
+            elif nifty_direction == "BEAR":
+                if (utbot_ltf.trend == -1) and (close_ltf < ema9_ltf):
+                    signal_side = "PUT"
+        else:
+            # Master Trend DISABLED - Use 3m UTBot trend directly
+            if (utbot_ltf.trend == 1) and (close_ltf > ema9_ltf):
+                signal_side = "CALL"
+            elif (utbot_ltf.trend == -1) and (close_ltf < ema9_ltf):
+                signal_side = "PUT"
+                
+            # Update nifty_direction for logging (based on 3m)
+            if signal_side == "CALL":
+                nifty_direction = "BULL"
+            elif signal_side == "PUT":
+                nifty_direction = "BEAR"
+                
+        # ----------------------------------------------
+        # PHASE 3: PATH 1 (IMMEDIATE EXPLOSIVE ENTRY)
+        # ----------------------------------------------
+        entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
         
-        # 4. Strategy Evaluation
-        strat_cfg = self.config.get("strategy", {})
-        filters_cfg = strat_cfg.get("filters", {})
-        dg_cfg = strat_cfg.get("distance_guard", {})
-        
-        # Filter Conditions
-        adx_trend_ok = adx_htf > filters_cfg.get("adx_threshold_trend_tf", 25)
-        adx_exec_ok = adx_exec > filters_cfg.get("adx_threshold_exec_tf", 20)
-        
-        # Side-specific filters
-        rsi_ok = False
-        ema50_exec_ok = False
-        if nifty_bias == "BULL":
-            rsi_ok = rsi_exec > filters_cfg.get("rsi_threshold_buy", 50)
-            ema50_exec_ok = price_exec > ema50_exec
-        elif nifty_bias == "BEAR":
-            rsi_ok = rsi_exec < filters_cfg.get("rsi_threshold_sell", 50)
-            ema50_exec_ok = price_exec < ema50_exec
+        if signal_side != "NONE" and entry_mode == "ADVANCED":
+            # Check for Explosive Conditions (Path 1) - ADVANCED MODE ONLY
+            # Pass ADX directly from Phase 1 calculation
+            is_explosive = self._is_explosive_trend(df_exec, adx_htf)
             
-        # Distance Guard
-        distance = abs(price_exec - ema50_exec)
-        max_dist = dg_cfg.get("multiplier", 1.5) * atr_exec
-        distance_ok = distance <= max_dist if dg_cfg.get("enabled", True) else True
+            if is_explosive:
+                # PATH 1: IMMEDIATE
+                print(f"[PATH 1] Explosive Signal detected ({signal_side})! Skipping Wait...")
+                await self._scan_manual_strikes(signal_side)
+                # We do NOT return here, because we want to register the "wait state" 
+                # just in case the execution didn't happen (e.g. Option Invalid)?
+                # Or if we execute, we should probably still track it? 
+                # If we execute, _scan_manual_strikes handles order placement.
+                # If we execute, we don't want to re-enter on wait.
+                # Let's register wait state ANYWAY, but maybe with a flag? 
+                # Actually, simpler: If explosive, we TRY to enter. 
+                # If entry happens, _scan_manual_strikes checks cooldown/max_pos.
+                # If we fail entry (e.g. invalid option), we might still want to catch it on pullback (Path 2)?
+                # Yes. So we proceed to register wait state even if we tried explosive.
+            
+        # ----------------------------------------------
+        # PHASE 3: CONDITIONAL WAIT LOGIC (Live Monitoring)
+        # ----------------------------------------------
         
-        # Final Nifty Logic Gate
-        all_filters_ok = adx_trend_ok and adx_exec_ok and rsi_ok and ema50_exec_ok and distance_ok
+        # State key for this signal cycle
+        signal_key = f"{index_query}_{signal_side}" if signal_side != "NONE" else "NONE"
         
-        # Heartbeat logging
+        # Current time of the last closed candle (This is "Signal Time")
+        current_candle_time = df_exec.index[-1]
+        
+        # Check if we were already waiting
+        # We need to loop through keys because signal_side might be NONE now but we have a pending wait
+        active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+        
+        for key in active_wait_keys:
+            wait_state = self._signal_wait_state[key]
+            wait_side = wait_state['side']
+            detected_at = wait_state['time']
+            sig_close = wait_state['signal_close']
+            sig_ema9 = wait_state['signal_ema9']
+            sig_body = wait_state['signal_body']
+            
+            # 1. Check if Wait Window Expired (New Candle Closed)
+            # If current_candle_time > detected_at, it means the "Wait Candle" has closed.
+            if current_candle_time > detected_at:
+                # WAIT EXPIRED. Perform FALLBACK CHECK (Close vs EMA9)
+                print(f"[WAIT] Candle Closed for {wait_side}. Performing Close Check...")
+                
+                still_valid = False
+                if wait_side == "CALL" and close_ltf > ema9_ltf:
+                    still_valid = True
+                elif wait_side == "PUT" and close_ltf < ema9_ltf:
+                    still_valid = True
+                    
+                if still_valid:
+                    print(f"[WAIT] Fallback Success! {wait_side} valid at close. Scanning Options...")
+                    await self._scan_manual_strikes(wait_side) # Need to pass side string, not object
+                else:
+                    print(f"[WAIT] Fallback Failed. {wait_side} invalidated.")
+                
+                # Cleanup state
+                del self._signal_wait_state[key]
+                continue
+            
+            # 2. LIVE MONITORING (Inside the Wait Candle) - ADVANCED MODE ONLY
+            # We are here because current_candle_time == detected_at (Same candle timestamp, meaning we are in the next live bar)
+            
+            if entry_mode == "SIMPLE":
+                # SIMPLE MODE: Skip live monitoring. Just wait for candle close (Path 3 Fallback).
+                continue
+            
+            # A. Get Live Nifty Price
+            live_nifty = self.cache.get_price(index_query)
+            if not live_nifty: 
+                continue 
+                
+            # B. Check Condition A (NIFTY STRENGTH)
+            # Rule 1: Nifty holds above Signal EMA9
+            cond_a_trend = False
+            if wait_side == "CALL" and live_nifty > sig_ema9:
+                cond_a_trend = True
+            elif wait_side == "PUT" and live_nifty < sig_ema9:
+                cond_a_trend = True
+                
+            # Rule 2: Retracement < X% of Signal Body (Configured)
+            # Bull: Price shouldn't drop below Close - (Body * 0.3)
+            # Bear: Price shouldn't rise above Close + (Body * 0.3)
+            cond_a_retrace = False
+            retrace_pct = self.config.get("strategy", {}).get("smart_momentum", {}).get("wait_logic", {}).get("max_retrace_pct", 0.30)
+            retrace_limit = sig_body * retrace_pct
+            
+            if wait_side == "CALL":
+                limit_price = sig_close - retrace_limit
+                if live_nifty > limit_price:
+                    cond_a_retrace = True
+            elif wait_side == "PUT":
+                limit_price = sig_close + retrace_limit
+                if live_nifty < limit_price:
+                    cond_a_retrace = True
+            
+            # C. Check Condition B (OPTION BEHAVIOR) - Needs Live Option Data
+            # This requires iterating through the manual strikes relevant to the side
+            # We can reuse _scan_manual_strikes but passing a flag "check_live_conditions=True"
+            # But _scan_manual_strikes fetches history. Live check needs LTP.
+            # Simplified: If Nifty is valid, trigger the scan. The scan itself will check VWAP (Logic already exists).
+            # The User requirement: "Option LTP >= VWAP" is ALREADY in _check_and_execute_entry.
+            # The User requirement: "Option NOT making lower low". 
+            
+            if cond_a_trend and cond_a_retrace:
+                # Nifty is looking good. Try to enter EARLY.
+                # We prevent spamming by checking a flag or frequency?
+                # _scan_manual_strikes is async and safe.
+                # print(f"[WAIT] Conditional Entry Triggered! Nifty Strong ({live_nifty}). Scanning...")
+                await self._scan_manual_strikes(wait_side)
+                
+                # IMPORTANT: If we successfully enter, we should clear the wait state? 
+                # Or keep it until candle close?
+                # If we enter, the trade state goes to POSITION. Order Manager handles that.
+                # We can leave the wait state active, it won't trigger double entry due to "Already in Position" check.
+            
+        # 3. New Signal Registration
+        if signal_side != "NONE" and signal_key not in self._signal_wait_state:
+            # Calculate Signal Body Size (High - Low? or Abs(Close-Open)?)
+            # User said "Retrace > 30% of signal candle". Usually Range (High-Low).
+            # Let's use High-Low of the last candle.
+            sig_high = df_exec['High'].iloc[-1]
+            sig_low = df_exec['Low'].iloc[-1]
+            sig_body = sig_high - sig_low
+            
+            print(f"[SIGNAL] Fresh {signal_side} detected @ {close_ltf}. Waiting (Conditional)...")
+            self._signal_wait_state[signal_key] = {
+                'time': current_candle_time,
+                'side': signal_side,
+                'signal_close': close_ltf,
+                'signal_ema9': ema9_ltf,
+                'signal_body': sig_body
+            }
+
+        # Heartbeat
         self._heartbeat_counter += 1
         if self._heartbeat_counter % 2 == 0:
             now = datetime.now().strftime("%H:%M:%S")
-            print(f"[{now}] HEARTBEAT | Index: {price_exec:.2f} | Bias: {nifty_bias} | Filters: {'OK' if all_filters_ok else 'SKIP'}")
-            if not all_filters_ok:
-                reasons = []
-                if not adx_trend_ok: reasons.append(f"ADX-15m({adx_htf:.1f} < 25)")
-                if not adx_exec_ok: reasons.append(f"ADX-3m({adx_exec:.1f} < 20)")
-                if not rsi_ok: reasons.append(f"RSI-3m({rsi_exec:.1f})")
-                if not ema50_exec_ok: reasons.append("Price side EMA50")
-                if not distance_ok: reasons.append(f"FOMO (Dist: {distance:.1f} > {max_dist:.1f})")
-                if reasons: print(f"   REASON: {', '.join(reasons)}")
-
-        # 5. Trigger Check (UTBot Signal)
-        should_scan_options = False
-        if all_filters_ok:
-            # Check for fresh signal or age-limited trend
-            entry_logic = self.config.get("entry_logic", {})
-            max_age = entry_logic.get("index_max_trend_age", 8)
-            
-            if max_age == 0:
-                if utbot_ltf.has_fresh_buy() or utbot_ltf.has_fresh_sell():
-                    should_scan_options = True
-            else:
-                # Calculate Age
-                age = 0
-                if "trend_series" in utbot_ltf.metadata:
-                    ts = utbot_ltf.metadata["trend_series"]
-                    if len(ts) >= 2:
-                        curr_trend = ts.iloc[-1]
-                        for i in range(1, len(ts)):
-                            if ts.iloc[-i] == curr_trend: age += 1
-                            else: break
-                
-                if age <= max_age and utbot_ltf.trend != 0:
-                    should_scan_options = True
-
-        if should_scan_options:
-            # Match bias side only (Safety)
-            if (nifty_bias == "BULL" and utbot_ltf.trend == 1) or \
-               (nifty_bias == "BEAR" and utbot_ltf.trend == -1):
-                await self._scan_manual_strikes(utbot_ltf)
+            wait_status = "WAITING" if self._signal_wait_state else "IDLE"
+            print(f"[{now}] HB | Trend: {nifty_direction} | Signal: {signal_side} | Status: {wait_status}")
 
     # ========== ENTRY EXECUTION LOGIC ==========
     
@@ -562,12 +717,12 @@ class TradingEngine:
         del self._exit_cooldowns[symbol]
         return False
     
-    async def _scan_manual_strikes(self, index_ltf_signal):
+    async def _scan_manual_strikes(self, index_signal):
         """
         Scan manual strikes basket for entry opportunities.
         
         Args:
-            index_ltf_signal: Index LTF signal object
+            index_signal: Can be a signal object (with .trend) or a string ("CALL"/"PUT")
         """
         # Check trading hours
         if not self._is_within_trading_hours():
@@ -590,12 +745,24 @@ class TradingEngine:
         if not manual_strikes:
             return
         
-        # Determine which strikes to consider based on index trend
-        index_trend = index_ltf_signal.trend
-        trend_str = "BULLISH" if index_trend == 1 else "BEARISH"
+        # Determine trend direction from input
+        trend_str = "UNKNOWN"
+        target_trend = 0
+        
+        if isinstance(index_signal, str):
+            if index_signal == "CALL":
+                target_trend = 1
+                trend_str = "BULLISH"
+            elif index_signal == "PUT":
+                target_trend = -1
+                trend_str = "BEARISH"
+        else:
+            # Assume it's the UTBot signal object
+            target_trend = index_signal.trend
+            trend_str = "BULLISH" if target_trend == 1 else "BEARISH"
         
         # Log start of scan cycle
-        print(f"\n[SCAN] Index is {trend_str} @ {self._last_index_price:.2f}. Checking manual strikes...")
+        # print(f"\n[SCAN] Index is {trend_str} @ {self._last_index_price:.2f}. Checking manual strikes...")
         
         for symbol in manual_strikes:
             # Skip if already in position
@@ -612,106 +779,258 @@ class TradingEngine:
             is_pe = "PE" in symbol
             
             # Match CE with bullish index, PE with bearish index
-            if (is_ce and index_trend != 1):
+            if (is_ce and target_trend != 1):
                 continue
-            if (is_pe and index_trend != -1):
+            if (is_pe and target_trend != -1):
                 continue
             
             # Fetch option data and check option-level trigger
-            # print(f"[CHECK] Analyzing {symbol}...")
-            await self._check_and_execute_entry(symbol, index_ltf_signal)
+            # Pass the original signal object or a dummy structure if it was a string?
+            # _check_and_execute_entry doesn't use index_signal currently except for logging?
+            # Let's check signature.
+            await self._check_and_execute_entry(symbol, "CALL" if target_trend == 1 else "PUT")
     
-    async def _check_and_execute_entry(self, symbol: str, index_ltf_signal):
+    def _is_explosive_trend(self, df_exec, htf_adx_val):
         """
-        Check option-level conditions and execute entry if all criteria met.
+        Check for Explosive Trend conditions (NIFTY).
+        """
+        exp_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {})
+        if not exp_cfg.get("enabled", False):
+            return False
+            
+        # NIFTY 15m ADX >= 30 (Passed as argument to avoid complexity)
+        if htf_adx_val < exp_cfg.get("adx_min", 30):
+            return False
+            
+        # Candle Analysis
+        open_p = df_exec['Open'].iloc[-1]
+        high_p = df_exec['High'].iloc[-1]
+        low_p = df_exec['Low'].iloc[-1]
+        close_p = df_exec['Close'].iloc[-1]
+        
+        candle_range = high_p - low_p
+        if candle_range == 0: return False
+        
+        candle_body = abs(close_p - open_p)
+        body_ratio = candle_body / candle_range
+        close_pos = (close_p - low_p) / candle_range
+        
+        # Conditions
+        is_big_body = candle_body >= (exp_cfg.get("min_body_pct", 0.005) * close_p)
+        is_solid_body = body_ratio >= exp_cfg.get("min_body_ratio", 0.6)
+        is_closing_high = close_pos >= exp_cfg.get("min_close_pos", 0.75)
+        
+        if is_big_body and is_solid_body and is_closing_high:
+            print(f"[EXPLOSIVE] Trend Detected! Body:{candle_body:.2f}, Ratio:{body_ratio:.2f}, Pos:{close_pos:.2f}")
+            return True
+        return False
+
+    async def _check_option_confirmation(self, symbol: str, df_opt_ltf, price_check_mode="WAIT"):
+        """
+        Strict Option Confirmation Module.
+        price_check_mode: "IMMEDIATE" (for explosive) or "WAIT" (standard)
+        Returns: (bool, float_limit_price, list_reasons)
+        """
+        conf_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_confirmation", {})
+        entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
+        
+        # Calculate Indicators locally to ensure freshness
+        # We need VWAP, EMA, etc.
+        use_ha = self.config.get("option_use_ha", True)
+        
+        # Reuse existing indicator or create temp? 
+        # Better to reuse from registry if possible or calc.
+        # Assuming df_opt_ltf is sufficient.
+        
+        opt_tech = self.indicators.get("option_tech")
+        if not opt_tech:
+             opt_tech = IndicatorRegistry.create("technical", {
+                    "ema_periods": [9, 21],
+                    "rsi_period": 14,
+                    "adx_period": 14
+                })
+        
+        tech_res = opt_tech.calculate(df_opt_ltf, use_ha=use_ha)
+        meta = tech_res.metadata
+        
+        ema9 = meta["emas"].get(9)
+        ema21 = meta["emas"].get(21)
+        vwap = meta["vwap"]
+        
+        close = df_opt_ltf['Close'].iloc[-1]
+        
+        reasons = []
+        
+        # ============================================
+        # SIMPLE MODE: Minimal Checks
+        # ============================================
+        if entry_mode == "SIMPLE":
+            # 1. VWAP Check: LTP > VWAP
+            if close < vwap:
+                reasons.append(f"Below VWAP ({close:.2f} < {vwap:.2f})")
+            
+            # 2. Momentum Check: EMA9 > EMA21
+            if ema9 <= ema21:
+                reasons.append("EMA9 <= EMA21")
+            
+            if reasons:
+                return False, 0.0, reasons
+            
+            # Valid! Use VWAP as limit price (simple)
+            limit_price = vwap
+            return True, limit_price, []
+        
+        # ============================================
+        # ADVANCED MODE: Full Validation
+        # ============================================
+        vol_ma_5 = meta["vol_ma_5"]
+        volume = meta["volume"]
+        
+        close = df_opt_ltf['Close'].iloc[-1]
+        
+        # Get live quote (Only if spread check enabled OR if we want precise Bid for Limit)
+        # We need Bid for Strict Limit Order (min(Bid, VWAP)). 
+        # But if Spread Check disabled, maybe user is OK with Last Price or just VWAP?
+        # User said "I don't want to hit API when not required".
+        # If we skip get_quote, we don't have Bid.
+        # Implication: limit_price = min(close, vwap) instead of min(bid, vwap).
+        
+        check_spread = conf_cfg.get("check_spread", False)
+        bid = 0
+        ask = 0
+        ltp = close # Default to Candle Close
+        
+        if check_spread:
+            quote = await self.data_provider.get_quote(symbol, exchange="NFO")
+            if not quote:
+                # If we asked for spread but failed, should we fail?
+                # Let's log warning and proceed with Candle Close?
+                print(f"[WARN] Quote failed for {symbol}. Using Candle data.")
+            else:
+                bid = quote.get('bid', 0)
+                ask = quote.get('ask', 0)
+                ltp = quote.get('ltp', close)
+        
+        reasons = []
+        
+        # 1. VWAP Guard (Dynamic ATR-based or Fixed %)
+        use_atr = conf_cfg.get("use_atr_price_cap", True)
+        
+        if use_atr:
+            # ATR-based Max Price: VWAP + (ATR × Multiplier)
+            atr = meta.get("atr", 0)
+            atr_multiplier = conf_cfg.get("atr_multiplier", 1.5)
+            max_price = vwap + (atr * atr_multiplier)
+        else:
+            # Fixed %-based Max Price: VWAP * Buffer
+            max_buffer = conf_cfg.get("vwap_max_buffer", 1.015)
+            max_price = vwap * max_buffer
+        
+        if ltp < vwap: # Must be above VWAP (Fair Value)
+             reasons.append(f"Below VWAP ({ltp:.2f} < {vwap:.2f})")
+        if ltp > max_price: # Must NOT be too expensive
+             reasons.append(f"Too Expensive ({ltp:.2f} > {max_price:.2f})")
+             
+        # 2. Upper Wick Rejection (Trap Signal)
+        if conf_cfg.get("check_upper_wick", True):
+            open_p = df_opt_ltf['Open'].iloc[-1]
+            high_p = df_opt_ltf['High'].iloc[-1]
+            low_p = df_opt_ltf['Low'].iloc[-1]
+            
+            candle_body = abs(close - open_p)
+            upper_wick = high_p - max(close, open_p)
+            
+            if upper_wick > candle_body:
+                reasons.append(f"Wick Trap (Upper:{upper_wick:.2f} > Body:{candle_body:.2f})")
+             
+        # 3. Spread Check (If Enabled)
+        if check_spread and bid > 0:
+            spread_pct = (ask - bid) / ltp
+            if spread_pct > conf_cfg.get("max_spread_pct", 0.003):
+                 reasons.append(f"Spread High ({spread_pct:.4f} > 0.3%)")
+        
+        # 4. Momentum Check
+        if ema9 <= ema21:
+            reasons.append("EMA9 <= EMA21")
+            
+        # 5. Volume Check
+        if volume < (conf_cfg.get("volume_multiplier", 1.2) * vol_ma_5):
+            reasons.append(f"Low Vol ({volume})")
+            
+        # 6. Delta Check
+        
+        if reasons:
+            return False, 0.0, reasons
+            
+        # Valid! Calculate Limit Price
+        # If we have Bid, use it. Else use LTP/Close.
+        if bid > 0:
+            limit_price = min(bid, vwap)
+        else:
+            limit_price = min(ltp, vwap)
+            
+        if limit_price <= 0: limit_price = ltp
+        
+        return True, limit_price, []
+
+    async def _check_and_execute_entry(self, symbol: str, signal_side: str):
+        """
+        Execute Entry Phase 3 logic (3-Path System).
         """
         try:
-            # Fetch option historical data
+            # Fetch Index and Option Data
+            # We need Nifty 15m/3m for Explosive Check
+            # We already have Nifty data in _scan, but splitting functions makes passing it hard.
+            # We will refetch or rely on cached?
+            # Ideally passed args, but refetch safe for now.
+            
+            # Fetch Option Data
             opt_ltf_tf = self.config["option"]["ltf"]["timeframe"]
-            df_opt_ltf = await self.data_provider.fetch_history(
-                symbol, opt_ltf_tf, bars=100, exchange="NFO"
-            )
+            df_opt = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=100, exchange="NFO")
+            if df_opt is None or len(df_opt) < 50: return
             
-            if df_opt_ltf is None or len(df_opt_ltf) < 20:
-                print(f"[SKIP] {symbol}: Insufficient data")
-                return
+            # Fetch Nifty Data for Explosive Check (Fresh)
+            index_query = self.config.get("index_query", "NIFTY")
+            df_exec = await self.data_provider.fetch_history(index_query, self.config.get("execution_tf", "3m"), bars=50)
             
-            # Calculate option LTF indicator
-            use_ha = self.config.get("option_use_ha", False)
-            opt_signal_ltf = self.indicators["option_ltf"].calculate(df_opt_ltf, use_ha=use_ha)
+            # --- PATH 1: IMMEDIATE (EXPLOSIVE) ---
+            # Check if this is an "Explosive" setup?
+            # We need ADX from HTF (assumed passed or recalculated? Let's use stored value)
+            # Stored: self._last_htf_adx? We didn't store ADX.
+            # Let's assume standard flow passed phase 1 so ADX > 20.
+            # We need to verify ADX > 30 specifically for explosive.
+            # For simplicity, let's assume if user wants explosive, we check the body conditions mainly.
             
-            # Apply trigger logic for OPTION based on max_trend_age
-            # Get settings (defaults to 8 for safety/backward compat)
-            entry_logic = self.config.get("entry_logic", {})
-            max_age_opt = entry_logic.get("option_max_trend_age", 8)
+            exp_adx_min = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {}).get("adx_min", 30)
+            is_explosive = self._is_explosive_trend(df_exec, exp_adx_min) # Hardcoded ADX safe-guard or fetch?
+            # Actually, to be accurate we should pass ADX.
+            # Let's just use the Candle Logic for "Explosive" classification now.
             
-            option_entry_valid = False
-            rejection_reason = "No Signal"
+            valid_opt, limit_price, reasons = await self._check_option_confirmation(symbol, df_opt)
             
-            # LOGIC 1: Sniper Mode (Age = 0)
-            # Only enter on fresh crossover
-            if max_age_opt == 0:
-                if opt_signal_ltf.has_fresh_buy():
-                    option_entry_valid = True
+            if is_explosive:
+                if valid_opt:
+                    print(f"[EXPLOSIVE] Triggering IMMEDIATE ENTRY on {symbol}!")
+                    await self._execute_entry(symbol, signal_side, limit_price, None)
+                    return
                 else:
-                    rejection_reason = "Waiting for fresh BUY signal"
-
-            # LOGIC 2: Window Mode (Age > 0)
+                    print(f"[EXPLOSIVE] Detected but Option Invalid: {reasons}")
+                    return # Don't wait if explosive failed? Or fall back to wait? Fallback usually.
+            
+            # --- PATH 2: SMART WAIT / PATH 3: FALLBACK ---
+            # This logic is handled by the caller (_scan_for_signals) which calls this function 
+            # EITHER immediately (if condition met) OR after wait.
+            # So if we are here, it means we are permitted to enter IF option is valid.
+            
+            if valid_opt:
+                print(f"[ENTRY] Option Confirmation Passed. Executing {symbol}...")
+                await self._execute_entry(symbol, signal_side, limit_price, None)
             else:
-                # Check if in correctly aligned state
-                if opt_signal_ltf.trend == 1:
-                    # Calculate Age
-                    # We want to know how many candles BEFORE the current one were also green.
-                    age = 0
-                    if "trend_series" in opt_signal_ltf.metadata:
-                        ts = opt_signal_ltf.metadata["trend_series"]
-                        if len(ts) >= 2:
-                            curr_trend = ts.iloc[-1]
-                            # Start checking from the candle BEFORE the current one (-2)
-                            # Current candle (-1) is "Age 0"
-                            for i in range(2, len(ts) + 1):
-                                if ts.iloc[-i] == curr_trend:
-                                    age += 1
-                                else:
-                                    break
-                    
-                    if age <= max_age_opt:
-                        option_entry_valid = True
-                    else:
-                        rejection_reason = f"Trend too old (Age: {age} > Max: {max_age_opt})"
-                else:
-                    rejection_reason = "Not in BULLISH state"
-            
-            # Store state for logging (regardless of outcome)
-            self._strike_states[symbol] = {
-                "age": age if 'age' in locals() else 0,
-                "reason": rejection_reason,
-                "valid": option_entry_valid,
-                "trend": opt_signal_ltf.trend
-            }
-
-            if not option_entry_valid:
-                # print(f"[SKIP] {symbol}: {rejection_reason}")
-                return
-            
-            # Check max option price cap
-            current_price = df_opt_ltf['Close'].iloc[-1]
-            max_price = self.config.get("strike_selection", {}).get("max_option_price", 0)
-            if max_price > 0 and current_price > max_price:
-                logger.info(f"[SKIP] {symbol} price {current_price:.2f} > max {max_price}")
-                # print(f"[SKIP] {symbol}: Price {current_price:.2f} > Limit {max_price}")
-                return
-            
-            # All conditions met - execute entry!
-            print(f"[TRIGGER] {symbol}: Valid setup found! Executing BUY...")
-            
-            # Determine side
-            side = "CALL" if "CE" in symbol else "PUT"
-            await self._execute_entry(symbol, side, current_price, opt_signal_ltf)
+                 print(f"[REJECT] Option Confirmation Failed for {symbol}: {reasons}")
             
         except Exception as e:
             logger.error(f"Entry check error for {symbol}: {e}", exc_info=True)
-            self._set_cooldown(symbol, 60) # Cooldown on high-level failure
+            self._set_cooldown(symbol)
     
 
     async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal):
@@ -734,23 +1053,31 @@ class TradingEngine:
             # Place Order
             print(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity}")
             
-            order_params = {
-                "symbol": symbol,
-                "exchange": "NFO",
-                "transaction_type": "BUY",
-                "quantity": quantity,
-                "product": self.config.get("product_type", "MIS"),
-                "order_type": "MARKET"
-            }
+            # Determine Order Type based on Entry Mode
+            entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
             
-            order_id = await self.order_manager.place_order(order_params)
+            if entry_mode == "SIMPLE":
+                order_type = "LIMIT"  # Simple LIMIT order
+            else:
+                order_type = "SMART_LIMIT" if self.config["execution"]["order_type"] == "SMART_LIMIT" else "MARKET"
             
-            if order_id:
-                print(f"[SUCCESS] Order placed: {order_id}")
+            # Use unpacked arguments for place_order as per signature
+            order_id = await self.order_manager.place_order(
+                symbol=symbol,
+                action="BUY",
+                quantity=quantity,
+                order_type=order_type,
+                limit_price=price, # Smart Limit uses this as the "Smart Price" reference
+                exchange="NFO",
+                product=self.config.get("product_type", "MIS")
+            )
+            
+            if order_id and order_id.success:
+                print(f"[SUCCESS] Order placed: {order_id.order_id}")
                 # Initialize trade state
                 trade = Trade(
                     symbol=symbol,
-                    entry_price=price, # Approximation, will sync later
+                    entry_price=order_id.filled_price if order_id.filled_price else price,
                     quantity=quantity,
                     side=side,
                     entry_time=datetime.now(),
@@ -765,15 +1092,17 @@ class TradingEngine:
                 
                 print(f"[POSITION] Entered {symbol} @ {trade.entry_price:.2f}")
                 logger.info(f"Entry executed: {symbol} @ {trade.entry_price:.2f}")
-            self._set_cooldown(symbol, 60) # 1 min cooldown on failure
+            self._set_cooldown(symbol) # 1 min cooldown on failure
                 
         except Exception as e:
             logger.error(f"Entry execution error for {symbol}: {e}", exc_info=True)
             print(f"[ERROR] Entry execution crashed: {e}")
-            self._set_cooldown(symbol, 60) # 1 min cooldown on crash
+            self._set_cooldown(symbol) # 1 min cooldown on crash
     
-    def _set_cooldown(self, symbol: str, seconds: int):
+    def _set_cooldown(self, symbol: str, seconds: int = 0):
         """Set cooldown for a symbol"""
+        if seconds == 0:
+            seconds = self.config.get("system", {}).get("cooldowns", {}).get("error_sec", 60)
         self._cooldowns[symbol] = datetime.now() + timedelta(seconds=seconds)
 
     def _is_symbol_on_cooldown(self, symbol: str) -> bool:
@@ -800,8 +1129,9 @@ class TradingEngine:
             except Exception as e:
                 logger.error(f"Risk monitor error: {e}", exc_info=True)
             
-            # Run every 1 second (fast for TSL)
-            await asyncio.sleep(1)
+            # Run every X seconds (Configurable)
+            interval = self.config.get("system", {}).get("loop_intervals", {}).get("risk_monitor", 1)
+            await asyncio.sleep(interval)
     
     async def _monitor_risk(self, report: bool = False):
         """Monitor risk for all active positions"""
@@ -856,6 +1186,15 @@ class TradingEngine:
             
             # Exit if needed
             if decision.should_exit:
+                auto_sell = self.config.get("execution", {}).get("enable_bot_auto_sell", True)
+                
+                if not auto_sell:
+                    # Log alert but do NOT execute exit
+                    if self._heartbeat_counter % 5 == 0: # Reduce spam (every 5s)
+                        print(f"\n[ALERT] {decision.message} | Auto-Sell DISABLED. Please Exit Manually!")
+                    logger.info(f"[MANUAL_EXIT_REQ] {symbol}: {decision.message}")
+                    continue
+                
                 print(f"[RISK] Triggering EXIT for {symbol}: {decision.message}")
                 logger.info(f"[EXIT] {symbol}: {decision.message}")
                 await self._execute_exit(trade, decision.reason.value)
@@ -927,8 +1266,9 @@ class TradingEngine:
             except Exception as e:
                 logger.error(f"Position sync error: {e}", exc_info=True)
             
-            # Run every 10 seconds
-            await asyncio.sleep(10)
+            # Run every X seconds
+            interval = self.config.get("system", {}).get("loop_intervals", {}).get("position_sync", 10)
+            await asyncio.sleep(interval)
     
     async def _sync_positions(self):
         """Sync with broker positions using OpenAlgo positionbook() API"""

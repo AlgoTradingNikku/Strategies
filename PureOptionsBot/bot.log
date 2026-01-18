@@ -37864,3 +37864,288 @@ KeyError: 'htf'
 2026-01-16 22:05:44,851 - ERROR - [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
 2026-01-16 22:05:45,044 - WARNING - WebSocket disconnection detected!
 2026-01-16 22:05:45,068 - WARNING - WebSocket disconnection detected!
+2026-01-17 13:16:23,033 - INFO - Configuration banner printed
+2026-01-17 13:16:25,199 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-17 13:16:27,798 - INFO - Trading Engine initialized
+2026-01-17 13:16:27,798 - INFO - Trading Engine created successfully
+2026-01-17 13:16:27,798 - INFO - Starting Trading Engine...
+2026-01-17 13:16:29,820 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-17 13:16:34,831 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-17 13:16:34,831 - CRITICAL - WebSocket connection failed. Aborting startup.
+2026-01-17 13:16:34,833 - INFO - Goodbye!
+2026-01-17 16:50:30,030 - INFO - Configuration banner printed
+2026-01-17 16:50:31,570 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-17 16:50:32,251 - INFO - Trading Engine initialized
+2026-01-17 16:50:32,253 - INFO - Trading Engine created successfully
+2026-01-17 16:50:32,253 - INFO - Starting Trading Engine...
+2026-01-17 16:50:35,466 - INFO - [TASK] Signal scanner started
+2026-01-17 16:50:35,588 - INFO - [TASK] Risk monitor started
+2026-01-17 16:50:35,588 - INFO - [TASK] Position sync started
+2026-01-17 16:50:35,590 - INFO - [TASK] WebSocket monitor started
+2026-01-17 16:50:35,594 - INFO - [TASK] Config monitor started
+2026-01-17 16:51:14,529 - INFO - Shutting down...
+2026-01-17 16:51:14,530 - INFO - Trading Engine stopped
+2026-01-17 16:51:14,532 - INFO - All engine tasks cleaned up
+2026-01-17 16:51:14,532 - INFO - Goodbye!
+2026-01-18 09:09:19,556 - INFO - Configuration banner printed
+2026-01-18 09:09:20,488 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 09:09:22,888 - INFO - Trading Engine initialized
+2026-01-18 09:09:22,888 - INFO - Trading Engine created successfully
+2026-01-18 09:09:22,888 - INFO - Starting Trading Engine...
+2026-01-18 09:09:24,921 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-18 09:09:29,914 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-18 09:09:29,914 - CRITICAL - WebSocket connection failed. Aborting startup.
+2026-01-18 09:09:29,914 - INFO - Goodbye!
+2026-01-18 09:11:45,909 - INFO - Configuration banner printed
+2026-01-18 09:11:46,759 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 09:11:47,270 - INFO - Trading Engine initialized
+2026-01-18 09:11:47,271 - INFO - Trading Engine created successfully
+2026-01-18 09:11:47,271 - INFO - Starting Trading Engine...
+2026-01-18 09:11:50,481 - INFO - [TASK] Signal scanner started
+2026-01-18 09:11:50,531 - INFO - [TASK] Risk monitor started
+2026-01-18 09:11:50,531 - INFO - [TASK] Position sync started
+2026-01-18 09:11:50,531 - INFO - [TASK] WebSocket monitor started
+2026-01-18 09:11:50,531 - INFO - [TASK] Config monitor started
+2026-01-18 09:17:55,596 - INFO - Shutting down...
+2026-01-18 09:17:55,598 - INFO - Trading Engine stopped
+2026-01-18 09:17:55,599 - INFO - All engine tasks cleaned up
+2026-01-18 09:17:55,599 - INFO - Goodbye!
+2026-01-18 09:19:14,112 - INFO - Configuration banner printed
+2026-01-18 09:19:14,473 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 09:19:14,495 - INFO - Trading Engine initialized
+2026-01-18 09:19:14,499 - INFO - Trading Engine created successfully
+2026-01-18 09:19:14,499 - INFO - Starting Trading Engine...
+2026-01-18 09:19:22,124 - INFO - [TASK] Signal scanner started
+2026-01-18 09:19:22,128 - INFO - [TASK] Risk monitor started
+2026-01-18 09:19:22,128 - INFO - [TASK] Position sync started
+2026-01-18 09:19:22,128 - INFO - [TASK] WebSocket monitor started
+2026-01-18 09:19:22,132 - INFO - [TASK] Config monitor started
+2026-01-18 09:19:23,706 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:28,718 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:33,732 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:38,756 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:43,758 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:48,792 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:53,822 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:19:58,844 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:03,862 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:08,873 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:13,888 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:18,903 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:25,290 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:30,302 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:35,318 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:40,338 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:45,366 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:50,406 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:20:55,413 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:00,438 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:05,453 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:10,478 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+    await self._scan_for_signals()
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+    active_wait_keys = [k for k in self._signal_wait_state.keys() if k.startswith(index_query)]
+                                   ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:15,516 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:20,562 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:27,474 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:32,499 - ERROR - Signal scanner error: 'TradingEngine' object has no attribute '_signal_wait_state'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 385, in signal_scanner_task
+  File "C:\Rahul\06_Nikku\Strategies\PureOptionsBot\core\engine.py", line 552, in _scan_for_signals
+AttributeError: 'TradingEngine' object has no attribute '_signal_wait_state'
+2026-01-18 09:21:37,440 - INFO - Shutting down...
+2026-01-18 09:21:37,440 - INFO - Trading Engine stopped
+2026-01-18 09:21:37,440 - INFO - All engine tasks cleaned up
+2026-01-18 09:21:37,440 - INFO - Goodbye!
+2026-01-18 09:21:43,084 - INFO - Configuration banner printed
+2026-01-18 09:21:43,645 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 09:21:43,652 - INFO - Trading Engine initialized
+2026-01-18 09:21:43,652 - INFO - Trading Engine created successfully
+2026-01-18 09:21:43,652 - INFO - Starting Trading Engine...
+2026-01-18 09:21:51,297 - INFO - [TASK] Signal scanner started
+2026-01-18 09:21:51,311 - INFO - [TASK] Risk monitor started
+2026-01-18 09:21:51,311 - INFO - [TASK] Position sync started
+2026-01-18 09:21:51,314 - INFO - [TASK] WebSocket monitor started
+2026-01-18 09:21:51,315 - INFO - [TASK] Config monitor started
+2026-01-18 09:25:02,704 - INFO - Shutting down...
+2026-01-18 09:25:02,706 - INFO - Trading Engine stopped
+2026-01-18 09:25:02,706 - INFO - All engine tasks cleaned up
+2026-01-18 09:25:02,706 - INFO - Goodbye!
+2026-01-18 09:25:40,069 - INFO - Configuration banner printed
+2026-01-18 09:25:40,589 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-18 09:25:40,598 - INFO - Trading Engine initialized
+2026-01-18 09:25:40,598 - INFO - Trading Engine created successfully
+2026-01-18 09:25:40,598 - INFO - Starting Trading Engine...
+2026-01-18 09:25:48,248 - INFO - [TASK] Signal scanner started
+2026-01-18 09:25:48,263 - INFO - [TASK] Risk monitor started
+2026-01-18 09:25:48,263 - INFO - [TASK] Position sync started
+2026-01-18 09:25:48,267 - INFO - [TASK] WebSocket monitor started
+2026-01-18 09:25:48,269 - INFO - [TASK] Config monitor started
+2026-01-18 09:49:39,725 - INFO - Configuration reloaded successfully
+2026-01-18 10:02:03,106 - INFO - Shutting down...
+2026-01-18 10:02:03,111 - INFO - Trading Engine stopped
+2026-01-18 10:02:03,111 - INFO - All engine tasks cleaned up
+2026-01-18 10:02:03,111 - INFO - Goodbye!

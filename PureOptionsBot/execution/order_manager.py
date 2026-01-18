@@ -121,8 +121,8 @@ class OrderManager:
         """
         order_type_enum = OrderType.MARKET if order_type == "MARKET" else OrderType.LIMIT
         
-        # LIMIT order with fallback
-        if order_type_enum == OrderType.LIMIT:
+        # LIMIT order with timeout & polling (both LIMIT and SMART_LIMIT)
+        if order_type_enum == OrderType.LIMIT or order_type == "SMART_LIMIT":
             result = await self._place_limit_with_fallback(
                 symbol, action, quantity, limit_price, exchange, product
             )
@@ -222,13 +222,17 @@ class OrderManager:
         product: str
     ) -> OrderResult:
         """
-        Place LIMIT order, poll for fill, fallback to MARKET on timeout.
+        Place LIMIT order with timeout and auto-cancel.
+        
+        Handles both:
+        - SIMPLE LIMIT (limit_price = VWAP)
+        - SMART_LIMIT (limit_price = min(Bid, VWAP, PrevClose))
         
         Strategy:
-        1. Place LIMIT order
-        2. Poll order status every 0.5s
-        3. If filled within timeout -> success
-        4. If timeout -> cancel LIMIT, place MARKET
+        1. Place LIMIT order at provided price.
+        2. Poll order status every 0.5s.
+        3. If filled within timeout (5-8s) → success.
+        4. If timeout → CANCEL (strict, no market fallback).
         
         Returns:
             OrderResult
@@ -247,49 +251,69 @@ class OrderManager:
                     "price": limit_price,
                     "trigger_price": 0,
                     "product": product
-                    # "order_tag": "PureOptionsBot_LIMIT" # Removed due to API error
                 }
             )
             
             if not response or response.get("status") != "success":
-                # LIMIT placement failed -> fallback to MARKET immediately
-                print(f"LIMIT order placement failed, falling back to MARKET")
-                return await self._place_market(symbol, action, quantity, exchange, product)
+                return OrderResult(
+                    success=False,
+                    message=f"Smart Limit placement failed: {response}",
+                    order_type=OrderType.LIMIT,
+                    status=OrderStatus.REJECTED
+                )
             
             order_id = response.get("orderid")
-            print(f"LIMIT order placed: {order_id} @ {limit_price}")
+            print(f"Smart Limit order placed: {order_id} @ {limit_price}")
             
             # Poll for fill
             start_time = asyncio.get_event_loop().time()
-            while (asyncio.get_event_loop().time() - start_time) < self.limit_timeout_sec:
+            limit_timeout = self.config.get("execution", {}).get("order_timeout_sec", 8)
+            
+            while (asyncio.get_event_loop().time() - start_time) < limit_timeout:
                 await asyncio.sleep(self.limit_poll_interval)
                 
                 # Check order status
                 status = await self._get_order_status(order_id)
                 
-                if status == "FILLED":
-                    print(f"LIMIT order filled: {order_id}")
+                if status == "COMPLETE" or status == "FILLED": # 'COMPLETE' is often used by OpenAlgo
+                    print(f"Smart Limit filed! ID: {order_id}")
                     return OrderResult(
                         success=True,
                         order_id=order_id,
                         filled_price=limit_price,
                         quantity=quantity,
-                        message="LIMIT order filled",
+                        message="Smart Limit filled",
                         order_type=OrderType.LIMIT,
                         status=OrderStatus.FILLED
                     )
                 elif status in ["REJECTED", "CANCELLED"]:
-                    print(f"LIMIT order {status}, falling back to MARKET")
-                    return await self._place_market(symbol, action, quantity, exchange, product)
+                    print(f"Smart Limit rejected/cancelled.")
+                    return OrderResult(
+                        success=False,
+                        message=f"Order {status}",
+                        order_type=OrderType.LIMIT,
+                        status=OrderStatus.REJECTED
+                    )
             
-            # Timeout -> Cancel LIMIT and place MARKET
-            print(f"LIMIT order timeout ({self.limit_timeout_sec}s), cancelling and placing MARKET")
+            # Timeout -> Cancel LIMIT (STRICT)
+            print(f"Smart Limit timeout ({limit_timeout}s). Cancelling order... (No Chase)")
             await self._cancel_order(order_id)
-            return await self._place_market(symbol, action, quantity, exchange, product)
+            
+            return OrderResult(
+                success=False,
+                message="Smart Limit timed out (Strict Mode)",
+                order_type=OrderType.LIMIT,
+                status=OrderStatus.CANCELLED
+            )
         
         except Exception as e:
-            print(f"LIMIT order exception: {e}, falling back to MARKET")
-            return await self._place_market(symbol, action, quantity, exchange, product)
+            print(f"Smart Limit exception: {e}")
+            return OrderResult(
+                success=False,
+                message=f"Exception: {e}",
+                order_type=OrderType.LIMIT,
+                status=OrderStatus.REJECTED
+            )
     
     async def _get_order_status(self, order_id: str) -> str:
         """Get order status (async)"""
