@@ -1,0 +1,165 @@
+# PureOptionsBot v2.0 - Comprehensive Audit & Gap Analysis
+
+## Executive Summary
+
+After thorough comparison between the **old bot** ([live_trader.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/live_trader.py), 1675 lines) and the **new modular bot** ([main.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/main.py) + [core/engine.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/engine.py)), I've identified significant gaps. The new bot has a solid architectural foundation but is missing critical functionality to be production-ready.
+
+---
+ex
+## Current Architecture Status
+
+### ✅ Completed Modules
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| [core/engine.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/engine.py) | **Partial** | Has signal scanning, risk monitoring, position sync tasks. Missing entry execution! |
+| [core/state_machine.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/state_machine.py) | **Complete** | Trade states (OBSERVING → POSITION → EXITING → EXITED) |
+| [core/persistence.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/persistence.py) | **Complete** | SQLite-based crash recovery |
+| [execution/order_manager.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/execution/order_manager.py) | **Complete** | Async order placement with retries, LIMIT→MARKET fallback |
+| [risk/manager.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/risk/manager.py) | **Complete** | TSL (ATR/PERCENT/POINTS), 3-stage profit guard, daily limits |
+| [data/provider.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/data/provider.py) | **Complete** | Async history fetch, price caching |
+| [data/cache.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/data/cache.py) | **Complete** | LRU cache for prices and history |
+| [indicators/utbot.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/indicators/utbot.py) | **Complete** | Pure UTBot indicator (matches old bot) |
+| [indicators/registry.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/indicators/registry.py) | **Complete** | Plugin-style indicator loading |
+
+---
+
+## 🔴 CRITICAL MISSING FEATURES
+
+These features exist in [live_trader.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/live_trader.py) but are **NOT implemented** in the new modular bot:
+
+### 1. **Entry Execution (MOST CRITICAL)**
+The signal scanner detects signals but **NEVER executes trades**!
+
+**Old bot ([live_trader.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/live_trader.py) lines 722-1187):**
+- Scans manual strikes basket
+- Validates entry conditions (trigger mode, HTF alignment, trend age)
+- Checks liquidity, spread, max price cap
+- Executes BUY via [execute_trade()](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/live_trader.py#1189-1436)
+
+**New bot ([engine.py](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/engine.py) line 330):**
+```python
+# TODO: Move to OBSERVING state, select option strike  # ← THIS IS NEVER IMPLEMENTED!
+```
+
+### 2. **Manual Strikes Basket Scanning**
+Old bot scans ALL symbols in `manual_strikes` config and executes ANY that match.
+
+**Missing in new bot:** No basket iteration logic.
+
+### 3. **Trigger Mode Logic (STATE vs SIGNAL)**
+Old bot supports:
+- `INDEX_trigger_mode: STATE/SIGNAL`
+- `OPTION_trigger_mode: STATE/SIGNAL`
+- `max_trend_age` filtering
+
+**New bot:** Implemented in UTBot indicator but not wired to entry logic.
+
+### 4. **Liquidity & Spread Checks**
+Old bot ([check_liquidity()](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/live_trader.py#430-474), lines 430-473):
+- Fetches market depth
+- Validates bid/ask spread < `max_spread_pct`
+- Checks OI >= `min_oi`
+
+**New bot:** Not implemented.
+
+### 5. **Live Price Fetching for Positions**
+Old bot uses WebSocket LTP first, falls back to REST API.
+
+**New bot:** WebSocket subscription added but [_monitor_risk()](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/core/engine.py#353-381) calls [get_live_price()](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/data/provider.py#54-92) which doesn't check WebSocket cache!
+
+### 6. **Greeks Monitoring (Optional)**
+Old bot fetches option Greeks (Delta, Gamma, Theta, Vega, IV) and logs warnings.
+
+**New bot:** Not implemented.
+
+### 7. **Trade Reporting (CSV)**
+Old bot logs all events to daily CSV reports.
+
+**New bot:** Not implemented.
+
+### 8. **Config Hot-Reload**
+Old bot has `config_worker()` that monitors [config.yaml](file:///c:/Rahul/06_Nikku/Strategies/PureOptionsBot/config.yaml) for changes and reloads without restart.
+
+**New bot:** Not implemented.
+
+### 9. **Trading Hours Check**
+Old bot validates:
+- Start/end times
+- Lunch break pause
+- Expiry day rules
+
+**New bot:** Not implemented in engine (exists in RiskManager but not called).
+
+### 10. **Expiry Day Handling**
+Old bot:
+- Checks if symbol expires today
+- Tightens TSL on expiry
+- Can block new entries on expiry
+
+**New bot:** Not implemented.
+
+### 11. **Re-Entry Protection (Anti-Whipsaw)**
+Old bot blocks re-entry to same strike for configurable cooldown after exit.
+
+**New bot:** Documented in RiskManager but not wired to entry logic.
+
+---
+
+## 🟡 PARTIAL IMPLEMENTATIONS
+
+### 1. Heartbeat Logging
+- ✅ Added basic heartbeat with LTF/HTF trend
+- ❌ Missing: Position P&L, Greeks summary, detailed status
+
+### 2. WebSocket
+- ✅ Connects and subscribes to manual strikes
+- ❌ LTP cache not used by risk monitor (still using REST API)
+
+### 3. Position Sync
+- ✅ Uses `positionbook()` correctly
+- ❌ Doesn't update Trade objects with broker data (quantity, P&L)
+
+---
+
+## Recommended Fix Priority
+
+### Phase 1: Critical (Bot is Non-Functional Without These)
+1. **Implement Entry Execution Logic** - Scan manual strikes, validate, execute BUY
+2. **Wire WebSocket LTP to Risk Monitor** - Use cached prices instead of REST
+
+### Phase 2: Important (Safety & Correctness)
+3. Add Liquidity/Spread Checks before entry
+4. Implement Trading Hours validation
+5. Add Re-Entry Protection (cooldown tracking)
+6. Implement Expiry Day handling
+
+### Phase 3: Enhancements
+7. Add Config Hot-Reload
+8. Add CSV Trade Reporting
+9. Add Greeks Monitoring (optional)
+10. Enhanced Heartbeat with P&L
+
+---
+
+## Estimated Work
+
+| Priority | Items | Est. Lines of Code |
+|----------|-------|--------------------|
+| Phase 1 | 2 | ~300 lines |
+| Phase 2 | 4 | ~200 lines |
+| Phase 3 | 4 | ~150 lines |
+
+**Total: ~650 lines to bring new bot to feature parity with old bot.**
+
+---
+
+## Recommendation
+
+The new modular architecture is **excellent** and the foundation is solid. However, **the bot cannot trade** because entry execution is not implemented. I recommend:
+
+1. **Complete Phase 1 immediately** before any testing
+2. Run in PAPER mode (live_trade: False) for Phase 2 validation
+3. Add Phase 3 features incrementally
+
+Would you like me to proceed with implementing these missing features?

@@ -1,0 +1,371 @@
+"""
+Async Order Manager - Non-blocking order placement and management.
+
+Handles order execution with retries, timeouts, and LIMIT->MARKET fallback logic.
+"""
+
+import asyncio
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
+from datetime import datetime
+from enum import Enum
+
+
+class OrderType(Enum):
+    """Order types"""
+    MARKET = "MARKET"
+    LIMIT = "LIMIT"
+
+
+class OrderStatus(Enum):
+    """Order status"""
+    PENDING = "PENDING"
+    PLACED = "PLACED"
+    FILLED = "FILLED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
+
+
+@dataclass
+class OrderResult:
+    """Result from order placement"""
+    success: bool
+    order_id: Optional[str] = None
+    filled_price: Optional[float] = None
+    quantity: int = 0
+    message: str = ""
+    order_type: OrderType = OrderType.MARKET
+    status: OrderStatus = OrderStatus.PENDING
+
+
+class OrderManager:
+    """
+    Async order manager for trade execution.
+    
+    Features:
+    - Async order placement (non-blocking)
+    - Automatic retries on failure
+    - LIMIT order with timeout -> MARKET fallback
+    - Order status polling
+    
+    Example:
+        mgr = OrderManager(api_client, config)
+        
+        # Place order
+        result = await mgr.place_order(
+            symbol="NIFTY24JAN25500CE",
+            action="BUY",
+            quantity=75,
+            order_type="LIMIT",
+            limit_price=200.0
+        )
+        
+        if result.success:
+            print(f"Order filled at {result.filled_price}")
+    """
+    
+    def __init__(self, api_client, config: dict):
+        """
+        Initialize order manager.
+        
+        Args:
+            api_client: OpenAlgo API client
+            config: Configuration dict with retry/timeout settings
+        """
+        self.client = api_client
+        self.config = config
+        
+        # Order execution settings
+        self.max_retries = config.get("max_order_retries", 3)
+        self.retry_delay_ms = config.get("retry_delay_ms", 500)
+        
+        # LIMIT order settings
+        self.limit_timeout_sec = config.get("limit_order_timeout", 5)
+        self.limit_poll_interval = config.get("limit_poll_interval", 0.5)
+        
+        # Order tracking
+        self._pending_orders: Dict[str, OrderResult] = {}
+        
+    def update_config(self, new_config: dict):
+        """Update configuration dynamically"""
+        self.config = new_config
+        self.max_retries = new_config.get("max_order_retries", 3)
+        self.retry_delay_ms = new_config.get("retry_delay_ms", 500)
+        self.limit_timeout_sec = new_config.get("limit_order_timeout", 5)
+        self.limit_poll_interval = new_config.get("limit_poll_interval", 0.5)
+    
+    async def place_order(
+        self,
+        symbol: str,
+        action: str,  # "BUY" or "SELL"
+        quantity: int,
+        order_type: str = "MARKET",
+        limit_price: Optional[float] = None,
+        exchange: str = "NFO",
+        product: str = "MIS"
+    ) -> OrderResult:
+        """
+        Place an order with retries and fallback logic.
+        
+        Args:
+            symbol: Symbol to trade
+            action: "BUY" or "SELL"
+            quantity: Lot size
+            order_type: "MARKET" or "LIMIT"
+            limit_price: Price for LIMIT orders
+            exchange: Exchange (NFO, NSE, etc.)
+            product: Product type (MIS, NRML, etc.)
+            
+        Returns:
+            OrderResult with execution details
+        """
+        order_type_enum = OrderType.MARKET if order_type == "MARKET" else OrderType.LIMIT
+        
+        # LIMIT order with fallback
+        if order_type_enum == OrderType.LIMIT:
+            result = await self._place_limit_with_fallback(
+                symbol, action, quantity, limit_price, exchange, product
+            )
+        else:
+            result = await self._place_market(
+                symbol, action, quantity, exchange, product
+            )
+        
+        return result
+    
+    async def _place_market(
+        self,
+        symbol: str,
+        action: str,
+        quantity: int,
+        exchange: str,
+        product: str
+    ) -> OrderResult:
+        """
+        Place MARKET order with retries.
+        
+        Returns:
+            OrderResult
+        """
+        for attempt in range(self.max_retries):
+            try:
+                # Run sync API call in executor
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None,
+                    self._place_order_sync,
+                    {
+                        "symbol": symbol,
+                        "exchange": exchange,
+                        "action": action,
+                        "quantity": quantity,
+                        "price": 0,  # Market order
+                        "trigger_price": 0,
+                        "price_type": "MARKET",
+                        "product": product
+                        # "order_tag": "PureOptionsBot" # Removed: Not supported by broker API
+                    }
+                )
+                
+                if response and response.get("status") == "success":
+                    order_id = response.get("orderid")
+                    
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        quantity=quantity,
+                        message="Market order placed successfully",
+                        order_type=OrderType.MARKET,
+                        status=OrderStatus.PLACED
+                    )
+                else:
+                    error_msg = response.get("message", "Unknown error") if response else "No response"
+                    
+                    # Retry on failure
+                    if attempt < self.max_retries - 1:
+                        await asyncio.sleep(self.retry_delay_ms / 1000)
+                        continue
+                    
+                    return OrderResult(
+                        success=False,
+                        message=f"Market order failed: {error_msg}",
+                        order_type=OrderType.MARKET,
+                        status=OrderStatus.REJECTED
+                    )
+            
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    await asyncio.sleep(self.retry_delay_ms / 1000)
+                    continue
+                
+                return OrderResult(
+                    success=False,
+                    message=f"Market order exception: {str(e)}",
+                    order_type=OrderType.MARKET,
+                    status=OrderStatus.REJECTED
+                )
+        
+        return OrderResult(
+            success=False,
+            message="Market order failed after retries",
+            order_type=OrderType.MARKET,
+            status=OrderStatus.REJECTED
+        )
+    
+    async def _place_limit_with_fallback(
+        self,
+        symbol: str,
+        action: str,
+        quantity: int,
+        limit_price: float,
+        exchange: str,
+        product: str
+    ) -> OrderResult:
+        """
+        Place LIMIT order, poll for fill, fallback to MARKET on timeout.
+        
+        Strategy:
+        1. Place LIMIT order
+        2. Poll order status every 0.5s
+        3. If filled within timeout -> success
+        4. If timeout -> cancel LIMIT, place MARKET
+        
+        Returns:
+            OrderResult
+        """
+        # Place LIMIT order
+        try:
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                self._place_order_sync,
+                {
+                    "symbol": symbol,
+                    "exchange": exchange,
+                    "action": action,
+                    "quantity": quantity,
+                    "price": limit_price,
+                    "trigger_price": 0,
+                    "product": product
+                    # "order_tag": "PureOptionsBot_LIMIT" # Removed due to API error
+                }
+            )
+            
+            if not response or response.get("status") != "success":
+                # LIMIT placement failed -> fallback to MARKET immediately
+                print(f"LIMIT order placement failed, falling back to MARKET")
+                return await self._place_market(symbol, action, quantity, exchange, product)
+            
+            order_id = response.get("orderid")
+            print(f"LIMIT order placed: {order_id} @ {limit_price}")
+            
+            # Poll for fill
+            start_time = asyncio.get_event_loop().time()
+            while (asyncio.get_event_loop().time() - start_time) < self.limit_timeout_sec:
+                await asyncio.sleep(self.limit_poll_interval)
+                
+                # Check order status
+                status = await self._get_order_status(order_id)
+                
+                if status == "FILLED":
+                    print(f"LIMIT order filled: {order_id}")
+                    return OrderResult(
+                        success=True,
+                        order_id=order_id,
+                        filled_price=limit_price,
+                        quantity=quantity,
+                        message="LIMIT order filled",
+                        order_type=OrderType.LIMIT,
+                        status=OrderStatus.FILLED
+                    )
+                elif status in ["REJECTED", "CANCELLED"]:
+                    print(f"LIMIT order {status}, falling back to MARKET")
+                    return await self._place_market(symbol, action, quantity, exchange, product)
+            
+            # Timeout -> Cancel LIMIT and place MARKET
+            print(f"LIMIT order timeout ({self.limit_timeout_sec}s), cancelling and placing MARKET")
+            await self._cancel_order(order_id)
+            return await self._place_market(symbol, action, quantity, exchange, product)
+        
+        except Exception as e:
+            print(f"LIMIT order exception: {e}, falling back to MARKET")
+            return await self._place_market(symbol, action, quantity, exchange, product)
+    
+    async def _get_order_status(self, order_id: str) -> str:
+        """Get order status (async)"""
+        try:
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                self.client.orderbook
+            )
+            
+            if response and 'data' in response:
+                for order in response['data']:
+                    if order.get('orderid') == order_id:
+                        return order.get('status', 'PENDING')
+            
+        except Exception as e:
+            print(f"Error getting order status: {e}")
+        
+        return "UNKNOWN"
+    
+    async def _cancel_order(self, order_id: str) -> bool:
+        """Cancel an order (async)"""
+        try:
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                self.client.cancelorder,
+                order_id
+            )
+            
+            return response and response.get("status") == "success"
+        
+        except Exception as e:
+            print(f"Error cancelling order: {e}")
+            return False
+    
+    def _place_order_sync(self, order_params: dict) -> Optional[dict]:
+        """Synchronous order placement (called in executor)"""
+        try:
+            return self.client.placeorder(**order_params)
+        except Exception as e:
+            print(f"Order placement error: {e}")
+            return None
+    
+    # === ORDER BOOK UTILITIES ===
+    
+    async def get_open_orders(self) -> list:
+        """Get list of open (pending) orders"""
+        try:
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                self.client.orderbook
+            )
+            
+            if response and 'data' in response:
+                return [
+                    order for order in response['data']
+                    if order.get('status') in ['PENDING', 'PLACED']
+                ]
+        
+        except Exception as e:
+            print(f"Error getting open orders: {e}")
+        
+        return []
+    
+    async def cancel_all_orders(self) -> int:
+        """Cancel all pending orders"""
+        open_orders = await self.get_open_orders()
+        cancelled = 0
+        
+        for order in open_orders:
+            order_id = order.get('orderid')
+            if order_id:
+                success = await self._cancel_order(order_id)
+                if success:
+                    cancelled += 1
+        
+        return cancelled
