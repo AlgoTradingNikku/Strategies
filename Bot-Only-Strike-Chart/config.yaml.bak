@@ -23,10 +23,10 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
+    - "NIFTY20JAN2625500CE"
+    - "NIFTY20JAN2625500PE"
     - "NIFTY20JAN2625600CE"
     - "NIFTY20JAN2625600PE"
-    #- "NIFTY20JAN2625600CE"
-    #- "NIFTY20JAN2625600PE"
     #- "NIFTY20JAN2625500CE"
     #- "NIFTY20JAN2625500PE"
     #- "NIFTY20JAN2625900CE"
@@ -48,7 +48,7 @@ execution_tf: "3m"               # Used for Signals and Confirmation
 option:
   ltf:
     timeframe: "3m"              # Option chart timeframe for VWAP/EMA/Volume checks
-    use_ha: True                # False = OHLC (Recommended for Options), True = HA
+    use_ha: False                # False = OHLC (Recommended for Options), True = HA
 
 strategy:
   smart_momentum:
@@ -59,12 +59,6 @@ strategy:
 # ========================================
 # All checks are performed on the OPTION chart (3m) after UTBot signal
 entry_conditions:
-  # Logic Toggles
-  use_indicator: False  # If False, bot ignores UTBot signal and scans every candle
-                        # The Problem: If the market is moving sideways, 
-                        #your filters might flicker "True" multiple times, leading to over-trading.
-  use_filters: True    # If False, bot ignores RSI/ADX/VWAP filters
-  
   # VWAP Checks
   check_vwap_bullish: True       # LTP > VWAP (Entry above fair value)
   check_vwap_cap: True           # LTP <= VWAP + (ATR * multiplier) (Not too expensive)
@@ -74,16 +68,6 @@ entry_conditions:
   check_ema_trend: True          # EMA Fast > EMA Slow (Momentum confirmation)
   ema_fast: 9
   ema_slow: 21
-
-  ema_logic_mode: "OR"          # How to combine the two ema filters above and below: "AND" or "OR"
-                                 # (Only used if BOTH filters are True)
-
-  # Momentum Candle Filter (New)
-  check_momentum_candle: True
-  mom_ema_period: 9
-  mom_body_above_pct: 0.70       # 0.80 = 80% of body must be above EMA
-  mom_no_lower_wick: True        # True = Green candle must have no lower wick
-
   
   # Volume Check
   check_volume: False             # Volume > Avg * multiplier
@@ -95,12 +79,12 @@ entry_conditions:
   
   # ADX Check (Optional - Trend Strength)
   check_adx: True               # ADX > adx_min
-  adx_min: 22    # Try 18 when utbot on, try 22 on off  
+  adx_min: 20
   adx_period: 14
   
   # RSI Check (Optional - Momentum)
   check_rsi: True                # RSI > rsi_min AND RSI < rsi_max
-  rsi_min: 52                    # Minimum RSI for bullish entry
+  rsi_min: 55                    # Minimum RSI for bullish entry
   rsi_max: 100                   # Maximum RSI (100 = no upper limit)
   rsi_period: 14
 
@@ -142,9 +126,9 @@ re_entry_protection:
 # 3. TRADING HOURS & LIMITS
 # ========================================
 trading_hours:
-  enabled: False
+  enabled: True
   start_time: "09:00"           # Post-opening settle
-  end_time: "19:30"             # Market Close
+  end_time: "23:00"             # No new trades after this
   sq_off_time: "15:20"          # Hard exit all positions
   avoid_lunch: False
 

@@ -75,9 +75,7 @@ class MarketDataProvider:
             loop = asyncio.get_event_loop()
             quote = await loop.run_in_executor(
                 None, 
-                self.client.quotes,
-                exchange,
-                symbol
+                lambda: self.client.quotes(symbol=symbol, exchange=exchange)
             )
             
             if quote and 'lp' in quote:
@@ -276,7 +274,11 @@ class MarketDataProvider:
         # Check cache
         cached = self.cache.get_master_info(symbol)
         if cached:
-            return int(cached.get("lotsize", 75))
+            lot_size = int(cached.get("lotsize", 75))
+            print(f"[DEBUG] Lot size for {symbol}: {lot_size} (from cache)")
+            return lot_size
+        else:
+            print(f"[DEBUG] Cache miss for {symbol}. Master cache size: {len(self.cache._master_cache) if hasattr(self.cache, '_master_cache') else 'N/A'}")
             
         # Cache miss: Fetch FULL master from API (once per session ideally)
         print(f"[INFO] Cache miss for {symbol}. Fetching Security Master for {exchange}...")

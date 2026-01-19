@@ -8,6 +8,8 @@ from cachetools import TTLCache
 from typing import Optional, Dict, Any
 import pandas as pd
 from datetime import datetime
+import pickle
+import os
 
 
 class MarketDataCache:
@@ -155,6 +157,51 @@ class MarketDataCache:
         if not hasattr(self, "_master_cache"):
             self._master_cache = {}
         self._master_cache[symbol] = info
+        
+    def load_master_from_file(self, file_path: str = "instruments_cache.pkl"):
+        """
+        Load master data from a pickle file correctly.
+        
+        Args:
+            file_path: Path to the .pkl file
+        """
+        if not os.path.exists(file_path):
+            print(f"[WARN] Instrument cache file not found: {file_path}")
+            return
+            
+        try:
+            print(f"[INFO] Loading instruments from {file_path}...")
+            with open(file_path, "rb") as f:
+                df = pickle.load(f)
+            
+            if isinstance(df, pd.DataFrame):
+                # Ensure we have required columns
+                if "symbol" in df.columns and "lotsize" in df.columns:
+                    count = 0
+                    if not hasattr(self, "_master_cache"):
+                        self._master_cache = {}
+                        
+                    for _, row in df.iterrows():
+                        sym = row["symbol"]
+                        lot = row["lotsize"]
+                        
+                        # Store in compatible format
+                        self._master_cache[sym] = {
+                            "symbol": sym,
+                            "lotsize": lot,
+                            "token": row.get("token", ""),
+                            "exchange": row.get("exchange", "NFO")
+                        }
+                        count += 1
+                        
+                    print(f"[INFO] Successfully loaded {count} instruments into cache.")
+                else:
+                    print(f"[ERROR] Cache file missing required columns (symbol, lotsize). Found: {df.columns}")
+            else:
+                print(f"[ERROR] Cache file must contain a DataFrame. Got: {type(df)}")
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to load instrument cache: {e}")
     
     # === UTILITIES ===
     

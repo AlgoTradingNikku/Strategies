@@ -184,7 +184,7 @@ class TradeStateMachine:
         TradeState.IDLE: [TradeState.OBSERVING, TradeState.BLOCKED],
         TradeState.OBSERVING: [TradeState.ENTERING, TradeState.IDLE, TradeState.BLOCKED],
         TradeState.ENTERING: [TradeState.POSITION, TradeState.IDLE],
-        TradeState.POSITION: [TradeState.EXITING, TradeState.BLOCKED],
+        TradeState.POSITION: [TradeState.EXITING, TradeState.BLOCKED, TradeState.EXITED], # Added EXITED for external closures
         TradeState.EXITING: [TradeState.EXITED, TradeState.POSITION],  # Can retry
         TradeState.EXITED: [TradeState.IDLE, TradeState.BLOCKED],
         TradeState.BLOCKED: [TradeState.IDLE],

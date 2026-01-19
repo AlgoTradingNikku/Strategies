@@ -207,28 +207,57 @@ async def main():
 
             if should_fetch:
                 print("[INFO] Fetching security master from API (this may take a moment)...")
-                instruments = client.instruments(exchange="NSE")
                 
-                has_data = False
-                if instruments is not None:
-                    if isinstance(instruments, list) and len(instruments) > 0:
-                        has_data = True
-                    elif hasattr(instruments, 'empty') and not instruments.empty:
-                        has_data = True
+                # Fetch multiple exchanges
+                exchanges_to_fetch = ["NSE_INDEX", "NSE", "NFO"]
+                combined_instruments = []
                 
-                if has_data:
-                    count = len(instruments)
-                    print(f"[INFO] Master fetched from API ({count} instruments).")
+                for exch in exchanges_to_fetch:
+                    print(f"[INFO] Fetching {exch}...")
+                    try:
+
+                        data = client.instruments(exchange=exch)
+                        
+                        # Handle DataFrame return type safely
+                        if data is not None:
+                            # Check if it's a DataFrame (has 'empty' attribute)
+                            if hasattr(data, 'empty'):
+                                if not data.empty:
+                                    # Convert DataFrame to dict records for consistency
+                                    if hasattr(data, 'to_dict'):
+                                        combined_instruments.extend(data.to_dict('records'))
+                            # Check if it's a list
+                            elif isinstance(data, list) and len(data) > 0:
+                                combined_instruments.extend(data)
+                            # Check if it's a dict with 'data'
+                            elif isinstance(data, dict) and 'data' in data:
+                                combined_instruments.extend(data['data'])
+                                
+                    except Exception as ex:
+                        print(f"[WARN] Failed to fetch {exch}: {ex}")
+
+                if combined_instruments:
+                    count = len(combined_instruments)
+                    print(f"[INFO] Master fetched from API ({count} instruments total).")
+                    
+                    # Convert to DataFrame for easier handling if needed, or just save list
+                    # Verify if format matches what cache expects (list or dataframe?)
+                    # cache.py expects a DataFrame in load_master_from_file!
+                    # "if isinstance(df, pd.DataFrame):"
+                    
+                    # So we MUST convert to DataFrame
+                    import pandas as pd
+                    df_master = pd.DataFrame(combined_instruments)
                     
                     # Save to cache
                     try:
                         with open(cache_file, "wb") as f:
-                            pickle.dump(instruments, f)
+                            pickle.dump(df_master, f)
                         print(f"[INFO] Master saved to {cache_file}")
                     except Exception as e:
                         logger.warning(f"Failed to write cache: {e}")
                 else:
-                    print("[WARN] API returned empty instrument list.")
+                    print("[WARN] API returned empty instrument list for all exchanges.")
 
             # Pass instruments to engine if needed (currently engine doesn't explicitly take it, 
             # but we can set it on the client or engine if the architecture supports it.

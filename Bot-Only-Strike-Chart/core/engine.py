@@ -12,8 +12,9 @@ Runs as an async event loop with multiple concurrent tasks.
 """
 
 import asyncio
+import re
 from typing import Dict, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import time
 import os
@@ -62,6 +63,7 @@ class TradingEngine:
         # Initialize components
         self.persistence = TradePersistence()
         self.cache = MarketDataCache()
+        self.cache.load_master_from_file("instruments_cache.pkl")
         self.data_provider = MarketDataProvider(api_client, self.cache)
         self.risk_manager = RiskManager(config)
         self.order_manager = OrderManager(api_client, config)
@@ -97,6 +99,10 @@ class TradingEngine:
         
         # Signal wait state tracking (for conditional wait logic)
         self._signal_wait_state = {}
+        
+        # Last UTBot state and rejection reasons for each strike (for verbose logging)
+        self._last_utbot_state = {}
+        self._last_reject_reasons = {}
         
         # Restore state from database
         self._restore_state()
@@ -136,7 +142,7 @@ class TradingEngine:
             self.trades[trade.symbol] = trade
             logger.info(
                 f"[RECOVERY] Restored {trade.symbol} in {trade.state.name} "
-                f"@ ₹{trade.entry_price} (P&L: {trade.pnl_pct:.2f}%)"
+                f"@ INR {trade.entry_price} (P&L: {trade.pnl_pct:.2f}%)"
             )
         
         if len(active_trades) > 0:
@@ -275,18 +281,27 @@ class TradingEngine:
         except Exception as e:
             logger.debug(f"WebSocket setup error: {e}")
             return False
-    
     def _on_ws_ltp_update(self, data):
         """Handle LTP updates from WebSocket"""
-        print(f"[DEBUG] WS Data: {data}") # Uncommented for debugging
+        # print(f"[DEBUG] WS Data: {data}")  # Uncomment to debug WebSocket data
         try:
             if isinstance(data, dict):
                 symbol = data.get("symbol", "")
+                
+                # Extract LTP - check if it's nested in 'data' key
                 ltp = data.get("ltp", 0)
+                if "data" in data and isinstance(data["data"], dict):
+                    ltp = data["data"].get("ltp", ltp)
                 
                 if symbol and ltp:
                     # Update cache with live price
                     self.cache.set_price(symbol, float(ltp))
+                    
+                    # Special case for Index symbol mismatch (e.g. 'Nifty 50' vs 'NIFTY')
+                    index_query = self.config.get("index_query", "NIFTY")
+                    if symbol.upper().replace(" ", "") == index_query.upper().replace(" ", ""):
+                        if symbol != index_query:
+                            self.cache.set_price(index_query, float(ltp))
                     
         except Exception as e:
             logger.debug(f"WS LTP update error: {e}")
@@ -424,36 +439,182 @@ class TradingEngine:
         exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 100)
         use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
         
-        # Scan each strike
+        # Check parallel scanning mode
+        exec_cfg = self.config.get("execution", {})
+        parallel_enabled = exec_cfg.get("parallel_scanning", True)
+        
+        # Filter strikes to scan (skip those in position or on cooldown)
+        strikes_to_scan = []
         for symbol in manual_strikes:
-            # Skip if already in position
             if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
                 continue
-            
-            # Skip if on cooldown
             if self._is_symbol_on_cooldown(symbol):
                 continue
+            strikes_to_scan.append(symbol)
+        
+        if parallel_enabled and len(strikes_to_scan) > 0:
+            # ========== OPTIMIZED PARALLEL FETCH ==========
+            # 1. Define fetch task
+            async def fetch_one(symbol):
+                try:
+                    df = await self.data_provider.fetch_history(
+                        symbol, opt_ltf_tf, bars=exec_bars, exchange="NFO"
+                    )
+                    return (symbol, df)
+                except Exception:
+                    return (symbol, None)
+
+            # 2. Fetch all concurrently
+            results = await asyncio.gather(*[fetch_one(s) for s in strikes_to_scan])
+            data_map = {sym: df for sym, df in results if df is not None and not df.empty}
             
-            try:
-                # Fetch Option historical data
-                df_opt = await self.data_provider.fetch_history(
-                    symbol, opt_ltf_tf, bars=exec_bars, exchange="NFO"
-                )
+            # DEBUG: Log what's in data_map
+            if self._heartbeat_counter % 6 == 0:
+                debug_info = [f"{s}:{df['Close'].iloc[-1]:.1f}" for s, df in data_map.items()]
+                # print(f"[DEBUG] DataMap Content: {', '.join(debug_info)}")
+
+            # ========== HEARTBEAT (With Shared Data) ==========
+            self._heartbeat_counter += 1
+            if self._heartbeat_counter % 2 == 0:
+                now = datetime.now().strftime("%H:%M:%S")
+                active_symbols = [t.symbol for t in self.trades.values() if t.state == TradeState.POSITION]
                 
-                if df_opt is None or len(df_opt) < 50:
-                    continue
+                # Get Nifty price
+                index_query = self.config.get("index_query", "NIFTY")
+                index_exchange = self.config.get("index_exchange", "NSE_INDEX")
+                nifty_price = self.cache.get_price(index_query) or 0.0
                 
-                # Calculate UTBot on Option chart
-                utbot_result = self.indicators["option_utbot"].calculate(df_opt, use_ha=use_ha)
+                # Fallback to API quote
+                if nifty_price == 0.0 and self.client:
+                    try:
+                        quote = self.client.quotes(symbol=index_query, exchange=index_exchange)
+                        if quote and isinstance(quote, dict) and quote.get("status") == "success":
+                            nifty_price = quote.get("data", {}).get("ltp", 0.0)
+                            self.cache.set_price(index_query, nifty_price)
+                    except Exception:
+                        pass
                 
-                # Check for BUY signal (signal == 1 means fresh buy)
-                if utbot_result.signal == 1:
+                print(f"[{now}] HB | NIFTY: {nifty_price:.1f} | Strikes: {len(manual_strikes)} | Active: {len(active_symbols)}")
+                
+                # Show details for active positions using SHARED DATA
+                if active_symbols:
+                    await self._print_active_trade_details(active_symbols, data_map)
+                
+                elif not active_symbols:
+                    # Verbose Scan Summary code...
+                    scan_summary = []
+                    # ... (rest of summary code is fine, it uses cache prices)
+                    for symbol in manual_strikes:
+                        # Get price: Priority 1 = Fetched Data, Priority 2 = Cache
+                        strike_price = 0.0
+                        if symbol in data_map:
+                            strike_price = data_map[symbol]['Close'].iloc[-1]
+                            self.cache.set_price(symbol, strike_price) # Update cache
+                        else:
+                            # If not in data_map (e.g. cooldown), check cache
+                            strike_price = self.cache.get_price(symbol) or 0.0
+                            # Log reason for 0.0 if symbol definitely in manual_strikes
+                            if strike_price == 0 and symbol in manual_strikes:
+                                pass # This happens on first run or after errors
+
+                        state_emoji = "[ -- ]"
+                        rejection_suffix = ""
+                        
+                        if symbol in self._last_utbot_state:
+                            trend = self._last_utbot_state[symbol]
+                            if trend == 1: state_emoji = "[BULL]"
+                            elif trend == -1: state_emoji = "[BEAR]"
+                            else: state_emoji = "[NEUT]"
+                        
+                        # Add rejection reason if trend is bullish but filters failed
+                        if state_emoji == "[BULL]" and symbol in self._last_reject_reasons:
+                            reason = self._last_reject_reasons[symbol]
+                            if reason:
+                                # Shorten reason for log (e.g. "Low volume (10 < 100)" -> "VOL")
+                                if "EMA" in reason: rejection_suffix = ":WAIT_EMA"
+                                elif "ADX" in reason: rejection_suffix = ":WAIT_ADX"
+                                elif "RSI" in reason: rejection_suffix = ":WAIT_RSI"
+                                elif "Volume" in reason: rejection_suffix = ":WAIT_VOL"
+                                elif "expensive" in reason: rejection_suffix = ":WAIT_VWAP_CAP"
+                                elif "VWAP" in reason: rejection_suffix = ":WAIT_VWAP"
+                                elif "Momentum" in reason: rejection_suffix = ":WAIT_MOM"
+                                else: rejection_suffix = ":WAIT"
+                        
+                        # Short symbol using regex (e.g. NIFTY...25500PE -> 25500PE)
+                        match = re.search(r'(\d+[CP]E)$', symbol)
+                        short_sym = match.group(1) if match else (symbol[-10:] if len(symbol) > 10 else symbol)
+                        
+                        scan_summary.append(f"{short_sym}:{state_emoji}{rejection_suffix}{strike_price:.1f}")
+                    if scan_summary:
+                        print(f"        SCAN | {' | '.join(scan_summary)}")
+
+            # ========== PROCESS SIGNALS (Using Shared Data) ==========
+            tasks = []
+            for symbol, df in data_map.items():
+                if len(df) < 50: continue
+                tasks.append(self._process_strike_data(symbol, df, use_ha))
+            
+            if tasks:
+                await asyncio.gather(*tasks)
+
+        else:
+            # Fallback for empty list or sequential (if needed, but usually parallel covers all)
+            pass # Keep it simple, just skip if empty
+            
+            # Verbose Scan Summary (show UTBot state for each strike)
+
+    
+    async def _process_strike_data(self, symbol: str, df_opt, use_ha: bool):
+        """
+        Process a single strike's data - calculate UTBot and handle entry/exit.
+        Used by both parallel and sequential scanning.
+        """
+        try:
+            # Calculate UTBot on Option chart
+            utbot_result = self.indicators["option_utbot"].calculate(df_opt, use_ha=use_ha)
+            
+            # Store UTBot state for verbose logging
+            self._last_utbot_state[symbol] = utbot_result.trend
+            
+            # GUARD: Prevent re-entry if position exists
+            if symbol in self.trades and self.trades[symbol].state in [TradeState.ENTERING, TradeState.POSITION, TradeState.EXITING]:
+                pass # Skip entry logic if position exists
+            
+            else:
+                # ENTRY LOGIC
+                entry_cfg = self.config.get("entry_conditions", {})
+                use_indicator = entry_cfg.get("use_indicator", True)
+                use_filters = entry_cfg.get("use_filters", True)
+                
+                trigger_active = False
+                
+                if not use_indicator:
+                    # Indicator disabled -> Always trigger scan (subject to filters)
+                    trigger_active = True
+                elif utbot_result.signal == 1:
+                    # Indicator enabled AND Signal fired
                     print(f"\n[SIGNAL] UTBot BUY detected on {symbol}")
+                    trigger_active = True
+                
+                if trigger_active:
+                    filters_pass = True
+                    curr_price = df_opt['Close'].iloc[-1]
+                    limit_price = curr_price
                     
-                    # Run entry conditions validation
-                    valid, limit_price, reasons = await self._check_entry_conditions(symbol, df_opt)
+                    if use_filters:
+                        valid, f_price, reasons = await self._check_entry_conditions(symbol, df_opt)
+                        if valid:
+                            limit_price = f_price
+                            self._last_reject_reasons[symbol] = None # Clear on success
+                        else:
+                            filters_pass = False
+                            # Store first reason for summary
+                            self._last_reject_reasons[symbol] = reasons[0] if reasons else "Unknown"
+                            
+                            if use_indicator: # Log reject only if specific signal fired
+                                print(f"[REJECT] Filters failed for {symbol}: {reasons}")
                     
-                    if valid:
+                    if filters_pass:
                         print(f"[ENTRY] All conditions passed for {symbol} @ {limit_price:.2f}")
                         
                         # Determine side from symbol (CE = CALL, PE = PUT)
@@ -472,46 +633,102 @@ class TradingEngine:
                             'signal_time': datetime.now(),
                             're_entry_attempts': 0
                         }
-                    else:
-                        print(f"[REJECT] Entry conditions failed for {symbol}: {reasons}")
-                
+            
                 # Check for re-entry opportunity (if enabled)
+                # Only if NO trigger this cycle
                 elif symbol in self._signal_wait_state:
                     await self._check_re_entry_trigger(symbol, df_opt, use_ha)
+            
+            # ========== UTBot SELL SIGNAL EXIT CHECK ==========
+            # Check if we have an active position for this symbol
+            if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
+                exit_cfg = self.config.get("exit_conditions", {})
                 
-                # ========== UTBot SELL SIGNAL EXIT CHECK ==========
-                # Check if we have an active position for this symbol
-                if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
-                    exit_cfg = self.config.get("exit_conditions", {})
+                if exit_cfg.get("use_utbot_sell", True):
+                    priority = exit_cfg.get("tsl_priority", "SIGNAL_FIRST").upper()
                     
-                    if exit_cfg.get("use_utbot_sell", True):
-                        priority = exit_cfg.get("tsl_priority", "SIGNAL_FIRST").upper()
-                        
-                        # Check for UTBot sell signal (signal == -1 means fresh sell)
-                        if utbot_result.signal == -1:
-                            if priority == "SIGNAL_FIRST":
-                                # Exit immediately on UTBot sell
-                                print(f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol}. Exiting...")
-                                await self._execute_exit(self.trades[symbol], "UTBot Sell Signal")
-                            else:
-                                # TSL_FIRST: Just log, don't exit
-                                print(f"[INFO] UTBot SELL on {symbol} (TSL_FIRST mode - waiting for TSL)")
+                    # Check for UTBot sell signal (signal == -1 means fresh sell)
+                    if utbot_result.signal == -1:
+                        if priority == "SIGNAL_FIRST":
+                            # Exit immediately on UTBot sell
+                            print(f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol}. Exiting...")
+                            await self._execute_exit(self.trades[symbol], "UTBot Sell Signal")
+                        else:
+                            # TSL_FIRST: Just log, don't exit
+                            print(f"[INFO] UTBot SELL on {symbol} (TSL_FIRST mode - waiting for TSL)")
+        except Exception as e:
+            logger.error(f"Error processing {symbol}: {e}", exc_info=True)
+
+    async def _print_active_trade_details(self, active_symbols, data_map=None):
+        """Print detailed status for active trades in heartbeat"""
+        if not active_symbols:
+            return
+
+        # Prepare lists for printing to group them
+        pos_lines = []
+        check_lines = []
+
+        for symbol in active_symbols:
+            try:
+                if symbol not in self.trades:
+                    continue
                     
+                trade = self.trades[symbol]
+                
+                # Get live price
+                price = self.cache.get_price(symbol) or trade.current_price
+                if price == 0: continue
+                
+                # Calculate P&L (Always Long Option)
+                pnl = (price - trade.entry_price) * trade.quantity
+                pnl_pct = (pnl / (trade.entry_price * trade.quantity)) * 100
+                
+                # TSL Gap (LTP - TSL)
+                tsl_gap = price - trade.tsl_level
+                
+                # Format Position Line
+                # NIFTY...PE | Entry: 92.2 | LTP: 92.2 | TSL: 112.2 | Gap: -20.0 | P&L: INR 0.0 (0.0%)
+                pos_line = f"{symbol} | Entry: {trade.entry_price:.1f} | LTP: {price:.1f} | TSL: {trade.tsl_level:.1f} | Gap: {tsl_gap:.1f} | P&L: INR {pnl:.1f} ({pnl_pct:.1f}%)"
+                pos_lines.append(pos_line)
+                
+                # Get History DataFrame (Use Shared Data Map if available, else fetch)
+                df_stat = None
+                if data_map and symbol in data_map:
+                    df_stat = data_map[symbol]
+                else:
+                    # Fallback (Legacy/Safety)
+                    opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
+                    opt_exchange = self.config.get("option", {}).get("exchange", "NFO")
+                    df_stat = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=50, exchange=opt_exchange)
+                
+                if df_stat is not None and not df_stat.empty:
+                    use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
+                    tech = self.indicators["option_tech"].calculate(df_stat, use_ha=use_ha)
+                    
+                    # Format Checks Line
+                    # NIFTY...PE | RSI: 20.0 | ADX: 24.0 | VWAP: 123.4
+                    rsi = tech.metadata.get('rsi', 0)
+                    adx = tech.metadata.get('adx', 0)
+                    vwap = tech.metadata.get('vwap', 0)
+                    
+                    check_line = f"{symbol} | RSI: {rsi:.1f} | ADX: {adx:.1f} | VWAP: {vwap:.1f}"
+                    check_lines.append(check_line)
+                else:
+                    check_lines.append(f"{symbol} | No Data for Checks")
+
             except Exception as e:
-                logger.error(f"Error scanning {symbol}: {e}", exc_info=True)
+                logger.error(f"Error printing details for {symbol}: {e}")
+
+        # Print Grouped Sections
+        if pos_lines:
+            print("  [POSITIONS]")
+            for line in pos_lines:
+                print(f"    - {line}")
         
-        # Heartbeat
-        self._heartbeat_counter += 1
-        if self._heartbeat_counter % 2 == 0:
-            now = datetime.now().strftime("%H:%M:%S")
-            active_symbols = [t.symbol for t in self.trades.values() if t.state == TradeState.POSITION]
-            active_str = ", ".join(active_symbols) if active_symbols else "None"
-            
-            # Get Nifty price from cache (WebSocket)
-            index_query = self.config.get("index_query", "NIFTY")
-            nifty_price = self.cache.get_price(index_query) or 0.0
-            
-            print(f"[{now}] HB | NIFTY: {nifty_price:.1f} | Strikes: {len(manual_strikes)} | Active: {active_str}")
+        if check_lines:
+            print("  [CHECKS STATUS]")
+            for line in check_lines:
+                print(f"    - {line}")
 
     # ========== ENTRY EXECUTION LOGIC ==========
     
@@ -608,10 +825,46 @@ class TradingEngine:
             if close > max_price:
                 reasons.append(f"Too expensive ({close:.2f} > {max_price:.2f})")
         
-        # 3. EMA Trend Check: EMA Fast > EMA Slow
-        if cfg.get("check_ema_trend", True):
+        # 3. EMA & Momentum Candle Logic
+        check_trend = cfg.get("check_ema_trend", True)
+        check_mom = cfg.get("check_momentum_candle", False)
+        mode = cfg.get("ema_logic_mode", "AND").upper()
+        
+        trend_ok = True
+        if check_trend:
             if ema_fast <= ema_slow:
-                reasons.append(f"EMA{cfg.get('ema_fast', 9)} <= EMA{cfg.get('ema_slow', 21)}")
+                trend_ok = False
+        
+        mom_ok = True
+        if check_mom:
+            # Source Selection
+            o_col, c_col, l_col = ("HA_Open", "HA_Close", "HA_Low") if use_ha else ("Open", "Close", "Low")
+            c_open, c_close, c_low = df_opt[o_col].iloc[-1], df_opt[c_col].iloc[-1], df_opt[l_col].iloc[-1]
+            
+            ema_val = meta["emas"].get(cfg.get("mom_ema_period", 9), ema_fast)
+            
+            # Logic: Green + No Lower Wick + 80% Body Above EMA
+            is_green = c_close > c_open
+            no_lower_wick = c_low >= c_open
+            body_size = c_close - c_open
+            threshold = c_open + ((1 - cfg.get("mom_body_above_pct", 0.8)) * body_size) if is_green else 0
+            
+            mom_ok = is_green and no_lower_wick and (threshold >= ema_val)
+                
+        # Combine filters
+        final_ema_ok = True
+        if check_trend and check_mom:
+            final_ema_ok = (trend_ok or mom_ok) if mode == "OR" else (trend_ok and mom_ok)
+        elif check_trend:
+            final_ema_ok = trend_ok
+        elif check_mom:
+            final_ema_ok = mom_ok
+            
+        if not final_ema_ok:
+            if check_trend and not trend_ok:
+                reasons.append(f"EMA Trend failed ({ema_fast:.1f} <= {ema_slow:.1f})")
+            if check_mom and not mom_ok:
+                reasons.append("Momentum Candle failed")
         
         # 4. Volume Check: Volume > Avg * multiplier
         if cfg.get("check_volume", True):
@@ -648,8 +901,10 @@ class TradingEngine:
         if reasons:
             return False, 0.0, reasons
         
-        # Valid! Use VWAP as limit price (or close if VWAP unavailable)
-        limit_price = min(close, vwap) if vwap > 0 else close
+        # Valid! Use close (LTP) for immediate fill, subject to VWAP cap checks already performed
+        # We use 'close' instead of 'min(close, vwap)' to ensure we catch explosive moves
+        # where the price is running away from the average.
+        limit_price = close
         return True, limit_price, []
     
     async def _check_re_entry_trigger(self, symbol: str, df_opt, use_ha: bool):
@@ -1245,8 +1500,8 @@ class TradingEngine:
                     side=side,
                     entry_time=datetime.now(),
                     state=TradeState.POSITION,
-                    sl=0.0,
-                    target=0.0
+                    current_price=price,
+                    highest_price=price
                 )
                 
                 # Store and persist
@@ -1319,13 +1574,13 @@ class TradingEngine:
             
             # Calculate current P&L for display
             curr_pnl = (price - trade.entry_price) * trade.quantity
-            if trade.side == "PUT":
-                 curr_pnl = (trade.entry_price - price) * trade.quantity
+            # Removed incorrect inversion for PUTs (we are Long Options)
             curr_pnl_pct = (curr_pnl / (trade.entry_price * trade.quantity)) * 100
             
             # Update TSL level
             if decision.new_tsl_level > 0:
-                print(f"[RISK] {symbol}: TSL moved to {decision.new_tsl_level:.2f} (Stage: {decision.new_stage})")
+                old_tsl = trade.tsl_level
+                print(f"[RISK] {symbol} | TSL moved from {old_tsl:.2f} to {decision.new_tsl_level:.2f} (Stage: {decision.new_stage})")
                 trade = Trade(**{
                     **trade.__dict__,
                     "tsl_level": decision.new_tsl_level,
@@ -1333,6 +1588,15 @@ class TradingEngine:
                 })
                 self.trades[symbol] = trade
                 self.persistence.save_trade(trade)
+            
+            # ... (Exit logic remains)
+
+            # Periodic status report per position (every 5 seconds)
+            # User requested cleaner logs - disabling this interleaved log in favor of Heartbeat snapshot
+            # if report:
+            #    tsl_gap = price - trade.tsl_level
+            #    ... (commented out) ...
+            #    print(f"[POS] ...")
             
             # Exit if needed
             if decision.should_exit:
@@ -1349,38 +1613,11 @@ class TradingEngine:
                 logger.info(f"[EXIT] {symbol}: {decision.message}")
                 await self._execute_exit(trade, decision.reason.value)
             
-            # Periodic status report per position (every 5 seconds)
-            if report:
-                tsl_gap = price - trade.tsl_level if trade.side == "CALL" else trade.tsl_level - price
-                
-                # Fetch detailed stats (RSI/ADX) if enabled
-                stats_str = ""
-                try:
-                    entry_cfg = self.config.get("entry_conditions", {})
-                    show_rsi = entry_cfg.get("check_rsi", False)
-                    show_adx = entry_cfg.get("check_adx", False)
-                    
-                    if show_rsi or show_adx:
-                        # We need historical data for indicators
-                        opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
-                        df_stat = await self.data_provider.get_historical_data(symbol, opt_ltf_tf, bars=50) # Use cache if available
-                        
-                        if not df_stat.empty:
-                            use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
-                            tech = self.indicators["option_tech"].calculate(df_stat, use_ha=use_ha)
-                            
-                            parts = []
-                            if show_rsi:
-                                parts.append(f"RSI: {tech.metadata.get('rsi', 0):.1f}")
-                            if show_adx:
-                                parts.append(f"ADX: {tech.metadata.get('adx', 0):.1f}")
-                            
-                            if parts:
-                                stats_str = " | " + " | ".join(parts)
-                except Exception as e:
-                    pass # Don't break logging if stats fail
-                
-                print(f"[POS] {symbol} | Entry: {trade.entry_price:.2f} | LTP: {price:.2f} | TSL: {trade.tsl_level:.2f} | Gap: {tsl_gap:.2f} | P&L: ₹{curr_pnl:.2f} ({curr_pnl_pct:.1f}%){stats_str}")
+
+            #     except Exception as e:
+            #         pass # Don't break logging if stats fail
+            #     
+            #     print(f"[POS] {symbol} | Entry: {trade.entry_price:.2f} | LTP: {price:.2f} | TSL: {trade.tsl_level:.2f} | Gap: {tsl_gap:.2f} | P&L: INR {curr_pnl:.2f} ({curr_pnl_pct:.1f}%){stats_str}")
 
     async def _execute_exit(self, trade: Trade, reason: str):
         """Execute exit order"""
