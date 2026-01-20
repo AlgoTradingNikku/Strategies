@@ -140,6 +140,18 @@ class TradingEngine:
         
         for trade in active_trades:
             self.trades[trade.symbol] = trade
+            
+            # FIX: If trade is stuck in EXITING (e.g. crash during exit), revert to POSITION
+            # so it gets picked up by Risk Manager again.
+            if trade.state == TradeState.EXITING:
+                print(f"[RECOVERY] Found stuck EXITING trade {trade.symbol}. Reverting to POSITION.")
+                
+                # Manually set state back to POSITION (using transition if allowed, or direct update)
+                # We use transition() because EXITING->POSITION is a valid 'retry' transition
+                trade = TradeStateMachine.transition(trade, TradeState.POSITION)
+                self.trades[trade.symbol] = trade # Update memory
+                self.persistence.save_trade(trade) # Update DB
+                
             logger.info(
                 f"[RECOVERY] Restored {trade.symbol} in {trade.state.name} "
                 f"@ INR {trade.entry_price} (P&L: {trade.pnl_pct:.2f}%)"
@@ -1629,16 +1641,14 @@ class TradingEngine:
             self.persistence.save_trade(trade)
             
             # Place exit order
-            order_params = {
-                "symbol": trade.symbol,
-                "exchange": "NFO",
-                "transaction_type": "SELL" if trade.side == "CALL" else "BUY",
-                "quantity": trade.quantity,
-                "product": self.config.get("product_type", "MIS"),
-                "order_type": "MARKET"
-            }
-            
-            order_id = await self.order_manager.place_order(order_params)
+            order_id = await self.order_manager.place_order(
+                symbol=trade.symbol,
+                action="SELL" if trade.side == "CALL" else "BUY",
+                quantity=trade.quantity,
+                order_type="MARKET",
+                exchange="NFO",
+                product=self.config.get("product_type", "MIS")
+            )
             
             if order_id:
                 # Update trade to EXITED
