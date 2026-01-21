@@ -614,7 +614,7 @@ class TradingEngine:
                     limit_price = curr_price
                     
                     if use_filters:
-                        valid, f_price, reasons = await self._check_entry_conditions(symbol, df_opt)
+                        valid, f_price, reasons, atr_val = await self._check_entry_conditions(symbol, df_opt)
                         if valid:
                             limit_price = f_price
                             self._last_reject_reasons[symbol] = None # Clear on success
@@ -637,7 +637,8 @@ class TradingEngine:
                             symbol=symbol,
                             side=side,
                             price=limit_price,
-                            ltf_signal=utbot_result
+                            ltf_signal=utbot_result,
+                            atr=atr_val if use_filters else 0.0 # Pass ATR if available
                         )
                         
                         # Track for re-entry logic
@@ -800,7 +801,7 @@ class TradingEngine:
         7. RSI > min AND RSI < max (if enabled)
         
         Returns:
-            tuple: (valid: bool, limit_price: float, reasons: list)
+            tuple: (valid: bool, limit_price: float, reasons: list, atr: float)
         """
         cfg = self.config.get("entry_conditions", {})
         use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
@@ -911,13 +912,13 @@ class TradingEngine:
         
         # Determine result
         if reasons:
-            return False, 0.0, reasons
+            return False, 0.0, reasons, atr
         
         # Valid! Use close (LTP) for immediate fill, subject to VWAP cap checks already performed
         # We use 'close' instead of 'min(close, vwap)' to ensure we catch explosive moves
         # where the price is running away from the average.
         limit_price = close
-        return True, limit_price, []
+        return True, limit_price, [], atr
     
     async def _check_re_entry_trigger(self, symbol: str, df_opt, use_ha: bool):
         """
@@ -966,7 +967,7 @@ class TradingEngine:
             print(f"[RE-ENTRY] Pullback trigger on {symbol}. Checking conditions...")
             
             # Run entry conditions
-            valid, limit_price, reasons = await self._check_entry_conditions(symbol, df_opt)
+            valid, limit_price, reasons, atr_val = await self._check_entry_conditions(symbol, df_opt)
             
             if valid:
                 print(f"[RE-ENTRY] Executing re-entry on {symbol} @ {limit_price:.2f}")
@@ -976,7 +977,8 @@ class TradingEngine:
                     symbol=symbol,
                     side=side,
                     price=limit_price,
-                    ltf_signal=None
+                    ltf_signal=None,
+                    atr=atr_val
                 )
                 
                 # Increment re-entry counter
@@ -1165,9 +1167,10 @@ class TradingEngine:
             # Execute entry
             await self._execute_entry(
                 symbol=symbol,
-                quantity=50,  # TODO: Calculate from lot size
+                side="CALL" if target_trend == 1 else "PUT",
                 price=limit_price,
-                order_type_str="CALL" if target_trend == 1 else "PUT"
+                ltf_signal=None,
+                atr=candidate.get("atr", 0.0)
             )
     
     async def _validate_single_strike(self, symbol, target_trend):
@@ -1180,12 +1183,13 @@ class TradingEngine:
                 "valid": bool,
                 "price": float,
                 "conf_score": float,  # Future Enhancement
-                "reasons": list
+                "reasons": list,
+                "atr": float
             }
         """
         try:
             # Check option confirmation
-            valid, limit_price, reasons = await self._check_option_confirmation(
+            valid, limit_price, reasons, api_atr = await self._check_option_confirmation(
                 symbol,
                 price_check_mode="WAIT"
             )
@@ -1196,7 +1200,8 @@ class TradingEngine:
                     "valid": False,
                     "price": 0,
                     "conf_score": 0,
-                    "reasons": reasons
+                    "reasons": reasons,
+                    "atr": 0.0
                 }
             
             # Future Enhancement: Calculate confidence score
@@ -1207,7 +1212,8 @@ class TradingEngine:
                 "valid": True,
                 "price": limit_price,
                 "conf_score": 0,  # Placeholder for future enhancement
-                "reasons": []
+                "reasons": [],
+                "atr": api_atr
             }
         
         except Exception as e:
@@ -1217,7 +1223,8 @@ class TradingEngine:
                 "valid": False,
                 "price": 0,
                 "conf_score": 0,
-                "reasons": [f"Exception: {str(e)}"]
+                "reasons": [f"Exception: {str(e)}"],
+                "atr": 0.0
             }
     
     def _is_explosive_trend(self, df_exec, htf_adx_val):
@@ -1259,7 +1266,7 @@ class TradingEngine:
         """
         Strict Option Confirmation Module.
         price_check_mode: "IMMEDIATE" (for explosive) or "WAIT" (standard)
-        Returns: (bool, float_limit_price, list_reasons)
+        Returns: (bool, float_limit_price, list_reasons, float_atr)
         """
         conf_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_confirmation", {})
         entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
@@ -1304,11 +1311,16 @@ class TradingEngine:
                 reasons.append("EMA9 <= EMA21")
             
             if reasons:
-                return False, 0.0, reasons
+                return False, 0.0, reasons, 0.0 # ATR not calculated in simple mode (or access if needed?)
+            
+            # Simple Mode still needs ATR for TSL! 
+            # We must calculate ATR even in simple mode if TSL depends on it.
+            # tech_res above calculated it, so we have 'meta["atr"]' (if not 0)
+            atr_simple = meta.get("atr", 0.0)
             
             # Valid! Use VWAP as limit price (simple)
             limit_price = vwap
-            return True, limit_price, []
+            return True, limit_price, [], atr_simple
         
         # ============================================
         # ADVANCED MODE: Full Validation
@@ -1390,7 +1402,7 @@ class TradingEngine:
         # 6. Delta Check
         
         if reasons:
-            return False, 0.0, reasons
+                return False, 0.0, reasons, atr
             
         # Valid! Calculate Limit Price
         # If we have Bid, use it. Else use LTP/Close.
@@ -1401,7 +1413,7 @@ class TradingEngine:
             
         if limit_price <= 0: limit_price = ltp
         
-        return True, limit_price, []
+        return True, limit_price, [], atr
 
     async def _check_and_execute_entry(self, symbol: str, signal_side: str):
         """
@@ -1436,12 +1448,12 @@ class TradingEngine:
             # Actually, to be accurate we should pass ADX.
             # Let's just use the Candle Logic for "Explosive" classification now.
             
-            valid_opt, limit_price, reasons = await self._check_option_confirmation(symbol, df_opt)
+            valid_opt, limit_price, reasons, atr_val = await self._check_option_confirmation(symbol, df_opt)
             
             if is_explosive:
                 if valid_opt:
                     print(f"[EXPLOSIVE] Triggering IMMEDIATE ENTRY on {symbol}!")
-                    await self._execute_entry(symbol, signal_side, limit_price, None)
+                    await self._execute_entry(symbol, signal_side, limit_price, None, atr=atr_val)
                     return
                 else:
                     print(f"[EXPLOSIVE] Detected but Option Invalid: {reasons}")
@@ -1454,7 +1466,7 @@ class TradingEngine:
             
             if valid_opt:
                 print(f"[ENTRY] Option Confirmation Passed. Executing {symbol}...")
-                await self._execute_entry(symbol, signal_side, limit_price, None)
+                await self._execute_entry(symbol, signal_side, limit_price, None, atr=atr_val)
             else:
                  print(f"[REJECT] Option Confirmation Failed for {symbol}: {reasons}")
             
@@ -1463,7 +1475,7 @@ class TradingEngine:
             self._set_cooldown(symbol)
     
 
-    async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal):
+    async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal, atr: float = 0.0):
         """Execute entry order"""
         try:
             # Check cooldown again just in case
@@ -1513,7 +1525,8 @@ class TradingEngine:
                     entry_time=datetime.now(),
                     state=TradeState.POSITION,
                     current_price=price,
-                    highest_price=price
+                    highest_price=price,
+                    atr=atr
                 )
                 
                 # Store and persist
@@ -1522,7 +1535,12 @@ class TradingEngine:
                 
                 print(f"[POSITION] Entered {symbol} @ {trade.entry_price:.2f}")
                 logger.info(f"Entry executed: {symbol} @ {trade.entry_price:.2f}")
-            self._set_cooldown(symbol) # 1 min cooldown on failure
+            else:
+                fail_msg = order_id.message if order_id else "No response from Order Manager"
+                print(f"[ERROR] Order Failed for {symbol}: {fail_msg}")
+                logger.error(f"Order placement failed: {fail_msg}")
+            
+            self._set_cooldown(symbol) # Cooldown enabled for both success (to avoid double entry) and failure
                 
         except Exception as e:
             logger.error(f"Entry execution error for {symbol}: {e}", exc_info=True)
@@ -1581,6 +1599,15 @@ class TradingEngine:
                 continue
             
             # Evaluate risk (Option-Centric: No Index trend check)
+            
+            # CRITICAL FIX: Update trade with latest price stats (Highest/Lowest) BEFORE evaluation
+            # This ensures TSL calculation uses the correct High Water Mark.
+            trade = trade.update_price(price)
+            self.trades[symbol] = trade # Memory update
+            # We don't save to DB yet to avoid spam IO, unless TSL updates or Exit.
+            # But if highest_price changed significantly, we might want to?
+            # For now, let's trust memory-to-memory in the loop.
+            
             # TSL is purely based on Option price movement
             decision = self.risk_manager.evaluate(trade, price, is_trend_reversed=False)
             

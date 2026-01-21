@@ -23,8 +23,8 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY27JAN2625400CE"
-    - "NIFTY27JAN2625400PE"
+    - "NIFTY27JAN2625000CE"
+    - "NIFTY27JAN2625000PE"
     #- "NIFTY20JAN2625600CE"
     #- "NIFTY20JAN2625600PE"
     #- "NIFTY20JAN2625500CE"
@@ -145,6 +145,7 @@ re_entry_protection:
 # 3. TRADING HOURS & LIMITS
 # ========================================
 max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
+lots: 1                       # Number of lots per trade (Default: 1)
 
 trading_hours:
   enabled: True
@@ -190,7 +191,7 @@ greeks_monitoring:
 # ========================================
 # 9. API & SYSTEM
 # ========================================
-api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
+api_key: "af22fd8e76f14ebe75eb232eee46bdfa3f177389721edd5c4e291d646d6ff312"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)

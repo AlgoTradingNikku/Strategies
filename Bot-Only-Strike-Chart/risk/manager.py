@@ -210,6 +210,15 @@ class RiskManager:
             trade.last_stage
         )
         
+        # Enforce Monotonicity: TSL should never go down for Long positions
+        if tsl_level < trade.tsl_level:
+            tsl_level = trade.tsl_level
+            # Keep old stage if we didn't move
+            # stage = trade.last_stage # Not necessarily, maybe stage technically changed but price didn't allow move? 
+            # Let's trust calculated TSL but cap it. 
+            # Actually, if calculated TSL < old TSL, it means price dropped or ATR expanded? 
+            # We must hold the line.
+        
         # Check if TSL hit
         if current_price <= tsl_level:
             return RiskDecision(

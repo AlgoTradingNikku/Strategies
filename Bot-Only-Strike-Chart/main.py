@@ -168,6 +168,23 @@ async def main():
         client = api(api_key=api_key, host=api_host)
         logger.info(f"OpenAlgo API client initialized (host: {api_host})")
         
+        # Verify Connection/Credentials
+        print("[INFO] Verifying API Credentials...")
+        try:
+            # We use positionbook as a lightweight auth check
+            test_resp = client.positionbook()
+            if test_resp and test_resp.get("status") == "success":
+                print("[SUCCESS] API Connection Verified!")
+            else:
+                msg = test_resp.get("message", "Unknown Error") if test_resp else "No Response"
+                logger.error(f"API Connection Failed: {msg}")
+                print(f"\n[CRITICAL] API Connection Failed: {msg}")
+                print("Please check your API KEY in config.yaml!\n")
+                # We don't exit to allow 'MOCK' testing if intended, but user is warned.
+        except Exception as e:
+             logger.error(f"API Connection Verification Error: {e}")
+             print(f"[ERROR] API Verification crashed: {e}")
+             
     except Exception as e:
         logger.error(f"Failed to initialize API client: {e}")
         logger.warning("Running in mock mode - no real orders will be placed")
