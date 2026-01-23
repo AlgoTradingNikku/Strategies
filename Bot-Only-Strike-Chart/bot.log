@@ -203490,3 +203490,1264 @@ TypeError: OrderManager.place_order() missing 2 required positional arguments: '
 2026-01-21 15:40:58,792 - INFO - Trading Engine stopped
 2026-01-21 15:40:58,792 - INFO - All engine tasks cleaned up
 2026-01-21 15:40:58,792 - INFO - Goodbye!
+2026-01-22 09:02:48,885 - INFO - Configuration banner printed
+2026-01-22 09:02:50,613 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 09:02:58,998 - INFO - Trading Engine initialized
+2026-01-22 09:02:58,998 - INFO - Trading Engine created successfully
+2026-01-22 09:02:58,998 - INFO - Starting Trading Engine...
+2026-01-22 09:03:01,915 - INFO - [TASK] Signal scanner started
+2026-01-22 09:03:01,917 - INFO - [TASK] Risk monitor started
+2026-01-22 09:03:01,918 - INFO - [TASK] Position sync started
+2026-01-22 09:03:02,016 - INFO - [TASK] WebSocket monitor started
+2026-01-22 09:03:02,018 - INFO - [TASK] Config monitor started
+2026-01-22 09:30:58,895 - INFO - Shutting down...
+2026-01-22 09:30:58,898 - INFO - Trading Engine stopped
+2026-01-22 09:30:58,898 - INFO - All engine tasks cleaned up
+2026-01-22 09:30:58,899 - INFO - Goodbye!
+2026-01-22 09:31:50,911 - INFO - Configuration banner printed
+2026-01-22 09:31:51,341 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 09:31:54,443 - INFO - Trading Engine initialized
+2026-01-22 09:31:54,444 - INFO - Trading Engine created successfully
+2026-01-22 09:31:54,445 - INFO - Starting Trading Engine...
+2026-01-22 09:31:57,353 - INFO - [TASK] Signal scanner started
+2026-01-22 09:31:57,355 - INFO - [TASK] Risk monitor started
+2026-01-22 09:31:57,355 - INFO - [TASK] Position sync started
+2026-01-22 09:31:57,368 - INFO - [TASK] WebSocket monitor started
+2026-01-22 09:31:57,369 - INFO - [TASK] Config monitor started
+2026-01-22 10:21:21,798 - INFO - Entry executed: NIFTY27JAN2625400PE @ 150.95
+2026-01-22 10:27:38,855 - WARNING - [SYNC] External closure detected: NIFTY27JAN2625400PE
+2026-01-22 10:27:39,042 - INFO - Shutting down...
+2026-01-22 10:27:39,044 - INFO - Trading Engine stopped
+2026-01-22 10:27:39,044 - INFO - All engine tasks cleaned up
+2026-01-22 10:27:39,044 - INFO - Goodbye!
+2026-01-22 10:27:48,092 - INFO - Configuration banner printed
+2026-01-22 10:27:48,976 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 10:27:52,553 - INFO - Trading Engine initialized
+2026-01-22 10:27:52,553 - INFO - Trading Engine created successfully
+2026-01-22 10:27:52,553 - INFO - Starting Trading Engine...
+2026-01-22 10:27:55,462 - INFO - [TASK] Signal scanner started
+2026-01-22 10:27:55,462 - INFO - [TASK] Risk monitor started
+2026-01-22 10:27:55,462 - INFO - [TASK] Position sync started
+2026-01-22 10:27:55,535 - INFO - [TASK] WebSocket monitor started
+2026-01-22 10:27:55,535 - INFO - [TASK] Config monitor started
+2026-01-22 10:43:15,760 - INFO - Shutting down...
+2026-01-22 10:43:15,761 - INFO - Trading Engine stopped
+2026-01-22 10:43:15,762 - INFO - All engine tasks cleaned up
+2026-01-22 10:43:15,762 - INFO - Goodbye!
+2026-01-22 10:43:25,318 - INFO - Configuration banner printed
+2026-01-22 10:43:26,185 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 10:43:28,885 - INFO - Trading Engine initialized
+2026-01-22 10:43:28,885 - INFO - Trading Engine created successfully
+2026-01-22 10:43:28,885 - INFO - Starting Trading Engine...
+2026-01-22 10:43:31,792 - INFO - [TASK] Signal scanner started
+2026-01-22 10:43:31,792 - INFO - [TASK] Risk monitor started
+2026-01-22 10:43:31,792 - INFO - [TASK] Position sync started
+2026-01-22 10:43:31,861 - INFO - [TASK] WebSocket monitor started
+2026-01-22 10:43:31,861 - INFO - [TASK] Config monitor started
+2026-01-22 10:51:09,628 - INFO - Configuration reloaded successfully
+2026-01-22 10:56:47,091 - INFO - Shutting down...
+2026-01-22 10:56:47,192 - INFO - Trading Engine stopped
+2026-01-22 10:56:47,192 - INFO - All engine tasks cleaned up
+2026-01-22 10:56:47,192 - INFO - Goodbye!
+2026-01-22 10:56:50,832 - INFO - Configuration banner printed
+2026-01-22 10:56:51,203 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 10:56:54,111 - INFO - Trading Engine initialized
+2026-01-22 10:56:54,111 - INFO - Trading Engine created successfully
+2026-01-22 10:56:54,111 - INFO - Starting Trading Engine...
+2026-01-22 10:56:57,017 - INFO - [TASK] Signal scanner started
+2026-01-22 10:56:57,017 - INFO - [TASK] Risk monitor started
+2026-01-22 10:56:57,018 - INFO - [TASK] Position sync started
+2026-01-22 10:56:57,022 - INFO - [TASK] WebSocket monitor started
+2026-01-22 10:56:57,023 - INFO - [TASK] Config monitor started
+2026-01-22 11:07:47,585 - INFO - Configuration reloaded successfully
+2026-01-22 11:10:21,491 - INFO - Shutting down...
+2026-01-22 11:10:21,491 - INFO - Trading Engine stopped
+2026-01-22 11:10:21,491 - INFO - All engine tasks cleaned up
+2026-01-22 11:10:21,491 - INFO - Goodbye!
+2026-01-22 11:10:57,791 - INFO - Configuration banner printed
+2026-01-22 11:10:58,148 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 11:11:00,893 - INFO - Trading Engine initialized
+2026-01-22 11:11:00,893 - INFO - Trading Engine created successfully
+2026-01-22 11:11:00,894 - INFO - Starting Trading Engine...
+2026-01-22 11:11:03,801 - INFO - [TASK] Signal scanner started
+2026-01-22 11:11:03,801 - INFO - [TASK] Risk monitor started
+2026-01-22 11:11:03,801 - INFO - [TASK] Position sync started
+2026-01-22 11:11:03,805 - INFO - [TASK] WebSocket monitor started
+2026-01-22 11:11:03,806 - INFO - [TASK] Config monitor started
+2026-01-22 11:11:42,053 - INFO - Configuration reloaded successfully
+2026-01-22 11:23:00,717 - INFO - Entry executed: NIFTY27JAN2625200PE @ 115.10
+2026-01-22 11:23:00,717 - ERROR - Error processing NIFTY27JAN2625200PE: 'NIFTY27JAN2625200PE'
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\Bot-Only-Strike-Chart\core\engine.py", line 685, in _process_strike_data
+    await self._check_re_entry_trigger(symbol, df_opt, use_ha)
+  File "C:\Rahul\06_Nikku\Strategies\Bot-Only-Strike-Chart\core\engine.py", line 1021, in _check_re_entry_trigger
+    self._signal_wait_state[symbol]['re_entry_attempts'] = state.get("re_entry_attempts", 0) + 1
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+KeyError: 'NIFTY27JAN2625200PE'
+2026-01-22 11:25:03,844 - INFO - Entry executed: NIFTY27JAN2625200CE @ 189.85
+2026-01-22 11:25:10,763 - WARNING - [SYNC] External closure detected: NIFTY27JAN2625200PE
+2026-01-22 11:25:10,766 - WARNING - [SYNC] External closure detected: NIFTY27JAN2625200CE
+2026-01-22 11:25:47,416 - INFO - Shutting down...
+2026-01-22 11:25:47,518 - INFO - Trading Engine stopped
+2026-01-22 11:25:47,518 - INFO - All engine tasks cleaned up
+2026-01-22 11:25:47,518 - INFO - Goodbye!
+2026-01-22 11:25:55,640 - INFO - Configuration banner printed
+2026-01-22 11:25:56,490 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 11:25:59,167 - INFO - Trading Engine initialized
+2026-01-22 11:25:59,167 - INFO - Trading Engine created successfully
+2026-01-22 11:25:59,168 - INFO - Starting Trading Engine...
+2026-01-22 11:26:02,075 - INFO - [TASK] Signal scanner started
+2026-01-22 11:26:02,075 - INFO - [TASK] Risk monitor started
+2026-01-22 11:26:02,075 - INFO - [TASK] Position sync started
+2026-01-22 11:26:02,141 - INFO - [TASK] WebSocket monitor started
+2026-01-22 11:26:02,141 - INFO - [TASK] Config monitor started
+2026-01-22 11:26:14,150 - INFO - Entry executed: NIFTY27JAN2625200CE @ 203.90
+2026-01-22 11:26:14,154 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 203.90 <= TSL 203.90 (Stage: TRAILING)
+2026-01-22 11:26:14,567 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:26:14,567 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: 0.00)
+2026-01-22 11:27:15,900 - INFO - Entry executed: NIFTY27JAN2625200CE @ 200.00
+2026-01-22 11:27:16,242 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 200.00 <= TSL 200.00 (Stage: TRAILING)
+2026-01-22 11:27:16,746 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:27:16,746 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: 0.00)
+2026-01-22 11:27:50,839 - INFO - Shutting down...
+2026-01-22 11:27:50,839 - INFO - Trading Engine stopped
+2026-01-22 11:27:50,839 - INFO - All engine tasks cleaned up
+2026-01-22 11:27:50,839 - INFO - Goodbye!
+2026-01-22 11:27:55,633 - INFO - Configuration banner printed
+2026-01-22 11:27:55,985 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-22 11:27:58,604 - INFO - Trading Engine initialized
+2026-01-22 11:27:58,604 - INFO - Trading Engine created successfully
+2026-01-22 11:27:58,604 - INFO - Starting Trading Engine...
+2026-01-22 11:28:01,514 - INFO - [TASK] Signal scanner started
+2026-01-22 11:28:01,515 - INFO - [TASK] Risk monitor started
+2026-01-22 11:28:01,515 - INFO - [TASK] Position sync started
+2026-01-22 11:28:01,520 - INFO - [TASK] WebSocket monitor started
+2026-01-22 11:28:01,520 - INFO - [TASK] Config monitor started
+2026-01-22 11:32:08,743 - INFO - Entry executed: NIFTY27JAN2625200CE @ 188.85
+2026-01-22 11:42:30,278 - INFO - Entry executed: NIFTY27JAN2625200PE @ 130.25
+2026-01-22 11:42:31,253 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 130.40 <= TSL 130.40 (Stage: TRAILING)
+2026-01-22 11:42:31,925 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:42:31,925 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=130.25, Exit=130.40, P&L=INR 9.75 (0.12%), Reason=TSL Hit
+2026-01-22 11:43:32,937 - INFO - Entry executed: NIFTY27JAN2625200PE @ 131.80
+2026-01-22 11:43:35,102 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 132.80 <= TSL 132.80 (Stage: TRAILING)
+2026-01-22 11:43:36,430 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:43:36,431 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=131.80, Exit=132.80, P&L=INR 65.00 (0.76%), Reason=TSL Hit
+2026-01-22 11:43:37,441 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 159.30 <= TSL 160.70 (Stage: TRAILING)
+2026-01-22 11:43:38,198 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:43:38,198 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: -1920.75)
+2026-01-22 11:43:38,198 - INFO - [TRADE CLOSED] NIFTY27JAN2625200CE: Entry=188.85, Exit=159.30, P&L=INR -1920.75 (-15.65%), Reason=TSL Hit
+2026-01-22 11:44:35,166 - INFO - Entry executed: NIFTY27JAN2625200PE @ 132.75
+2026-01-22 11:44:35,571 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 133.00 <= TSL 133.00 (Stage: TRAILING)
+2026-01-22 11:44:36,390 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:44:36,390 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=132.75, Exit=133.00, P&L=INR 16.25 (0.19%), Reason=TSL Hit
+2026-01-22 11:45:37,143 - INFO - Entry executed: NIFTY27JAN2625200PE @ 134.65
+2026-01-22 11:46:07,430 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 131.55 <= TSL 134.65 (Stage: TRAILING)
+2026-01-22 11:46:08,097 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:46:08,103 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -201.50)
+2026-01-22 11:46:08,103 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=134.65, Exit=131.55, P&L=INR -201.50 (-2.30%), Reason=TSL Hit
+2026-01-22 11:46:39,211 - INFO - Entry executed: NIFTY27JAN2625200PE @ 132.65
+2026-01-22 11:46:39,426 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 132.65 <= TSL 132.65 (Stage: TRAILING)
+2026-01-22 11:46:40,299 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:46:40,299 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: 0.00)
+2026-01-22 11:46:40,299 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=132.65, Exit=132.65, P&L=INR 0.00 (0.00%), Reason=TSL Hit
+2026-01-22 11:48:42,856 - INFO - Entry executed: NIFTY27JAN2625200PE @ 143.75
+2026-01-22 11:48:43,055 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 143.75 <= TSL 143.75 (Stage: TRAILING)
+2026-01-22 11:48:43,828 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:48:43,828 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: 0.00)
+2026-01-22 11:48:43,828 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=143.75, Exit=143.75, P&L=INR 0.00 (0.00%), Reason=TSL Hit
+2026-01-22 11:50:46,203 - INFO - Entry executed: NIFTY27JAN2625200PE @ 122.20
+2026-01-22 11:51:40,540 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 124.45 <= TSL 126.42 (Stage: G1)
+2026-01-22 11:51:41,337 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:51:41,337 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=122.20, Exit=124.45, P&L=INR 146.25 (1.84%), Reason=TSL Hit
+2026-01-22 11:51:48,092 - INFO - Entry executed: NIFTY27JAN2625200PE @ 125.40
+2026-01-22 11:53:04,498 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 131.20 <= TSL 131.47 (Stage: G2)
+2026-01-22 11:53:05,216 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:53:05,218 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=125.40, Exit=131.20, P&L=INR 377.00 (4.63%), Reason=TSL Hit
+2026-01-22 11:53:15,615 - INFO - Entry executed: NIFTY27JAN2625200PE @ 132.60
+2026-01-22 11:59:45,303 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 135.15 <= TSL 139.19 (Stage: G1)
+2026-01-22 11:59:46,085 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 11:59:46,086 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=132.60, Exit=135.15, P&L=INR 165.75 (1.92%), Reason=TSL Hit
+2026-01-22 12:04:11,046 - INFO - Entry executed: NIFTY27JAN2625200PE @ 129.95
+2026-01-22 12:04:46,239 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 130.95 <= TSL 131.52 (Stage: TRAILING)
+2026-01-22 12:04:46,828 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 12:04:46,830 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=129.95, Exit=130.95, P&L=INR 65.00 (0.77%), Reason=TSL Hit
+2026-01-22 12:05:17,799 - INFO - Entry executed: NIFTY27JAN2625200PE @ 127.50
+2026-01-22 12:06:15,530 - INFO - Entry executed: NIFTY27JAN2625200CE @ 172.20
+2026-01-22 12:06:16,148 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 169.70 <= TSL 172.20 (Stage: TRAILING)
+2026-01-22 12:06:16,964 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 12:06:16,965 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: -162.50)
+2026-01-22 12:06:16,965 - INFO - [TRADE CLOSED] NIFTY27JAN2625200CE: Entry=172.20, Exit=169.70, P&L=INR -162.50 (-1.45%), Reason=TSL Hit
+2026-01-22 12:08:19,348 - INFO - Entry executed: NIFTY27JAN2625200CE @ 175.65
+2026-01-22 12:08:27,945 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 179.35 <= TSL 179.44 (Stage: G1)
+2026-01-22 12:08:28,944 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 12:08:28,948 - INFO - [TRADE CLOSED] NIFTY27JAN2625200CE: Entry=175.65, Exit=179.35, P&L=INR 240.50 (2.11%), Reason=TSL Hit
+2026-01-22 12:09:21,989 - INFO - Entry executed: NIFTY27JAN2625200CE @ 181.55
+2026-01-22 12:09:23,298 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 180.15 <= TSL 181.55 (Stage: TRAILING)
+2026-01-22 12:09:24,008 - INFO - Trade logged to Reporting\trades.csv
+2026-01-22 12:09:24,008 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: -91.00)
+2026-01-22 12:09:24,008 - INFO - [TRADE CLOSED] NIFTY27JAN2625200CE: Entry=181.55, Exit=180.15, P&L=INR -91.00 (-0.77%), Reason=TSL Hit
+2026-01-22 12:10:23,728 - INFO - Entry executed: NIFTY27JAN2625200CE @ 175.20
+2026-01-23 09:13:00,496 - INFO - Configuration banner printed
+2026-01-23 09:13:01,887 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 09:13:11,045 - INFO - [RECOVERY] Restored NIFTY27JAN2625200PE in POSITION @ INR 127.5 (P&L: -5.88%)
+2026-01-23 09:13:11,045 - INFO - [RECOVERY] Restored NIFTY27JAN2625200CE in POSITION @ INR 175.2 (P&L: -2.05%)
+2026-01-23 09:13:11,045 - INFO - Recovered 2 active trades
+2026-01-23 09:13:11,047 - INFO - Trading Engine initialized
+2026-01-23 09:13:11,047 - INFO - Trading Engine created successfully
+2026-01-23 09:13:11,047 - INFO - Starting Trading Engine...
+2026-01-23 09:13:14,475 - INFO - [TASK] Signal scanner started
+2026-01-23 09:13:14,475 - INFO - [TASK] Risk monitor started
+2026-01-23 09:13:14,475 - INFO - [TASK] Position sync started
+2026-01-23 09:13:14,478 - INFO - [TASK] WebSocket monitor started
+2026-01-23 09:13:14,478 - INFO - [TASK] Config monitor started
+2026-01-23 09:27:04,867 - INFO - Shutting down...
+2026-01-23 09:27:04,870 - INFO - Trading Engine stopped
+2026-01-23 09:27:04,870 - INFO - All engine tasks cleaned up
+2026-01-23 09:27:04,870 - INFO - Goodbye!
+2026-01-23 09:27:11,820 - INFO - Configuration banner printed
+2026-01-23 09:27:12,366 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 09:27:15,395 - INFO - [RECOVERY] Restored NIFTY27JAN2625200PE in POSITION @ INR 127.5 (P&L: -5.88%)
+2026-01-23 09:27:15,396 - INFO - [RECOVERY] Restored NIFTY27JAN2625200CE in POSITION @ INR 175.2 (P&L: -2.05%)
+2026-01-23 09:27:15,396 - INFO - Recovered 2 active trades
+2026-01-23 09:27:15,396 - INFO - Trading Engine initialized
+2026-01-23 09:27:15,396 - INFO - Trading Engine created successfully
+2026-01-23 09:27:15,396 - INFO - Starting Trading Engine...
+2026-01-23 09:27:18,762 - INFO - [TASK] Signal scanner started
+2026-01-23 09:27:18,762 - INFO - [TASK] Risk monitor started
+2026-01-23 09:27:18,765 - INFO - [TASK] Position sync started
+2026-01-23 09:27:18,765 - INFO - [TASK] WebSocket monitor started
+2026-01-23 09:27:18,775 - INFO - [TASK] Config monitor started
+2026-01-23 09:29:53,337 - INFO - Shutting down...
+2026-01-23 09:29:53,339 - INFO - Trading Engine stopped
+2026-01-23 09:29:53,339 - INFO - All engine tasks cleaned up
+2026-01-23 09:29:53,339 - INFO - Goodbye!
+2026-01-23 09:30:05,948 - INFO - Configuration banner printed
+2026-01-23 09:30:06,456 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 09:30:09,840 - INFO - Trading Engine initialized
+2026-01-23 09:30:09,840 - INFO - Trading Engine created successfully
+2026-01-23 09:30:09,840 - INFO - Starting Trading Engine...
+2026-01-23 09:30:13,130 - INFO - [TASK] Signal scanner started
+2026-01-23 09:30:13,130 - INFO - [TASK] Risk monitor started
+2026-01-23 09:30:13,130 - INFO - [TASK] Position sync started
+2026-01-23 09:30:13,130 - INFO - [TASK] WebSocket monitor started
+2026-01-23 09:30:13,133 - INFO - [TASK] Config monitor started
+2026-01-23 09:30:15,127 - INFO - Entry executed: NIFTY27JAN2625400CE @ 99.10
+2026-01-23 09:31:06,765 - INFO - [EXIT] NIFTY27JAN2625400CE: TSL Hit: Price 95.55 <= TSL 99.10 (Stage: TRAILING)
+2026-01-23 09:31:07,844 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:31:07,846 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400CE (PnL: -230.75)
+2026-01-23 09:31:07,846 - INFO - [TRADE CLOSED] NIFTY27JAN2625400CE: Entry=99.10, Exit=95.55, P&L=INR -230.75 (-3.58%), Reason=TSL Hit
+2026-01-23 09:31:18,390 - INFO - Entry executed: NIFTY27JAN2625400CE @ 95.10
+2026-01-23 09:31:18,970 - INFO - [EXIT] NIFTY27JAN2625400CE: TSL Hit: Price 91.05 <= TSL 95.10 (Stage: TRAILING)
+2026-01-23 09:31:20,275 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:31:20,276 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400CE (PnL: -263.25)
+2026-01-23 09:31:20,278 - INFO - [TRADE CLOSED] NIFTY27JAN2625400CE: Entry=95.10, Exit=91.05, P&L=INR -263.25 (-4.26%), Reason=TSL Hit
+2026-01-23 09:31:55,410 - INFO - Configuration reloaded successfully
+2026-01-23 09:32:21,797 - INFO - Entry executed: NIFTY27JAN2625400CE @ 96.80
+2026-01-23 09:32:22,761 - INFO - [EXIT] NIFTY27JAN2625400CE: TSL Hit: Price 97.90 <= TSL 97.90 (Stage: TRAILING)
+2026-01-23 09:32:24,130 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:32:24,130 - INFO - [TRADE CLOSED] NIFTY27JAN2625400CE: Entry=96.80, Exit=97.90, P&L=INR 71.50 (1.14%), Reason=TSL Hit
+2026-01-23 09:33:23,683 - INFO - Entry executed: NIFTY27JAN2625400CE @ 97.30
+2026-01-23 09:35:28,298 - INFO - Configuration reloaded successfully
+2026-01-23 09:36:12,464 - INFO - Configuration reloaded successfully
+2026-01-23 09:36:26,528 - INFO - Configuration reloaded successfully
+2026-01-23 09:36:38,174 - INFO - [EXIT] NIFTY27JAN2625400CE: TSL Hit: Price 85.70 <= TSL 93.41 (Stage: TRAILING)
+2026-01-23 09:36:38,841 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:36:38,842 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400CE (PnL: -754.00)
+2026-01-23 09:36:38,842 - INFO - [TRADE CLOSED] NIFTY27JAN2625400CE: Entry=97.30, Exit=85.70, P&L=INR -754.00 (-11.92%), Reason=TSL Hit
+2026-01-23 09:45:48,499 - INFO - Entry executed: NIFTY27JAN2625400PE @ 171.75
+2026-01-23 09:46:51,285 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 161.15 <= TSL 165.94 (Stage: TRAILING)
+2026-01-23 09:46:52,508 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:46:52,508 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -689.00)
+2026-01-23 09:46:52,509 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=171.75, Exit=161.15, P&L=INR -689.00 (-6.17%), Reason=TSL Hit
+2026-01-23 09:46:58,372 - INFO - Entry executed: NIFTY27JAN2625400PE @ 171.75
+2026-01-23 09:46:58,577 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 154.35 <= TSL 164.88 (Stage: TRAILING)
+2026-01-23 09:47:00,276 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:47:00,276 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -1131.00)
+2026-01-23 09:47:00,276 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=171.75, Exit=154.35, P&L=INR -1131.00 (-10.13%), Reason=TSL Hit
+2026-01-23 09:47:11,003 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:47:46,188 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 152.35 <= TSL 154.22 (Stage: TRAILING)
+2026-01-23 09:47:47,368 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:47:47,370 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -2080.00)
+2026-01-23 09:47:47,371 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=160.35, Exit=152.35, P&L=INR -2080.00 (-4.99%), Reason=TSL Hit
+2026-01-23 09:47:55,398 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:47:59,556 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily loss limit reached: -8118.50
+2026-01-23 09:48:00,769 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:00,769 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -3042.00)
+2026-01-23 09:48:00,771 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=156.35, Exit=150.50, P&L=INR -3042.00 (-3.74%), Reason=Daily Limit Reached
+2026-01-23 09:48:06,453 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:48:06,807 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily loss limit reached: -8617.70
+2026-01-23 09:48:08,060 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:08,060 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -499.20)
+2026-01-23 09:48:08,060 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=153.43, Exit=152.95, P&L=INR -499.20 (-0.31%), Reason=Daily Limit Reached
+2026-01-23 09:48:17,634 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:48:18,151 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily loss limit reached: -21035.30
+2026-01-23 09:48:19,444 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:19,445 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -12417.60)
+2026-01-23 09:48:19,445 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=152.12, Exit=146.15, P&L=INR -12417.60 (-3.92%), Reason=Daily Limit Reached
+2026-01-23 09:48:28,649 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:48:29,541 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 142.75 <= TSL 143.16 (Stage: TRAILING)
+2026-01-23 09:48:30,831 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:30,833 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -26540.80)
+2026-01-23 09:48:30,835 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=149.13, Exit=142.75, P&L=INR -26540.80 (-4.28%), Reason=TSL Hit
+2026-01-23 09:48:39,649 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:48:39,926 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily loss limit reached: -55812.90
+2026-01-23 09:48:41,160 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:41,161 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -8236.80)
+2026-01-23 09:48:41,163 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=145.94, Exit=144.95, P&L=INR -8236.80 (-0.68%), Reason=Daily Limit Reached
+2026-01-23 09:48:50,658 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:48:51,268 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily loss limit reached: -31518.50
+2026-01-23 09:48:52,469 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:48:52,470 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=146.69, Exit=148.15, P&L=INR 24294.40 (1.00%), Reason=Daily Limit Reached
+2026-01-23 09:49:01,672 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:49:04,576 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 254023.90
+2026-01-23 09:49:09,478 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:49:09,478 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=147.42, Exit=156.00, P&L=INR 285542.40 (5.82%), Reason=Daily Limit Reached
+2026-01-23 09:49:12,658 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:49:13,497 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 389806.30
+2026-01-23 09:49:17,964 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:49:17,964 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=152.10, P&L=INR 135782.40 (1.36%), Reason=Daily Limit Reached
+2026-01-23 09:49:24,250 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:49:25,029 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 379156.70
+2026-01-23 09:49:29,582 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:49:29,583 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -10649.60)
+2026-01-23 09:49:29,584 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=149.90, P&L=INR -10649.60 (-0.11%), Reason=Daily Limit Reached
+2026-01-23 09:49:35,149 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:49:35,610 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 598139.10
+2026-01-23 09:49:39,996 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:49:39,999 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=153.35, P&L=INR 218982.40 (2.19%), Reason=Daily Limit Reached
+2026-01-23 09:49:46,160 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:49:58,094 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 910305.50
+2026-01-23 09:50:02,814 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:50:02,816 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.75, P&L=INR 312166.40 (3.13%), Reason=Daily Limit Reached
+2026-01-23 09:50:08,244 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:50:13,008 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 1259079.90
+2026-01-23 09:50:17,861 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:50:17,861 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.30, P&L=INR 348774.40 (3.49%), Reason=Daily Limit Reached
+2026-01-23 09:50:19,155 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:50:19,854 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 1684398.30
+2026-01-23 09:50:24,373 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:50:24,373 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.45, P&L=INR 425318.40 (4.26%), Reason=Daily Limit Reached
+2026-01-23 09:50:30,110 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:50:34,378 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 2076436.70
+2026-01-23 09:50:38,797 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:50:38,797 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.95, P&L=INR 392038.40 (3.93%), Reason=Daily Limit Reached
+2026-01-23 09:50:41,117 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:50:41,833 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 2345339.10
+2026-01-23 09:50:46,078 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:50:46,079 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.10, P&L=INR 268902.40 (2.69%), Reason=Daily Limit Reached
+2026-01-23 09:50:52,003 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:50:58,375 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 2361313.50
+2026-01-23 09:51:03,154 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:03,156 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=150.30, P&L=INR 15974.40 (0.16%), Reason=Daily Limit Reached
+2026-01-23 09:51:03,254 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:06,318 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 2723399.90
+2026-01-23 09:51:11,186 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:11,186 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.50, P&L=INR 362086.40 (3.63%), Reason=Daily Limit Reached
+2026-01-23 09:51:14,192 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:18,255 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 3092142.30
+2026-01-23 09:51:23,303 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:23,311 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.60, P&L=INR 368742.40 (3.69%), Reason=Daily Limit Reached
+2026-01-23 09:51:25,344 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:26,343 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 3487508.70
+2026-01-23 09:51:30,695 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:30,697 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.00, P&L=INR 395366.40 (3.96%), Reason=Daily Limit Reached
+2026-01-23 09:51:36,363 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:36,765 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 3969403.10
+2026-01-23 09:51:41,287 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:41,289 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.30, P&L=INR 481894.40 (4.82%), Reason=Daily Limit Reached
+2026-01-23 09:51:47,353 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:48,333 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 4298209.50
+2026-01-23 09:51:52,713 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:51:52,716 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.00, P&L=INR 328806.40 (3.29%), Reason=Daily Limit Reached
+2026-01-23 09:51:58,353 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:51:58,720 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 4593735.90
+2026-01-23 09:52:03,183 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:52:03,183 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.50, P&L=INR 295526.40 (2.96%), Reason=Daily Limit Reached
+2026-01-23 09:52:09,305 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:52:10,204 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 4912558.30
+2026-01-23 09:52:14,644 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:52:14,644 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.85, P&L=INR 318822.40 (3.19%), Reason=Daily Limit Reached
+2026-01-23 09:52:20,305 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:52:24,620 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 5218068.70
+2026-01-23 09:52:28,878 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:52:28,878 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.65, P&L=INR 305510.40 (3.06%), Reason=Daily Limit Reached
+2026-01-23 09:52:31,277 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:52:38,200 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 5699963.10
+2026-01-23 09:52:42,873 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:52:42,874 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.30, P&L=INR 481894.40 (4.82%), Reason=Daily Limit Reached
+2026-01-23 09:52:53,501 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:52:58,021 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 6181857.50
+2026-01-23 09:53:02,530 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:02,530 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.30, P&L=INR 481894.40 (4.82%), Reason=Daily Limit Reached
+2026-01-23 09:53:04,466 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:53:06,570 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 6766919.90
+2026-01-23 09:53:10,867 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:10,870 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=158.85, P&L=INR 585062.40 (5.86%), Reason=Daily Limit Reached
+2026-01-23 09:53:15,406 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:53:18,042 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 7042478.30
+2026-01-23 09:53:22,315 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:22,315 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.20, P&L=INR 275558.40 (2.76%), Reason=Daily Limit Reached
+2026-01-23 09:53:26,233 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:53:26,342 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 7284756.70
+2026-01-23 09:53:30,475 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:30,475 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=153.70, P&L=INR 242278.40 (2.43%), Reason=Daily Limit Reached
+2026-01-23 09:53:37,263 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:53:41,599 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 7450491.10
+2026-01-23 09:53:46,078 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:46,078 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=152.55, P&L=INR 165734.40 (1.66%), Reason=Daily Limit Reached
+2026-01-23 09:53:48,151 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:53:53,114 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 7729377.50
+2026-01-23 09:53:57,239 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:53:57,241 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.25, P&L=INR 278886.40 (2.79%), Reason=Daily Limit Reached
+2026-01-23 09:53:59,088 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:03,265 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 8174663.90
+2026-01-23 09:54:07,487 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:07,487 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.75, P&L=INR 445286.40 (4.46%), Reason=Daily Limit Reached
+2026-01-23 09:54:10,028 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:10,530 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 8596654.30
+2026-01-23 09:54:14,928 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:14,931 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.40, P&L=INR 421990.40 (4.22%), Reason=Daily Limit Reached
+2026-01-23 09:54:21,062 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:21,981 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 9158420.70
+2026-01-23 09:54:26,212 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:26,215 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=158.50, P&L=INR 561766.40 (5.62%), Reason=Daily Limit Reached
+2026-01-23 09:54:32,019 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:32,267 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 9753467.10
+2026-01-23 09:54:36,629 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:36,631 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=159.00, P&L=INR 595046.40 (5.96%), Reason=Daily Limit Reached
+2026-01-23 09:54:42,982 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:43,696 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 10425057.50
+2026-01-23 09:54:46,633 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:46,634 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=160.15, P&L=INR 671590.40 (6.72%), Reason=Daily Limit Reached
+2026-01-23 09:54:53,449 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:54:53,705 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 11399495.90
+2026-01-23 09:54:56,457 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:54:56,457 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=164.70, P&L=INR 974438.40 (9.76%), Reason=Daily Limit Reached
+2026-01-23 09:55:03,961 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:55:04,534 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 11971246.30
+2026-01-23 09:55:07,503 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:55:07,503 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=158.65, P&L=INR 571750.40 (5.72%), Reason=Daily Limit Reached
+2026-01-23 09:55:14,954 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:55:19,764 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 12639508.70
+2026-01-23 09:55:24,613 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:55:24,614 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=160.10, P&L=INR 668262.40 (6.69%), Reason=Daily Limit Reached
+2026-01-23 09:55:25,895 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:55:26,623 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 13324411.10
+2026-01-23 09:55:31,025 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:55:31,025 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=160.35, P&L=INR 684902.40 (6.86%), Reason=Daily Limit Reached
+2026-01-23 09:55:36,796 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:55:37,084 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 14318817.50
+2026-01-23 09:55:41,278 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:55:41,280 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=165.00, P&L=INR 994406.40 (9.96%), Reason=Daily Limit Reached
+2026-01-23 09:55:47,799 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:55:48,283 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 15253319.90
+2026-01-23 09:55:52,539 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:55:52,539 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=164.10, P&L=INR 934502.40 (9.36%), Reason=Daily Limit Reached
+2026-01-23 09:55:58,804 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:56:03,777 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 16048046.30
+2026-01-23 09:56:08,067 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:56:08,068 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=162.00, P&L=INR 794726.40 (7.96%), Reason=Daily Limit Reached
+2026-01-23 09:56:09,667 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:56:10,070 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 16922644.70
+2026-01-23 09:56:14,378 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:56:14,378 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=163.20, P&L=INR 874598.40 (8.76%), Reason=Daily Limit Reached
+2026-01-23 09:56:20,697 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:56:23,467 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 17740667.10
+2026-01-23 09:56:26,283 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:56:26,283 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=162.35, P&L=INR 818022.40 (8.19%), Reason=Daily Limit Reached
+2026-01-23 09:56:31,216 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:56:31,358 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 18505441.50
+2026-01-23 09:56:34,234 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:56:34,234 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=161.55, P&L=INR 764774.40 (7.66%), Reason=Daily Limit Reached
+2026-01-23 09:56:41,770 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:56:48,763 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 19027271.90
+2026-01-23 09:56:51,642 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:56:51,643 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.90, P&L=INR 521830.40 (5.22%), Reason=Daily Limit Reached
+2026-01-23 09:56:52,454 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:57:00,615 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 19499182.30
+2026-01-23 09:57:03,447 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:57:03,449 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.15, P&L=INR 471910.40 (4.72%), Reason=Daily Limit Reached
+2026-01-23 09:57:13,416 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:57:13,573 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 19894548.70
+2026-01-23 09:57:16,411 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:57:16,411 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.00, P&L=INR 395366.40 (3.96%), Reason=Daily Limit Reached
+2026-01-23 09:57:23,913 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:57:40,559 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 20156795.10
+2026-01-23 09:57:43,229 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:57:43,229 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.00, P&L=INR 262246.40 (2.63%), Reason=Daily Limit Reached
+2026-01-23 09:57:44,728 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:57:45,239 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 20638689.50
+2026-01-23 09:57:47,966 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:57:47,966 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=157.30, P&L=INR 481894.40 (4.82%), Reason=Daily Limit Reached
+2026-01-23 09:57:55,160 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:00,811 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 21067335.90
+2026-01-23 09:58:04,549 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:04,552 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.50, P&L=INR 428646.40 (4.29%), Reason=Daily Limit Reached
+2026-01-23 09:58:06,152 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:06,577 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 21635758.30
+2026-01-23 09:58:11,045 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:11,045 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=158.60, P&L=INR 568422.40 (5.69%), Reason=Daily Limit Reached
+2026-01-23 09:58:17,139 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:18,076 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 22377236.70
+2026-01-23 09:58:22,352 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:22,353 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=161.20, P&L=INR 741478.40 (7.42%), Reason=Daily Limit Reached
+2026-01-23 09:58:28,120 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:28,369 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 23062139.10
+2026-01-23 09:58:32,794 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:32,795 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=160.35, P&L=INR 684902.40 (6.86%), Reason=Daily Limit Reached
+2026-01-23 09:58:38,653 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:38,852 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 23740385.50
+2026-01-23 09:58:41,560 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:41,560 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=160.25, P&L=INR 678246.40 (6.79%), Reason=Daily Limit Reached
+2026-01-23 09:58:49,045 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:58:57,361 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24039239.90
+2026-01-23 09:58:59,970 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:58:59,970 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=154.55, P&L=INR 298854.40 (2.99%), Reason=Daily Limit Reached
+2026-01-23 09:59:09,833 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:59:10,035 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24065198.30
+2026-01-23 09:59:13,011 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:59:13,011 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=150.45, P&L=INR 25958.40 (0.26%), Reason=Daily Limit Reached
+2026-01-23 09:59:20,378 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:59:27,497 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24254228.70
+2026-01-23 09:59:30,184 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:59:30,184 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=152.90, P&L=INR 189030.40 (1.89%), Reason=Daily Limit Reached
+2026-01-23 09:59:31,272 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:59:32,196 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24310139.10
+2026-01-23 09:59:36,446 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:59:36,447 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=150.90, P&L=INR 55910.40 (0.56%), Reason=Daily Limit Reached
+2026-01-23 09:59:42,223 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:59:42,497 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24429281.50
+2026-01-23 09:59:47,161 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 09:59:47,162 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=151.85, P&L=INR 119142.40 (1.19%), Reason=Daily Limit Reached
+2026-01-23 09:59:53,422 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 09:59:58,394 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24834631.90
+2026-01-23 10:00:03,398 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:00:03,399 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.15, P&L=INR 405350.40 (4.06%), Reason=Daily Limit Reached
+2026-01-23 10:00:04,378 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:00:04,416 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24720814.30
+2026-01-23 10:00:09,007 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:00:09,007 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -113817.60)
+2026-01-23 10:00:09,009 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=148.35, P&L=INR -113817.60 (-1.14%), Reason=Daily Limit Reached
+2026-01-23 10:00:15,279 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:00:23,614 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24580372.70
+2026-01-23 10:00:28,349 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:00:28,349 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -140441.60)
+2026-01-23 10:00:28,351 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=147.95, P&L=INR -140441.60 (-1.41%), Reason=Daily Limit Reached
+2026-01-23 10:00:37,444 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:00:38,409 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24463227.10
+2026-01-23 10:00:42,747 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:00:42,752 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -117145.60)
+2026-01-23 10:00:42,753 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=148.30, P&L=INR -117145.60 (-1.17%), Reason=Daily Limit Reached
+2026-01-23 10:00:48,295 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:00:48,813 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24535777.50
+2026-01-23 10:00:53,164 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:00:53,164 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=151.15, P&L=INR 72550.40 (0.73%), Reason=Daily Limit Reached
+2026-01-23 10:00:59,247 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:01:00,233 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 24964423.90
+2026-01-23 10:01:04,535 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:01:04,537 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.50, P&L=INR 428646.40 (4.29%), Reason=Daily Limit Reached
+2026-01-23 10:01:10,295 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:01:10,589 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 25306542.30
+2026-01-23 10:01:15,331 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:01:15,332 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=155.20, P&L=INR 342118.40 (3.43%), Reason=Daily Limit Reached
+2026-01-23 10:01:21,157 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:01:25,739 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 25701908.70
+2026-01-23 10:01:30,289 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:01:30,289 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=156.00, P&L=INR 395366.40 (3.96%), Reason=Daily Limit Reached
+2026-01-23 10:01:32,084 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:01:32,312 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 26356859.10
+2026-01-23 10:01:35,211 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:01:35,214 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=159.90, P&L=INR 654950.40 (6.56%), Reason=Daily Limit Reached
+2026-01-23 10:01:42,580 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:02:09,272 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 27447777.50
+2026-01-23 10:02:11,821 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:02:11,821 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=166.45, P&L=INR 1090918.40 (10.92%), Reason=Daily Limit Reached
+2026-01-23 10:02:14,250 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:02:27,541 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 28528711.90
+2026-01-23 10:02:30,112 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:02:30,112 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=166.30, P&L=INR 1080934.40 (10.82%), Reason=Daily Limit Reached
+2026-01-23 10:02:35,249 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:02:39,349 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 29642926.30
+2026-01-23 10:02:42,014 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:02:42,016 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=166.80, P&L=INR 1114214.40 (11.16%), Reason=Daily Limit Reached
+2026-01-23 10:02:45,802 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:02:46,057 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 30860308.70
+2026-01-23 10:02:48,829 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:02:48,830 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=168.35, P&L=INR 1217382.40 (12.19%), Reason=Daily Limit Reached
+2026-01-23 10:02:56,383 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:02:56,871 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 32014459.10
+2026-01-23 10:02:59,529 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:02:59,529 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=167.40, P&L=INR 1154150.40 (11.56%), Reason=Daily Limit Reached
+2026-01-23 10:03:06,860 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:03:07,626 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 33571297.50
+2026-01-23 10:03:10,345 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:03:10,345 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=173.45, P&L=INR 1556838.40 (15.59%), Reason=Daily Limit Reached
+2026-01-23 10:03:17,379 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:03:18,376 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 35264583.90
+2026-01-23 10:03:21,141 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:03:21,141 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=175.50, P&L=INR 1693286.40 (16.95%), Reason=Daily Limit Reached
+2026-01-23 10:03:27,953 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:03:37,589 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 36498606.30
+2026-01-23 10:03:40,406 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:03:40,406 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=168.60, P&L=INR 1234022.40 (12.36%), Reason=Daily Limit Reached
+2026-01-23 10:03:48,906 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:03:51,071 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 37782548.70
+2026-01-23 10:03:53,773 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:03:53,775 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.06, Exit=169.35, P&L=INR 1283942.40 (12.85%), Reason=Daily Limit Reached
+2026-01-23 10:03:59,419 - INFO - Entry executed: NIFTY27JAN2625400PE @ 170.30
+2026-01-23 10:04:05,979 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 37782620.20
+2026-01-23 10:04:09,803 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:09,803 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=170.30, Exit=171.40, P&L=INR 71.50 (0.65%), Reason=Daily Limit Reached
+2026-01-23 10:04:09,930 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:04:10,800 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 39239708.95
+2026-01-23 10:04:13,532 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:13,533 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=171.95, P&L=INR 1457088.75 (14.57%), Reason=Daily Limit Reached
+2026-01-23 10:04:20,916 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:04:25,698 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 40486928.95
+2026-01-23 10:04:31,231 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:31,235 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=168.80, P&L=INR 1247220.00 (12.47%), Reason=Daily Limit Reached
+2026-01-23 10:04:32,107 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:04:32,239 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 41777455.20
+2026-01-23 10:04:37,451 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:37,455 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=169.45, P&L=INR 1290526.25 (12.91%), Reason=Daily Limit Reached
+2026-01-23 10:04:43,876 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:04:50,047 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 42854781.45
+2026-01-23 10:04:54,539 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:54,542 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=166.25, P&L=INR 1077326.25 (10.77%), Reason=Daily Limit Reached
+2026-01-23 10:04:54,920 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:04:55,561 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 43798857.70
+2026-01-23 10:04:58,912 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:04:58,913 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=164.25, P&L=INR 944076.25 (9.44%), Reason=Daily Limit Reached
+2026-01-23 10:05:05,401 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:05:05,984 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 44266565.20
+2026-01-23 10:05:09,005 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:05:09,005 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=157.10, P&L=INR 467707.50 (4.68%), Reason=Daily Limit Reached
+2026-01-23 10:05:15,878 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:05:17,586 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 44990778.95
+2026-01-23 10:05:20,554 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:05:20,554 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=160.95, P&L=INR 724213.75 (7.24%), Reason=Daily Limit Reached
+2026-01-23 10:05:26,395 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:05:46,143 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 45178661.45
+2026-01-23 10:05:48,935 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:05:48,935 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=152.90, P&L=INR 187882.50 (1.88%), Reason=Daily Limit Reached
+2026-01-23 10:05:57,872 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:06:06,217 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 45143350.20
+2026-01-23 10:06:09,325 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:06:09,325 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -35311.25)
+2026-01-23 10:06:09,327 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=149.55, P&L=INR -35311.25 (-0.35%), Reason=Daily Limit Reached
+2026-01-23 10:06:18,649 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:06:19,411 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 142.75 <= TSL 144.08 (Stage: TRAILING)
+2026-01-23 10:06:22,211 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:06:22,211 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -488361.25)
+2026-01-23 10:06:22,211 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=142.75, P&L=INR -488361.25 (-4.88%), Reason=TSL Hit
+2026-01-23 10:06:29,594 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:06:32,274 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 141.50 <= TSL 144.08 (Stage: TRAILING)
+2026-01-23 10:06:36,825 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:06:36,825 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -571642.50)
+2026-01-23 10:06:36,825 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=141.50, P&L=INR -571642.50 (-5.72%), Reason=TSL Hit
+2026-01-23 10:06:40,506 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:06:40,883 - INFO - [EXIT] NIFTY27JAN2625400PE: TSL Hit: Price 141.20 <= TSL 144.08 (Stage: TRAILING)
+2026-01-23 10:06:44,371 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:06:44,374 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -591630.00)
+2026-01-23 10:06:44,374 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=141.20, P&L=INR -591630.00 (-5.92%), Reason=TSL Hit
+2026-01-23 10:06:51,008 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:06:51,418 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 43443080.20
+2026-01-23 10:06:54,279 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:06:54,279 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -48636.25)
+2026-01-23 10:06:54,279 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=149.35, P&L=INR -48636.25 (-0.49%), Reason=Daily Limit Reached
+2026-01-23 10:07:01,535 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:07:02,327 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 43357800.20
+2026-01-23 10:07:05,260 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:07:05,260 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625400PE (PnL: -85280.00)
+2026-01-23 10:07:05,260 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=148.80, P&L=INR -85280.00 (-0.85%), Reason=Daily Limit Reached
+2026-01-23 10:07:12,005 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:07:12,285 - INFO - [EXIT] NIFTY27JAN2625400PE: Daily profit target reached: 43452407.70
+2026-01-23 10:07:15,259 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 10:07:15,259 - INFO - [TRADE CLOSED] NIFTY27JAN2625400PE: Entry=150.08, Exit=151.50, P&L=INR 94607.50 (0.95%), Reason=Daily Limit Reached
+2026-01-23 10:07:22,560 - INFO - Adopting existing position: NIFTY27JAN2625400PE
+2026-01-23 10:07:26,055 - INFO - Shutting down...
+2026-01-23 10:07:26,055 - INFO - Trading Engine stopped
+2026-01-23 10:07:26,060 - INFO - All engine tasks cleaned up
+2026-01-23 10:07:26,060 - INFO - Goodbye!
+2026-01-23 10:07:36,783 - INFO - Configuration banner printed
+2026-01-23 10:07:37,972 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 10:07:47,250 - INFO - [RECOVERY] Restored NIFTY27JAN2625400PE in POSITION @ INR 150.08 (P&L: 0.00%)
+2026-01-23 10:07:47,250 - INFO - Recovered 1 active trades
+2026-01-23 10:07:47,251 - INFO - Trading Engine initialized
+2026-01-23 10:07:47,251 - INFO - Trading Engine created successfully
+2026-01-23 10:07:47,251 - INFO - Starting Trading Engine...
+2026-01-23 10:07:50,289 - INFO - Goodbye!
+2026-01-23 10:09:25,988 - INFO - Configuration banner printed
+2026-01-23 10:09:26,503 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 10:09:34,822 - INFO - Trading Engine initialized
+2026-01-23 10:09:34,822 - INFO - Trading Engine created successfully
+2026-01-23 10:09:34,822 - INFO - Starting Trading Engine...
+2026-01-23 10:09:38,149 - INFO - [TASK] Signal scanner started
+2026-01-23 10:09:38,149 - INFO - [TASK] Risk monitor started
+2026-01-23 10:09:38,149 - INFO - [TASK] Position sync started
+2026-01-23 10:09:38,149 - INFO - [TASK] WebSocket monitor started
+2026-01-23 10:09:38,152 - INFO - [TASK] Config monitor started
+2026-01-23 10:10:20,374 - INFO - Configuration reloaded successfully
+2026-01-23 10:18:31,239 - INFO - Entry executed: NIFTY27JAN2625200PE @ 82.15
+2026-01-23 10:45:40,434 - INFO - Entry executed: NIFTY27JAN2625200CE @ 189.00
+2026-01-23 11:48:50,552 - INFO - Shutting down...
+2026-01-23 11:48:50,556 - INFO - Trading Engine stopped
+2026-01-23 11:48:50,556 - INFO - All engine tasks cleaned up
+2026-01-23 11:48:50,559 - INFO - Goodbye!
+2026-01-23 11:49:36,231 - INFO - Configuration banner printed
+2026-01-23 11:49:37,628 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 11:49:46,350 - INFO - Trading Engine initialized
+2026-01-23 11:49:46,352 - INFO - Trading Engine created successfully
+2026-01-23 11:49:46,352 - INFO - Starting Trading Engine...
+2026-01-23 11:49:49,925 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:49:49,928 - INFO - Adopting existing position: NIFTY27JAN2625200CE
+2026-01-23 11:49:49,933 - INFO - [TASK] Signal scanner started
+2026-01-23 11:49:49,933 - INFO - [TASK] Risk monitor started
+2026-01-23 11:49:49,940 - INFO - [TASK] Position sync started
+2026-01-23 11:49:49,942 - INFO - [TASK] WebSocket monitor started
+2026-01-23 11:49:49,943 - INFO - [TASK] Config monitor started
+2026-01-23 11:49:51,999 - INFO - [EXIT] NIFTY27JAN2625200CE: TSL Hit: Price 121.45 <= TSL 181.44 (Stage: TRAILING)
+2026-01-23 11:49:52,603 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:49:52,603 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200CE (PnL: -4390.75)
+2026-01-23 11:49:52,603 - INFO - [TRADE CLOSED] NIFTY27JAN2625200CE: Entry=189.00, Exit=121.45, P&L=INR -4390.75 (-35.74%), Reason=TSL Hit
+2026-01-23 11:50:05,571 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 100.85 <= TSL 103.98 (Stage: G3)
+2026-01-23 11:50:06,210 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:50:06,210 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=81.45, Exit=100.85, P&L=INR 1261.00 (23.82%), Reason=TSL Hit
+2026-01-23 11:50:11,616 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:51:10,515 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 101.65 <= TSL 102.72 (Stage: G3)
+2026-01-23 11:51:11,246 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:51:11,246 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=91.15, Exit=101.65, P&L=INR 1365.00 (11.52%), Reason=TSL Hit
+2026-01-23 11:51:14,487 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:51:23,927 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 98.00 <= TSL 98.78 (Stage: TRAILING)
+2026-01-23 11:51:24,677 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:51:24,677 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=96.40, Exit=98.00, P&L=INR 416.00 (1.66%), Reason=TSL Hit
+2026-01-23 11:51:25,028 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:52:06,467 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 98.35 <= TSL 98.83 (Stage: TRAILING)
+2026-01-23 11:52:07,368 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:52:07,368 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=97.20, Exit=98.35, P&L=INR 598.00 (1.18%), Reason=TSL Hit
+2026-01-23 11:52:17,575 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:53:13,477 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 92.35 <= TSL 94.70 (Stage: TRAILING)
+2026-01-23 11:53:14,161 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:53:14,161 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -5647.20)
+2026-01-23 11:53:14,161 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=97.78, Exit=92.35, P&L=INR -5647.20 (-5.55%), Reason=TSL Hit
+2026-01-23 11:53:20,473 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:53:21,234 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily loss limit reached: -10058.75
+2026-01-23 11:53:22,044 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:53:22,044 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -3660.80)
+2026-01-23 11:53:22,044 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.06, Exit=93.30, P&L=INR -3660.80 (-1.85%), Reason=Daily Limit Reached
+2026-01-23 11:53:30,961 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:53:31,117 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily loss limit reached: -19127.55
+2026-01-23 11:53:31,708 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:53:31,709 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -9068.80)
+2026-01-23 11:53:31,709 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=94.18, Exit=92.00, P&L=INR -9068.80 (-2.31%), Reason=Daily Limit Reached
+2026-01-23 11:53:41,459 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:53:45,012 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily loss limit reached: -33604.35
+2026-01-23 11:53:45,780 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:53:45,780 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -14476.80)
+2026-01-23 11:53:45,783 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.09, Exit=91.35, P&L=INR -14476.80 (-1.87%), Reason=Daily Limit Reached
+2026-01-23 11:53:51,934 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:53:52,811 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily loss limit reached: -18129.15
+2026-01-23 11:53:53,433 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:53:53,433 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=92.22, Exit=93.15, P&L=INR 15475.20 (1.01%), Reason=Daily Limit Reached
+2026-01-23 11:54:02,402 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:54:11,186 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 65403.65
+2026-01-23 11:54:11,831 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:54:11,831 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=92.69, Exit=95.20, P&L=INR 83532.80 (2.71%), Reason=Daily Limit Reached
+2026-01-23 11:54:12,833 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:54:16,928 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 235797.25
+2026-01-23 11:54:19,935 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:54:19,935 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=96.50, P&L=INR 170393.60 (2.73%), Reason=Daily Limit Reached
+2026-01-23 11:54:23,366 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:54:56,876 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 575918.85
+2026-01-23 11:54:59,782 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:54:59,783 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=99.05, P&L=INR 340121.60 (5.44%), Reason=Daily Limit Reached
+2026-01-23 11:55:05,304 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:55:19,262 - INFO - Configuration reloaded successfully
+2026-01-23 11:55:23,505 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 739656.45
+2026-01-23 11:55:26,342 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:55:26,342 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=96.40, P&L=INR 163737.60 (2.62%), Reason=Daily Limit Reached
+2026-01-23 11:55:36,670 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:55:58,647 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 966626.05
+2026-01-23 11:56:01,508 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:56:01,508 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=97.35, P&L=INR 226969.60 (3.63%), Reason=Daily Limit Reached
+2026-01-23 11:56:03,406 - INFO - Configuration reloaded successfully
+2026-01-23 11:56:08,093 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:56:08,555 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 1123707.65
+2026-01-23 11:56:11,544 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:56:11,544 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=96.30, P&L=INR 157081.60 (2.51%), Reason=Daily Limit Reached
+2026-01-23 11:56:18,593 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:56:20,164 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 1503765.25
+2026-01-23 11:56:23,012 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:56:23,014 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=99.65, P&L=INR 380057.60 (6.08%), Reason=Daily Limit Reached
+2026-01-23 11:56:28,978 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:56:50,097 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 1910446.85
+2026-01-23 11:56:53,092 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:56:53,092 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=100.05, P&L=INR 406681.60 (6.50%), Reason=Daily Limit Reached
+2026-01-23 11:57:00,270 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:57:01,182 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2283848.45
+2026-01-23 11:57:03,813 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:57:03,813 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=99.55, P&L=INR 373401.60 (5.97%), Reason=Daily Limit Reached
+2026-01-23 11:57:10,746 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:57:10,866 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2760418.05
+2026-01-23 11:57:13,717 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:57:13,718 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=101.10, P&L=INR 476569.60 (7.62%), Reason=Daily Limit Reached
+2026-01-23 11:57:21,260 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:57:27,959 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3087227.65
+2026-01-23 11:57:30,795 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:57:30,795 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=98.85, P&L=INR 326809.60 (5.23%), Reason=Daily Limit Reached
+2026-01-23 11:57:31,715 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:57:46,427 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3260949.25
+2026-01-23 11:57:49,067 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:57:49,067 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=96.55, P&L=INR 173721.60 (2.78%), Reason=Daily Limit Reached
+2026-01-23 11:57:52,605 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:58:32,259 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3467950.85
+2026-01-23 11:58:35,130 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:58:35,131 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=97.05, P&L=INR 207001.60 (3.31%), Reason=Daily Limit Reached
+2026-01-23 11:58:45,008 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:58:45,211 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3578440.45
+2026-01-23 11:58:47,915 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:58:47,916 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=95.60, P&L=INR 110489.60 (1.77%), Reason=Daily Limit Reached
+2026-01-23 11:58:55,395 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:00,613 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3589090.05
+2026-01-23 11:59:03,334 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:03,335 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=94.10, P&L=INR 10649.60 (0.17%), Reason=Daily Limit Reached
+2026-01-23 11:59:05,980 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:09,844 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3556475.65
+2026-01-23 11:59:12,486 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:12,486 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -32614.40)
+2026-01-23 11:59:12,486 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=93.45, P&L=INR -32614.40 (-0.52%), Reason=Daily Limit Reached
+2026-01-23 11:59:16,486 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:16,528 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3563797.25
+2026-01-23 11:59:19,389 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:19,389 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=94.05, P&L=INR 7321.60 (0.12%), Reason=Daily Limit Reached
+2026-01-23 11:59:26,953 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:31,449 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3477934.85
+2026-01-23 11:59:34,128 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:34,128 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -85862.40)
+2026-01-23 11:59:34,128 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=92.65, P&L=INR -85862.40 (-1.37%), Reason=Daily Limit Reached
+2026-01-23 11:59:37,870 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:38,149 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3338824.45
+2026-01-23 11:59:42,616 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:42,618 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -139110.40)
+2026-01-23 11:59:42,618 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=91.85, P&L=INR -139110.40 (-2.22%), Reason=Daily Limit Reached
+2026-01-23 11:59:48,863 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:49,680 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3146466.05
+2026-01-23 11:59:53,873 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 11:59:53,876 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -192358.40)
+2026-01-23 11:59:53,876 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=91.05, P&L=INR -192358.40 (-3.08%), Reason=Daily Limit Reached
+2026-01-23 11:59:59,830 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 11:59:59,944 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3037307.65
+2026-01-23 12:00:04,475 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:00:04,476 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -109158.40)
+2026-01-23 12:00:04,476 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=92.30, P&L=INR -109158.40 (-1.75%), Reason=Daily Limit Reached
+2026-01-23 12:00:10,938 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:00:11,552 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2901525.25
+2026-01-23 12:00:16,721 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:00:16,722 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -135782.40)
+2026-01-23 12:00:16,723 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=91.90, P&L=INR -135782.40 (-2.17%), Reason=Daily Limit Reached
+2026-01-23 12:00:22,190 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:00:22,781 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2902190.85
+2026-01-23 12:00:28,424 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:00:28,425 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=93.95, P&L=INR 665.60 (0.01%), Reason=Daily Limit Reached
+2026-01-23 12:00:33,644 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:00:34,509 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2753096.45
+2026-01-23 12:00:39,783 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:00:39,784 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -149094.40)
+2026-01-23 12:00:39,784 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=91.70, P&L=INR -149094.40 (-2.38%), Reason=Daily Limit Reached
+2026-01-23 12:00:45,240 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:00:45,823 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2723810.05
+2026-01-23 12:00:51,466 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:00:51,467 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -29286.40)
+2026-01-23 12:00:51,467 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=93.50, P&L=INR -29286.40 (-0.47%), Reason=Daily Limit Reached
+2026-01-23 12:00:56,520 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:00:57,523 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2794363.65
+2026-01-23 12:01:02,759 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:02,760 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=95.00, P&L=INR 70553.60 (1.13%), Reason=Daily Limit Reached
+2026-01-23 12:01:07,907 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:01:08,799 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2891541.25
+2026-01-23 12:01:14,083 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:14,084 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=95.40, P&L=INR 97177.60 (1.55%), Reason=Daily Limit Reached
+2026-01-23 12:01:19,171 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:01:22,408 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2935470.85
+2026-01-23 12:01:28,509 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:28,509 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=94.60, P&L=INR 43929.60 (0.70%), Reason=Daily Limit Reached
+2026-01-23 12:01:31,037 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:01:34,015 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3195720.45
+2026-01-23 12:01:40,061 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:40,063 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=97.85, P&L=INR 260249.60 (4.16%), Reason=Daily Limit Reached
+2026-01-23 12:01:42,362 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:01:45,399 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3402722.05
+2026-01-23 12:01:51,034 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:51,035 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=97.05, P&L=INR 207001.60 (3.31%), Reason=Daily Limit Reached
+2026-01-23 12:01:53,714 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:01:54,044 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3672955.65
+2026-01-23 12:01:55,575 - INFO - Entry executed: NIFTY27JAN2625200PE @ 97.30
+2026-01-23 12:01:59,179 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:01:59,179 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=98.00, P&L=INR 270233.60 (4.32%), Reason=Daily Limit Reached
+2026-01-23 12:02:04,792 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:02:06,989 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3760234.40
+2026-01-23 12:02:10,414 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:02:10,414 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=95.25, P&L=INR 87278.75 (1.39%), Reason=Daily Limit Reached
+2026-01-23 12:02:15,365 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:02:15,444 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3894150.65
+2026-01-23 12:02:18,776 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:02:18,777 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=95.95, P&L=INR 133916.25 (2.14%), Reason=Daily Limit Reached
+2026-01-23 12:02:26,003 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:02:28,589 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4214616.90
+2026-01-23 12:02:32,163 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:02:32,164 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=98.75, P&L=INR 320466.25 (5.12%), Reason=Daily Limit Reached
+2026-01-23 12:02:36,725 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:02:37,217 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4588383.15
+2026-01-23 12:02:41,270 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:02:41,271 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=99.55, P&L=INR 373766.25 (5.97%), Reason=Daily Limit Reached
+2026-01-23 12:02:47,281 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:02:50,143 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4875536.90
+2026-01-23 12:02:54,017 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:02:54,017 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=98.25, P&L=INR 287153.75 (4.59%), Reason=Daily Limit Reached
+2026-01-23 12:02:57,957 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:03:05,154 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4942828.15
+2026-01-23 12:03:08,946 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:03:08,946 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=94.95, P&L=INR 67291.25 (1.08%), Reason=Daily Limit Reached
+2026-01-23 12:03:14,330 - INFO - Entry executed: NIFTY27JAN2625200PE @ 97.80
+2026-01-23 12:03:18,839 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 92.40 <= TSL 93.89 (Stage: TRAILING)
+2026-01-23 12:03:19,800 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:03:19,802 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -351.00)
+2026-01-23 12:03:19,803 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=97.80, Exit=92.40, P&L=INR -351.00 (-5.52%), Reason=TSL Hit
+2026-01-23 12:03:30,136 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:03:30,896 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4839674.45
+2026-01-23 12:03:34,268 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:03:34,268 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -102802.70)
+2026-01-23 12:03:34,270 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=92.40, P&L=INR -102802.70 (-1.64%), Reason=Daily Limit Reached
+2026-01-23 12:03:40,712 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:03:46,727 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 90.00 <= TSL 90.18 (Stage: TRAILING)
+2026-01-23 12:03:50,232 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:03:50,232 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -263014.70)
+2026-01-23 12:03:50,233 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=90.00, P&L=INR -263014.70 (-4.19%), Reason=TSL Hit
+2026-01-23 12:03:51,368 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:03:52,268 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 89.85 <= TSL 90.18 (Stage: TRAILING)
+2026-01-23 12:03:55,606 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:03:55,606 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -273027.95)
+2026-01-23 12:03:55,607 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=89.85, P&L=INR -273027.95 (-4.35%), Reason=TSL Hit
+2026-01-23 12:04:01,970 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:04:11,232 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 86.75 <= TSL 90.18 (Stage: TRAILING)
+2026-01-23 12:04:15,308 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:04:15,309 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -479968.45)
+2026-01-23 12:04:15,309 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.94, Exit=86.75, P&L=INR -479968.45 (-7.65%), Reason=TSL Hit
+2026-01-23 12:04:17,890 - INFO - Configuration reloaded successfully
+2026-01-23 12:04:22,805 - INFO - Entry executed: NIFTY27JAN2625200PE @ 88.10
+2026-01-23 12:04:23,399 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3823591.85
+2026-01-23 12:04:24,627 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:04:24,628 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -71.50)
+2026-01-23 12:04:24,628 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=88.10, Exit=87.00, P&L=INR -71.50 (-1.25%), Reason=Daily Limit Reached
+2026-01-23 12:04:34,728 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:04:39,791 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 88.80 <= TSL 90.16 (Stage: TRAILING)
+2026-01-23 12:04:44,171 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:04:44,171 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -342451.20)
+2026-01-23 12:04:44,172 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.92, Exit=88.80, P&L=INR -342451.20 (-5.45%), Reason=TSL Hit
+2026-01-23 12:04:45,764 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:04:46,207 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 87.30 <= TSL 90.16 (Stage: TRAILING)
+2026-01-23 12:04:51,780 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:04:51,781 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -442778.70)
+2026-01-23 12:04:51,782 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.92, Exit=87.30, P&L=INR -442778.70 (-7.05%), Reason=TSL Hit
+2026-01-23 12:04:57,020 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:04:57,870 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 88.40 <= TSL 90.16 (Stage: TRAILING)
+2026-01-23 12:05:03,777 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:03,778 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -369205.20)
+2026-01-23 12:05:03,779 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.92, Exit=88.40, P&L=INR -369205.20 (-5.88%), Reason=TSL Hit
+2026-01-23 12:05:08,375 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:05:11,393 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2460475.55
+2026-01-23 12:05:13,235 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:13,235 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -208681.20)
+2026-01-23 12:05:13,237 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=93.92, Exit=90.80, P&L=INR -208681.20 (-3.32%), Reason=Daily Limit Reached
+2026-01-23 12:05:19,631 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:05:22,865 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2584212.80
+2026-01-23 12:05:28,471 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:28,472 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.15, Exit=92.00, P&L=INR 123737.25 (2.05%), Reason=Daily Limit Reached
+2026-01-23 12:05:30,917 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:05:31,480 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2647753.55
+2026-01-23 12:05:36,803 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:36,804 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.15, Exit=91.10, P&L=INR 63540.75 (1.05%), Reason=Daily Limit Reached
+2026-01-23 12:05:39,085 - INFO - Entry executed: NIFTY27JAN2625200PE @ 90.25
+2026-01-23 12:05:39,854 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2647925.80
+2026-01-23 12:05:41,469 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:41,470 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.25, Exit=92.90, P&L=INR 172.25 (2.94%), Reason=Daily Limit Reached
+2026-01-23 12:05:42,326 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:05:44,908 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 2885829.05
+2026-01-23 12:05:51,200 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:51,202 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.15, Exit=93.70, P&L=INR 237903.25 (3.94%), Reason=Daily Limit Reached
+2026-01-23 12:05:53,841 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:05:54,255 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3117030.80
+2026-01-23 12:05:59,584 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:05:59,594 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.15, Exit=93.60, P&L=INR 231201.75 (3.83%), Reason=Daily Limit Reached
+2026-01-23 12:06:05,270 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:06:08,088 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3482262.55
+2026-01-23 12:06:09,649 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:06:09,649 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=90.15, Exit=95.60, P&L=INR 365231.75 (6.05%), Reason=Daily Limit Reached
+2026-01-23 12:06:12,555 - INFO - Configuration reloaded successfully
+2026-01-23 12:06:16,594 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:06:20,805 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3368337.05
+2026-01-23 12:06:23,941 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:06:23,942 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -113925.50)
+2026-01-23 12:06:23,942 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=94.15, P&L=INR -113925.50 (-1.77%), Reason=Daily Limit Reached
+2026-01-23 12:06:24,651 - INFO - Configuration reloaded successfully
+2026-01-23 12:06:27,215 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:06:27,982 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3284568.30
+2026-01-23 12:06:31,190 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:06:31,190 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -83768.75)
+2026-01-23 12:06:31,191 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=94.60, P&L=INR -83768.75 (-1.30%), Reason=Daily Limit Reached
+2026-01-23 12:06:34,997 - ERROR - fin=1 opcode=8 data=b'\x03\xe9' - goodbye
+2026-01-23 12:06:36,439 - WARNING - WebSocket disconnection detected!
+2026-01-23 12:06:41,074 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-23 12:06:46,077 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-23 12:06:46,078 - WARNING - WebSocket reconnection failed
+2026-01-23 12:06:55,141 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-23 12:07:00,122 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-23 12:07:00,124 - WARNING - WebSocket reconnection failed
+2026-01-23 12:07:09,203 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-23 12:07:14,187 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-23 12:07:14,189 - WARNING - WebSocket reconnection failed
+2026-01-23 12:07:23,272 - ERROR - [WinError 10061] No connection could be made because the target machine actively refused it - goodbye
+2026-01-23 12:07:28,247 - WARNING - WebSocket connection failed: No active socket found after connect()
+2026-01-23 12:07:28,248 - WARNING - WebSocket reconnection failed
+2026-01-23 12:07:38,390 - INFO - WebSocket successfully reconnected
+2026-01-23 12:07:42,482 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:07:45,263 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 3780479.30
+2026-01-23 12:07:50,782 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:07:50,783 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=103.25, P&L=INR 495911.00 (7.72%), Reason=Daily Limit Reached
+2026-01-23 12:07:53,747 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:07:53,805 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4246233.55
+2026-01-23 12:07:59,375 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:07:59,376 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=102.80, P&L=INR 465754.25 (7.25%), Reason=Daily Limit Reached
+2026-01-23 12:08:04,411 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:08:05,414 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4430524.80
+2026-01-23 12:08:08,641 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:08:08,641 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.60, P&L=INR 184291.25 (2.87%), Reason=Daily Limit Reached
+2026-01-23 12:08:14,970 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:08:15,710 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4668428.05
+2026-01-23 12:08:19,163 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:08:19,164 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.40, P&L=INR 237903.25 (3.70%), Reason=Daily Limit Reached
+2026-01-23 12:08:25,573 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:08:34,889 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 4872823.80
+2026-01-23 12:08:38,467 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:08:38,467 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.90, P&L=INR 204395.75 (3.18%), Reason=Daily Limit Reached
+2026-01-23 12:08:46,750 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:08:59,704 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 5284966.05
+2026-01-23 12:09:03,044 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:09:03,045 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=102.00, P&L=INR 412142.25 (6.42%), Reason=Daily Limit Reached
+2026-01-23 12:09:07,950 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:09:08,091 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 5770824.80
+2026-01-23 12:09:11,276 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:09:11,276 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=103.10, P&L=INR 485858.75 (7.56%), Reason=Daily Limit Reached
+2026-01-23 12:09:18,553 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:09:31,285 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 6035534.05
+2026-01-23 12:09:34,389 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:09:34,389 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.80, P&L=INR 264709.25 (4.12%), Reason=Daily Limit Reached
+2026-01-23 12:09:40,470 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:09:41,476 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 6541497.30
+2026-01-23 12:09:47,725 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:09:47,726 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=103.40, P&L=INR 505963.25 (7.88%), Reason=Daily Limit Reached
+2026-01-23 12:09:51,747 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:09:55,236 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 6977094.80
+2026-01-23 12:10:00,817 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:00,819 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=102.35, P&L=INR 435597.50 (6.78%), Reason=Daily Limit Reached
+2026-01-23 12:10:03,236 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:10:03,870 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 7328923.55
+2026-01-23 12:10:09,497 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:09,499 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=101.10, P&L=INR 351828.75 (5.48%), Reason=Daily Limit Reached
+2026-01-23 12:10:14,664 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:10:20,158 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 7627140.30
+2026-01-23 12:10:25,670 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:25,677 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.30, P&L=INR 298216.75 (4.64%), Reason=Daily Limit Reached
+2026-01-23 12:10:26,307 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:10:26,696 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 7891849.55
+2026-01-23 12:10:32,020 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:32,021 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.80, P&L=INR 264709.25 (4.12%), Reason=Daily Limit Reached
+2026-01-23 12:10:37,672 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:10:38,072 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 8176663.30
+2026-01-23 12:10:43,456 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:43,462 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.10, P&L=INR 284813.75 (4.43%), Reason=Daily Limit Reached
+2026-01-23 12:10:49,601 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:10:52,965 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 8521790.55
+2026-01-23 12:10:58,360 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:10:58,361 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=101.00, P&L=INR 345127.25 (5.37%), Reason=Daily Limit Reached
+2026-01-23 12:11:01,058 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:01,373 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 8853514.80
+2026-01-23 12:11:07,034 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:11:07,038 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.80, P&L=INR 331724.25 (5.16%), Reason=Daily Limit Reached
+2026-01-23 12:11:12,427 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:13,097 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 9171836.05
+2026-01-23 12:11:18,215 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:11:18,216 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.60, P&L=INR 318321.25 (4.96%), Reason=Daily Limit Reached
+2026-01-23 12:11:23,659 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:26,579 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 9433194.55
+2026-01-23 12:11:31,684 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:11:31,685 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.75, P&L=INR 261358.50 (4.07%), Reason=Daily Limit Reached
+2026-01-23 12:11:34,856 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:38,038 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 9580627.55
+2026-01-23 12:11:43,437 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:11:43,443 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.05, P&L=INR 147433.00 (2.30%), Reason=Daily Limit Reached
+2026-01-23 12:11:46,095 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:46,472 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 9768269.55
+2026-01-23 12:11:52,803 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:11:52,804 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.65, P&L=INR 187642.00 (2.92%), Reason=Daily Limit Reached
+2026-01-23 12:11:57,455 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:11:57,868 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 10002822.05
+2026-01-23 12:12:03,085 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:12:03,087 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.35, P&L=INR 234552.50 (3.65%), Reason=Daily Limit Reached
+2026-01-23 12:12:08,873 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:12:11,520 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 10290986.55
+2026-01-23 12:12:16,959 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:12:16,960 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.15, P&L=INR 288164.50 (4.49%), Reason=Daily Limit Reached
+2026-01-23 12:12:20,246 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:12:23,405 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 10592554.05
+2026-01-23 12:12:29,011 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:12:29,012 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.35, P&L=INR 301567.50 (4.69%), Reason=Daily Limit Reached
+2026-01-23 12:12:31,755 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:12:32,050 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 10870666.30
+2026-01-23 12:12:37,585 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:12:37,586 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.00, P&L=INR 278112.25 (4.33%), Reason=Daily Limit Reached
+2026-01-23 12:12:43,046 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:12:48,431 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11014748.55
+2026-01-23 12:12:54,147 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:12:54,148 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.00, P&L=INR 144082.25 (2.24%), Reason=Daily Limit Reached
+2026-01-23 12:12:54,859 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:12:55,172 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11148778.55
+2026-01-23 12:13:00,347 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:00,349 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=97.85, P&L=INR 134030.00 (2.09%), Reason=Daily Limit Reached
+2026-01-23 12:13:06,114 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:13:06,396 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11379980.30
+2026-01-23 12:13:11,531 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:11,532 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.30, P&L=INR 231201.75 (3.60%), Reason=Daily Limit Reached
+2026-01-23 12:13:17,295 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:13:19,818 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11577674.55
+2026-01-23 12:13:24,793 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:24,794 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=98.80, P&L=INR 197694.25 (3.08%), Reason=Daily Limit Reached
+2026-01-23 12:13:28,530 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:13:33,335 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11812227.05
+2026-01-23 12:13:38,327 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:38,328 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.35, P&L=INR 234552.50 (3.65%), Reason=Daily Limit Reached
+2026-01-23 12:13:39,701 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:13:40,340 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 12050130.30
+2026-01-23 12:13:45,074 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:45,075 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=99.40, P&L=INR 237903.25 (3.70%), Reason=Daily Limit Reached
+2026-01-23 12:13:50,877 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:13:53,394 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 12422063.55
+2026-01-23 12:13:58,709 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:13:58,709 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=101.40, P&L=INR 371933.25 (5.79%), Reason=Daily Limit Reached
+2026-01-23 12:14:02,599 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:14:08,286 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 12804049.05
+2026-01-23 12:14:15,343 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:14:15,350 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=101.55, P&L=INR 381985.50 (5.95%), Reason=Daily Limit Reached
+2026-01-23 12:14:28,607 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:14:33,513 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13112318.05
+2026-01-23 12:14:43,096 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:14:43,121 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=100.45, P&L=INR 308269.00 (4.80%), Reason=Daily Limit Reached
+2026-01-23 12:14:54,532 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:14:55,300 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13551266.30
+2026-01-23 12:15:09,403 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:15:09,430 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=102.40, P&L=INR 438948.25 (6.83%), Reason=Daily Limit Reached
+2026-01-23 12:15:22,179 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:15:27,840 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13645087.30
+2026-01-23 12:15:41,261 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:15:41,268 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=97.25, P&L=INR 93821.00 (1.46%), Reason=Daily Limit Reached
+2026-01-23 12:15:47,099 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:15:49,518 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13732206.80
+2026-01-23 12:15:54,465 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:15:54,465 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=97.15, P&L=INR 87119.50 (1.36%), Reason=Daily Limit Reached
+2026-01-23 12:15:58,463 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:00,872 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13611579.80
+2026-01-23 12:16:06,026 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:16:06,027 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -120627.00)
+2026-01-23 12:16:06,028 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=94.05, P&L=INR -120627.00 (-1.88%), Reason=Daily Limit Reached
+2026-01-23 12:16:09,851 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:12,539 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13497543.80
+2026-01-23 12:16:17,752 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:16:17,753 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -114036.00)
+2026-01-23 12:16:17,753 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=94.15, P&L=INR -114036.00 (-1.77%), Reason=Daily Limit Reached
+2026-01-23 12:16:18,249 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-23 12:16:21,177 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:24,149 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 13242639.80
+2026-01-23 12:16:29,173 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:16:29,175 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -254904.00)
+2026-01-23 12:16:29,176 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=92.05, P&L=INR -254904.00 (-3.96%), Reason=Daily Limit Reached
+2026-01-23 12:16:32,343 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:35,428 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 89.60 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:16:40,694 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:16:40,695 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -419250.00)
+2026-01-23 12:16:40,696 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=89.60, P&L=INR -419250.00 (-6.52%), Reason=TSL Hit
+2026-01-23 12:16:43,514 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:43,741 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 88.30 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:16:48,712 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:16:48,712 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -506454.00)
+2026-01-23 12:16:48,713 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=88.30, P&L=INR -506454.00 (-7.88%), Reason=TSL Hit
+2026-01-23 12:16:54,896 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:16:55,798 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 89.75 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:17:00,753 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:17:00,754 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -409188.00)
+2026-01-23 12:17:00,754 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=89.75, P&L=INR -409188.00 (-6.36%), Reason=TSL Hit
+2026-01-23 12:17:06,049 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:17:10,563 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 92.00 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:17:13,647 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:17:13,648 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -258258.00)
+2026-01-23 12:17:13,648 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=92.00, P&L=INR -258258.00 (-4.02%), Reason=TSL Hit
+2026-01-23 12:17:17,760 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:17:18,679 - INFO - [EXIT] NIFTY27JAN2625200PE: Daily profit target reached: 11491851.80
+2026-01-23 12:17:27,891 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:17:27,906 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -157638.00)
+2026-01-23 12:17:27,919 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=93.50, P&L=INR -157638.00 (-2.45%), Reason=Daily Limit Reached
+2026-01-23 12:17:30,921 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:17:37,164 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 92.00 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:17:47,739 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:17:47,753 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -258258.00)
+2026-01-23 12:17:47,764 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=92.00, P&L=INR -258258.00 (-4.02%), Reason=TSL Hit
+2026-01-23 12:17:55,910 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:17:59,157 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 88.05 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:18:09,964 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:18:09,979 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -523224.00)
+2026-01-23 12:18:09,993 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=88.05, P&L=INR -523224.00 (-8.14%), Reason=TSL Hit
+2026-01-23 12:18:10,429 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:18:11,084 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 90.75 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:18:26,901 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:18:26,928 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -342108.00)
+2026-01-23 12:18:26,950 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=90.75, P&L=INR -342108.00 (-5.32%), Reason=TSL Hit
+2026-01-23 12:18:33,517 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:18:34,077 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 89.50 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:18:39,017 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:18:39,018 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -425958.00)
+2026-01-23 12:18:39,019 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=89.50, P&L=INR -425958.00 (-6.62%), Reason=TSL Hit
+2026-01-23 12:18:44,681 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:18:47,411 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 90.65 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:18:52,481 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:18:52,482 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -348816.00)
+2026-01-23 12:18:52,482 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=90.65, P&L=INR -348816.00 (-5.43%), Reason=TSL Hit
+2026-01-23 12:18:55,828 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:19:00,891 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 90.80 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:19:05,729 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:19:05,730 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -338754.00)
+2026-01-23 12:19:05,731 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=90.80, P&L=INR -338754.00 (-5.27%), Reason=TSL Hit
+2026-01-23 12:19:06,919 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:19:07,762 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 89.70 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:19:13,044 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:19:13,045 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -412542.00)
+2026-01-23 12:19:13,045 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=89.70, P&L=INR -412542.00 (-6.42%), Reason=TSL Hit
+2026-01-23 12:19:21,772 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:19:22,260 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 86.20 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:19:32,251 - INFO - Trade logged to Reporting\trades.csv
+2026-01-23 12:19:32,261 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY27JAN2625200PE (PnL: -647322.00)
+2026-01-23 12:19:32,270 - INFO - [TRADE CLOSED] NIFTY27JAN2625200PE: Entry=95.85, Exit=86.20, P&L=INR -647322.00 (-10.07%), Reason=TSL Hit
+2026-01-23 12:19:35,741 - INFO - Adopting existing position: NIFTY27JAN2625200PE
+2026-01-23 12:19:36,375 - INFO - [EXIT] NIFTY27JAN2625200PE: TSL Hit: Price 82.50 <= TSL 92.02 (Stage: TRAILING)
+2026-01-23 12:49:48,689 - INFO - Configuration banner printed
+2026-01-23 12:49:49,503 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 12:49:52,669 - INFO - Trading Engine initialized
+2026-01-23 12:49:52,669 - INFO - Trading Engine created successfully
+2026-01-23 12:49:52,669 - INFO - Starting Trading Engine...
+2026-01-23 12:49:56,032 - INFO - [TASK] Signal scanner started
+2026-01-23 12:49:56,032 - INFO - [TASK] Risk monitor started
+2026-01-23 12:49:56,033 - INFO - [TASK] Position sync started
+2026-01-23 12:49:56,033 - INFO - [TASK] WebSocket monitor started
+2026-01-23 12:49:56,034 - INFO - [TASK] Config monitor started
+2026-01-23 12:50:11,294 - INFO - Shutting down...
+2026-01-23 12:50:11,294 - INFO - Trading Engine stopped
+2026-01-23 12:50:11,297 - INFO - All engine tasks cleaned up
+2026-01-23 12:50:11,297 - INFO - Goodbye!

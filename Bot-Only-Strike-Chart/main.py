@@ -83,14 +83,15 @@ def print_startup_banner(config: dict, logger):
     opt_ltf_atr = opt_ltf_cfg.get("atr_period", 10)
     
     # TSL settings
-    tsl_mode = config.get("tsl_mode", "ATR").upper()
+    tsl_cfg = config.get("tsl", {})
+    tsl_mode = tsl_cfg.get("mode", "ATR").upper()
     tsl_detail = ""
     if tsl_mode == "ATR":
-        tsl_detail = f"{config.get('tsl_atr_multiplier', 2.5)}"
+        tsl_detail = f"{tsl_cfg.get('atr_multiplier', 1.5)}"
     elif tsl_mode == "PERCENT":
-        tsl_detail = f"{config.get('tsl_percent', 4.0)}%"
+        tsl_detail = f"{tsl_cfg.get('trail_pct', 4.0)}%"
     elif tsl_mode == "POINTS":
-        tsl_detail = f"{config.get('tsl_points', 8.0)} points"
+        tsl_detail = f"{tsl_cfg.get('trail_points', 50)} points"
     
     # Age settings
     entry_logic = config.get("entry_logic", {})

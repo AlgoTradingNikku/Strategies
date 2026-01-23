@@ -23,8 +23,8 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY27JAN2625000CE"
-    - "NIFTY27JAN2625000PE"
+    - "NIFTY27JAN2625200CE"
+    - "NIFTY27JAN2625200PE"
     #- "NIFTY20JAN2625600CE"
     #- "NIFTY20JAN2625600PE"
     #- "NIFTY20JAN2625500CE"
@@ -54,7 +54,18 @@ option:
 
 strategy:
   smart_momentum:
-    entry_mode: "ADVANCED"         # Options: "SIMPLE" (minimal checks) or "ADVANCED" (all filters)
+    catch_up_trend: True          # If True, checks for EMA pullback entries even if initial Signal was missed
+    
+    # Explosive Trend Logic
+    explosive_trend:
+      enabled: False
+      adx_min: 30                # Minimum ADX to consider trend "Explosive"
+      min_body_pct: 0.005        # Candle Body must be >= 0.5% of Close
+      min_body_ratio: 0.6        # Body must be >= 60% of total Range (Solid candle)
+      min_close_pos: 0.75        # Close must be in top 25% of Range (Strong finish)
+
+ 
+
       
 # ========================================
 # ENTRY CONDITIONS (Option Chart - NEW)
@@ -122,6 +133,21 @@ re_entry:
   pullback_ema_slow: 21
 
 # ========================================
+# TSL & RISK MANAGEMENT
+# ========================================
+tsl:
+  mode: "PERCENT"               # "ATR", "PERCENT", or "POINTS"
+  atr_multiplier: 1.5           # TSL = High - (ATR * 1.5). Lower this to 1.0 for tighter stops.
+  
+  # Percent Mode settings (if mode="PERCENT")
+  trail_pct: 4.0               # TSL = High - 10%
+  
+  # Profit Guard (Lock profits as price moves up)
+  enable_profit_guard: True
+  guard_1_pct: 5.0              # At 5% profit...
+  guard_1_trail: 2.0            # Move TSL to 2% profit (Breakeven+)
+
+# ========================================
 # EXIT CONDITIONS (NEW)
 # ========================================
 # Controls how trades are exited
@@ -158,7 +184,7 @@ trading_hours:
 # 4. EXECUTION
 # ========================================
 execution:
-  order_type: "LIMIT"           # Standard Limit Order (Capped at VWAP)
+  order_type: "LIMIT"           # "LIMIT" (Simple Limit Order) or "SMART_LIMIT" (Advanced Chasing)
   order_timeout_sec: 8          # Wait 8s for fill then cancel
   enable_bot_auto_sell: True    # If False, bot tracks PnL but DOES NOT SELL. User must exit manually.
   
@@ -191,7 +217,7 @@ greeks_monitoring:
 # ========================================
 # 9. API & SYSTEM
 # ========================================
-api_key: "af22fd8e76f14ebe75eb232eee46bdfa3f177389721edd5c4e291d646d6ff312"
+api_key: "d9cc2b856cdbcb6e938217543dc9517748cd04888e360ded3c76be1000a01633"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)

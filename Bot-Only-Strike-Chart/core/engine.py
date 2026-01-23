@@ -178,6 +178,10 @@ class TradingEngine:
                 return # Exit start method immediately
         
         # Launch background tasks
+        
+        # Initial Position Sync (Vital to detect existing positions)
+        print("[INFO] Performing initial position sync...")
+        await self._sync_positions()
         task_handles = [
             asyncio.create_task(self.signal_scanner_task()),
             asyncio.create_task(self.risk_monitor_task()),
@@ -476,8 +480,15 @@ class TradingEngine:
                 except Exception:
                     return (symbol, None)
 
-            # 2. Fetch all concurrently
-            results = await asyncio.gather(*[fetch_one(s) for s in strikes_to_scan])
+            # 2. Fetch all concurrently (with timeout to prevent hang)
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*[fetch_one(s) for s in strikes_to_scan]),
+                    timeout=10
+                )
+            except asyncio.TimeoutError:
+                print("[WARN] Data fetch timed out (OpenAlgo API slow?). Skipping cycle.")
+                return
             data_map = {sym: df for sym, df in results if df is not None and not df.empty}
             
             # DEBUG: Log what's in data_map
@@ -608,11 +619,24 @@ class TradingEngine:
                     print(f"\n[SIGNAL] UTBot BUY detected on {symbol}")
                     trigger_active = True
                 
+                # Explosive Trend Check (if no standard signal)
+                if not trigger_active:
+                    exp_enabled = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {}).get("enabled", False)
+                    if exp_enabled:
+                        # Calculate Tech (ADX needed)
+                        tech_rec = self.indicators["option_tech"].calculate(df_opt, use_ha=use_ha)
+                        adx = tech_rec.metadata.get("adx", 0)
+                        
+                        if self._is_explosive_trend(df_opt, adx, use_ha=use_ha):
+                            print(f"\n[SIGNAL] Explosive Trend detected on {symbol}")
+                            trigger_active = True
+                
                 if trigger_active:
                     filters_pass = True
                     curr_price = df_opt['Close'].iloc[-1]
                     limit_price = curr_price
-                    
+                    atr_val = 0.0  # Initialize default
+
                     if use_filters:
                         valid, f_price, reasons, atr_val = await self._check_entry_conditions(symbol, df_opt)
                         if valid:
@@ -625,6 +649,10 @@ class TradingEngine:
                             
                             if use_indicator: # Log reject only if specific signal fired
                                 print(f"[REJECT] Filters failed for {symbol}: {reasons}")
+                    else:
+                        # Filters disabled, but we MUST calculate ATR for TSL/Risk Manager
+                        tech_result = self.indicators["option_tech"].calculate(df_opt, use_ha=use_ha)
+                        atr_val = tech_result.metadata.get("atr", 0.0)
                     
                     if filters_pass:
                         print(f"[ENTRY] All conditions passed for {symbol} @ {limit_price:.2f}")
@@ -647,10 +675,25 @@ class TradingEngine:
                             're_entry_attempts': 0
                         }
             
-                # Check for re-entry opportunity (if enabled)
-                # Only if NO trigger this cycle
-                elif symbol in self._signal_wait_state:
-                    await self._check_re_entry_trigger(symbol, df_opt, use_ha)
+                # Check for Pullback Opportunity (Re-entry / Catch-up)
+                elif symbol not in self.trades: # Only if not in position
+                    # 1. Is Catch-Up Enabled?
+                    catch_up_enabled = self.config.get("strategy", {}).get("smart_momentum", {}).get("catch_up_trend", False)
+                    
+                    # 2. Are we tracking a past signal?
+                    in_wait_state = symbol in self._signal_wait_state
+                    
+                    # 3. Does trend match symbol type? (CE needs Bullish, PE needs Bullish? Wait, strategy is Long Option)
+                    # UTBot Trend 1 = Bullish -> Good for CE
+                    # UTBot Trend 1 = Bullish -> Good for PE? NO.
+                    # Wait, UTBot is on OPTION CHART.
+                    # If Option Chart Trend is 1 (Bullish), it means Option Price is rising.
+                    # So UTBot Trend 1 is ALWAYS "Buy Signal" for that option (whether CE or PE).
+                    
+                    trend_ok = (utbot_result.trend == 1)
+                    
+                    if (catch_up_enabled or in_wait_state) and trend_ok:
+                         await self._check_re_entry_trigger(symbol, df_opt, use_ha)
             
             # ========== UTBot SELL SIGNAL EXIT CHECK ==========
             # Check if we have an active position for this symbol
@@ -950,8 +993,12 @@ class TradingEngine:
         ema_fast = meta["emas"].get(re_entry_cfg.get("pullback_ema_fast", 9), 0)
         ema_slow = meta["emas"].get(re_entry_cfg.get("pullback_ema_slow", 21), 0)
         
-        close = df_opt['Close'].iloc[-1]
-        low = df_opt['Low'].iloc[-1]
+        if use_ha:
+            close = df_opt['HA_Close'].iloc[-1]
+            low = df_opt['HA_Low'].iloc[-1]
+        else:
+            close = df_opt['Close'].iloc[-1]
+            low = df_opt['Low'].iloc[-1]
         
         # Check conditions:
         # 1. Price pulled back into zone (low touched or crossed EMA zone)
@@ -982,7 +1029,10 @@ class TradingEngine:
                 )
                 
                 # Increment re-entry counter
-                self._signal_wait_state[symbol]['re_entry_attempts'] = state.get("re_entry_attempts", 0) + 1
+                if symbol not in self._signal_wait_state:
+                    self._signal_wait_state[symbol] = {'re_entry_attempts': 0}
+                
+                self._signal_wait_state[symbol]['re_entry_attempts'] = self._signal_wait_state[symbol].get("re_entry_attempts", 0) + 1
             else:
                 print(f"[RE-ENTRY] Conditions failed for {symbol}: {reasons}")
     
@@ -1227,23 +1277,29 @@ class TradingEngine:
                 "atr": 0.0
             }
     
-    def _is_explosive_trend(self, df_exec, htf_adx_val):
+    def _is_explosive_trend(self, df, adx_val, use_ha=False):
         """
-        Check for Explosive Trend conditions (NIFTY).
+        Check for Explosive Trend conditions on the provided DataFrame (Option/Index).
         """
         exp_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {})
         if not exp_cfg.get("enabled", False):
             return False
             
-        # NIFTY 15m ADX >= 30 (Passed as argument to avoid complexity)
-        if htf_adx_val < exp_cfg.get("adx_min", 30):
+        if adx_val < exp_cfg.get("adx_min", 30):
+            # print(f"[EXPLOSIVE] Skipped: ADX {adx_val:.1f} < {exp_cfg.get('adx_min', 30)}")
             return False
             
         # Candle Analysis
-        open_p = df_exec['Open'].iloc[-1]
-        high_p = df_exec['High'].iloc[-1]
-        low_p = df_exec['Low'].iloc[-1]
-        close_p = df_exec['Close'].iloc[-1]
+        if use_ha:
+            open_p = df['HA_Open'].iloc[-1]
+            high_p = df['HA_High'].iloc[-1]
+            low_p = df['HA_Low'].iloc[-1]
+            close_p = df['HA_Close'].iloc[-1]
+        else:
+            open_p = df['Open'].iloc[-1]
+            high_p = df['High'].iloc[-1]
+            low_p = df['Low'].iloc[-1]
+            close_p = df['Close'].iloc[-1]
         
         candle_range = high_p - low_p
         if candle_range == 0: return False
@@ -1253,12 +1309,20 @@ class TradingEngine:
         close_pos = (close_p - low_p) / candle_range
         
         # Conditions
-        is_big_body = candle_body >= (exp_cfg.get("min_body_pct", 0.005) * close_p)
-        is_solid_body = body_ratio >= exp_cfg.get("min_body_ratio", 0.6)
-        is_closing_high = close_pos >= exp_cfg.get("min_close_pos", 0.75)
+        min_body_pct = exp_cfg.get("min_body_pct", 0.005)
+        min_ratio = exp_cfg.get("min_body_ratio", 0.6)
+        min_pos = exp_cfg.get("min_close_pos", 0.75)
         
+        is_big_body = candle_body >= (min_body_pct * close_p)
+        is_solid_body = body_ratio >= min_ratio
+        is_closing_high = close_pos >= min_pos
+        
+        if not (is_big_body and is_solid_body and is_closing_high):
+             # print(f"[EXPLOSIVE] Fail: Body={is_big_body}({candle_body:.2f}), Solid={is_solid_body}({body_ratio:.2f}), High={is_closing_high}({close_pos:.2f})")
+             return False
+
         if is_big_body and is_solid_body and is_closing_high:
-            print(f"[EXPLOSIVE] Trend Detected! Body:{candle_body:.2f}, Ratio:{body_ratio:.2f}, Pos:{close_pos:.2f}")
+            print(f"[EXPLOSIVE] Trend Detected! Body:{candle_body:.2f}, Ratio:{body_ratio:.2f}, Pos:{close_pos:.2f} | ADX:{adx_val:.1f}")
             return True
         return False
 
@@ -1496,12 +1560,12 @@ class TradingEngine:
             print(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity}")
             
             # Determine Order Type based on Entry Mode
-            entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
+            # Determine Order Type from Config
+            order_type = self.config.get("execution", {}).get("order_type", "LIMIT").upper()
             
-            if entry_mode == "SIMPLE":
-                order_type = "LIMIT"  # Simple LIMIT order
-            else:
-                order_type = "SMART_LIMIT" if self.config["execution"]["order_type"] == "SMART_LIMIT" else "MARKET"
+            # Auto-correct to LIMIT if not recognized
+            if order_type not in ["LIMIT", "SMART_LIMIT", "MARKET"]:
+                 order_type = "LIMIT"
             
             # Use unpacked arguments for place_order as per signature
             order_id = await self.order_manager.place_order(
@@ -1685,14 +1749,18 @@ class TradingEngine:
                 pnl, pnl_pct = trade.calculate_pnl()
                 trade = Trade(**{
                     **trade.__dict__,
-                    "pnl": pnl,
-                    "pnl_pct": pnl_pct
+                    'exit_price': order_id.average_price if order_id.average_price else 0.0,
+                    'exit_time': datetime.now(),
+                    'pnl': pnl,
+                    'pnl_pct': pnl_pct
                 })
                 
-                # Archive and remove from active trades
+                self.trades[trade.symbol] = trade
+                self.persistence.save_trade(trade)
                 self.persistence.archive_trade(trade)
-                del self.trades[trade.symbol]
                 
+                print(f"[EXIT] {trade.symbol} Closed. P&L: {pnl:.2f} ({pnl_pct:.1f}%)")
+
                 # --- CSV REPORTING ---
                 try:
                     import csv
@@ -1746,10 +1814,26 @@ class TradingEngine:
                 logger.info(
                     f"[TRADE CLOSED] {trade.symbol}: "
                     f"Entry={trade.entry_price:.2f}, Exit={trade.current_price:.2f}, "
-                    f"P&L=₹{pnl:.2f} ({pnl_pct:.2f}%), Reason={reason}"
+                    f"P&L=INR {pnl:.2f} ({pnl_pct:.2f}%), Reason={reason}"
                 )
+                
+                # Cleanup
+                if trade.symbol in self.trades:
+                    del self.trades[trade.symbol]
+                    
             else:
-                logger.error(f"Exit order failed for {trade.symbol}")
+                # Order Failed! Revert to POSITION to keep monitoring/retrying
+                print(f"[ERROR] Exit Order Failed for {trade.symbol}. Reverting to POSITION.")
+                trade.state = TradeState.POSITION # Manual revert
+                self.trades[trade.symbol] = trade
+                self.persistence.save_trade(trade) # Save reverted state
+                return
+                
+        except Exception as e:
+            logger.error(f"Error executing exit for {trade.symbol}: {e}", exc_info=True)
+            # Safe Revert if crashed mid-execution
+            if trade.symbol in self.trades:
+                 self.trades[trade.symbol].state = TradeState.POSITION
         except Exception as e:
             logger.error(f"Exit execution error: {e}", exc_info=True)
     
@@ -1772,9 +1856,10 @@ class TradingEngine:
         loop = asyncio.get_event_loop()
         try:
             # Use positionbook() - the correct OpenAlgo API method
-            broker_data = await loop.run_in_executor(
-                None,
-                self.client.positionbook
+            # Use positionbook() with timeout
+            broker_data = await asyncio.wait_for(
+                loop.run_in_executor(None, self.client.positionbook),
+                timeout=10
             )
         except Exception as e:
             logger.debug(f"Position sync skipped: {e}")
@@ -1790,9 +1875,43 @@ class TradingEngine:
         # Extract symbols from open positions
         broker_symbols = set()
         for item in positions:
-            if 'symbol' in item and item.get('quantity', 0) != 0:
-                broker_symbols.add(item['symbol'])
-        
+            sym = item.get('symbol')
+            qty = int(item.get('quantity', 0))
+            
+            if sym and qty != 0:
+                broker_symbols.add(sym)
+                
+                # ADOPT EXISTING/EXTERNAL POSITION
+                if sym not in self.trades:
+                    print(f"[SYNC] Found existing broker position: {sym} ({qty} Qty). Adopting...")
+                    logger.info(f"Adopting existing position: {sym}")
+                    
+                    # Estimate entry price (from avg_price)
+                    avg_price = float(item.get('average_price', 0) or item.get('buy_avg', 0) or 0)
+                    if avg_price == 0:
+                        avg_price = float(item.get('lp', 0)) # Fallback to LTP if avg unknown
+                        
+                    # Create Trade Object
+                    trade = Trade(
+                        symbol=sym,
+                        entry_price=avg_price,
+                        quantity=qty,
+                        side="CALL" if "CE" in sym else "PUT",
+                        entry_time=datetime.now(), # Unknown time, just use now
+                        state=TradeState.POSITION,
+                        current_price=float(item.get('lp', avg_price)),
+                        highest_price=float(item.get('lp', avg_price)),
+                        atr=0.0 # Unknown, will be updated by risk monitor eventually? checking...
+                    )
+                    
+                    # If we don't have ATR, TSL might be weird. 
+                    # But better to track it than ignore it!
+                    # Ideally we fetch ATR? For now, 0.0 is acceptable (Risk Manager handles it?)
+                    # My previous fix handles ATR=0 TSL calculation (by defaulting to price).
+                    
+                    self.trades[sym] = trade
+                    self.persistence.save_trade(trade)
+
         # Check for external closures
         for symbol in list(self.trades.keys()):
             trade = self.trades[symbol]

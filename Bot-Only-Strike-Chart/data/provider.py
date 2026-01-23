@@ -274,7 +274,18 @@ class MarketDataProvider:
         # Check cache
         cached = self.cache.get_master_info(symbol)
         if cached:
-            lot_size = int(cached.get("lotsize", 75))
+            raw_lot = cached.get("lotsize", 75)
+            # Sanity Check: Lot size shouldn't be massive (e.g. 33000)
+            # This protects against API sending TokenID or OI as LotSize
+            try:
+                lot_size = int(raw_lot)
+            except:
+                lot_size = 75
+                
+            if lot_size > 500: # Reasonable cap for Index Options (BankNifty=15, Nifty=75, Sensex=10)
+                print(f"[CRITICAL WARN] Suspicious Lot Size: {lot_size} for {symbol}. Capped at 65.")
+                lot_size = 65
+                
             print(f"[DEBUG] Lot size for {symbol}: {lot_size} (from cache)")
             return lot_size
         else:
@@ -294,7 +305,7 @@ class MarketDataProvider:
             
             if master:
                 count = 0
-                target_lot_size = 75
+                target_lot_size = 65
                 
                 # Check format of 'master'
                 # usually it's a list of dicts: [{'token':..., 'symbol':..., 'lotsize':...}, ...]
@@ -314,7 +325,7 @@ class MarketDataProvider:
                             self.cache.set_master_info(sym, details)
                             count += 1
                             if sym == symbol:
-                                target_lot_size = int(details.get("lotsize", 75))
+                                target_lot_size = int(details.get("lotsize", 65))
                     
                     print(f"[INFO] Security Master cached {count} instruments.")
                     return target_lot_size
@@ -324,7 +335,7 @@ class MarketDataProvider:
         except Exception as e:
             print(f"[WARN] Failed to fetch Security Master: {e}")
             
-        return 75 # Default fallback
+        return 65 # Default fallback
     
     # === WEBSOCKET (Future) ===
     
