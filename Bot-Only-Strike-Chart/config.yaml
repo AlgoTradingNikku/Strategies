@@ -23,8 +23,8 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY27JAN2625200CE"
-    - "NIFTY27JAN2625200PE"
+    - "NIFTY27JAN2625000CE"
+    - "NIFTY27JAN2625000PE"
     #- "NIFTY20JAN2625600CE"
     #- "NIFTY20JAN2625600PE"
     #- "NIFTY20JAN2625500CE"

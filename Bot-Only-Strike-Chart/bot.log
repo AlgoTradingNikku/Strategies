@@ -204751,3 +204751,58 @@ KeyError: 'NIFTY27JAN2625200PE'
 2026-01-23 12:50:11,294 - INFO - Trading Engine stopped
 2026-01-23 12:50:11,297 - INFO - All engine tasks cleaned up
 2026-01-23 12:50:11,297 - INFO - Goodbye!
+2026-01-23 12:50:18,519 - INFO - Configuration banner printed
+2026-01-23 12:50:18,882 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-23 12:50:21,649 - INFO - Trading Engine initialized
+2026-01-23 12:50:21,649 - INFO - Trading Engine created successfully
+2026-01-23 12:50:21,649 - INFO - Starting Trading Engine...
+2026-01-23 12:50:24,941 - INFO - [TASK] Signal scanner started
+2026-01-23 12:50:24,941 - INFO - [TASK] Risk monitor started
+2026-01-23 12:50:24,941 - INFO - [TASK] Position sync started
+2026-01-23 12:50:24,941 - INFO - [TASK] WebSocket monitor started
+2026-01-23 12:50:24,942 - INFO - [TASK] Config monitor started
+2026-01-23 12:54:30,761 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 12:55:32,639 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 12:56:39,498 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:00:42,284 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:07:01,679 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:08:05,659 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:09:09,639 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:11:17,143 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 13:17:37,240 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:04:25,099 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:05:27,860 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:07:32,021 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:08:34,023 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:12:41,780 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:18:53,243 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:20:01,429 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:21:03,049 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:22:09,713 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:23:12,137 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:24:19,535 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:25:21,729 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:26:28,887 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:41:41,326 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:45:48,855 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:46:51,210 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:47:58,545 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:51:15,496 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:52:17,694 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 14:55:19,498 - INFO - Configuration reloaded successfully
+2026-01-23 15:03:31,611 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:04:33,329 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:05:35,056 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:15:46,700 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:16:47,968 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:17:54,207 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:18:55,819 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:20:02,379 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:21:04,163 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:24:08,299 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:25:10,064 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:26:16,668 - ERROR - Order placement failed: Smart Limit placement failed: {'status': 'error', 'message': 'HTTP 400: {"message":"For Market and STOPLOSS_MARKET price should be 0.","status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-01-23 15:36:41,198 - INFO - Shutting down...
+2026-01-23 15:36:41,300 - INFO - Trading Engine stopped
+2026-01-23 15:36:41,301 - INFO - All engine tasks cleaned up
+2026-01-23 15:36:41,301 - INFO - Goodbye!
