@@ -204806,3 +204806,17 @@ KeyError: 'NIFTY27JAN2625200PE'
 2026-01-23 15:36:41,300 - INFO - Trading Engine stopped
 2026-01-23 15:36:41,301 - INFO - All engine tasks cleaned up
 2026-01-23 15:36:41,301 - INFO - Goodbye!
+2026-01-24 12:56:02,910 - INFO - Configuration banner printed
+2026-01-24 12:56:04,372 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-24 12:56:15,791 - INFO - Trading Engine initialized
+2026-01-24 12:56:15,793 - INFO - Trading Engine created successfully
+2026-01-24 12:56:15,793 - INFO - Starting Trading Engine...
+2026-01-24 12:56:23,697 - INFO - [TASK] Signal scanner started
+2026-01-24 12:56:23,698 - INFO - [TASK] Risk monitor started
+2026-01-24 12:56:23,699 - INFO - [TASK] Position sync started
+2026-01-24 12:56:23,700 - INFO - [TASK] WebSocket monitor started
+2026-01-24 12:56:23,701 - INFO - [TASK] Config monitor started
+2026-01-24 12:56:38,700 - INFO - Shutting down...
+2026-01-24 12:56:38,701 - INFO - Trading Engine stopped
+2026-01-24 12:56:38,703 - INFO - All engine tasks cleaned up
+2026-01-24 12:56:38,703 - INFO - Goodbye!

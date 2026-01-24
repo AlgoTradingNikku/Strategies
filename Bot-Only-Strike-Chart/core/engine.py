@@ -12,6 +12,7 @@ Runs as an async event loop with multiple concurrent tasks.
 """
 
 import asyncio
+from asyncio import Lock
 import re
 from typing import Dict, Optional
 from datetime import datetime, timedelta
@@ -94,8 +95,8 @@ class TradingEngine:
         # Strike Status Tracking (for logging)
         self._strike_states = {}
         
-        # Cooldown tracking (symbol -> datetime)
-        self._cooldowns = {}
+        # Entry lock to prevent race conditions in max_positions check
+        self._entry_lock = Lock()
         
         # Signal wait state tracking (for conditional wait logic)
         self._signal_wait_state = {}
@@ -619,19 +620,14 @@ class TradingEngine:
                     print(f"\n[SIGNAL] UTBot BUY detected on {symbol}")
                     trigger_active = True
                 
-                # Explosive Trend Check (if no standard signal)
-                if not trigger_active:
-                    exp_enabled = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {}).get("enabled", False)
-                    if exp_enabled:
-                        # Calculate Tech (ADX needed)
-                        tech_rec = self.indicators["option_tech"].calculate(df_opt, use_ha=use_ha)
-                        adx = tech_rec.metadata.get("adx", 0)
-                        
-                        if self._is_explosive_trend(df_opt, adx, use_ha=use_ha):
-                            print(f"\n[SIGNAL] Explosive Trend detected on {symbol}")
-                            trigger_active = True
-                
                 if trigger_active:
+                    # Track signal for re-entry attempts (even if filters fail)
+                    if symbol not in self._signal_wait_state:
+                        self._signal_wait_state[symbol] = {
+                            'signal_time': datetime.now(),
+                            're_entry_attempts': 0
+                        }
+                    
                     filters_pass = True
                     curr_price = df_opt['Close'].iloc[-1]
                     limit_price = curr_price
@@ -669,31 +665,17 @@ class TradingEngine:
                             atr=atr_val if use_filters else 0.0 # Pass ATR if available
                         )
                         
-                        # Track for re-entry logic
-                        self._signal_wait_state[symbol] = {
-                            'signal_time': datetime.now(),
-                            're_entry_attempts': 0
-                        }
+                        # Clear signal state after successful entry
+                        if symbol in self._signal_wait_state:
+                            del self._signal_wait_state[symbol]
             
-                # Check for Pullback Opportunity (Re-entry / Catch-up)
-                elif symbol not in self.trades: # Only if not in position
-                    # 1. Is Catch-Up Enabled?
-                    catch_up_enabled = self.config.get("strategy", {}).get("smart_momentum", {}).get("catch_up_trend", False)
-                    
-                    # 2. Are we tracking a past signal?
-                    in_wait_state = symbol in self._signal_wait_state
-                    
-                    # 3. Does trend match symbol type? (CE needs Bullish, PE needs Bullish? Wait, strategy is Long Option)
-                    # UTBot Trend 1 = Bullish -> Good for CE
-                    # UTBot Trend 1 = Bullish -> Good for PE? NO.
-                    # Wait, UTBot is on OPTION CHART.
-                    # If Option Chart Trend is 1 (Bullish), it means Option Price is rising.
-                    # So UTBot Trend 1 is ALWAYS "Buy Signal" for that option (whether CE or PE).
-                    
+                # Check for Pullback Re-entry (only if signal was tracked but entry failed)
+                elif symbol not in self.trades and symbol in self._signal_wait_state:
+                    # Only attempt re-entry if trend is still bullish
                     trend_ok = (utbot_result.trend == 1)
                     
-                    if (catch_up_enabled or in_wait_state) and trend_ok:
-                         await self._check_re_entry_trigger(symbol, df_opt, use_ha)
+                    if trend_ok:
+                        await self._check_re_entry_trigger(symbol, df_opt, use_ha)
             
             # ========== UTBot SELL SIGNAL EXIT CHECK ==========
             # Check if we have an active position for this symbol
@@ -881,46 +863,79 @@ class TradingEngine:
             if close > max_price:
                 reasons.append(f"Too expensive ({close:.2f} > {max_price:.2f})")
         
-        # 3. EMA & Momentum Candle Logic
-        check_trend = cfg.get("check_ema_trend", True)
+        # 3. EMA & Momentum Checks
+        # Calculate status of each *enabled* check
+        check_trend = cfg.get("check_ema_trend", False)
         check_mom = cfg.get("check_momentum_candle", False)
-        mode = cfg.get("ema_logic_mode", "AND").upper()
         
-        trend_ok = True
+        # Valid flags (Assume True if check is disabled, but for "ANY" mode we need to know if it passed)
+        trend_passed = False
+        mom_passed = False
+        
+        # Check 1: EMA Trend
         if check_trend:
-            if ema_fast <= ema_slow:
-                trend_ok = False
+            if ema_fast > ema_slow:
+                trend_passed = True
         
-        mom_ok = True
+        # Check 2: Momentum Candle
         if check_mom:
             # Source Selection
             o_col, c_col, l_col = ("HA_Open", "HA_Close", "HA_Low") if use_ha else ("Open", "Close", "Low")
-            c_open, c_close, c_low = df_opt[o_col].iloc[-1], df_opt[c_col].iloc[-1], df_opt[l_col].iloc[-1]
+            c_open = df_opt[o_col].iloc[-1]
+            c_close = df_opt[c_col].iloc[-1]
+            c_low = df_opt[l_col].iloc[-1]
+            
+            # Logic
+            is_green = c_close > c_open
+            has_lower_wick = (c_open - c_low) > (c_close * 0.0005)
+            wick_ok = not has_lower_wick if cfg.get("mom_no_lower_wick", True) else True
             
             ema_val = meta["emas"].get(cfg.get("mom_ema_period", 9), ema_fast)
             
-            # Logic: Green + No Lower Wick + 80% Body Above EMA
-            is_green = c_close > c_open
-            no_lower_wick = c_low >= c_open
-            body_size = c_close - c_open
-            threshold = c_open + ((1 - cfg.get("mom_body_above_pct", 0.8)) * body_size) if is_green else 0
-            
-            mom_ok = is_green and no_lower_wick and (threshold >= ema_val)
+            # Body Calculation
+            if is_green and wick_ok:
+                body_top = c_close
+                body_bottom = c_open
                 
-        # Combine filters
-        final_ema_ok = True
-        if check_trend and check_mom:
-            final_ema_ok = (trend_ok or mom_ok) if mode == "OR" else (trend_ok and mom_ok)
-        elif check_trend:
-            final_ema_ok = trend_ok
-        elif check_mom:
-            final_ema_ok = mom_ok
+                # Check intersection or above
+                if body_bottom >= ema_val:
+                    mom_passed = True # Completely above
+                elif body_top > ema_val:
+                    # Straddles: Check %
+                    total_body = body_top - body_bottom
+                    above_part = body_top - ema_val
+                    pct_above = above_part / total_body if total_body > 0 else 0
+                    if pct_above >= cfg.get("mom_body_above_pct", 0.70):
+                        mom_passed = True
+
+        # Combine Logical Results
+        # If a check is NOT enabled, does it count as "Pass" or is it ignored?
+        # Standard: Ignored checks don't block.
+        # But for "ANY", we look at the pool of enabled checks.
+        
+        mode = cfg.get("momentum_check_mode", "ALL").upper()
+        
+        if mode == "NONE":
+            # Pass unconditionally (Skip momentum checks)
+            pass
             
-        if not final_ema_ok:
-            if check_trend and not trend_ok:
+        elif mode == "ANY":
+            # Pass if ANY enabled check passes
+            # If no checks enabled, default to True (pass)
+            active_checks = []
+            if check_trend: active_checks.append(trend_passed)
+            if check_mom: active_checks.append(mom_passed)
+            
+            if active_checks and not any(active_checks):
+                reasons.append("Momentum: No active condition met (Mode: ANY)")
+                
+        else: # Mode == "ALL" (Default)
+            # Fail if ANY enabled check fails
+            if check_trend and not trend_passed:
                 reasons.append(f"EMA Trend failed ({ema_fast:.1f} <= {ema_slow:.1f})")
-            if check_mom and not mom_ok:
+            if check_mom and not mom_passed:
                 reasons.append("Momentum Candle failed")
+
         
         # 4. Volume Check: Volume > Avg * multiplier
         if cfg.get("check_volume", True):
@@ -1239,10 +1254,7 @@ class TradingEngine:
         """
         try:
             # Check option confirmation
-            valid, limit_price, reasons, api_atr = await self._check_option_confirmation(
-                symbol,
-                price_check_mode="WAIT"
-            )
+            valid, limit_price, reasons, api_atr = await self._check_option_confirmation(symbol)
             
             if not valid:
                 return {
@@ -1277,59 +1289,9 @@ class TradingEngine:
                 "atr": 0.0
             }
     
-    def _is_explosive_trend(self, df, adx_val, use_ha=False):
-        """
-        Check for Explosive Trend conditions on the provided DataFrame (Option/Index).
-        """
-        exp_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {})
-        if not exp_cfg.get("enabled", False):
-            return False
-            
-        if adx_val < exp_cfg.get("adx_min", 30):
-            # print(f"[EXPLOSIVE] Skipped: ADX {adx_val:.1f} < {exp_cfg.get('adx_min', 30)}")
-            return False
-            
-        # Candle Analysis
-        if use_ha:
-            open_p = df['HA_Open'].iloc[-1]
-            high_p = df['HA_High'].iloc[-1]
-            low_p = df['HA_Low'].iloc[-1]
-            close_p = df['HA_Close'].iloc[-1]
-        else:
-            open_p = df['Open'].iloc[-1]
-            high_p = df['High'].iloc[-1]
-            low_p = df['Low'].iloc[-1]
-            close_p = df['Close'].iloc[-1]
-        
-        candle_range = high_p - low_p
-        if candle_range == 0: return False
-        
-        candle_body = abs(close_p - open_p)
-        body_ratio = candle_body / candle_range
-        close_pos = (close_p - low_p) / candle_range
-        
-        # Conditions
-        min_body_pct = exp_cfg.get("min_body_pct", 0.005)
-        min_ratio = exp_cfg.get("min_body_ratio", 0.6)
-        min_pos = exp_cfg.get("min_close_pos", 0.75)
-        
-        is_big_body = candle_body >= (min_body_pct * close_p)
-        is_solid_body = body_ratio >= min_ratio
-        is_closing_high = close_pos >= min_pos
-        
-        if not (is_big_body and is_solid_body and is_closing_high):
-             # print(f"[EXPLOSIVE] Fail: Body={is_big_body}({candle_body:.2f}), Solid={is_solid_body}({body_ratio:.2f}), High={is_closing_high}({close_pos:.2f})")
-             return False
-
-        if is_big_body and is_solid_body and is_closing_high:
-            print(f"[EXPLOSIVE] Trend Detected! Body:{candle_body:.2f}, Ratio:{body_ratio:.2f}, Pos:{close_pos:.2f} | ADX:{adx_val:.1f}")
-            return True
-        return False
-
-    async def _check_option_confirmation(self, symbol: str, df_opt_ltf, price_check_mode="WAIT"):
+    async def _check_option_confirmation(self, symbol: str, df_opt_ltf):
         """
         Strict Option Confirmation Module.
-        price_check_mode: "IMMEDIATE" (for explosive) or "WAIT" (standard)
         Returns: (bool, float_limit_price, list_reasons, float_atr)
         """
         conf_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_confirmation", {})
@@ -1481,58 +1443,22 @@ class TradingEngine:
 
     async def _check_and_execute_entry(self, symbol: str, signal_side: str):
         """
-        Execute Entry Phase 3 logic (3-Path System).
+        Execute entry after option confirmation.
         """
         try:
-            # Fetch Index and Option Data
-            # We need Nifty 15m/3m for Explosive Check
-            # We already have Nifty data in _scan, but splitting functions makes passing it hard.
-            # We will refetch or rely on cached?
-            # Ideally passed args, but refetch safe for now.
-            
             # Fetch Option Data
             opt_ltf_tf = self.config["option"]["ltf"]["timeframe"]
             df_opt = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=100, exchange="NFO")
             if df_opt is None or len(df_opt) < 50: return
             
-            # Fetch Nifty Data for Explosive Check (Fresh)
-            index_query = self.config.get("index_query", "NIFTY")
-            df_exec = await self.data_provider.fetch_history(index_query, self.config.get("execution_tf", "3m"), bars=50)
-            
-            # --- PATH 1: IMMEDIATE (EXPLOSIVE) ---
-            # Check if this is an "Explosive" setup?
-            # We need ADX from HTF (assumed passed or recalculated? Let's use stored value)
-            # Stored: self._last_htf_adx? We didn't store ADX.
-            # Let's assume standard flow passed phase 1 so ADX > 20.
-            # We need to verify ADX > 30 specifically for explosive.
-            # For simplicity, let's assume if user wants explosive, we check the body conditions mainly.
-            
-            exp_adx_min = self.config.get("strategy", {}).get("smart_momentum", {}).get("explosive_trend", {}).get("adx_min", 30)
-            is_explosive = self._is_explosive_trend(df_exec, exp_adx_min) # Hardcoded ADX safe-guard or fetch?
-            # Actually, to be accurate we should pass ADX.
-            # Let's just use the Candle Logic for "Explosive" classification now.
-            
+            # Check option confirmation
             valid_opt, limit_price, reasons, atr_val = await self._check_option_confirmation(symbol, df_opt)
-            
-            if is_explosive:
-                if valid_opt:
-                    print(f"[EXPLOSIVE] Triggering IMMEDIATE ENTRY on {symbol}!")
-                    await self._execute_entry(symbol, signal_side, limit_price, None, atr=atr_val)
-                    return
-                else:
-                    print(f"[EXPLOSIVE] Detected but Option Invalid: {reasons}")
-                    return # Don't wait if explosive failed? Or fall back to wait? Fallback usually.
-            
-            # --- PATH 2: SMART WAIT / PATH 3: FALLBACK ---
-            # This logic is handled by the caller (_scan_for_signals) which calls this function 
-            # EITHER immediately (if condition met) OR after wait.
-            # So if we are here, it means we are permitted to enter IF option is valid.
             
             if valid_opt:
                 print(f"[ENTRY] Option Confirmation Passed. Executing {symbol}...")
                 await self._execute_entry(symbol, signal_side, limit_price, None, atr=atr_val)
             else:
-                 print(f"[REJECT] Option Confirmation Failed for {symbol}: {reasons}")
+                print(f"[REJECT] Option Confirmation Failed for {symbol}: {reasons}")
             
         except Exception as e:
             logger.error(f"Entry check error for {symbol}: {e}", exc_info=True)
@@ -1540,94 +1466,89 @@ class TradingEngine:
     
 
     async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal, atr: float = 0.0):
-        """Execute entry order"""
-        try:
-            # Check cooldown again just in case
-            if self._is_symbol_on_cooldown(symbol):
-                print(f"[SKIP] {symbol} is on cooldown.")
-                return 
+        """Execute entry order with atomic max_positions check"""
+        async with self._entry_lock:
+            # Re-check max_positions inside lock to prevent race condition
+            max_positions = self.config.get("max_positions", 4)
+            active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
+            if active_count >= max_positions:
+                print(f"[SKIP] Max positions reached ({active_count}/{max_positions}). Skipping {symbol}.")
+                return
+            
+            try:
+                # Check cooldown again just in case
+                if self._is_symbol_on_cooldown(symbol):
+                    print(f"[SKIP] {symbol} is on cooldown.")
+                    return 
 
-            # Get lot size from config
-            lots = self.config.get("lots", 1)
-            
-            # Dynamically fetch lot size (cached via DataProvider)
-            lot_size = await self.data_provider.get_lot_size(symbol, exchange="NFO")
+                # Get lot size from config
+                lots = self.config.get("lots", 1)
                 
-            quantity = lots * lot_size
-            print(f"[INFO] Using Lot Size: {lot_size} for {symbol}. Total Qty: {quantity}")
-            
-            # Place Order
-            print(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity}")
-            
-            # Determine Order Type based on Entry Mode
-            # Determine Order Type from Config
-            order_type = self.config.get("execution", {}).get("order_type", "LIMIT").upper()
-            
-            # Auto-correct to LIMIT if not recognized
-            if order_type not in ["LIMIT", "SMART_LIMIT", "MARKET"]:
-                 order_type = "LIMIT"
-            
-            # Use unpacked arguments for place_order as per signature
-            order_id = await self.order_manager.place_order(
-                symbol=symbol,
-                action="BUY",
-                quantity=quantity,
-                order_type=order_type,
-                limit_price=price, # Smart Limit uses this as the "Smart Price" reference
-                exchange="NFO",
-                product=self.config.get("product_type", "MIS")
-            )
-            
-            if order_id and order_id.success:
-                print(f"[SUCCESS] Order placed: {order_id.order_id}")
-                # Initialize trade state
-                trade = Trade(
+                # Dynamically fetch lot size (cached via DataProvider)
+                lot_size = await self.data_provider.get_lot_size(symbol, exchange="NFO")
+                    
+                quantity = lots * lot_size
+                print(f"[INFO] Using Lot Size: {lot_size} for {symbol}. Total Qty: {quantity}")
+                
+                # Place Order
+                print(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity}")
+                
+                # Determine Order Type from Config
+                order_type = self.config.get("execution", {}).get("order_type", "LIMIT").upper()
+                
+                # Auto-correct to LIMIT if not recognized
+                if order_type not in ["LIMIT", "SMART_LIMIT", "MARKET"]:
+                     order_type = "LIMIT"
+                
+                # Use unpacked arguments for place_order as per signature
+                order_id = await self.order_manager.place_order(
                     symbol=symbol,
-                    entry_price=order_id.filled_price if order_id.filled_price else price,
+                    action="BUY",
                     quantity=quantity,
-                    side=side,
-                    entry_time=datetime.now(),
-                    state=TradeState.POSITION,
-                    current_price=price,
-                    highest_price=price,
-                    atr=atr
+                    order_type=order_type,
+                    limit_price=price, # Smart Limit uses this as the "Smart Price" reference
+                    exchange="NFO",
+                    product=self.config.get("product_type", "MIS")
                 )
                 
-                # Store and persist
-                self.trades[symbol] = trade
-                self.persistence.save_trade(trade)
+                if order_id and order_id.success:
+                    print(f"[SUCCESS] Order placed: {order_id.order_id}")
+                    # Initialize trade state
+                    trade = Trade(
+                        symbol=symbol,
+                        entry_price=order_id.filled_price if order_id.filled_price else price,
+                        quantity=quantity,
+                        side=side,
+                        entry_time=datetime.now(),
+                        state=TradeState.POSITION,
+                        current_price=price,
+                        highest_price=price,
+                        atr=atr
+                    )
+                    
+                    # Store and persist
+                    self.trades[symbol] = trade
+                    self.persistence.save_trade(trade)
+                    
+                    print(f"[POSITION] Entered {symbol} @ {trade.entry_price:.2f}")
+                    logger.info(f"Entry executed: {symbol} @ {trade.entry_price:.2f}")
+                else:
+                    fail_msg = order_id.message if order_id else "No response from Order Manager"
+                    print(f"[ERROR] Order Failed for {symbol}: {fail_msg}")
+                    logger.error(f"Order placement failed: {fail_msg}")
                 
-                print(f"[POSITION] Entered {symbol} @ {trade.entry_price:.2f}")
-                logger.info(f"Entry executed: {symbol} @ {trade.entry_price:.2f}")
-            else:
-                fail_msg = order_id.message if order_id else "No response from Order Manager"
-                print(f"[ERROR] Order Failed for {symbol}: {fail_msg}")
-                logger.error(f"Order placement failed: {fail_msg}")
-            
-            self._set_cooldown(symbol) # Cooldown enabled for both success (to avoid double entry) and failure
-                
-        except Exception as e:
-            logger.error(f"Entry execution error for {symbol}: {e}", exc_info=True)
-            print(f"[ERROR] Entry execution crashed: {e}")
-            self._set_cooldown(symbol) # 1 min cooldown on crash
+                self._set_cooldown(symbol) # Cooldown enabled for both success (to avoid double entry) and failure
+                    
+            except Exception as e:
+                logger.error(f"Entry execution error for {symbol}: {e}", exc_info=True)
+                print(f"[ERROR] Entry execution crashed: {e}")
+                self._set_cooldown(symbol) # 1 min cooldown on crash
     
     def _set_cooldown(self, symbol: str, seconds: int = 0):
-        """Set cooldown for a symbol"""
+        """Set cooldown for a symbol (uses _exit_cooldowns)"""
         if seconds == 0:
             seconds = self.config.get("system", {}).get("cooldowns", {}).get("error_sec", 60)
-        self._cooldowns[symbol] = datetime.now() + timedelta(seconds=seconds)
-
-    def _is_symbol_on_cooldown(self, symbol: str) -> bool:
-        """Check if a symbol is on cooldown"""
-        if symbol not in self._cooldowns:
-            return False
-            
-        if datetime.now() > self._cooldowns[symbol]:
-            del self._cooldowns[symbol]
-            return False
-            
-        return True
-    
+        self._exit_cooldowns[symbol] = datetime.now() + timedelta(seconds=seconds)
 
     async def risk_monitor_task(self):
         """Monitor active positions for risk management (every one second)."""
@@ -1834,8 +1755,7 @@ class TradingEngine:
             # Safe Revert if crashed mid-execution
             if trade.symbol in self.trades:
                  self.trades[trade.symbol].state = TradeState.POSITION
-        except Exception as e:
-            logger.error(f"Exit execution error: {e}", exc_info=True)
+
     
     async def position_sync_task(self):
         """Sync positions with broker periodically and detect external closures."""
