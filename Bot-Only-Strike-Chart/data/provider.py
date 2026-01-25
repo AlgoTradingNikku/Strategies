@@ -27,16 +27,18 @@ class MarketDataProvider:
         df = await provider.fetch_history("NIFTY50", "3m", 100)
     """
     
-    def __init__(self, api_client, cache: Optional[MarketDataCache] = None):
+    def __init__(self, api_client, cache: Optional[MarketDataCache] = None, config: Optional[dict] = None):
         """
         Initialize data provider.
         
         Args:
             api_client: OpenAlgo API client instance
             cache: Optional MarketDataCache instance
+            config: Optional bot configuration dict
         """
         self.client = api_client
         self.cache = cache or MarketDataCache()
+        self.config = config or {}
         self._session: Optional[aiohttp.ClientSession] = None
     
     async def _ensure_session(self):
@@ -262,80 +264,20 @@ class MarketDataProvider:
     
     async def get_lot_size(self, symbol: str, exchange: str = "NFO") -> int:
         """
-        Get lot size for a symbol (cached).
+        Get lot size for a symbol from config.
         
         Args:
             symbol: Symbol (e.g., "NIFTY24JAN21500CE")
             exchange: Exchange
             
         Returns:
-            Lot size (int) or 75 (default)
+            Lot size (int) from config
         """
-        # Check cache
-        cached = self.cache.get_master_info(symbol)
-        if cached:
-            raw_lot = cached.get("lotsize", 75)
-            # Sanity Check: Lot size shouldn't be massive (e.g. 33000)
-            # This protects against API sending TokenID or OI as LotSize
-            try:
-                lot_size = int(raw_lot)
-            except:
-                lot_size = 75
-                
-            if lot_size > 500: # Reasonable cap for Index Options (BankNifty=15, Nifty=75, Sensex=10)
-                print(f"[CRITICAL WARN] Suspicious Lot Size: {lot_size} for {symbol}. Capped at 65.")
-                lot_size = 65
-                
-            print(f"[DEBUG] Lot size for {symbol}: {lot_size} (from cache)")
-            return lot_size
-        else:
-            print(f"[DEBUG] Cache miss for {symbol}. Master cache size: {len(self.cache._master_cache) if hasattr(self.cache, '_master_cache') else 'N/A'}")
-            
-        # Cache miss: Fetch FULL master from API (once per session ideally)
-        print(f"[INFO] Cache miss for {symbol}. Fetching Security Master for {exchange}...")
-        try:
-             # Run sync API call in executor
-            loop = asyncio.get_event_loop()
-            
-            # CORRECT METHOD: instruments (not get_master)
-            master = await loop.run_in_executor(
-                None,
-                lambda: self.client.instruments(exchange=exchange)
-            )
-            
-            if master:
-                count = 0
-                target_lot_size = 65
-                
-                # Check format of 'master'
-                # usually it's a list of dicts: [{'token':..., 'symbol':..., 'lotsize':...}, ...]
-                
-                iterator = master
-                if isinstance(master, dict) and 'data' in master:
-                    iterator = master['data']
-                
-                if isinstance(iterator, list):
-                    for details in iterator:
-                        sym = details.get("symbol")
-                        # Some APIs use 'trading_symbol' or 'symbol'
-                        if not sym:
-                            sym = details.get("trading_symbol")
-                            
-                        if sym:
-                            self.cache.set_master_info(sym, details)
-                            count += 1
-                            if sym == symbol:
-                                target_lot_size = int(details.get("lotsize", 65))
-                    
-                    print(f"[INFO] Security Master cached {count} instruments.")
-                    return target_lot_size
-                else:
-                    print(f"[WARN] Unknown master format: {type(master)}")
-
-        except Exception as e:
-            print(f"[WARN] Failed to fetch Security Master: {e}")
-            
-        return 65 # Default fallback
+        # We now prefer lot size from config as requested
+        lot_size = self.config.get("nifty_lot_size", 65)
+        
+        # print(f"[DEBUG] Using configured lot size for {symbol}: {lot_size}")
+        return int(lot_size)
     
     # === WEBSOCKET (Future) ===
     

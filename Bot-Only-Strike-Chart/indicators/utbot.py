@@ -82,6 +82,7 @@ class UTBotIndicator(BaseIndicator):
         src = df['HA_Close'] if use_ha else df['Close']
         high = df['HA_High'] if use_ha else df['High']
         low = df['HA_Low'] if use_ha else df['Low']
+        open_ = df['HA_Open'] if use_ha else df['Open']
         close = df['HA_Close'] if use_ha else df['Close']
         
         # === ATR CALCULATION (RMA version to match TradingView) ===
@@ -134,21 +135,23 @@ class UTBotIndicator(BaseIndicator):
                 else:
                     pos[i] = prev_p
                 
-                # 2. Pullback Detection (Still Bullish / Still Bearish)
+                # Pullback Detection (Still Bullish / Still Bearish)
                 # Logic: Current is Bullish/Bearish State AND (Prev Candle was Opposite Color) 
                 # AND (Curr Candle is My Color)
                 # This catches the 'Still Bullish' (Red-to-Green bounce) and 
                 # 'Still Bearish' (Green-to-Red pivot)
-                curr_open, curr_close = df['Open'].iloc[i], df['Close'].iloc[i]
-                prev_open, prev_close = df['Open'].iloc[i-1], df['Close'].iloc[i-1]
+                
+                # Check for color using chosen source (HA or Standard)
+                curr_is_green = src.iloc[i] > open_.iloc[i]
+                prev_is_green = src.iloc[i-1] > open_.iloc[i-1]
                 
                 if prev_p == 1:  # Already Bullish
                     # A pullback is a Red candle followed by a Green candle bounce
-                    if prev_close < prev_open and curr_close > curr_open:
+                    if not prev_is_green and curr_is_green:
                         signals[i] = 2  # Still Bullish (Pullback Entry)
                 elif prev_p == -1:  # Already Bearish
                     # A pullback is a Green candle followed by a Red candle reversal
-                    if prev_close > prev_open and curr_close < curr_open:
+                    if prev_is_green and not curr_is_green:
                         signals[i] = -2  # Still Bearish (Pullback Entry)
         
         # === RETURN STANDARDIZED SIGNAL ===

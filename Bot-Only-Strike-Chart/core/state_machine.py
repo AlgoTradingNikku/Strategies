@@ -51,6 +51,7 @@ class Trade:
     quantity: int = 0
     entry_time: Optional[datetime] = None
     exit_time: Optional[datetime] = None
+    exit_price: float = 0.0
     exit_reason: Optional[str] = None
     
     # P&L
@@ -139,6 +140,7 @@ class Trade:
             "quantity": self.quantity,
             "entry_time": self.entry_time.isoformat() if self.entry_time else None,
             "exit_time": self.exit_time.isoformat() if self.exit_time else None,
+            "exit_price": self.exit_price,
             "exit_reason": self.exit_reason,
             "pnl": self.pnl,
             "pnl_pct": self.pnl_pct,

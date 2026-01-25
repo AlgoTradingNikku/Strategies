@@ -78,11 +78,12 @@ class TechnicalIndicator(BaseIndicator):
         
         # 4. VWAP Calculation (Anchored to start of dataframe for simplicity in this context)
         # Note: True VWAP anchors to session start. We approximate using the loaded data window.
-        vwap = (df['Close'] * volume).cumsum() / volume.cumsum()
+        vwap = (src * volume).cumsum() / volume.cumsum()
         results["vwap"] = vwap
         
-        # 5. Volume SMA (5-period)
-        results["vol_ma_5"] = volume.rolling(window=5).mean()
+        # 5. Volume SMA (configurable period, default 5)
+        vol_avg_period = self.params.get("vol_avg_period", 5)
+        results["vol_ma_5"] = volume.rolling(window=vol_avg_period).mean()
         
         # 6. Candle Analysis (Current Candle)
         body_size = (src - open_).abs()

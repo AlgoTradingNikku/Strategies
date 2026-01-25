@@ -40,26 +40,23 @@ strike_selection:
 # 2. STRATEGY PARAMETERS (Smart Momentum)
 # ========================================
 
-# Timeframe Layers
-trend_tf: "15m"                  # Used for Master Trend (Bias)
-execution_tf: "3m"               # Used for Signals and Confirmation
 
 # Option Chart Settings (for entry validation)
 option:
   ltf:
-    timeframe: "3m"             # Option chart timeframe for VWAP/EMA/Volume checks
+    timeframe: "3m"             # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
     use_ha: True                # False = OHLC (Recommended for Options), True = HA
     sensitivity: 1.0            # UTBot Sensitivity (Key Factor!)
     atr: 10                     # UTBot ATR Period
 
+max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
+max_lots: 1                   # Number of lots per trade (Default: 1)
+nifty_lot_size: 65            # Lot size for Nifty Options (Required)
 
-# ========================================
-# ENTRY CONDITIONS (Option Chart - NEW)
-# ========================================
-# All checks are performed on the OPTION chart (3m) after UTBot signal
+
 entry_conditions:
   # Logic Toggles
-  use_indicator: True  # If False, bot ignores UTBot signal and scans every candle
+  use_indicator: True   # If False, bot ignores UTBot signal and scans every candle
                         # The Problem: If the market is moving sideways, 
                         #your filters might flicker "True" multiple times, leading to over-trading.
  
@@ -86,6 +83,7 @@ entry_conditions:
   mom_ema_period: 9
   mom_body_above_pct: 0.70       # 0.80 = 80% of body must be above EMA
   mom_no_lower_wick: True        # True = Green candle must have no lower wick
+  mom_wick_threshold_pct: 0.0005 # Threshold for wick detection (0.0005 = 0.05%)
 
   # 3: Volume Check
   check_volume: False            # Volume > Avg * multiplier
@@ -156,19 +154,6 @@ re_entry_protection:
   cooldown_after_profit_mins: 0  # Wait 0 mins after a PROFIT (Immediate re-entry allowed)
 
 # ========================================
-# 3. TRADING HOURS & LIMITS
-# ========================================
-max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
-lots: 1                       # Number of lots per trade (Default: 1)
-
-trading_hours:
-  enabled: True
-  start_time: "09:00"           # Post-opening settle
-  end_time: "19:30"             # Market Close
-  sq_off_time: "15:20"          # Hard exit all positions
-  avoid_lunch: False
-
-# ========================================
 # 4. EXECUTION
 # ========================================
 execution:
@@ -198,9 +183,7 @@ system:
 
 greeks_monitoring:
   enabled: False                # Display option Greeks in heartbeat (Disabled as requested)
-  # When enabled, shows Delta, Gamma, Theta, Vega, IV
-  # Adds ~50-100ms per heartbeat (every 10 seconds)
-  # Set to False for maximum performance
+                                # When enabled, shows Delta, Gamma, Theta, Vega, IV
 
 # ========================================
 # 9. API & SYSTEM
@@ -209,3 +192,10 @@ api_key: "d9cc2b856cdbcb6e938217543dc9517748cd04888e360ded3c76be1000a01633"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
+
+trading_hours:
+  enabled: False
+  start_time: "09:00"           # Post-opening settle
+  end_time: "15:30"             # Market Close
+  sq_off_time: "15:20"          # Hard exit all positions
+  avoid_lunch: False

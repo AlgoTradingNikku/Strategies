@@ -69,7 +69,7 @@ def print_startup_banner(config: dict, logger):
     opt_ltf_cfg = config.get("option", {}).get("ltf", {})
     opt_htf_cfg = config.get("option", {}).get("htf", {})
     
-    idx_ltf_tf = idx_ltf_cfg.get("timeframe", "3m")
+    idx_ltf_tf = idx_ltf_cfg.get("timeframe", opt_ltf_cfg.get("timeframe", "3m"))
     idx_ltf_sens = idx_ltf_cfg.get("sensitivity", 1.0)
     idx_ltf_atr = idx_ltf_cfg.get("atr_period", 10)
     
@@ -78,9 +78,9 @@ def print_startup_banner(config: dict, logger):
     idx_htf_atr = idx_htf_cfg.get("atr_period", 10)
     idx_htf_enabled = idx_htf_cfg.get("enabled", False)
     
-    opt_ltf_tf = opt_ltf_cfg.get("timeframe", "1m")
+    opt_ltf_tf = opt_ltf_cfg.get("timeframe", "3m")
     opt_ltf_sens = opt_ltf_cfg.get("sensitivity", 1.0)
-    opt_ltf_atr = opt_ltf_cfg.get("atr_period", 10)
+    opt_ltf_atr = opt_ltf_cfg.get("atr", 10)
     
     # TSL settings
     tsl_cfg = config.get("tsl", {})
@@ -108,7 +108,10 @@ def print_startup_banner(config: dict, logger):
     print("  Bot-Only-Strike-Chart - [Option-Centric Strategy]")
     print("=" * 60)
     print(f"Mode:             {mode_str}")
-    print(f"Signal Source:    OPTION (UTBot on Strike Charts)")
+    print(f"Signals:          OPTION-CENTRIC (UTBot on Strike Charts)")
+    print(f"Max Positions:    {config.get('max_positions', 2)}")
+    print(f"Max Lots:         {config.get('max_lots', 1)}")
+    print(f"Lot Size (Nifty): {config.get('nifty_lot_size', 65)}")
     if manual_strikes:
         print(f"Manual Strikes:   {len(manual_strikes)} configured")
         for strike in manual_strikes[:4]:  # Show first 4
@@ -190,101 +193,6 @@ async def main():
         logger.error(f"Failed to initialize API client: {e}")
         logger.warning("Running in mock mode - no real orders will be placed")
         client = None
-    
-    # Fetch security master (with caching)
-    if client:
-        try:
-            import pickle
-            import os
-            from datetime import date
-            
-            cache_file = "instruments_cache.pkl"
-            instruments = None
-            loaded_from_cache = False
-            
-            # Check cache validity
-            if os.path.exists(cache_file):
-                mtime = date.fromtimestamp(os.path.getmtime(cache_file))
-                if mtime == date.today():
-                    try:
-                        with open(cache_file, "rb") as f:
-                            instruments = pickle.load(f)
-                        print(f"[INFO] Master loaded from cache ({len(instruments)} instruments).")
-                        loaded_from_cache = True
-                    except Exception as e:
-                        logger.warning(f"Failed to load cache: {e}")
-            
-            # Fetch from API if not in cache
-            should_fetch = False
-            if instruments is None:
-                should_fetch = True
-            elif isinstance(instruments, list) and len(instruments) == 0:
-                should_fetch = True
-            elif hasattr(instruments, 'empty') and instruments.empty:
-                should_fetch = True
-
-            if should_fetch:
-                print("[INFO] Fetching security master from API (this may take a moment)...")
-                
-                # Fetch multiple exchanges
-                exchanges_to_fetch = ["NSE_INDEX", "NSE", "NFO"]
-                combined_instruments = []
-                
-                for exch in exchanges_to_fetch:
-                    print(f"[INFO] Fetching {exch}...")
-                    try:
-
-                        data = client.instruments(exchange=exch)
-                        
-                        # Handle DataFrame return type safely
-                        if data is not None:
-                            # Check if it's a DataFrame (has 'empty' attribute)
-                            if hasattr(data, 'empty'):
-                                if not data.empty:
-                                    # Convert DataFrame to dict records for consistency
-                                    if hasattr(data, 'to_dict'):
-                                        combined_instruments.extend(data.to_dict('records'))
-                            # Check if it's a list
-                            elif isinstance(data, list) and len(data) > 0:
-                                combined_instruments.extend(data)
-                            # Check if it's a dict with 'data'
-                            elif isinstance(data, dict) and 'data' in data:
-                                combined_instruments.extend(data['data'])
-                                
-                    except Exception as ex:
-                        print(f"[WARN] Failed to fetch {exch}: {ex}")
-
-                if combined_instruments:
-                    count = len(combined_instruments)
-                    print(f"[INFO] Master fetched from API ({count} instruments total).")
-                    
-                    # Convert to DataFrame for easier handling if needed, or just save list
-                    # Verify if format matches what cache expects (list or dataframe?)
-                    # cache.py expects a DataFrame in load_master_from_file!
-                    # "if isinstance(df, pd.DataFrame):"
-                    
-                    # So we MUST convert to DataFrame
-                    import pandas as pd
-                    df_master = pd.DataFrame(combined_instruments)
-                    
-                    # Save to cache
-                    try:
-                        with open(cache_file, "wb") as f:
-                            pickle.dump(df_master, f)
-                        print(f"[INFO] Master saved to {cache_file}")
-                    except Exception as e:
-                        logger.warning(f"Failed to write cache: {e}")
-                else:
-                    print("[WARN] API returned empty instrument list for all exchanges.")
-
-            # Pass instruments to engine if needed (currently engine doesn't explicitly take it, 
-            # but we can set it on the client or engine if the architecture supports it.
-            # The original code just printed the count, so we'll stick to that for now 
-            # unless we need to inject it into the engine)
-            
-        except Exception as e:
-            logger.debug(f"Could not fetch/cache instruments: {e}")
-            print(f"[WARN] Security master error: {e}")
     
     # Create and start trading engine
     try:

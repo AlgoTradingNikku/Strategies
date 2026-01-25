@@ -55,7 +55,7 @@ class OrderManager:
         result = await mgr.place_order(
             symbol="NIFTY24JAN25500CE",
             action="BUY",
-            quantity=75,
+            quantity=25,
             order_type="LIMIT",
             limit_price=200.0
         )

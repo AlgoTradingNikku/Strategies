@@ -64,8 +64,7 @@ class TradingEngine:
         # Initialize components
         self.persistence = TradePersistence()
         self.cache = MarketDataCache()
-        self.cache.load_master_from_file("instruments_cache.pkl")
-        self.data_provider = MarketDataProvider(api_client, self.cache)
+        self.data_provider = MarketDataProvider(api_client, self.cache, self.config)
         self.risk_manager = RiskManager(config)
         self.order_manager = OrderManager(api_client, config)
         
@@ -128,9 +127,10 @@ class TradingEngine:
         # Option Technicals (for entry conditions: EMA, RSI, ADX, VWAP)
         entry_cfg = self.config.get("entry_conditions", {})
         indicators["option_tech"] = IndicatorRegistry.create("technical", {
-            "ema_periods": [entry_cfg.get("ema_fast", 9), entry_cfg.get("ema_slow", 21)],
+            "ema_periods": [entry_cfg.get("ema_fast", 9), entry_cfg.get("ema_slow", 20)],
             "rsi_period": entry_cfg.get("rsi_period", 14),
-            "adx_period": entry_cfg.get("adx_period", 14)
+            "adx_period": entry_cfg.get("adx_period", 14),
+            "vol_avg_period": entry_cfg.get("vol_avg_period", 5)
         })
         
         return indicators
@@ -399,10 +399,10 @@ class TradingEngine:
         Scan for new trading signals (every 5s).
         
         Flow:
-        1. Fetch index LTF/HTF data
-        2. Calculate indicators
-        3. Check for setup conditions
-        4. If signal detected, move to OBSERVING
+        1. Fetch option chart data for manual strikes
+        2. Calculate indicators on option data
+        3. Check for UTBot setup / Entry conditions
+        4. If signal detected and valid, execute entry
         """
         logger.info("[TASK] Signal scanner started")
         
@@ -453,7 +453,7 @@ class TradingEngine:
         
         # Get timeframe and bars config
         opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
-        exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 100)
+        exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
         use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
         
         # Check parallel scanning mode
@@ -575,7 +575,9 @@ class TradingEngine:
             # ========== PROCESS SIGNALS (Using Shared Data) ==========
             tasks = []
             for symbol, df in data_map.items():
-                if len(df) < 50: continue
+                # Skip if insufficient data (use config exec_bars as minimum)
+                min_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
+                if len(df) < min_bars: continue
                 tasks.append(self._process_strike_data(symbol, df, use_ha))
             
             if tasks:
@@ -737,7 +739,8 @@ class TradingEngine:
                     # Fallback (Legacy/Safety)
                     opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
                     opt_exchange = self.config.get("option", {}).get("exchange", "NFO")
-                    df_stat = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=50, exchange=opt_exchange)
+                    exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
+                    df_stat = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=exec_bars, exchange=opt_exchange)
                 
                 if df_stat is not None and not df_stat.empty:
                     use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
@@ -837,7 +840,7 @@ class TradingEngine:
         
         # Extract values
         ema_fast = meta["emas"].get(cfg.get("ema_fast", 9), 0)
-        ema_slow = meta["emas"].get(cfg.get("ema_slow", 21), 0)
+        ema_slow = meta["emas"].get(cfg.get("ema_slow", 20), 0)
         vwap = meta.get("vwap", 0)
         atr = meta.get("atr", 0)
         rsi = meta.get("rsi", 50)
@@ -887,7 +890,8 @@ class TradingEngine:
             
             # Logic
             is_green = c_close > c_open
-            has_lower_wick = (c_open - c_low) > (c_close * 0.0005)
+            mom_wick_threshold = cfg.get("mom_wick_threshold_pct", 0.0005)
+            has_lower_wick = (c_open - c_low) > (c_close * mom_wick_threshold)
             wick_ok = not has_lower_wick if cfg.get("mom_no_lower_wick", True) else True
             
             ema_val = meta["emas"].get(cfg.get("mom_ema_period", 9), ema_fast)
@@ -1051,418 +1055,6 @@ class TradingEngine:
             else:
                 print(f"[RE-ENTRY] Conditions failed for {symbol}: {reasons}")
     
-    async def _scan_manual_strikes(self, index_signal):
-        """
-        Scan manual strikes basket for entry opportunities.
-        
-        Args:
-            index_signal: Can be a signal object (with .trend) or a string ("CALL"/"PUT")
-        """
-        # Check trading hours
-        if not self._is_within_trading_hours():
-            return
-        
-        # Check max positions
-        max_positions = self.config.get("max_positions", 4)
-        active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
-        if active_count >= max_positions:
-            return
-        
-        # Get manual strikes from config
-        strike_cfg = self.config.get("strike_selection", {})
-        mode = strike_cfg.get("mode", "AUTO").upper()
-        
-        if mode != "MANUAL":
-            return
-        
-        manual_strikes = strike_cfg.get("manual_strikes", [])
-        if not manual_strikes:
-            return
-        
-        # Determine trend direction from input
-        trend_str = "UNKNOWN"
-        target_trend = 0
-        
-        if isinstance(index_signal, str):
-            if index_signal == "CALL":
-                target_trend = 1
-                trend_str = "BULLISH"
-            elif index_signal == "PUT":
-                target_trend = -1
-                trend_str = "BEARISH"
-        else:
-            # Assume it's the UTBot signal object
-            target_trend = index_signal.trend
-            trend_str = "BULLISH" if target_trend == 1 else "BEARISH"
-        
-        # Log start of scan cycle
-        # print(f"\n[SCAN] Index is {trend_str} @ {self._last_index_price:.2f}. Checking manual strikes...")
-        
-        # ============================================
-        # PARALLEL SCANNING (NEW)
-        # ============================================
-        exec_cfg = self.config.get("execution", {})
-        parallel_enabled = exec_cfg.get("parallel_scanning", True)
-        selection_mode = exec_cfg.get("selection_mode", "PRICE").upper()
-        
-        if parallel_enabled:
-            # Parallel Mode: Scan all strikes simultaneously
-            await self._scan_strikes_parallel(manual_strikes, target_trend, trend_str, selection_mode)
-        else:
-            # Sequential Mode (Legacy): Scan one by one
-            await self._scan_strikes_sequential(manual_strikes, target_trend, trend_str)
-    
-    async def _scan_strikes_sequential(self, manual_strikes, target_trend, trend_str):
-        """
-        Sequential strike scanning (original logic).
-        Scans strikes one by one until max_positions reached.
-        """
-        for symbol in manual_strikes:
-            # Skip if already in position
-            if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
-                continue
-            
-            # Skip if on cooldown
-            if self._is_symbol_on_cooldown(symbol):
-                continue
-            
-            # Determine if this symbol matches index direction
-            # CE = Call, PE = Put
-            is_ce = "CE" in symbol
-            is_pe = "PE" in symbol
-            
-            # Match CE with bullish index, PE with bearish index
-            if (is_ce and target_trend != 1):
-                continue
-            if (is_pe and target_trend != -1):
-                continue
-            
-            # Fetch option data and check option-level trigger
-            await self._check_and_execute_entry(symbol, "CALL" if target_trend == 1 else "PUT")
-    
-    async def _scan_strikes_parallel(self, manual_strikes, target_trend, trend_str, selection_mode):
-        """
-        Parallel strike scanning (NEW - Performance Enhancement).
-        
-        Scans all strikes simultaneously, sorts by selection criteria,
-        and executes top N based on max_positions.
-        
-        Args:
-            manual_strikes: List of strike symbols to scan
-            target_trend: 1 (CALL) or -1 (PUT)
-            trend_str: "BULLISH" or "BEARISH" (for logging)
-            selection_mode: "PRICE" or "CONFIG_ORDER"
-        """
-        # Filter strikes by direction (CE/PE match)
-        filtered_strikes = []
-        for symbol in manual_strikes:
-            # Skip if already in position
-            if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
-                continue
-            
-            # Skip if on cooldown
-            if self._is_symbol_on_cooldown(symbol):
-                continue
-            
-            # Check CE/PE match
-            is_ce = "CE" in symbol
-            is_pe = "PE" in symbol
-            
-            if (is_ce and target_trend == 1) or (is_pe and target_trend == -1):
-                filtered_strikes.append(symbol)
-        
-        if not filtered_strikes:
-            return
-        
-        # Create validation tasks for all filtered strikes
-        tasks = [
-            self._validate_single_strike(symbol, target_trend)
-            for symbol in filtered_strikes
-        ]
-        
-        # Execute all validations in parallel
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Filter valid candidates
-        valid_candidates = []
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"[PARALLEL] Strike validation error: {result}")
-                continue
-            
-            if result and result.get("valid", False):
-                valid_candidates.append(result)
-        
-        if not valid_candidates:
-            return
-        
-        # Sort candidates based on selection mode
-        if selection_mode == "PRICE":
-            # Sort by price (ascending = cheapest first)
-            valid_candidates.sort(key=lambda x: x.get("price", 999999))
-            logger.info(f"[PARALLEL] Sorted {len(valid_candidates)} valid strikes by PRICE")
-        elif selection_mode == "CONFIG_ORDER":
-            # Sort by original config order (preserve list order)
-            order_map = {s: i for i, s in enumerate(filtered_strikes)}
-            valid_candidates.sort(key=lambda x: order_map.get(x.get("symbol"), 999))
-            logger.info(f"[PARALLEL] Sorted {len(valid_candidates)} valid strikes by CONFIG_ORDER")
-        # Future Enhancement: "CONFIDENCE" mode
-        # elif selection_mode == "CONFIDENCE":
-        #     valid_candidates.sort(key=lambda x: x.get("conf_score", 0), reverse=True)
-        
-        # Determine how many positions we can open
-        max_positions = self.config.get("max_positions", 4)
-        active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
-        slots_available = max(0, max_positions - active_count)
-        
-        if slots_available == 0:
-            logger.info(f"[PARALLEL] No slots available ({active_count}/{max_positions})")
-            return
-        
-        # Select top N candidates
-        selected = valid_candidates[:slots_available]
-        
-        logger.info(f"[PARALLEL] Selected {len(selected)}/{len(valid_candidates)} strikes for entry")
-        
-        # Execute orders for selected strikes
-        for candidate in selected:
-            symbol = candidate.get("symbol")
-            limit_price = candidate.get("price", 0)
-            
-            # Execute entry
-            await self._execute_entry(
-                symbol=symbol,
-                side="CALL" if target_trend == 1 else "PUT",
-                price=limit_price,
-                ltf_signal=None,
-                atr=candidate.get("atr", 0.0)
-            )
-    
-    async def _validate_single_strike(self, symbol, target_trend):
-        """
-        Validate a single strike for entry (used in parallel scanning).
-        
-        Returns:
-            dict: {
-                "symbol": str,
-                "valid": bool,
-                "price": float,
-                "conf_score": float,  # Future Enhancement
-                "reasons": list,
-                "atr": float
-            }
-        """
-        try:
-            # Check option confirmation
-            valid, limit_price, reasons, api_atr = await self._check_option_confirmation(symbol)
-            
-            if not valid:
-                return {
-                    "symbol": symbol,
-                    "valid": False,
-                    "price": 0,
-                    "conf_score": 0,
-                    "reasons": reasons,
-                    "atr": 0.0
-                }
-            
-            # Future Enhancement: Calculate confidence score
-            # conf_score = self._calculate_confidence_score(symbol, limit_price, ...)
-            
-            return {
-                "symbol": symbol,
-                "valid": True,
-                "price": limit_price,
-                "conf_score": 0,  # Placeholder for future enhancement
-                "reasons": [],
-                "atr": api_atr
-            }
-        
-        except Exception as e:
-            logger.error(f"[VALIDATE] Error validating {symbol}: {e}")
-            return {
-                "symbol": symbol,
-                "valid": False,
-                "price": 0,
-                "conf_score": 0,
-                "reasons": [f"Exception: {str(e)}"],
-                "atr": 0.0
-            }
-    
-    async def _check_option_confirmation(self, symbol: str, df_opt_ltf):
-        """
-        Strict Option Confirmation Module.
-        Returns: (bool, float_limit_price, list_reasons, float_atr)
-        """
-        conf_cfg = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_confirmation", {})
-        entry_mode = self.config.get("strategy", {}).get("smart_momentum", {}).get("entry_mode", "SIMPLE").upper()
-        
-        # Calculate Indicators locally to ensure freshness
-        # We need VWAP, EMA, etc.
-        use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
-        
-        # Reuse existing indicator or create temp? 
-        # Better to reuse from registry if possible or calc.
-        # Assuming df_opt_ltf is sufficient.
-        
-        opt_tech = self.indicators.get("option_tech")
-        if not opt_tech:
-             opt_tech = IndicatorRegistry.create("technical", {
-                    "ema_periods": [9, 21],
-                    "rsi_period": 14,
-                    "adx_period": 14
-                })
-        
-        tech_res = opt_tech.calculate(df_opt_ltf, use_ha=use_ha)
-        meta = tech_res.metadata
-        
-        ema9 = meta["emas"].get(9)
-        ema21 = meta["emas"].get(21)
-        vwap = meta["vwap"]
-        
-        close = df_opt_ltf['Close'].iloc[-1]
-        
-        reasons = []
-        
-        # ============================================
-        # SIMPLE MODE: Minimal Checks
-        # ============================================
-        if entry_mode == "SIMPLE":
-            # 1. VWAP Check: LTP > VWAP
-            if close < vwap:
-                reasons.append(f"Below VWAP ({close:.2f} < {vwap:.2f})")
-            
-            # 2. Momentum Check: EMA9 > EMA21
-            if ema9 <= ema21:
-                reasons.append("EMA9 <= EMA21")
-            
-            if reasons:
-                return False, 0.0, reasons, 0.0 # ATR not calculated in simple mode (or access if needed?)
-            
-            # Simple Mode still needs ATR for TSL! 
-            # We must calculate ATR even in simple mode if TSL depends on it.
-            # tech_res above calculated it, so we have 'meta["atr"]' (if not 0)
-            atr_simple = meta.get("atr", 0.0)
-            
-            # Valid! Use VWAP as limit price (simple)
-            limit_price = vwap
-            return True, limit_price, [], atr_simple
-        
-        # ============================================
-        # ADVANCED MODE: Full Validation
-        # ============================================
-        vol_ma_5 = meta["vol_ma_5"]
-        volume = meta["volume"]
-        
-        close = df_opt_ltf['Close'].iloc[-1]
-        
-        # Get live quote (Only if spread check enabled OR if we want precise Bid for Limit)
-        # We need Bid for Strict Limit Order (min(Bid, VWAP)). 
-        # But if Spread Check disabled, maybe user is OK with Last Price or just VWAP?
-        # User said "I don't want to hit API when not required".
-        # If we skip get_quote, we don't have Bid.
-        # Implication: limit_price = min(close, vwap) instead of min(bid, vwap).
-        
-        check_spread = conf_cfg.get("check_spread", False)
-        bid = 0
-        ask = 0
-        ltp = close # Default to Candle Close
-        
-        if check_spread:
-            quote = await self.data_provider.get_quote(symbol, exchange="NFO")
-            if not quote:
-                # If we asked for spread but failed, should we fail?
-                # Let's log warning and proceed with Candle Close?
-                print(f"[WARN] Quote failed for {symbol}. Using Candle data.")
-            else:
-                bid = quote.get('bid', 0)
-                ask = quote.get('ask', 0)
-                ltp = quote.get('ltp', close)
-        
-        reasons = []
-        
-        # 1. VWAP Guard (Dynamic ATR-based or Fixed %)
-        use_atr = conf_cfg.get("use_atr_price_cap", True)
-        
-        if use_atr:
-            # ATR-based Max Price: VWAP + (ATR × Multiplier)
-            atr = meta.get("atr", 0)
-            atr_multiplier = conf_cfg.get("atr_multiplier", 1.5)
-            max_price = vwap + (atr * atr_multiplier)
-        else:
-            # Fixed %-based Max Price: VWAP * Buffer
-            max_buffer = conf_cfg.get("vwap_max_buffer", 1.015)
-            max_price = vwap * max_buffer
-        
-        if ltp < vwap: # Must be above VWAP (Fair Value)
-             reasons.append(f"Below VWAP ({ltp:.2f} < {vwap:.2f})")
-        if ltp > max_price: # Must NOT be too expensive
-             reasons.append(f"Too Expensive ({ltp:.2f} > {max_price:.2f})")
-             
-        # 2. Upper Wick Rejection (Trap Signal)
-        if conf_cfg.get("check_upper_wick", True):
-            open_p = df_opt_ltf['Open'].iloc[-1]
-            high_p = df_opt_ltf['High'].iloc[-1]
-            low_p = df_opt_ltf['Low'].iloc[-1]
-            
-            candle_body = abs(close - open_p)
-            upper_wick = high_p - max(close, open_p)
-            
-            if upper_wick > candle_body:
-                reasons.append(f"Wick Trap (Upper:{upper_wick:.2f} > Body:{candle_body:.2f})")
-             
-        # 3. Spread Check (If Enabled)
-        if check_spread and bid > 0:
-            spread_pct = (ask - bid) / ltp
-            if spread_pct > conf_cfg.get("max_spread_pct", 0.003):
-                 reasons.append(f"Spread High ({spread_pct:.4f} > 0.3%)")
-        
-        # 4. Momentum Check
-        if ema9 <= ema21:
-            reasons.append("EMA9 <= EMA21")
-            
-        # 5. Volume Check
-        if volume < (conf_cfg.get("volume_multiplier", 1.2) * vol_ma_5):
-            reasons.append(f"Low Vol ({volume})")
-            
-        # 6. Delta Check
-        
-        if reasons:
-                return False, 0.0, reasons, atr
-            
-        # Valid! Calculate Limit Price
-        # If we have Bid, use it. Else use LTP/Close.
-        if bid > 0:
-            limit_price = min(bid, vwap)
-        else:
-            limit_price = min(ltp, vwap)
-            
-        if limit_price <= 0: limit_price = ltp
-        
-        return True, limit_price, [], atr
-
-    async def _check_and_execute_entry(self, symbol: str, signal_side: str):
-        """
-        Execute entry after option confirmation.
-        """
-        try:
-            # Fetch Option Data
-            opt_ltf_tf = self.config["option"]["ltf"]["timeframe"]
-            df_opt = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=100, exchange="NFO")
-            if df_opt is None or len(df_opt) < 50: return
-            
-            # Check option confirmation
-            valid_opt, limit_price, reasons, atr_val = await self._check_option_confirmation(symbol, df_opt)
-            
-            if valid_opt:
-                print(f"[ENTRY] Option Confirmation Passed. Executing {symbol}...")
-                await self._execute_entry(symbol, signal_side, limit_price, None, atr=atr_val)
-            else:
-                print(f"[REJECT] Option Confirmation Failed for {symbol}: {reasons}")
-            
-        except Exception as e:
-            logger.error(f"Entry check error for {symbol}: {e}", exc_info=True)
-            self._set_cooldown(symbol)
     
 
     async def _execute_entry(self, symbol: str, side: str, price: float, ltf_signal, atr: float = 0.0):
@@ -1482,7 +1074,7 @@ class TradingEngine:
                     return 
 
                 # Get lot size from config
-                lots = self.config.get("lots", 1)
+                lots = self.config.get("max_lots", 1)
                 
                 # Dynamically fetch lot size (cached via DataProvider)
                 lot_size = await self.data_provider.get_lot_size(symbol, exchange="NFO")
@@ -1532,17 +1124,19 @@ class TradingEngine:
                     
                     print(f"[POSITION] Entered {symbol} @ {trade.entry_price:.2f}")
                     logger.info(f"Entry executed: {symbol} @ {trade.entry_price:.2f}")
+                    
+                    # Set short cooldown only on SUCCESS to prevent double-entry within same signal
+                    self._set_cooldown(symbol, 10)  # 10 seconds cooldown on success
                 else:
                     fail_msg = order_id.message if order_id else "No response from Order Manager"
                     print(f"[ERROR] Order Failed for {symbol}: {fail_msg}")
                     logger.error(f"Order placement failed: {fail_msg}")
-                
-                self._set_cooldown(symbol) # Cooldown enabled for both success (to avoid double entry) and failure
+                    # NO cooldown on order failure - allow immediate retry
                     
             except Exception as e:
                 logger.error(f"Entry execution error for {symbol}: {e}", exc_info=True)
                 print(f"[ERROR] Entry execution crashed: {e}")
-                self._set_cooldown(symbol) # 1 min cooldown on crash
+                self._set_cooldown(symbol)  # 60s cooldown on crash (safety)
     
     def _set_cooldown(self, symbol: str, seconds: int = 0):
         """Set cooldown for a symbol (uses _exit_cooldowns)"""
@@ -1655,7 +1249,7 @@ class TradingEngine:
             # Place exit order
             order_id = await self.order_manager.place_order(
                 symbol=trade.symbol,
-                action="SELL" if trade.side == "CALL" else "BUY",
+                action="SELL",  # Always SELL to exit a LONG option position (CE or PE)
                 quantity=trade.quantity,
                 order_type="MARKET",
                 exchange="NFO",
@@ -1670,7 +1264,7 @@ class TradingEngine:
                 pnl, pnl_pct = trade.calculate_pnl()
                 trade = Trade(**{
                     **trade.__dict__,
-                    'exit_price': order_id.average_price if order_id.average_price else 0.0,
+                    'exit_price': order_id.filled_price if order_id.filled_price else trade.current_price,
                     'exit_time': datetime.now(),
                     'pnl': pnl,
                     'pnl_pct': pnl_pct
