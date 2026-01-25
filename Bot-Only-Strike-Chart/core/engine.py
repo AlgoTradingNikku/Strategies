@@ -104,12 +104,61 @@ class TradingEngine:
         self._last_utbot_state = {}
         self._last_reject_reasons = {}
         
+        # BUG FIX #8: Validate manual strikes format
+        self._validate_and_load_strikes()
+        
         # Restore state from database
         self._restore_state()
         
         print("\n[INFO] Risk Worker (Bodyguard) started.")
         print("[INFO] Scanner Worker (The Brain) started.")
         logger.info("Trading Engine initialized")
+    
+    def _validate_and_load_strikes(self):
+        """Validate manual strikes and warn about invalid formats"""
+        strike_cfg = self.config.get("strike_selection", {})
+        mode = strike_cfg.get("mode", "AUTO").upper()
+        
+        if mode != "MANUAL":
+            return
+        
+        manual_strikes = strike_cfg.get("manual_strikes", [])
+        if not manual_strikes:
+            logger.warning("MANUAL mode enabled but no manual_strikes configured")
+            return
+        
+        # Validate format: SYMBOL[DD][MMM][YY][STRIKE][CE/PE]
+        # Examples: NIFTY27JAN2625000CE, BANKNIFTY27JAN2650000PE
+        valid_pattern = re.compile(r'^[A-Z]+\d{2}[A-Z]{3}\d{2}\d+[CP]E$')
+        
+        valid_strikes = []
+        invalid_strikes = []
+        
+        for strike in manual_strikes:
+            if valid_pattern.match(strike):
+                valid_strikes.append(strike)
+            else:
+                invalid_strikes.append(strike)
+        
+        if invalid_strikes:
+            print("\n" + "="*60)
+            print("⚠️  WARNING: Invalid Strike Symbols Detected")
+            print("="*60)
+            for strike in invalid_strikes:
+                print(f"  ❌ {strike}")
+                logger.warning(f"Invalid strike format (skipped): {strike}")
+            print("\nExpected format: SYMBOL[DD][MMM][YY][STRIKE][CE/PE]")
+            print("Example: NIFTY27JAN2625000CE or BANKNIFTY27JAN2650000PE")
+            print("="*60 + "\n")
+        
+        if not valid_strikes:
+            error_msg = "No valid manual strikes found! Cannot proceed."
+            logger.critical(error_msg)
+            raise ValueError(error_msg)
+        
+        if valid_strikes and invalid_strikes:
+            print(f"✅ Loaded {len(valid_strikes)} valid strikes (ignored {len(invalid_strikes)} invalid)\n")
+            logger.info(f"Loaded {len(valid_strikes)} valid strikes, ignored {len(invalid_strikes)} invalid")
     
     def _load_indicators(self) -> dict:
         """Load indicators from config - Option-Centric mode"""
@@ -445,11 +494,13 @@ class TradingEngine:
         if not self._is_within_trading_hours():
             return
         
-        # Check max positions
-        max_positions = self.config.get("max_positions", 4)
-        active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
-        if active_count >= max_positions:
-            return
+        # BUG FIX #1: Check max_positions with lock BEFORE parallel scanning
+        # This prevents race condition where multiple strikes pass the check simultaneously
+        async with self._entry_lock:
+            max_positions = self.config.get("max_positions", 4)
+            active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
+            if active_count >= max_positions:
+                return  # Exit early before processing any strikes
         
         # Get timeframe and bars config
         opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
@@ -704,6 +755,24 @@ class TradingEngine:
         if not active_symbols:
             return
 
+        # BUG FIX #4: Fetch all position data concurrently if data_map not provided
+        # This prevents sequential API calls (2 positions = 2 separate calls = slow)
+        if data_map is None:
+            data_map = {}
+            opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
+            exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
+            
+            # Fetch all concurrently
+            async def fetch_one(sym):
+                try:
+                    df = await self.data_provider.fetch_history(sym, opt_ltf_tf, bars=exec_bars, exchange="NFO")
+                    return (sym, df)
+                except:
+                    return (sym, None)
+            
+            results = await asyncio.gather(*[fetch_one(s) for s in active_symbols])
+            data_map = {sym: df for sym, df in results if df is not None and not df.empty}
+
         # Prepare lists for printing to group them
         pos_lines = []
         check_lines = []
@@ -731,18 +800,9 @@ class TradingEngine:
                 pos_line = f"{symbol} | Entry: {trade.entry_price:.1f} | LTP: {price:.1f} | TSL: {trade.tsl_level:.1f} | Gap: {tsl_gap:.1f} | P&L: INR {pnl:.1f} ({pnl_pct:.1f}%)"
                 pos_lines.append(pos_line)
                 
-                # Get History DataFrame (Use Shared Data Map if available, else fetch)
-                df_stat = None
-                if data_map and symbol in data_map:
+                # Use data from map (now guaranteed to be populated)
+                if symbol in data_map:
                     df_stat = data_map[symbol]
-                else:
-                    # Fallback (Legacy/Safety)
-                    opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
-                    opt_exchange = self.config.get("option", {}).get("exchange", "NFO")
-                    exec_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
-                    df_stat = await self.data_provider.fetch_history(symbol, opt_ltf_tf, bars=exec_bars, exchange=opt_exchange)
-                
-                if df_stat is not None and not df_stat.empty:
                     use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
                     tech = self.indicators["option_tech"].calculate(df_stat, use_ha=use_ha)
                     
@@ -1404,6 +1464,22 @@ class TradingEngine:
                     avg_price = float(item.get('average_price', 0) or item.get('buy_avg', 0) or 0)
                     if avg_price == 0:
                         avg_price = float(item.get('lp', 0)) # Fallback to LTP if avg unknown
+                    
+                    # BUG FIX #5: Calculate ATR for adopted positions
+                    # Without ATR, TSL = current_price (no trailing buffer!)
+                    atr_value = 0.0
+                    try:
+                        opt_ltf_tf = self.config.get("option", {}).get("ltf", {}).get("timeframe", "3m")
+                        df = await self.data_provider.fetch_history(sym, opt_ltf_tf, 50, "NFO")
+                        if df is not None and not df.empty:
+                            use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
+                            tech_result = self.indicators["option_tech"].calculate(df, use_ha=use_ha)
+                            atr_value = tech_result.metadata.get("atr", 0.0)
+                            logger.info(f"Calculated ATR for adopted position {sym}: {atr_value:.2f}")
+                    except Exception as e:
+                        logger.warning(f"Failed to calculate ATR for {sym}: {e}")
+                        # Fallback: estimate ATR as 2% of current price
+                        atr_value = avg_price * 0.02
                         
                     # Create Trade Object
                     trade = Trade(
@@ -1415,13 +1491,8 @@ class TradingEngine:
                         state=TradeState.POSITION,
                         current_price=float(item.get('lp', avg_price)),
                         highest_price=float(item.get('lp', avg_price)),
-                        atr=0.0 # Unknown, will be updated by risk monitor eventually? checking...
+                        atr=atr_value
                     )
-                    
-                    # If we don't have ATR, TSL might be weird. 
-                    # But better to track it than ignore it!
-                    # Ideally we fetch ATR? For now, 0.0 is acceptable (Risk Manager handles it?)
-                    # My previous fix handles ATR=0 TSL calculation (by defaulting to price).
                     
                     self.trades[sym] = trade
                     self.persistence.save_trade(trade)
@@ -1471,18 +1542,26 @@ class TradingEngine:
     async def _reconnect_websocket(self):
         """Reconnect to WebSocket if connection is lost."""
         try:
-            print("[INFO] Reconnecting to WebSocket...")            
-            # 1. Disconnect existing if any
-            try:
-                if self.client:
+            print("[INFO] Reconnecting to WebSocket...")
+            
+            # BUG FIX #3: Force cleanup to prevent memory leak
+            # 1. Force socket cleanup
+            if self.client and hasattr(self.client, 'ws'):
+                try:
+                    if self.client.ws and hasattr(self.client.ws, 'sock'):
+                        self.client.ws.sock.close()  # Force close socket
                     self.client.disconnect()
-            except:
-                pass
-                
-            # 2. Wait a bit before reconnecting
+                except Exception as e:
+                    logger.debug(f"Cleanup error (expected): {e}")
+            
+            # 2. Clear internal state
+            self._ws_connected = False
+            self._ws_subscribed_symbols = []
+            
+            # 3. Wait before reconnecting
             await asyncio.sleep(2)
             
-            # 3. Setup again (connect + subscribe)
+            # 4. Setup again (connect + subscribe)
             success = await self._setup_websocket()
             
             if success:

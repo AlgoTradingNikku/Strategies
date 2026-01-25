@@ -265,11 +265,13 @@ class OrderManager:
             order_id = response.get("orderid")
             print(f"Smart Limit order placed: {order_id} @ {limit_price}")
             
-            # Poll for fill
-            start_time = asyncio.get_event_loop().time()
+            # BUG FIX #6: Use monotonic time for accurate timeout tracking
+            # asyncio.get_event_loop().time() can drift under heavy load
+            import time
+            start_time = time.monotonic()
             limit_timeout = self.config.get("execution", {}).get("order_timeout_sec", 8)
             
-            while (asyncio.get_event_loop().time() - start_time) < limit_timeout:
+            while (time.monotonic() - start_time) < limit_timeout:
                 await asyncio.sleep(self.limit_poll_interval)
                 
                 # Check order status
