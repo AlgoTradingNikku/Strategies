@@ -7,7 +7,7 @@ Critical for live trading - you don't want to lose track of open positions!
 
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from pathlib import Path
 from .state_machine import Trade, TradeState
@@ -38,7 +38,7 @@ class TradePersistence:
             db_path: Path to SQLite database file
         """
         self.db_path = Path(db_path)
-        self.conn = sqlite3.connect(str(self.db_path))
+        self.conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._create_tables()
     
     def _create_tables(self):
@@ -302,10 +302,8 @@ class TradePersistence:
         Returns:
             List of completed trades
         """
-        cutoff = datetime.now().replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        cutoff = cutoff.replace(day=cutoff.day - days).isoformat()
+        cutoff = datetime.now() - timedelta(days=days)
+        cutoff = cutoff.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         
         cursor = self.conn.execute("""
             SELECT * FROM trade_history 

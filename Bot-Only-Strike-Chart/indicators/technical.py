@@ -50,6 +50,8 @@ class TechnicalIndicator(BaseIndicator):
         delta = src.diff()
         gain = (delta.where(delta > 0, 0)).ewm(alpha=1/rsi_p, adjust=False).mean()
         loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/rsi_p, adjust=False).mean()
+        # Prevent divide-by-zero when all candles are green (loss = 0)
+        loss = loss.replace(0, 1e-10)
         rs = gain / loss
         results["rsi"] = 100 - (100 / (1 + rs))
         

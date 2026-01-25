@@ -1,0 +1,52 @@
+2026-01-25 22:45:45,925 - INFO - Configuration banner printed
+2026-01-25 22:45:46,772 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-25 22:45:47,142 - INFO - Trading Engine initialized
+2026-01-25 22:45:47,142 - INFO - Trading Engine created successfully
+2026-01-25 22:45:47,142 - INFO - Starting Trading Engine...
+2026-01-25 22:45:54,796 - INFO - [TASK] Signal scanner started
+2026-01-25 22:45:54,796 - INFO - [TASK] Risk monitor started
+2026-01-25 22:45:54,796 - INFO - [TASK] Position sync started
+2026-01-25 22:45:54,800 - INFO - [TASK] WebSocket monitor started
+2026-01-25 22:45:54,802 - INFO - [TASK] Config monitor started
+2026-01-25 22:46:00,975 - INFO - Shutting down...
+2026-01-25 22:46:00,990 - INFO - Trading Engine stopped
+2026-01-25 22:46:00,990 - INFO - All engine tasks cleaned up
+2026-01-25 22:46:00,990 - INFO - Goodbye!
+2026-01-25 22:46:00,990 - ERROR - _GatheringFuture exception was never retrieved
+future: <_GatheringFuture finished exception=CancelledError()>
+Traceback (most recent call last):
+  File "C:\Rahul\06_Nikku\Strategies\Bot-Only-Strike-Chart\core\engine.py", line 607, in fetch_one
+    df = await self.data_provider.fetch_history(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Rahul\06_Nikku\Strategies\Bot-Only-Strike-Chart\data\provider.py", line 138, in fetch_history
+    df = await loop.run_in_executor(
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+2026-01-25 22:46:09,405 - INFO - Configuration banner printed
+2026-01-25 22:46:09,784 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-25 22:46:10,139 - INFO - Trading Engine initialized
+2026-01-25 22:46:10,139 - INFO - Trading Engine created successfully
+2026-01-25 22:46:10,139 - INFO - Starting Trading Engine...
+2026-01-25 22:46:17,730 - INFO - [TASK] Signal scanner started
+2026-01-25 22:46:17,730 - INFO - [TASK] Risk monitor started
+2026-01-25 22:46:17,730 - INFO - [TASK] Position sync started
+2026-01-25 22:46:17,730 - INFO - [TASK] WebSocket monitor started
+2026-01-25 22:46:17,730 - INFO - [TASK] Config monitor started
+2026-01-25 22:47:18,006 - INFO - Shutting down...
+2026-01-25 22:47:18,007 - INFO - Trading Engine stopped
+2026-01-25 22:47:18,009 - INFO - All engine tasks cleaned up
+2026-01-25 22:47:18,009 - INFO - Goodbye!
+2026-01-25 22:55:06,736 - INFO - Configuration banner printed
+2026-01-25 22:55:07,139 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-25 22:55:07,502 - INFO - Trading Engine initialized
+2026-01-25 22:55:07,502 - INFO - Trading Engine created successfully
+2026-01-25 22:55:07,502 - INFO - Starting Trading Engine...
+2026-01-25 22:55:10,675 - INFO - [TASK] Signal scanner started
+2026-01-25 22:55:10,675 - INFO - [TASK] Risk monitor started
+2026-01-25 22:55:10,676 - INFO - [TASK] Position sync started
+2026-01-25 22:55:10,677 - INFO - [TASK] WebSocket monitor started
+2026-01-25 22:55:10,678 - INFO - [TASK] Config monitor started
+2026-01-25 22:59:00,875 - INFO - Shutting down...
+2026-01-25 22:59:00,875 - INFO - Trading Engine stopped
+2026-01-25 22:59:00,875 - INFO - All engine tasks cleaned up
+2026-01-25 22:59:00,877 - INFO - Goodbye!

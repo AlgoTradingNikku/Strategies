@@ -112,8 +112,12 @@ class Trade:
         new_highest = max(self.highest_price, new_price)
         new_lowest = min(self.lowest_price, new_price) if self.lowest_price > 0 else new_price
         
-        # Recalculate P&L
-        pnl, pnl_pct = self.calculate_pnl()
+        # Calculate P&L using NEW price (not old current_price)
+        if self.entry_price > 0 and self.quantity > 0:
+            pnl = (new_price - self.entry_price) * self.quantity
+            pnl_pct = ((new_price - self.entry_price) / self.entry_price) * 100
+        else:
+            pnl, pnl_pct = 0.0, 0.0
         
         # Create new instance (immutable pattern)
         return Trade(

@@ -5,7 +5,6 @@ Provides non-blocking data fetching for prices and historical data.
 """
 
 import asyncio
-import aiohttp
 from typing import Optional, Dict, List
 import pandas as pd
 from datetime import datetime, timedelta
@@ -39,17 +38,10 @@ class MarketDataProvider:
         self.client = api_client
         self.cache = cache or MarketDataCache()
         self.config = config or {}
-        self._session: Optional[aiohttp.ClientSession] = None
-    
-    async def _ensure_session(self):
-        """Ensure aiohttp session is created"""
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
     
     async def close(self):
-        """Close async session"""
-        if self._session and not self._session.closed:
-            await self._session.close()
+        """Cleanup resources (placeholder for future async resources)"""
+        pass
     
     # === LIVE PRICES ===
     

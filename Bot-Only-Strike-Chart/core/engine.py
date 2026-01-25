@@ -19,16 +19,17 @@ from datetime import datetime, timedelta
 import logging
 import time
 import os
+import threading
 import yaml
 
 from core.state_machine import Trade, TradeState, TradeStateMachine
-
 from core.persistence import TradePersistence
 from indicators.registry import IndicatorRegistry
 from risk.manager import RiskManager, ExitReason
 from execution.order_manager import OrderManager
 from data.provider import MarketDataProvider
 from data.cache import MarketDataCache
+from utils import ConfigValidator, CircuitBreaker, ThreadSafeFileWriter, format_error_message
 
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,7 @@ class TradingEngine:
         # Re-entry protection: track recently exited symbols
         # {symbol: exit_timestamp}
         self._exit_cooldowns: Dict[str, datetime] = {}
+        self._cooldown_lock = threading.RLock()  # Thread-safe lock for cooldown dict
         
         # Trading hours config
         self._trading_hours = config.get("trading_hours", {})
@@ -395,7 +397,7 @@ class TradingEngine:
             await asyncio.sleep(interval) # Check every X seconds
 
     def _reload_config(self, path):
-        """Reload configuration and update components"""
+        """Reload configuration and update components with validation"""
         try:
             print("\n[CONFIG] Change detected in config.yaml...")
             with open(path, 'r') as f:
@@ -404,12 +406,35 @@ class TradingEngine:
             if not new_config:
                 print("[CONFIG] Error: Empty config file!")
                 return
+            
+            # ENHANCEMENT #1: Validate configuration before applying
+            validator = ConfigValidator()
+            is_valid, errors = validator.validate(new_config)
+            
+            if not is_valid:
+                print("[CONFIG] Validation FAILED! Errors:")
+                for error in errors[:10]:  # Show first 10 errors
+                    print(f"  ❌ {error}")
+                if len(errors) > 10:
+                    print(f"  ... and {len(errors) - 10} more errors")
+                print("[CONFIG] Config NOT applied. Please fix errors and save again.")
+                logger.error(f"Config validation failed: {errors}")
+                return
+            
+            print("[CONFIG] Validation passed ✓")
+            
+            # Check if manual strikes changed (for WebSocket resubscription)
+            old_strikes = set(self.config.get("strike_selection", {}).get("manual_strikes", []))
+            new_strikes = set(new_config.get("strike_selection", {}).get("manual_strikes", []))
+            strikes_changed = (old_strikes != new_strikes)
 
+            # Apply new config
             self.config = new_config
             
             # Update components
             self.risk_manager.update_config(new_config)
             self.order_manager.update_config(new_config)
+            self.data_provider.config = new_config  # Update data provider config
             
             # Reload indicators
             # We don't want to lose state (signals), so we just recreate the registry items
@@ -419,12 +444,53 @@ class TradingEngine:
             # Update trading hours
             self._trading_hours = new_config.get("trading_hours", {})
             
+            # ENHANCEMENT #2: Resubscribe WebSocket if strikes changed
+            if strikes_changed and self.config.get("use_websocket", True):
+                print("[CONFIG] Manual strikes changed. Resubscribing WebSocket...")
+                # Schedule async resubscription
+                asyncio.create_task(self._resubscribe_websocket())
+            
             print("[CONFIG] Reload successful. Logic updated.")
             logger.info("Configuration reloaded successfully")
             
         except Exception as e:
-            print(f"[CONFIG] Reload Failed: {e}")
+            error_msg = format_error_message(e, "Config reload")
+            print(f"[CONFIG] Reload Failed: {error_msg}")
             logger.error(f"Config reload failed: {e}", exc_info=True)
+    
+    async def _resubscribe_websocket(self):
+        """Resubscribe WebSocket to updated symbol list"""
+        try:
+            if not self._ws_connected:
+                logger.info("WebSocket not connected, skipping resubscription")
+                return
+            
+            # Disconnect and reconnect with new symbols
+            if self.client and hasattr(self.client, 'ws'):
+                try:
+                    self.client.disconnect()
+                except Exception as e:
+                    logger.debug(f"Disconnect error (expected): {e}")
+            
+            self._ws_connected = False
+            self._ws_subscribed_symbols = []
+            
+            # Wait briefly
+            await asyncio.sleep(1)
+            
+            # Reconnect with new symbol list
+            success = await self._setup_websocket()
+            
+            if success:
+                print("[CONFIG] WebSocket resubscribed successfully")
+                logger.info("WebSocket resubscribed to updated symbols")
+            else:
+                print("[CONFIG] WebSocket resubscription failed")
+                logger.warning("WebSocket resubscription failed")
+                
+        except Exception as e:
+            error_msg = format_error_message(e, "WebSocket resubscription")
+            logger.error(error_msg)
     
     async def stop(self):
         """Stop the trading engine"""
@@ -435,8 +501,8 @@ class TradingEngine:
             try:
                 self.client.disconnect()
                 print("[INFO] WebSocket disconnected.")
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"WebSocket disconnect cleanup: {e}")
         
         await self.data_provider.close()
         logger.info("Trading Engine stopped")
@@ -511,14 +577,27 @@ class TradingEngine:
         exec_cfg = self.config.get("execution", {})
         parallel_enabled = exec_cfg.get("parallel_scanning", True)
         
-        # Filter strikes to scan (skip those in position or on cooldown)
+        # OPTIMIZATION B2: Filter strikes to scan (skip those in position or on cooldown)
+        # This prevents unnecessary API calls for strikes that cannot be traded
         strikes_to_scan = []
+        skipped_count = 0
+        
         for symbol in manual_strikes:
+            # Skip if already in position
             if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
+                skipped_count += 1
                 continue
+            
+            # Skip if on cooldown
             if self._is_symbol_on_cooldown(symbol):
+                skipped_count += 1
                 continue
+            
             strikes_to_scan.append(symbol)
+        
+        # Log optimization impact (debug)
+        if skipped_count > 0 and self._heartbeat_counter % 12 == 0:
+            logger.debug(f"[OPTIMIZATION] Skipped fetching data for {skipped_count}/{len(manual_strikes)} strikes (in position or cooldown)")
         
         if parallel_enabled and len(strikes_to_scan) > 0:
             # ========== OPTIMIZED PARALLEL FETCH ==========
@@ -858,22 +937,20 @@ class TradingEngine:
         return True
             
     def _is_symbol_on_cooldown(self, symbol: str) -> bool:
-        """Check if symbol is in re-entry cooldown period"""
-        if symbol not in self._exit_cooldowns:
-            return False
+        """Check if symbol is in re-entry cooldown period (thread-safe)"""
+        with self._cooldown_lock:
+            if symbol not in self._exit_cooldowns:
+                return False
+                
+            expiry_time = self._exit_cooldowns[symbol]
+            now = datetime.now()
             
-        expiry_time = self._exit_cooldowns[symbol]
-        now = datetime.now()
-        
-        if now < expiry_time:
-            # removing log to avoid spam
-            # remaining_secs = (expiry_time - now).total_seconds()
-            # logger.info(f"[COOLDOWN] {symbol} blocked for {int(remaining_secs)}s more")
-            return True
-        
-        # Cooldown expired, remove from tracking
-        del self._exit_cooldowns[symbol]
-        return False
+            if now < expiry_time:
+                return True
+            
+            # Cooldown expired, remove from tracking
+            del self._exit_cooldowns[symbol]
+            return False
     
     async def _check_entry_conditions(self, symbol: str, df_opt) -> tuple:
         """
@@ -1199,10 +1276,11 @@ class TradingEngine:
                 self._set_cooldown(symbol)  # 60s cooldown on crash (safety)
     
     def _set_cooldown(self, symbol: str, seconds: int = 0):
-        """Set cooldown for a symbol (uses _exit_cooldowns)"""
+        """Set cooldown for a symbol (thread-safe)"""
         if seconds == 0:
             seconds = self.config.get("system", {}).get("cooldowns", {}).get("error_sec", 60)
-        self._exit_cooldowns[symbol] = datetime.now() + timedelta(seconds=seconds)
+        with self._cooldown_lock:
+            self._exit_cooldowns[symbol] = datetime.now() + timedelta(seconds=seconds)
 
     async def risk_monitor_task(self):
         """Monitor active positions for risk management (every one second)."""

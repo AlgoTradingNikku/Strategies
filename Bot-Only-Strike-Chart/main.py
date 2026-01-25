@@ -162,12 +162,14 @@ async def main():
     # Initialize OpenAlgo API client
     try:
         from openalgo import api
+        import os
         
-        api_key = config.get("api_key")
+        # Check environment variable first, then config (security best practice)
+        api_key = os.getenv("OPENALGO_API_KEY") or config.get("api_key")
         api_host = config.get("api_host", "http://127.0.0.1:5000")
         
         if not api_key:
-            raise ValueError("api_key not found in config.yaml")
+            raise ValueError("api_key not found in config.yaml or OPENALGO_API_KEY environment variable")
         
         client = api(api_key=api_key, host=api_host)
         logger.info(f"OpenAlgo API client initialized (host: {api_host})")
