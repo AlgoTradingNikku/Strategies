@@ -74,6 +74,30 @@ class TradePersistence:
             )
         """)
         
+        # Migration: Add missing columns if upgrading from older version
+        cursor = self.conn.execute("PRAGMA table_info(trades)")
+        columns_on_disk = {column[1]: column[2] for column in cursor.fetchall()}
+        
+        # All columns from the current schema
+        required_columns = {
+            'symbol': 'TEXT', 'state': 'TEXT', 'side': 'TEXT', 'entry_price': 'REAL',
+            'current_price': 'REAL', 'highest_price': 'REAL', 'lowest_price': 'REAL',
+            'quantity': 'INTEGER', 'entry_time': 'TEXT', 'exit_time': 'TEXT',
+            'exit_price': 'REAL', 'exit_reason': 'TEXT', 'pnl': 'REAL',
+            'pnl_pct': 'REAL', 'atr': 'REAL', 'tsl_level': 'REAL',
+            'last_stage': 'TEXT', 'obs_candles': 'INTEGER', 'obs_start_time': 'TEXT',
+            'idx_at_resolution': 'REAL', 'expiry_params': 'TEXT', 'metadata': 'TEXT',
+            'trend_reversed': 'INTEGER', 'manual_exit_pending': 'INTEGER', 'updated_at': 'TEXT'
+        }
+        
+        for col_name, col_type in required_columns.items():
+            if col_name not in columns_on_disk:
+                print(f"[DB] Migrating: Adding missing column '{col_name}' to 'trades' table")
+                try:
+                    self.conn.execute(f"ALTER TABLE trades ADD COLUMN {col_name} {col_type}")
+                except Exception as e:
+                    print(f"[DB ERROR] Could not add column {col_name}: {e}")
+        
         # Trade history table (completed trades)
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS trade_history (
@@ -117,7 +141,13 @@ class TradePersistence:
         trade_dict = trade.to_dict()
         
         self.conn.execute("""
-            INSERT OR REPLACE INTO trades VALUES 
+            INSERT OR REPLACE INTO trades (
+                symbol, state, side, entry_price, current_price, highest_price, 
+                lowest_price, quantity, entry_time, exit_time, exit_price, 
+                exit_reason, pnl, pnl_pct, atr, tsl_level, last_stage, 
+                obs_candles, obs_start_time, idx_at_resolution, expiry_params, 
+                metadata, trend_reversed, manual_exit_pending, updated_at
+            ) VALUES 
             (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             trade_dict["symbol"],

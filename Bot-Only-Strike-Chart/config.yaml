@@ -6,8 +6,6 @@ strategy_name: "Bot-Only-Strike-Chart"
 live_trade: True               # Set to True for real orders, False for observation only
 index_query: "NIFTY"           # Underlying index symbol
 index_exchange: "NSE_INDEX"    # Exchange for index data
-index_use_ha: False            # False = OHLC (Recommended), True = Heikin-Ashi
-signal_source: "OPTION"        # Signal source: "INDEX" or "OPTION"
 
 # Option Contract Selection
 strike_selection:
@@ -45,7 +43,7 @@ strike_selection:
 option:
   ltf:
     timeframe: "3m"             # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
-    use_ha: True                # False = OHLC (Recommended for Options), True = HA
+    use_ha: False               # False = OHLC (Recommended for Options), True = HA
     sensitivity: 1.0            # UTBot Sensitivity (Key Factor!)
     atr: 10                     # UTBot ATR Period
 
@@ -141,8 +139,12 @@ tsl:
   
   # Profit Guard (Lock profits as price moves up)
   enable_profit_guard: True
-  guard_1_pct: 5.0              # At 5% profit...
-  guard_1_trail: 2.0            # Move TSL to 2% profit (Breakeven+)
+  guard_1_pct: 5.0              # Stage 1: At 5% profit...
+  guard_1_trail: 2.0            # ...move TSL to 2% profit (Breakeven+)
+  guard_2_pct: 8.0              # Stage 2: At 8% profit...
+  guard_2_trail: 4.0            # ...move TSL to 4% profit
+  guard_3_pct: 12.0             # Stage 3: At 12% profit...
+  guard_3_trail: 6.0            # ...move TSL to 6% profit
 
 # ========================================
 # RE-ENTRY PROTECTION

@@ -8,6 +8,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from datetime import datetime
+import functools
 from enum import Enum
 
 
@@ -277,7 +278,12 @@ class OrderManager:
                 # Check order status
                 status = await self._get_order_status(order_id)
                 
-                if status == "COMPLETE" or status == "FILLED": # 'COMPLETE' is often used by OpenAlgo
+                # Robust status check (handle string or other formats)
+                if not status:
+                    continue
+                    
+                status = str(status).upper()
+                if status in ["COMPLETE", "FILLED"]: # 'COMPLETE' is often used by OpenAlgo
                     print(f"Smart Limit filed! ID: {order_id}")
                     return OrderResult(
                         success=True,
@@ -326,10 +332,16 @@ class OrderManager:
                 self.client.orderbook
             )
             
-            if response and 'data' in response:
-                for order in response['data']:
-                    if order.get('orderid') == order_id:
-                        return order.get('status', 'PENDING')
+            if response:
+                # Handle both dict and string responses from common API client issues
+                if isinstance(response, str):
+                    logger.warning(f"API returned string instead of dict for orderbook: {response}")
+                    return "UNKNOWN"
+                    
+                if 'data' in response:
+                    for order in response['data']:
+                        if str(order.get('orderid')) == str(order_id):
+                            return order.get('status', 'PENDING')
             
         except Exception as e:
             print(f"Error getting order status: {e}")
@@ -342,10 +354,14 @@ class OrderManager:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
-                self.client.cancelorder,
-                order_id
+                functools.partial(self.client.cancelorder, orderid=order_id)
             )
             
+            # Handle string response
+            if isinstance(response, str):
+                logger.warning(f"API returned string for cancelorder: {response}")
+                return "success" in response.lower()
+                
             return response and response.get("status") == "success"
         
         except Exception as e:

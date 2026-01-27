@@ -56,27 +56,12 @@ def print_startup_banner(config: dict, logger):
     index_query = config.get("index_query", "NIFTY")
     index_exchange = config.get("index_exchange", "NSE_INDEX")
     
-    # Signal source
-    signal_source = config.get("signal_source", "OPTION").upper()
-    
     # Manual strikes
     strike_cfg = config.get("strike_selection", {})
     manual_strikes = strike_cfg.get("manual_strikes", [])
     
     # Indicator settings
-    idx_ltf_cfg = config.get("index", {}).get("ltf", {})
-    idx_htf_cfg = config.get("index", {}).get("htf", {})
     opt_ltf_cfg = config.get("option", {}).get("ltf", {})
-    opt_htf_cfg = config.get("option", {}).get("htf", {})
-    
-    idx_ltf_tf = idx_ltf_cfg.get("timeframe", opt_ltf_cfg.get("timeframe", "3m"))
-    idx_ltf_sens = idx_ltf_cfg.get("sensitivity", 1.0)
-    idx_ltf_atr = idx_ltf_cfg.get("atr_period", 10)
-    
-    idx_htf_tf = idx_htf_cfg.get("timeframe", "15m")
-    idx_htf_sens = idx_htf_cfg.get("sensitivity", 1.0)
-    idx_htf_atr = idx_htf_cfg.get("atr_period", 10)
-    idx_htf_enabled = idx_htf_cfg.get("enabled", False)
     
     opt_ltf_tf = opt_ltf_cfg.get("timeframe", "3m")
     opt_ltf_sens = opt_ltf_cfg.get("sensitivity", 1.0)
@@ -85,20 +70,7 @@ def print_startup_banner(config: dict, logger):
     # TSL settings
     tsl_cfg = config.get("tsl", {})
     tsl_mode = tsl_cfg.get("mode", "ATR").upper()
-    tsl_detail = ""
-    if tsl_mode == "ATR":
-        tsl_detail = f"{tsl_cfg.get('atr_multiplier', 1.5)}"
-    elif tsl_mode == "PERCENT":
-        tsl_detail = f"{tsl_cfg.get('trail_pct', 4.0)}%"
-    elif tsl_mode == "POINTS":
-        tsl_detail = f"{tsl_cfg.get('trail_points', 50)} points"
     
-    # Age settings
-    entry_logic = config.get("entry_logic", {})
-    idx_max_age = entry_logic.get("index_max_trend_age", 8)
-    opt_max_age = entry_logic.get("option_max_trend_age", 8)
-    
-    # Bot mode
     live_mode = config.get("live_trade", False)
     mode_str = "LIVE TRADE" if live_mode else "PAPER/OBSERVE"
     

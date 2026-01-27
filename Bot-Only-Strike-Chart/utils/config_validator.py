@@ -52,7 +52,11 @@ class ConfigValidator:
                 "trail_points": {"type": (int, float), "min": 1, "required": False},
                 "enable_profit_guard": {"type": bool, "required": False},
                 "guard_1_pct": {"type": (int, float), "min": 0, "required": False},
-                "guard_1_trail": {"type": (int, float), "min": 0, "required": False}
+                "guard_1_trail": {"type": (int, float), "min": 0, "required": False},
+                "guard_2_pct": {"type": (int, float), "min": 0, "required": False},
+                "guard_2_trail": {"type": (int, float), "min": 0, "required": False},
+                "guard_3_pct": {"type": (int, float), "min": 0, "required": False},
+                "guard_3_trail": {"type": (int, float), "min": 0, "required": False}
             }
         },
         
@@ -200,8 +204,13 @@ class ConfigValidator:
         
         # 4. Profit guard stages logical order
         if tsl_cfg.get("enable_profit_guard", False):
-            g1 = tsl_cfg.get("guard_1_pct", 0)
-            g2 = tsl_cfg.get("guard_2_pct", 0)
-            g3 = tsl_cfg.get("guard_3_pct", 0)
-            if not (g1 < g2 < g3):
-                errors.append("tsl: Profit guard stages must be in ascending order (guard_1_pct < guard_2_pct < guard_3_pct)")
+            # Only validate order for stages that are explicitly defined
+            stages = []
+            for i in range(1, 4):
+                val = tsl_cfg.get(f"guard_{i}_pct")
+                if val is not None:
+                    stages.append((f"guard_{i}_pct", val))
+            
+            for i in range(len(stages) - 1):
+                if stages[i][1] >= stages[i+1][1]:
+                    errors.append(f"tsl: Profit guard stages must be in ascending order ({stages[i][0]} < {stages[i+1][0]})")
