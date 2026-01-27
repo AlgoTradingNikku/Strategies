@@ -22,13 +22,8 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY20JAN2625800CE"
-    - "NIFTY20JAN2625800PE"
-    - "NIFTY20JAN2625700CE"
-    - "NIFTY20JAN2625700PE"
-    - "NIFTY20JAN2625600CE"
-    - "NIFTY20JAN2625600PE"
-    #- "NIFTY20JAN2625900CE"
+    - "NIFTY03FEB2625000CE"
+    - "NIFTY03FEB2625000PE"
     #- "NIFTY20JAN2625900PE"
   # Price Cap Logic:
   # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
@@ -258,7 +253,7 @@ greeks_monitoring:
 # ========================================
 # 9. API & SYSTEM
 # ========================================
-api_key: "a1e43574fd5008b00b81024f71096fdc966bed01a5b64a13af36fb2b7ea41faf"
+api_key: "d9cc2b856cdbcb6e938217543dc9517748cd04888e360ded3c76be1000a01633"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
