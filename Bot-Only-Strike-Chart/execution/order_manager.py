@@ -335,11 +335,19 @@ class OrderManager:
             if response:
                 # Handle both dict and string responses from common API client issues
                 if isinstance(response, str):
-                    logger.warning(f"API returned string instead of dict for orderbook: {response}")
+                    print(f"[DEBUG] API returned string for orderbook: {response}")
+                    return "UNKNOWN"
+                
+                # Defensive check: ensure response is dict before calling .get()
+                if not isinstance(response, dict):
+                    print(f"[DEBUG] Orderbook response is not dict: {type(response)}")
                     return "UNKNOWN"
                     
                 if 'data' in response:
                     for order in response['data']:
+                        # Skip if order item is not a dict (API sometimes returns strings)
+                        if not isinstance(order, dict):
+                            continue
                         if str(order.get('orderid')) == str(order_id):
                             return order.get('status', 'PENDING')
             
@@ -354,7 +362,7 @@ class OrderManager:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
                 None,
-                functools.partial(self.client.cancelorder, orderid=order_id)
+                functools.partial(self.client.cancelorder, order_id=order_id)
             )
             
             # Handle string response

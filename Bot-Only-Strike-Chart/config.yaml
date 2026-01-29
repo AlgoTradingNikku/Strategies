@@ -21,10 +21,10 @@ strike_selection:
   # The bot will scan ALL symbols in this list and execute ANY that match the logic.
   # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
   manual_strikes: 
-    - "NIFTY27JAN2625000CE"
-    - "NIFTY27JAN2625000PE"
-    #- "NIFTY20JAN2625600CE"
-    #- "NIFTY20JAN2625600PE"
+    #- "RELIANCE24FEB261390CE"
+    #- "RELIANCE24FEB261390PE"
+    - "NIFTY03FEB2625200CE"
+    - "NIFTY03FEB2625200PE"
     #- "NIFTY20JAN2625500CE"
     #- "NIFTY20JAN2625500PE"
     #- "NIFTY20JAN2625900CE"
@@ -34,11 +34,6 @@ strike_selection:
   # Useful for hero-zero trades or strict budget allocation.
   max_option_price: 0          # Limit entry if Price > X. (0 = No Limit)
   
-# ========================================
-# 2. STRATEGY PARAMETERS (Smart Momentum)
-# ========================================
-
-
 # Option Chart Settings (for entry validation)
 option:
   ltf:
@@ -131,12 +126,22 @@ exit_conditions:
 # TSL & RISK MANAGEMENT
 # ========================================
 tsl:
-  mode: "PERCENT"               # "ATR", "PERCENT", or "POINTS"
+  mode: "POINTS"                # "ATR", "PERCENT", or "POINTS"
   atr_multiplier: 1.5           # TSL = High - (ATR * 1.5). Lower this to 1.0 for tighter stops.
   
   # Percent Mode settings (if mode="PERCENT")
-  trail_pct: 4.0               # TSL = High - 10%
+  trail_pct: 4.0                # TSL = High - 4%
   
+  # Points Mode settings (if mode="POINTS")
+  trail_points: 4.0             # TSL = High - 4 points (fixed gap)
+  
+  # TSL Cushion (Extra buffer when TSL about to be hit - prevents premature exit)
+  # Application to all the modes.
+  cushion:
+    enabled: False               # Enable/Disable cushion feature
+    cushion_points: 2.0         # Points (Rs) to move TSL down when hit (always in points)
+    max_attempts: 2             # Max times to apply cushion before actual exit
+
   # Profit Guard (Lock profits as price moves up)
   enable_profit_guard: True
   guard_1_pct: 5.0              # Stage 1: At 5% profit...
@@ -145,7 +150,7 @@ tsl:
   guard_2_trail: 4.0            # ...move TSL to 4% profit
   guard_3_pct: 12.0             # Stage 3: At 12% profit...
   guard_3_trail: 6.0            # ...move TSL to 6% profit
-
+  
 # ========================================
 # RE-ENTRY PROTECTION
 # ========================================

@@ -34,6 +34,7 @@ class RiskDecision:
     message: str = ""
     new_tsl_level: float = 0.0
     new_stage: str = ""
+    cushion_applied: bool = False  # True if cushion was used instead of exit
 
 
 class TrailingStopManager:
@@ -169,6 +170,12 @@ class RiskManager:
         # Trend reversal exit
         self.exit_on_reversal = config.get("exit_on_reversal", True)
         
+        # TSL Cushion settings (gives extra buffer before exit)
+        cushion_config = tsl_config.get("cushion", {})
+        self.cushion_enabled = cushion_config.get("enabled", False)
+        self.cushion_points = cushion_config.get("cushion_points", 2.0)
+        self.cushion_max_attempts = cushion_config.get("max_attempts", 2)
+        
         # Daily P&L tracking
         self.daily_pnl = 0.0
         self.daily_trades = 0
@@ -218,10 +225,25 @@ class RiskManager:
         
         # Check if TSL hit
         if current_price <= tsl_level:
+            # === TSL CUSHION LOGIC ===
+            # Instead of immediate exit, give extra buffer X times
+            if self.cushion_enabled and trade.cushion_attempts < self.cushion_max_attempts:
+                # Apply cushion: move TSL down by cushion_points
+                new_tsl = tsl_level - self.cushion_points
+                cushion_num = trade.cushion_attempts + 1
+                return RiskDecision(
+                    should_exit=False,
+                    message=f"TSL Cushion #{cushion_num} applied: TSL moved from {tsl_level:.2f} to {new_tsl:.2f} (-{self.cushion_points:.1f} pts)",
+                    new_tsl_level=new_tsl,
+                    new_stage=stage,
+                    cushion_applied=True  # Signal to engine to increment cushion_attempts
+                )
+            
+            # No cushion available or disabled - exit
             return RiskDecision(
                 should_exit=True,
                 reason=ExitReason.TSL_HIT,
-                message=f"TSL Hit: Price {current_price:.2f} <= TSL {tsl_level:.2f} (Stage: {stage})",
+                message=f"TSL Hit: Price {current_price:.2f} <= TSL {tsl_level:.2f} (Stage: {stage}, Cushions: {trade.cushion_attempts}/{self.cushion_max_attempts})",
                 new_tsl_level=tsl_level,
                 new_stage=stage
             )
@@ -286,6 +308,12 @@ class RiskManager:
         self.daily_loss_limit = new_config.get("daily_loss_limit", -5000)
         self.daily_profit_target = new_config.get("daily_profit_target", 10000)
         self.exit_on_reversal = new_config.get("exit_on_reversal", True)
+        
+        # Update cushion settings
+        cushion_config = tsl_config.get("cushion", {})
+        self.cushion_enabled = cushion_config.get("enabled", False)
+        self.cushion_points = cushion_config.get("cushion_points", 2.0)
+        self.cushion_max_attempts = cushion_config.get("max_attempts", 2)
 
     def get_daily_stats(self) -> dict:
         """Get current daily statistics"""

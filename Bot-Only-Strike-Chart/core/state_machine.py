@@ -62,6 +62,7 @@ class Trade:
     atr: float = 0.0
     tsl_level: float = 0.0  # Current trailing stop level
     last_stage: str = "INIT"  # BE, TRAILING, etc.
+    cushion_attempts: int = 0  # Number of TSL cushions applied
     
     # Observation tracking (for OBSERVING state)
     obs_candles: int = 0
@@ -151,6 +152,7 @@ class Trade:
             "atr": self.atr,
             "tsl_level": self.tsl_level,
             "last_stage": self.last_stage,
+            "cushion_attempts": self.cushion_attempts,
             "obs_candles": self.obs_candles,
             "obs_start_time": self.obs_start_time.isoformat() if self.obs_start_time else None,
             "idx_at_resolution": self.idx_at_resolution,

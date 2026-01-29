@@ -577,18 +577,20 @@ class TradingEngine:
         exec_cfg = self.config.get("execution", {})
         parallel_enabled = exec_cfg.get("parallel_scanning", True)
         
-        # OPTIMIZATION B2: Filter strikes to scan (skip those in position or on cooldown)
-        # This prevents unnecessary API calls for strikes that cannot be traded
+        # OPTIMIZATION B2: Filter strikes to scan (skip those on cooldown only)
+        # We still need data for active positions (for indicator display in heartbeat)
         strikes_to_scan = []
+        strikes_in_position = []
         skipped_count = 0
         
         for symbol in manual_strikes:
-            # Skip if already in position
+            # Track if already in position (still need data for display)
             if symbol in self.trades and self.trades[symbol].state == TradeState.POSITION:
-                skipped_count += 1
+                strikes_in_position.append(symbol)
+                strikes_to_scan.append(symbol)  # Still fetch data for indicators
                 continue
             
-            # Skip if on cooldown
+            # Skip if on cooldown (no need to fetch data)
             if self._is_symbol_on_cooldown(symbol):
                 skipped_count += 1
                 continue
@@ -819,6 +821,10 @@ class TradingEngine:
                     
                     # Check for UTBot sell signal (signal == -1 means fresh sell)
                     if utbot_result.signal == -1:
+                        # Clear any pending BUY signal state (trend reversed, stale signal invalid)
+                        if symbol in self._signal_wait_state:
+                            del self._signal_wait_state[symbol]
+                        
                         if priority == "SIGNAL_FIRST":
                             # Exit immediately on UTBot sell
                             print(f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol}. Exiting...")
@@ -1333,15 +1339,27 @@ class TradingEngine:
             # Removed incorrect inversion for PUTs (we are Long Options)
             curr_pnl_pct = (curr_pnl / (trade.entry_price * trade.quantity)) * 100
             
-            # Update TSL level
-            if decision.new_tsl_level > 0:
+            # Update TSL level (only if changed)
+            if decision.new_tsl_level > 0 and decision.new_tsl_level != trade.tsl_level:
                 old_tsl = trade.tsl_level
-                print(f"[RISK] {symbol} | TSL moved from {old_tsl:.2f} to {decision.new_tsl_level:.2f} (Stage: {decision.new_stage})")
-                trade = Trade(**{
-                    **trade.__dict__,
-                    "tsl_level": decision.new_tsl_level,
-                    "last_stage": decision.new_stage
-                })
+                
+                # Check if cushion was applied (TSL moved DOWN instead of exit)
+                if decision.cushion_applied:
+                    print(f"[RISK] {symbol} | {decision.message}")
+                    trade = Trade(**{
+                        **trade.__dict__,
+                        "tsl_level": decision.new_tsl_level,
+                        "last_stage": decision.new_stage,
+                        "cushion_attempts": trade.cushion_attempts + 1  # Increment cushion counter
+                    })
+                else:
+                    print(f"[RISK] {symbol} | TSL: {old_tsl:.2f} → {decision.new_tsl_level:.2f} (Stage: {decision.new_stage})")
+                    trade = Trade(**{
+                        **trade.__dict__,
+                        "tsl_level": decision.new_tsl_level,
+                        "last_stage": decision.new_stage
+                    })
+                    
                 self.trades[symbol] = trade
                 self.persistence.save_trade(trade)
             
@@ -1365,7 +1383,7 @@ class TradingEngine:
                     logger.info(f"[MANUAL_EXIT_REQ] {symbol}: {decision.message}")
                     continue
                 
-                print(f"[RISK] Triggering EXIT for {symbol}: {decision.message}")
+                print(f"[RISK] Triggering EXIT for {symbol} (Entry: {trade.entry_price:.2f}): {decision.message}")
                 logger.info(f"[EXIT] {symbol}: {decision.message}")
                 await self._execute_exit(trade, decision.reason.value)
             
