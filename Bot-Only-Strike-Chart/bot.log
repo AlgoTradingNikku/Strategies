@@ -1,0 +1,97 @@
+2026-01-29 11:41:29,557 - INFO - Configuration banner printed
+2026-01-29 11:41:30,438 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-29 11:41:30,788 - INFO - Trading Engine initialized
+2026-01-29 11:41:30,788 - INFO - Trading Engine created successfully
+2026-01-29 11:41:30,788 - INFO - Starting Trading Engine...
+2026-01-29 11:41:33,518 - INFO - [TASK] Signal scanner started
+2026-01-29 11:41:33,520 - INFO - [TASK] Risk monitor started
+2026-01-29 11:41:33,521 - INFO - [TASK] Position sync started
+2026-01-29 11:41:33,521 - INFO - [TASK] WebSocket monitor started
+2026-01-29 11:41:33,522 - INFO - [TASK] Config monitor started
+2026-01-29 12:10:15,760 - INFO - Adopting existing position: NIFTY03FEB2625200CE
+2026-01-29 12:10:15,760 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 10.44
+2026-01-29 12:10:23,492 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 12:11:26,336 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 247.40 <= TSL 247.85 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 12:11:26,863 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 12:11:26,863 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -110.50)
+2026-01-29 12:11:26,864 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=249.10, Exit=247.40, P&L=INR -110.50 (-0.68%), Reason=TSL Hit
+2026-01-29 12:19:45,709 - INFO - Shutting down...
+2026-01-29 12:19:45,714 - INFO - Trading Engine stopped
+2026-01-29 12:19:45,714 - INFO - All engine tasks cleaned up
+2026-01-29 12:19:45,714 - INFO - Goodbye!
+2026-01-29 12:19:55,078 - INFO - Configuration banner printed
+2026-01-29 12:19:55,931 - INFO - OpenAlgo API client initialized (host: http://127.0.0.1:5000)
+2026-01-29 12:19:56,339 - INFO - Trading Engine initialized
+2026-01-29 12:19:56,339 - INFO - Trading Engine created successfully
+2026-01-29 12:19:56,339 - INFO - Starting Trading Engine...
+2026-01-29 12:19:59,069 - INFO - [TASK] Signal scanner started
+2026-01-29 12:19:59,072 - INFO - [TASK] Risk monitor started
+2026-01-29 12:19:59,072 - INFO - [TASK] Position sync started
+2026-01-29 12:19:59,072 - INFO - [TASK] WebSocket monitor started
+2026-01-29 12:19:59,073 - INFO - [TASK] Config monitor started
+2026-01-29 12:22:07,637 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200CE @ 249.10 Qty=65 Type=LIMIT
+2026-01-29 12:22:15,406 - INFO - Adopting existing position: NIFTY03FEB2625200CE Qty=65
+2026-01-29 12:22:15,410 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 10.84
+2026-01-29 12:22:17,013 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 12:22:17,857 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 243.20 <= TSL 243.30 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 12:22:18,569 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 12:22:18,570 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -266.50)
+2026-01-29 12:22:18,570 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=247.30, Exit=243.20, P&L=INR -266.50 (-1.66%), Reason=TSL Hit
+2026-01-29 12:25:20,352 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200CE @ 251.25 Qty=65 Type=LIMIT
+2026-01-29 12:25:22,375 - INFO - Adopting existing position: NIFTY03FEB2625200CE Qty=65
+2026-01-29 12:25:22,386 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 10.56
+2026-01-29 12:25:29,762 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 12:26:42,179 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 247.35 <= TSL 247.35 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 12:26:42,836 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 12:26:42,836 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -201.50)
+2026-01-29 12:26:42,836 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=250.45, Exit=247.35, P&L=INR -201.50 (-1.24%), Reason=TSL Hit
+2026-01-29 13:13:53,435 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200PE @ 117.20 Qty=65 Type=LIMIT
+2026-01-29 13:13:59,783 - INFO - Adopting existing position: NIFTY03FEB2625200PE Qty=65
+2026-01-29 13:13:59,816 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200PE: 7.54
+2026-01-29 13:14:04,832 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 13:20:33,916 - INFO - [EXIT] NIFTY03FEB2625200PE: TSL Hit: Price 119.90 <= TSL 120.10 (Stage: G1, Cushions: 0/2)
+2026-01-29 13:20:35,503 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 13:20:35,503 - INFO - [TRADE CLOSED] NIFTY03FEB2625200PE: Entry=116.55, Exit=119.90, P&L=INR 217.75 (2.87%), Reason=TSL Hit
+2026-01-29 13:31:13,696 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200CE @ 300.45 Qty=65 Type=LIMIT
+2026-01-29 13:31:20,814 - INFO - Adopting existing position: NIFTY03FEB2625200CE Qty=65
+2026-01-29 13:31:20,847 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 13.34
+2026-01-29 13:31:24,572 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 13:31:51,266 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 297.10 <= TSL 297.85 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 13:31:52,579 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 13:31:52,580 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -188.50)
+2026-01-29 13:31:52,582 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=300.00, Exit=297.10, P&L=INR -188.50 (-0.97%), Reason=TSL Hit
+2026-01-29 14:08:03,576 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200PE @ 102.55 Qty=65 Type=LIMIT
+2026-01-29 14:08:07,216 - INFO - Adopting existing position: NIFTY03FEB2625200PE Qty=65
+2026-01-29 14:08:07,241 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200PE: 5.33
+2026-01-29 14:08:14,632 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 14:11:18,384 - INFO - [EXIT] NIFTY03FEB2625200PE: TSL Hit: Price 102.10 <= TSL 102.55 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 14:11:19,603 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 14:11:19,603 - INFO - [TRADE CLOSED] NIFTY03FEB2625200PE: Entry=101.75, Exit=102.10, P&L=INR 22.75 (0.34%), Reason=TSL Hit
+2026-01-29 14:12:13,987 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200CE @ 344.05 Qty=65 Type=LIMIT
+2026-01-29 14:12:21,762 - INFO - Adopting existing position: NIFTY03FEB2625200CE Qty=65
+2026-01-29 14:12:21,798 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 13.67
+2026-01-29 14:12:25,426 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 14:13:03,203 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 341.90 <= TSL 343.30 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 14:13:04,507 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 14:13:04,507 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -58.50)
+2026-01-29 14:13:04,507 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=342.80, Exit=341.90, P&L=INR -58.50 (-0.26%), Reason=TSL Hit
+2026-01-29 14:26:37,659 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200CE @ 344.05 Qty=65 Type=LIMIT
+2026-01-29 14:26:48,998 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 14:26:50,114 - INFO - Adopting existing position: NIFTY03FEB2625200CE Qty=65
+2026-01-29 14:26:50,124 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200CE: 14.08
+2026-01-29 14:27:25,209 - INFO - [EXIT] NIFTY03FEB2625200CE: TSL Hit: Price 343.95 <= TSL 344.35 (Stage: TRAILING, Cushions: 0/2)
+2026-01-29 14:27:26,464 - INFO - Trade logged to Reporting\trades.csv
+2026-01-29 14:27:26,465 - INFO - [COOLDOWN] Set 3m cooldown for NIFTY03FEB2625200CE (PnL: -48.75)
+2026-01-29 14:27:26,466 - INFO - [TRADE CLOSED] NIFTY03FEB2625200CE: Entry=344.70, Exit=343.95, P&L=INR -48.75 (-0.22%), Reason=TSL Hit
+2026-01-29 15:09:08,827 - INFO - [ENTRY] Placing BUY order for NIFTY03FEB2625200PE @ 97.55 Qty=65 Type=LIMIT
+2026-01-29 15:09:19,418 - INFO - Adopting existing position: NIFTY03FEB2625200PE Qty=65
+2026-01-29 15:09:19,434 - INFO - Calculated ATR for adopted position NIFTY03FEB2625200PE: 4.87
+2026-01-29 15:09:20,140 - ERROR - Order placement failed: Smart Limit timed out (Strict Mode)
+2026-01-29 15:15:00,834 - WARNING - [SYNC] External closure detected: NIFTY03FEB2625200PE
+2026-01-29 15:19:24,746 - INFO - Configuration reloaded successfully
+2026-01-29 15:19:28,666 - INFO - WebSocket resubscribed to updated symbols
+2026-01-29 15:19:30,971 - INFO - WebSocket successfully reconnected
+2026-01-29 15:20:28,748 - INFO - Shutting down...
+2026-01-29 15:20:28,852 - INFO - Trading Engine stopped
+2026-01-29 15:20:28,852 - INFO - All engine tasks cleaned up
+2026-01-29 15:20:28,852 - INFO - Goodbye!

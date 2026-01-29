@@ -1227,6 +1227,7 @@ class TradingEngine:
                 
                 # Place Order
                 print(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity}")
+                logger.info(f"[ENTRY] Placing BUY order for {symbol} @ {price:.2f} Qty={quantity} Type={self.config.get('execution', {}).get('order_type', 'LIMIT')}")
                 
                 # Determine Order Type from Config
                 order_type = self.config.get("execution", {}).get("order_type", "LIMIT").upper()
@@ -1554,7 +1555,7 @@ class TradingEngine:
                 # ADOPT EXISTING/EXTERNAL POSITION
                 if sym not in self.trades:
                     print(f"[SYNC] Found existing broker position: {sym} ({qty} Qty). Adopting...")
-                    logger.info(f"Adopting existing position: {sym}")
+                    logger.info(f"Adopting existing position: {sym} Qty={qty}")
                     
                     # Estimate entry price (from avg_price)
                     avg_price = float(item.get('average_price', 0) or item.get('buy_avg', 0) or 0)
