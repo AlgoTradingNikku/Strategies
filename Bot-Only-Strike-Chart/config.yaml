@@ -52,10 +52,6 @@ entry_conditions:
   use_indicator: True   # If False, bot ignores UTBot signal and scans every candle
                         # The Problem: If the market is moving sideways, 
                         #your filters might flicker "True" multiple times, leading to over-trading.
- 
-  #Filters
-  use_filters: False    # If False, bot ignores RSI/ADX/VWAP filters
-
 
   # 1: VWAP Checks
   check_vwap_bullish: False       # LTP > VWAP (Entry above fair value)
@@ -97,6 +93,15 @@ entry_conditions:
   rsi_min: 52                    # Minimum RSI for bullish entry
   rsi_max: 100                   # Maximum RSI (100 = no upper limit)
   rsi_period: 14
+  
+  # 7: Min ATR Filter (Avoid Dead Markets)
+  check_min_atr: True             # Reject entry if ATR < min_atr
+  min_atr: 5.0                    # Minimum volatility required to enter
+  # ATR Cheat Sheet (Nifty Options):
+  # < 5   : Dead/Flat Market (avoid premiums don't move)
+  # 5-10  : Low Volatility (slow movement)
+  # 10-20 : Normal/Healthy (good for trading)
+  # > 20  : High Volatility (fast moves)
 
 # ========================================
 # AUTO RE-ENTRY LOGIC (Option Chart - NEW)

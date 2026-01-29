@@ -767,22 +767,20 @@ class TradingEngine:
                     limit_price = curr_price
                     atr_val = 0.0  # Initialize default
 
-                    if use_filters:
-                        valid, f_price, reasons, atr_val = await self._check_entry_conditions(symbol, df_opt)
-                        if valid:
-                            limit_price = f_price
-                            self._last_reject_reasons[symbol] = None # Clear on success
-                        else:
-                            filters_pass = False
-                            # Store first reason for summary
-                            self._last_reject_reasons[symbol] = reasons[0] if reasons else "Unknown"
-                            
-                            if use_indicator: # Log reject only if specific signal fired
-                                print(f"[REJECT] Filters failed for {symbol}: {reasons}")
+                    # ALWAYS check filter conditions (use_filters Master Switch removed)
+                    # Individual checks are controlled via config flags
+                    valid, f_price, reasons, atr_val = await self._check_entry_conditions(symbol, df_opt)
+                    
+                    if valid:
+                        limit_price = f_price
+                        self._last_reject_reasons[symbol] = None # Clear on success
                     else:
-                        # Filters disabled, but we MUST calculate ATR for TSL/Risk Manager
-                        tech_result = self.indicators["option_tech"].calculate(df_opt, use_ha=use_ha)
-                        atr_val = tech_result.metadata.get("atr", 0.0)
+                        filters_pass = False
+                        # Store first reason for summary
+                        self._last_reject_reasons[symbol] = reasons[0] if reasons else "Unknown"
+                        
+                        if use_indicator: # Log reject only if specific signal fired
+                            print(f"[REJECT] Filters failed for {symbol}: {reasons}")
                     
                     if filters_pass:
                         print(f"[ENTRY] All conditions passed for {symbol} @ {limit_price:.2f}")
@@ -896,9 +894,13 @@ class TradingEngine:
                     rsi = tech.metadata.get('rsi', 0)
                     adx = tech.metadata.get('adx', 0)
                     vwap = tech.metadata.get('vwap', 0)
+                    atr = tech.metadata.get('atr', 0)
                     
-                    check_line = f"{symbol} | RSI: {rsi:.1f} | ADX: {adx:.1f} | VWAP: {vwap:.1f}"
+                    check_line = f"{symbol} | RSI: {rsi:.1f} | ADX: {adx:.1f} | ATR: {atr:.2f} | VWAP: {vwap:.1f}"
                     check_lines.append(check_line)
+                    
+                    # Log to file as well (User requested)
+                    logger.info(f"[CHECKS] {check_line}")
                 else:
                     check_lines.append(f"{symbol} | No Data for Checks")
 
@@ -1109,6 +1111,12 @@ class TradingEngine:
             rsi_max = cfg.get("rsi_max", 100)
             if rsi < rsi_min or rsi > rsi_max:
                 reasons.append(f"RSI out of range ({rsi:.1f} not in {rsi_min}-{rsi_max})")
+        
+        # 8. Min ATR Filter (Dead Market Check)
+        if cfg.get("check_min_atr", False):
+            min_atr = cfg.get("min_atr", 5.0)
+            if atr < min_atr:
+                reasons.append(f"Low Volatility (ATR {atr:.2f} < {min_atr})")
         
         # 8. Max Option Price Check (from strike_selection)
         max_opt_price = self.config.get("strike_selection", {}).get("max_option_price", 0)
