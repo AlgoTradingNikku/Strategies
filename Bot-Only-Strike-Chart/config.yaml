@@ -23,9 +23,9 @@ strike_selection:
   manual_strikes: 
     #- "RELIANCE24FEB261390CE"
     #- "RELIANCE24FEB261390PE"
-    - "NIFTY03FEB2625400CE"
-    - "NIFTY03FEB2625400PE"
-    #- "NIFTY20JAN2625500CE"
+    - "NIFTY03FEB2625200CE"
+    - "NIFTY03FEB2625200PE"
+    #-"NIFTY20JAN2625500CE"
     #- "NIFTY20JAN2625500PE"
     #- "NIFTY20JAN2625900CE"
     #- "NIFTY20JAN2625900PE"
@@ -37,7 +37,11 @@ strike_selection:
 # Option Chart Settings (for entry validation)
 option:
   ltf:
-    timeframe: "3m"             # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
+    timeframe: "1m"            # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
+    repaint: False               # True = Enter on Live Candle (Faster, but signal can flicker)
+                                # False = Enter on Candle Close (Confirmed, but lags by 1 candle)
+                                # ADVICE: Use 'False' for 1m TF to avoid fakeouts. 
+                                # Use 'True' for 5m+ TF where waiting for a close is too slow.
     use_ha: False               # False = OHLC (Recommended for Options), True = HA
     sensitivity: 1.0            # UTBot Sensitivity (Key Factor!)
     atr: 10                     # UTBot ATR Period
@@ -95,8 +99,9 @@ entry_conditions:
   rsi_period: 14
   
   # 7: Min ATR Filter (Avoid Dead Markets)
-  check_min_atr: True             # Reject entry if ATR < min_atr
-  min_atr: 5.0                    # Minimum volatility required to enter
+  check_min_atr: False #entry if ATR < min_atr
+  min_atr: 6.0                    # Minimum volatility required to enter
+                                  # atr value of utbot is used
   # ATR Cheat Sheet (Nifty Options):
   # < 5   : Dead/Flat Market (avoid premiums don't move)
   # 5-10  : Low Volatility (slow movement)

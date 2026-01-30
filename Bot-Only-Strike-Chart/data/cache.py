@@ -33,8 +33,8 @@ class MarketDataCache:
     
     def __init__(self):
         """Initialize caches with TTL settings"""
-        # Live prices: 1 second TTL (very fresh)
-        self._price_cache = TTLCache(maxsize=100, ttl=1)
+        # Live prices: 10 second TTL (Ensure it survives between scan/hb loops)
+        self._price_cache = TTLCache(maxsize=100, ttl=10)
         
         # Historical data: 60 second TTL
         self._history_cache = TTLCache(maxsize=50, ttl=60)

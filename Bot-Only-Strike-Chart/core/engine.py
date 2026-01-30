@@ -240,6 +240,7 @@ class TradingEngine:
             asyncio.create_task(self.position_sync_task()),
             asyncio.create_task(self.monitor_websocket_task()),
             asyncio.create_task(self.monitor_config_task()),
+            asyncio.create_task(self.monitor_command_task()),
         ]
         
         try:
@@ -682,6 +683,11 @@ class TradingEngine:
                             elif trend == -1: state_emoji = "[BEAR]"
                             else: state_emoji = "[NEUT]"
                         
+                        # Add Stored Signal Indicator (*)
+                        stored_signal = ""
+                        if symbol in self._signal_wait_state:
+                            stored_signal = "*" # Indicates signal is stored/active in memory
+                        
                         # Add rejection reason if trend is bullish but filters failed
                         if state_emoji == "[BULL]" and symbol in self._last_reject_reasons:
                             reason = self._last_reject_reasons[symbol]
@@ -694,13 +700,66 @@ class TradingEngine:
                                 elif "expensive" in reason: rejection_suffix = ":WAIT_VWAP_CAP"
                                 elif "VWAP" in reason: rejection_suffix = ":WAIT_VWAP"
                                 elif "Momentum" in reason: rejection_suffix = ":WAIT_MOM"
+                                # Enhanced: Show low volatility
+                                elif "Volatility" in reason or "ATR" in reason: rejection_suffix = ":WAIT_ATR" 
                                 else: rejection_suffix = ":WAIT"
                         
-                        # Short symbol using regex (e.g. NIFTY...25500PE -> 25500PE)
-                        match = re.search(r'(\d+[CP]E)$', symbol)
-                        short_sym = match.group(1) if match else (symbol[-10:] if len(symbol) > 10 else symbol)
+                        # Short symbol using regex (e.g. NIFTY03FEB2625300PE -> 03Feb25300PE)
+                        # We use a more specific pattern to capture DDMMM and skip the YY year
+                        match = re.search(r'(\d+[A-Z]{3})\d{2}(\d+[CP]E)', symbol)
+                        if match:
+                            expiry_part = match.group(1) # e.g. 03FEB
+                            strike_part = match.group(2) # e.g. 25300PE
+                            short_sym = f"{expiry_part[:2]}{expiry_part[2:].capitalize()}{strike_part}"
+                        else:
+                            # Fallback for unexpected formats
+                            match_old = re.search(r'(\d+[CP]E)$', symbol)
+                            short_sym = match_old.group(1) if match_old else (symbol[-10:] if len(symbol) > 10 else symbol)
                         
-                        scan_summary.append(f"{short_sym}:{state_emoji}{rejection_suffix}{strike_price:.1f}")
+                        # Fetch ATR if available
+                        atr_str = ""
+                        try:
+                            # ATR is calculated in _process_strike_data but not stored globally for simple access
+                            # However, we can peek into the dataframe if it has 'ATR' column or use cached value?
+                            # _check_entry_conditions returns ATR, maybe we can cache it?
+                            # Simpler: just use the ONE global indicator instance to quick-calc if data exists
+                            if symbol in data_map:
+                                df_scan = data_map[symbol]
+                                if len(df_scan) > 20: # Need some history
+                                    # This is slightly expensive to recalc every scan logic, 
+                                    # but safer than assuming where it's stored. 
+                                    # OR we can rely on _last_reject_reasons giving us a hint? No.
+                                    # Let's trust the 'option_tech' indicator is fast.
+                                    # Actually, let's use a try-except block with the dataframe
+                                    # Re-calculating full indicators just for log is bad. 
+                                    # Optimization: Check if 'ATR' exists in df? 
+                                    # The indicators usually return a RESULT object, they don't modify DF in place unless told.
+                                    # The bot uses `self.indicators["option_tech"].calculate(df)`
+                                    # Let's do a quick calculation or check if we stored it.
+                                    # We don't store ATR globally. Let's calculate it quickly.
+                                    
+                                    # Better approach: We don't want to slow down scanning.
+                                    # Let's just print "ATR" if we have it in the recent calc cache.
+                                    # We don't have a specific ATR cache. 
+                                    # Let's Add it to self.cache or self._last_atr?
+                                    pass 
+                        except: pass
+
+                        # Fallback: Just re-calculate it. It's fast enough for 2 symbols.
+                        if symbol in data_map:
+                             try:
+                                 df_scan = data_map[symbol]
+                                 if len(df_scan) > 14:
+                                     # Create a lightweight calc just for ATR? 
+                                     # No, just use the existing one.
+                                     use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
+                                     res = self.indicators["option_tech"].calculate(df_scan, use_ha=use_ha)
+                                     val = res.metadata.get("atr", 0.0)
+                                     if val > 0:
+                                         atr_str = f"|ATR:{val:.1f}"
+                             except: pass
+
+                        scan_summary.append(f"{short_sym}:{state_emoji}{stored_signal}{rejection_suffix}{atr_str}|{strike_price:.1f}")
                     if scan_summary:
                         print(f"        SCAN | {' | '.join(scan_summary)}")
 
@@ -728,8 +787,18 @@ class TradingEngine:
         Used by both parallel and sequential scanning.
         """
         try:
+            # Repaint logic: 
+            # True = entry on live candle (faster, but signal can flicker)
+            # False = entry only after candle close (slower, but confirmed)
+            repaint = self.config.get("option", {}).get("ltf", {}).get("repaint", True)
+            
             # Calculate UTBot on Option chart
-            utbot_result = self.indicators["option_utbot"].calculate(df_opt, use_ha=use_ha)
+            if not repaint and len(df_opt) > 1:
+                # Use ONLY completed candles for signal detection
+                utbot_result = self.indicators["option_utbot"].calculate(df_opt.iloc[:-1], use_ha=use_ha)
+            else:
+                # Use live candle data (Default)
+                utbot_result = self.indicators["option_utbot"].calculate(df_opt, use_ha=use_ha)
             
             # Store UTBot state for verbose logging
             self._last_utbot_state[symbol] = utbot_result.trend
@@ -751,12 +820,17 @@ class TradingEngine:
                     trigger_active = True
                 elif utbot_result.signal == 1:
                     # Indicator enabled AND Signal fired
-                    print(f"\n[SIGNAL] UTBot BUY detected on {symbol}")
                     trigger_active = True
                 
                 if trigger_active:
                     # Track signal for re-entry attempts (even if filters fail)
                     if symbol not in self._signal_wait_state:
+                        # Log ONLY the first time the signal is detected
+                        curr_price = df_opt['Close'].iloc[-1]
+                        msg = f"\n[SIGNAL] UTBot BUY detected on {symbol} @ {curr_price:.2f}"
+                        print(msg)
+                        logger.info(msg.strip())
+                        
                         self._signal_wait_state[symbol] = {
                             'signal_time': datetime.now(),
                             're_entry_attempts': 0
@@ -780,7 +854,11 @@ class TradingEngine:
                         self._last_reject_reasons[symbol] = reasons[0] if reasons else "Unknown"
                         
                         if use_indicator: # Log reject only if specific signal fired
-                            print(f"[REJECT] Filters failed for {symbol}: {reasons}")
+                            # Only log if reasons changed to avoid spamming the console every 5s
+                            last_reason = self._last_reject_reasons.get(symbol)
+                            current_reason = reasons[0] if reasons else "Unknown"
+                            if current_reason != last_reason:
+                                print(f"[REJECT] Filters failed for {symbol}: {reasons}")
                     
                     if filters_pass:
                         print(f"[ENTRY] All conditions passed for {symbol} @ {limit_price:.2f}")
@@ -825,7 +903,10 @@ class TradingEngine:
                         
                         if priority == "SIGNAL_FIRST":
                             # Exit immediately on UTBot sell
-                            print(f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol}. Exiting...")
+                            curr_price = df_opt['Close'].iloc[-1]
+                            msg = f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol} @ {curr_price:.2f}. Exiting..."
+                            print(msg)
+                            logger.info(msg.strip())
                             await self._execute_exit(self.trades[symbol], "UTBot Sell Signal")
                         else:
                             # TSL_FIRST: Just log, don't exit
@@ -1614,6 +1695,11 @@ class TradingEngine:
                 self.persistence.archive_trade(trade)
                 del self.trades[symbol]
                 
+                # BUG FIX: Clear signal state to prevent immediate re-entry
+                if symbol in self._signal_wait_state:
+                    del self._signal_wait_state[symbol]
+                    logger.info(f"[SYNC] Cleared signal state for {symbol} after external closure")
+                
     async def monitor_websocket_task(self):
         """Monitor WebSocket connection and reconnect if dropped."""
         logger.info("[TASK] WebSocket monitor started")
@@ -1678,3 +1764,115 @@ class TradingEngine:
                 
         except Exception as e:
             logger.error(f"Reconnection error: {e}")
+
+    async def monitor_command_task(self):
+        """
+        Monitor 'commands/buy.yaml' for manual force entry instructions.
+        Allows user to bypass filters and enter a trade immediately.
+        """
+        import os
+        import yaml
+        
+        cmd_dir = os.path.join(os.getcwd(), "commands")
+        cmd_file = os.path.join(cmd_dir, "buy.yaml")
+        
+        # Ensure commands directory exists
+        if not os.path.exists(cmd_dir):
+            try:
+                os.makedirs(cmd_dir, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create commands dir: {e}")
+        
+        logger.info(f"[TASK] Command monitor started (watching {cmd_file})")
+        
+        while self.running:
+            try:
+                if os.path.exists(cmd_file):
+                    # Check if already executed (simple text check first to avoid noise)
+                    is_executed = False
+                    try:
+                        with open(cmd_file, 'r') as f:
+                            raw_content = f.read()
+                            if "# [EXECUTED]" in raw_content:
+                                is_executed = True
+                    except: pass
+                    
+                    if is_executed:
+                        # File exists but is already marked done. Ignore.
+                        await asyncio.sleep(2)
+                        continue
+
+                    # Read command
+                    try:
+                        with open(cmd_file, 'r') as f:
+                            data = yaml.safe_load(f)
+                        
+                        if data and 'symbol' in data:
+                            symbol = data['symbol']
+                            logger.info(f"[COMMAND] Force Entry triggered for {symbol}")
+                            print(f"\n[COMMAND] FORCE ENTRY DETECTED: {symbol}")
+                            
+                            # 1. Comment out the command in file to mark as done (PRESERVE FILE)
+                            try:
+                                with open(cmd_file, 'r') as f:
+                                    lines = f.readlines()
+                                
+                                with open(cmd_file, 'w') as f:
+                                    for line in lines:
+                                        # Comment out the symbol line to prevent re-execution
+                                        if line.strip().startswith("symbol:"):
+                                            f.write(f"# [EXECUTED] {line}")
+                                        else:
+                                            f.write(line)
+                            except OSError as e:
+                                logger.error(f"Failed to update command file: {e}")
+                                # If we can't update file, we MUST delete it to prevent infinite loop
+                                try:
+                                    os.remove(cmd_file)
+                                except: pass
+                            
+                            # 2. Reset Signal State (Fresh Start)
+                            if symbol in self._signal_wait_state:
+                                del self._signal_wait_state[symbol]
+                            
+                            # 3. Execute Entry (Fetch LTP - with Retry)
+                            # Sometimes cache expires right before command. Retry for up to 5s.
+                            ltp = 0.0
+                            for attempt in range(6): # 0 to 5 seconds
+                                ltp = self.cache.get_price(symbol) or 0.0
+                                if ltp == 0:
+                                    # Try fetching via REST if cache empty
+                                    try:
+                                        ltp = await self.data_provider.get_ltp(symbol, "NFO") or 0.0
+                                    except:
+                                        ltp = 0.0
+                                
+                                if ltp > 0:
+                                    break # Got it!
+                                
+                                if attempt < 5:
+                                    print(f"  [COMMAND] Waiting for {symbol} price (Attempt {attempt+1}/5)...")
+                                    await asyncio.sleep(1)
+                            
+                            if ltp > 0:
+                                # Force entry!
+                                side = "CALL" if "CE" in symbol else "PUT"
+                                await self._execute_entry(symbol, side, ltp, None, atr=0.0)
+                                print(f"  [COMMAND] Order placed successfully at {ltp}")
+                            else:
+                                print(f"[ERROR] Could not fetch price for {symbol} after 5s, aborting entry.")
+                                logger.error(f"Force entry failed: No price for {symbol}")
+                        else:
+                            # Only warn if it's NOT an empty file or just comments
+                            if data is not None: 
+                                print(f"[ERROR] Invalid command file format. Missing 'symbol'.")
+                                # Don't delete, maybe user is editing it right now?
+                                # Just wait.
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing command file: {e}")
+            
+            except Exception as e:
+                logger.error(f"Command monitor loop error: {e}")
+            
+            await asyncio.sleep(2) # Check every 2 seconds
