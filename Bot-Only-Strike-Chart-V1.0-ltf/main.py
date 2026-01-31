@@ -61,13 +61,11 @@ def print_startup_banner(config: dict, logger):
     manual_strikes = strike_cfg.get("manual_strikes", [])
     
     # Indicator settings
-    opt_cfg = config.get("option", {})
-    ltf_cfg = opt_cfg.get("ltf", {})
-    htf_cfg = opt_cfg.get("htf", {"enabled": False})
+    opt_ltf_cfg = config.get("option", {}).get("ltf", {})
     
-    ltf_tf = ltf_cfg.get("timeframe", "1m")
-    ltf_sens = ltf_cfg.get("sensitivity", 1.0)
-    ltf_atr = ltf_cfg.get("atr", 10)
+    opt_ltf_tf = opt_ltf_cfg.get("timeframe", "3m")
+    opt_ltf_sens = opt_ltf_cfg.get("sensitivity", 1.0)
+    opt_ltf_atr = opt_ltf_cfg.get("atr", 10)
     
     # TSL settings
     tsl_cfg = config.get("tsl", {})
@@ -79,14 +77,13 @@ def print_startup_banner(config: dict, logger):
     # Print banner
     print("")
     print("=" * 60)
-    print("  Bot-Only-Strike-Chart - [Multi-Timeframe Strategy]")
+    print("  Bot-Only-Strike-Chart - [Option-Centric Strategy]")
     print("=" * 60)
     print(f"Mode:             {mode_str}")
-    print(f"Strategy:         HTF Trend Filter + LTF Signal Timing")
+    print(f"Signals:          OPTION-CENTRIC (UTBot on Strike Charts)")
     print(f"Max Positions:    {config.get('max_positions', 2)}")
     print(f"Max Lots:         {config.get('max_lots', 1)}")
     print(f"Lot Size (Nifty): {config.get('nifty_lot_size', 65)}")
-    
     if manual_strikes:
         print(f"Manual Strikes:   {len(manual_strikes)} configured")
         for strike in manual_strikes[:4]:  # Show first 4
@@ -94,18 +91,9 @@ def print_startup_banner(config: dict, logger):
         if len(manual_strikes) > 4:
             print(f"  ... and {len(manual_strikes) - 4} more")
     
-    # HTF Detail
-    if htf_cfg.get("enabled", False):
-        h_tf = htf_cfg.get("timeframe", "15m")
-        h_s = htf_cfg.get("sensitivity", 1.0)
-        h_a = htf_cfg.get("atr", 10)
-        print(f"HTF Trend Filter: {h_tf} (Sens: {h_s}, ATR: {h_a}) | Repaint: OFF")
-    else:
-        print(f"HTF Trend Filter: DISABLED (Using LTF signals only)")
-
-    # LTF Detail
-    print(f"LTF Entry Timing: {ltf_tf} (Sens: {ltf_sens}, ATR: {ltf_atr}) | Repaint: {'ON' if ltf_cfg.get('repaint', False) else 'OFF'}")
-    print(f"HA Mode:          {'ON' if ltf_cfg.get('use_ha', False) else 'OFF'}")
+    # Option indicator details
+    print(f"Option TF:        {opt_ltf_tf} (Sens: {opt_ltf_sens}, ATR: {opt_ltf_atr})")
+    print(f"HA Mode:          {'ON' if config.get('option', {}).get('ltf', {}).get('use_ha', False) else 'OFF'}")
     
     # Entry conditions summary
     entry_cfg = config.get("entry_conditions", {})
@@ -116,10 +104,6 @@ def print_startup_banner(config: dict, logger):
     if entry_cfg.get("check_wick_ratio", True): checks.append("WICK")
     if entry_cfg.get("check_adx", False): checks.append("ADX")
     if entry_cfg.get("check_rsi", False): checks.append("RSI")
-    
-    if htf_cfg.get("enabled", False):
-        checks.insert(0, f"HTF_{htf_cfg.get('timeframe', '15m')}")
-        
     print(f"Entry Checks:     {', '.join(checks)}")
     
     # TSL

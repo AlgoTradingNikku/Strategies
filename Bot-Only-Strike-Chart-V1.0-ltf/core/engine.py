@@ -104,7 +104,6 @@ class TradingEngine:
         
         # Last UTBot state and rejection reasons for each strike (for verbose logging)
         self._last_utbot_state = {}
-        self.htf_states = {}
         self._last_reject_reasons = {}
         
         # BUG FIX #8: Validate manual strikes format
@@ -652,16 +651,7 @@ class TradingEngine:
                     except Exception:
                         pass
                 
-                print("") # Empty row before new HB
-                
-                # Multi-Timeframe Status in HB
-                htf_status_str = ""
-                htf_cfg = self.config.get("option", {}).get("htf", {})
-                if htf_cfg.get("enabled", False):
-                    htf_tf = htf_cfg.get("timeframe", "15m")
-                    htf_status_str = f" | HTF:{htf_tf}"
-
-                print(f"{now} [HB]- NIFTY:{nifty_price:.1f} | Strikes:{len(manual_strikes)} | Active:{len(active_symbols)}{htf_status_str}")
+                print(f"[{now}] HB | NIFTY: {nifty_price:.1f} | Strikes: {len(manual_strikes)} | Active: {len(active_symbols)}")
                 
                 # Show details for active positions using SHARED DATA
                 if active_symbols:
@@ -685,22 +675,13 @@ class TradingEngine:
                                 pass # This happens on first run or after errors
 
                         state_emoji = "[ -- ]"
-                        htf_label = ""
                         rejection_suffix = ""
-
-                        # 1. HTF Trend Label
-                        if htf_cfg.get("enabled", False) and symbol in self.htf_states:
-                            h_trend = self.htf_states[symbol]
-                            if h_trend == 1: htf_label = "H[UpTrend +1]|"
-                            elif h_trend == -1: htf_label = "H[DownTrend -1]|"
-                            else: htf_label = "H[Neutral 0]|"
                         
-                        # 2. LTF Trend Label
                         if symbol in self._last_utbot_state:
                             trend = self._last_utbot_state[symbol]
-                            if trend == 1: state_emoji = "[UpTrend +1]"
-                            elif trend == -1: state_emoji = "[DownTrend -1]"
-                            else: state_emoji = "[Neutral 0]"
+                            if trend == 1: state_emoji = "[BULL]"
+                            elif trend == -1: state_emoji = "[BEAR]"
+                            else: state_emoji = "[NEUT]"
                         
                         # Add Stored Signal Indicator (*)
                         stored_signal = ""
@@ -708,7 +689,7 @@ class TradingEngine:
                             stored_signal = "*" # Indicates signal is stored/active in memory
                         
                         # Add rejection reason if trend is bullish but filters failed
-                        if state_emoji == "[UpTrend +1]" and symbol in self._last_reject_reasons:
+                        if state_emoji == "[BULL]" and symbol in self._last_reject_reasons:
                             reason = self._last_reject_reasons[symbol]
                             if reason:
                                 # Shorten reason for log (e.g. "Low volume (10 < 100)" -> "VOL")
@@ -778,7 +759,7 @@ class TradingEngine:
                                          atr_str = f"|ATR:{val:.1f}"
                              except: pass
 
-                        scan_summary.append(f"{short_sym}:{htf_label}{state_emoji}{stored_signal}{rejection_suffix}{atr_str}|{strike_price:.1f}")
+                        scan_summary.append(f"{short_sym}:{state_emoji}{stored_signal}{rejection_suffix}{atr_str}|{strike_price:.1f}")
                     if scan_summary:
                         print(f"        SCAN | {' | '.join(scan_summary)}")
 
@@ -803,94 +784,43 @@ class TradingEngine:
     async def _process_strike_data(self, symbol: str, df_opt, use_ha: bool):
         """
         Process a single strike's data - calculate UTBot and handle entry/exit.
-        Supports Multi-Timeframe (HTF/LTF) filtering.
+        Used by both parallel and sequential scanning.
         """
         try:
-            # 1. LOAD CONFIGURATION
-            opt_cfg = self.config.get("option", {})
-            htf_cfg = opt_cfg.get("htf", {"enabled": False})
-            ltf_cfg = opt_cfg.get("ltf", {})
+            # Repaint logic: 
+            # True = entry on live candle (faster, but signal can flicker)
+            # False = entry only after candle close (slower, but confirmed)
+            repaint = self.config.get("option", {}).get("ltf", {}).get("repaint", True)
             
-            # 2. HTF TREND FILTER (Optional)
-            htf_trend = 0 # Default: Neutral
-            htf_trendline = 0.0
-            
-            if htf_cfg.get("enabled", False):
-                # Fetch HTF data (e.g., 15m)
-                htf_tf = htf_cfg.get("timeframe", "15m")
-                htf_bars = self.config.get("system", {}).get("data_limits", {}).get("exec_bars", 50)
-                
-                # Fetch from provider (provider handles caching internally)
-                df_htf = await self.data_provider.fetch_history(
-                    symbol=symbol,
-                    timeframe=htf_tf,
-                    bars=htf_bars,
-                    exchange="NFO"
-                )
-                
-                if df_htf is not None and len(df_htf) > 0:
-                    # Calculate HTF UTBot
-                    # HTF repaint should ALWAYS be False for stability
-                    htf_use_ha = htf_cfg.get("use_ha", False)
-                    
-                    # Manual slice to ensure no repaint regardless of config
-                    df_htf_confirmed = df_htf.iloc[:-1] if len(df_htf) > 1 else df_htf
-                    
-                    # Important: We need a SEPARATE instance of indicator if params differ, 
-                    # but for now we pass params dynamically to calculate if supported, 
-                    # or use a dedicated htf indicator. 
-                    # The current system uses shared instances in self.indicators.
-                    # We'll use a specific htf indicator if it exists, else fallback.
-                    indic = self.indicators.get("htf_utbot", self.indicators["option_utbot"])
-                    
-                    # If htf_utbot doesn't exist, we must use specific params for this call
-                    res_htf = indic.calculate(
-                        df_htf_confirmed, 
-                        use_ha=htf_use_ha,
-                        sensitivity=htf_cfg.get("sensitivity", 1.0),
-                        atr_period=htf_cfg.get("atr", 10)
-                    )
-                    htf_trend = res_htf.trend
-                    htf_trendline = res_htf.metadata.get("stop_level", 0.0)
-                    
-                    # Store for logging
-                    self.htf_states[symbol] = htf_trend
-            
-            # 3. LTF SIGNAL DETECTION
-            repaint = ltf_cfg.get("repaint", False)
-            
-            # Calculate LTF UTBot on Option chart
+            # Calculate UTBot on Option chart
             if not repaint and len(df_opt) > 1:
+                # Use ONLY completed candles for signal detection
                 utbot_result = self.indicators["option_utbot"].calculate(df_opt.iloc[:-1], use_ha=use_ha)
             else:
+                # Use live candle data (Default)
                 utbot_result = self.indicators["option_utbot"].calculate(df_opt, use_ha=use_ha)
             
-            # Store LTF state for verbose logging
+            # Store UTBot state for verbose logging
             self._last_utbot_state[symbol] = utbot_result.trend
             
-            # 4. GUARD: Prevent re-entry if position exists
+            # GUARD: Prevent re-entry if position exists
             if symbol in self.trades and self.trades[symbol].state in [TradeState.ENTERING, TradeState.POSITION, TradeState.EXITING]:
-                pass 
+                pass # Skip entry logic if position exists
             
             else:
-                # 5. ENTRY LOGIC
+                # ENTRY LOGIC
                 entry_cfg = self.config.get("entry_conditions", {})
                 use_indicator = entry_cfg.get("use_indicator", True)
+                use_filters = entry_cfg.get("use_filters", True)
                 
                 trigger_active = False
                 
-                # Check LTF Signal
                 if not use_indicator:
+                    # Indicator disabled -> Always trigger scan (subject to filters)
                     trigger_active = True
                 elif utbot_result.signal == 1:
+                    # Indicator enabled AND Signal fired
                     trigger_active = True
-                
-                # Apply HTF Buffer/Filter if enabled
-                if trigger_active and htf_cfg.get("enabled", False):
-                    if htf_trend != 1: # HTF MUST be bullish (+1) for long entries
-                        trigger_active = False
-                        # Store rejection reason for display
-                        self._last_reject_reasons[symbol] = f"HTF {htf_tf} Trend REJECT (-1)"
                 
                 if trigger_active:
                     # Track signal for re-entry attempts (even if filters fail)
@@ -1007,6 +937,10 @@ class TradingEngine:
             results = await asyncio.gather(*[fetch_one(s) for s in active_symbols])
             data_map = {sym: df for sym, df in results if df is not None and not df.empty}
 
+        # Prepare lists for printing to group them
+        pos_lines = []
+        check_lines = []
+
         for symbol in active_symbols:
             try:
                 if symbol not in self.trades:
@@ -1022,9 +956,13 @@ class TradingEngine:
                 pnl = (price - trade.entry_price) * trade.quantity
                 pnl_pct = (pnl / (trade.entry_price * trade.quantity)) * 100
                 
+                # TSL Gap (LTP - TSL)
+                tsl_gap = price - trade.tsl_level
+                
                 # Format Position Line
-                # NIFTY03FEB2625200PE | Entry:134.8 | LTP:135.2 | TSL:131.2 | P&L:19.5 (0.2%)
-                print(f"         {symbol} | Entry:{trade.entry_price:.1f} | LTP:{price:.1f} | TSL:{trade.tsl_level:.1f} | P&L:{pnl:.1f} ({pnl_pct:.1f}%)")
+                # NIFTY...PE | Entry: 92.2 | LTP: 92.2 | TSL: 112.2 | Gap: -20.0 | P&L: INR 0.0 (0.0%)
+                pos_line = f"{symbol} | Entry: {trade.entry_price:.1f} | LTP: {price:.1f} | TSL: {trade.tsl_level:.1f} | Gap: {tsl_gap:.1f} | P&L: INR {pnl:.1f} ({pnl_pct:.1f}%)"
+                pos_lines.append(pos_line)
                 
                 # Use data from map (now guaranteed to be populated)
                 if symbol in data_map:
@@ -1032,20 +970,34 @@ class TradingEngine:
                     use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
                     tech = self.indicators["option_tech"].calculate(df_stat, use_ha=use_ha)
                     
+                    # Format Checks Line
+                    # NIFTY...PE | RSI: 20.0 | ADX: 24.0 | VWAP: 123.4
                     rsi = tech.metadata.get('rsi', 0)
                     adx = tech.metadata.get('adx', 0)
                     vwap = tech.metadata.get('vwap', 0)
                     atr = tech.metadata.get('atr', 0)
                     
-                    # Format Filters Line (comma separated, indented)
-                    print(f" 			       RSI:{rsi:.1f}, ADX:{adx:.1f}, ATR:{atr:.2f}, VWAP:{vwap:.1f}")
+                    check_line = f"{symbol} | RSI: {rsi:.1f} | ADX: {adx:.1f} | ATR: {atr:.2f} | VWAP: {vwap:.1f}"
+                    check_lines.append(check_line)
+                    
+                    # Log to file as well (User requested)
+                    logger.info(f"[CHECKS] {check_line}")
                 else:
-                    print(f" 			       No technical data available")
-                
-                print("") # Empty line between strikes
+                    check_lines.append(f"{symbol} | No Data for Checks")
 
             except Exception as e:
                 logger.error(f"Error printing details for {symbol}: {e}")
+
+        # Print Grouped Sections
+        if pos_lines:
+            print("  [POSITIONS]")
+            for line in pos_lines:
+                print(f"    - {line}")
+        
+        if check_lines:
+            print("  [CHECKS STATUS]")
+            for line in check_lines:
+                print(f"    - {line}")
 
     # ========== ENTRY EXECUTION LOGIC ==========
     

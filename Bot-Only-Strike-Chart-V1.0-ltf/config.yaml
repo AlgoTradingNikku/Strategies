@@ -34,16 +34,6 @@ strike_selection:
   
 # Option Chart Settings (for entry validation)
 option:
-  # 1. HTF (Higher Timeframe) - Trend Direction Filter
-  htf:
-    enabled: False               # Set to True to enable HTF filtering
-    timeframe: "3m"             # HTF for trend direction (5m, 15m, 30m, 1h)
-    repaint: False               # ALWAYS False for HTF (requires candle close)
-    use_ha: False                # False = OHLC (Recommended), True = HA
-    sensitivity: 1.0             # UTBot sensitivity on HTF
-    atr: 10                      # UTBot ATR period on HTF
-
-  # 2. LTF (Lower Timeframe) - Entry Signal Timing
   ltf:
     timeframe: "1m"            # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
     repaint: False               # True = Enter on Live Candle (Faster, but signal can flicker)

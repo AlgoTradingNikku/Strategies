@@ -44,18 +44,25 @@ class UTBotIndicator(BaseIndicator):
     def warmup_period(self) -> int:
         return self.params.get("atr_period", 10) + 5
     
-    def calculate(self, df: pd.DataFrame, use_ha: bool = True, **kwargs) -> IndicatorSignal:
+    def calculate(self, df: pd.DataFrame, use_ha: bool = True) -> IndicatorSignal:
         """
         Calculate UTBot trend and signals.
+        
+        This is the EXACT logic from live_trader.py lines 202-283.
         
         Args:
             df: OHLC DataFrame with standard and HA candles
             use_ha: If True, use Heikin Ashi values for calculation
-            **kwargs: Override sensitivity and atr_period
+            
+        Returns:
+            IndicatorSignal with:
+                - trend: 1 (bullish) or -1 (bearish)
+                - signal: 1 (fresh buy), -1 (fresh sell), 2 (pullback buy), -2 (pullback sell), 0 (none)
+                - strength: Always 1.0 (UTBot is binary)
+                - metadata: {"stop_level", "atr", "trend_series"}
         """
-        # Get parameters with overrides
-        sensitivity = kwargs.get("sensitivity", self.params.get("sensitivity", 2.0))
-        atr_period = kwargs.get("atr_period", self.params.get("atr_period", 1))
+        sensitivity = self.params["sensitivity"]
+        atr_period = self.params["atr_period"]
         
         # === DATA VALIDATION ===
         required_cols = ["Open", "High", "Low", "Close"]
