@@ -65,7 +65,7 @@ class ConfigValidator:
             "type": dict,
             "schema": {
                 "use_indicator": {"type": bool, "required": False},
-                "use_filters": {"type": bool, "required": False},
+
                 "momentum_check_mode": {"type": str, "enum": ["ALL", "ANY", "NONE"], "required": False},
                 "vol_multiplier": {"type": (int, float), "min": 0.1, "max": 10, "required": False},
                 "adx_min": {"type": (int, float), "min": 0, "max": 100, "required": False},

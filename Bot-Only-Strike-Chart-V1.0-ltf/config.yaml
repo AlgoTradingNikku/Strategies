@@ -1,4 +1,4 @@
-strategy_name: "Bot-Only-Strike-Chart"
+strategy_name: "Bot-Only-Strike-Chart-ltf"
 
 # ========================================
 # 1. ASSET SELECTION & MODE
@@ -44,7 +44,7 @@ option:
     sensitivity: 1.0            # UTBot Sensitivity (Key Factor!)
     atr: 10                     # UTBot ATR Period
 
-max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
+max_positions: 1              # Maximum simultaneous open trades (Capital Protection)
 max_lots: 1                   # Number of lots per trade (Default: 1)
 nifty_lot_size: 65            # Lot size for Nifty Options (Required)
 
@@ -111,7 +111,7 @@ entry_conditions:
 # ========================================
 # Allows controlled re-entry on pullback after initial signal
 re_entry:
-  enabled: True
+  enabled: False
   max_attempts: 2                # Max re-entry attempts per signal
   # Pullback Conditions (all must be true):
   # 1. Price pulls back into EMA9-EMA21 zone

@@ -20,6 +20,7 @@ import logging
 import time
 import os
 import threading
+import pandas as pd
 import yaml
 
 from core.state_machine import Trade, TradeState, TradeStateMachine
@@ -655,13 +656,10 @@ class TradingEngine:
                 print("") # Empty row before new HB
                 
                 # Multi-Timeframe Status in HB
-                htf_status_str = ""
                 htf_cfg = self.config.get("option", {}).get("htf", {})
-                if htf_cfg.get("enabled", False):
-                    htf_tf = htf_cfg.get("timeframe", "15m")
-                    htf_status_str = f" | HTF:{htf_tf}"
+                htf_tf = htf_cfg.get("timeframe", "15m") if htf_cfg.get("enabled", False) else "--"
 
-                print(f"{now} [HB]- NIFTY:{nifty_price:.1f} | Strikes:{len(manual_strikes)} | Active:{len(active_symbols)}{htf_status_str}")
+                print(f"{now} [HB]- NIFTY: {nifty_price:.1f} | Strikes: {len(manual_strikes)} | Active: {len(active_symbols)}")
                 
                 # Show details for active positions using SHARED DATA
                 if active_symbols:
@@ -684,34 +682,59 @@ class TradingEngine:
                             if strike_price == 0 and symbol in manual_strikes:
                                 pass # This happens on first run or after errors
 
-                        state_emoji = "[ -- ]"
-                        htf_label = ""
-                        rejection_suffix = ""
+                        # New Formatting for User Request
+                        h_trend = self.htf_states.get(symbol, 0)
+                        h_status = "UP" if h_trend == 1 else "Dn" if h_trend == -1 else "Wait"
+                        htf_desc = f"HTF-{htf_tf} {h_status}"
 
-                        # 1. HTF Trend Label
-                        if htf_cfg.get("enabled", False) and symbol in self.htf_states:
-                            h_trend = self.htf_states[symbol]
-                            if h_trend == 1: htf_label = "H[UpTrend +1]|"
-                            elif h_trend == -1: htf_label = "H[DownTrend -1]|"
-                            else: htf_label = "H[Neutral 0]|"
+                        l_trend = self._last_utbot_state.get(symbol, 0)
+                        l_status = "UP" if l_trend == 1 else "Dn" if l_trend == -1 else "Wait"
                         
-                        # 2. LTF Trend Label
-                        if symbol in self._last_utbot_state:
-                            trend = self._last_utbot_state[symbol]
-                            if trend == 1: state_emoji = "[UpTrend +1]"
-                            elif trend == -1: state_emoji = "[DownTrend -1]"
-                            else: state_emoji = "[Neutral 0]"
-                        
-                        # Add Stored Signal Indicator (*)
-                        stored_signal = ""
-                        if symbol in self._signal_wait_state:
-                            stored_signal = "*" # Indicates signal is stored/active in memory
-                        
-                        # Add rejection reason if trend is bullish but filters failed
-                        if state_emoji == "[UpTrend +1]" and symbol in self._last_reject_reasons:
+                        # ATR calculation with multiple fallbacks
+                        atr_val_log = 0.0
+                        if symbol in data_map:
+                             try:
+                                 df_scan = data_map[symbol]
+                                 use_ha_flag = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
+                                 
+                                 # Try technical indicator first
+                                 res_log = self.indicators["option_tech"].calculate(df_scan, use_ha=use_ha_flag)
+                                 atr_series = res_log.metadata.get("atr_series")
+                                 
+                                 if atr_series is not None and not atr_series.empty:
+                                     atr_val_log = atr_series.dropna().iloc[-1] if not atr_series.dropna().empty else 0.0
+                                 
+                                 # Fallback to UTBot ATR if tech ATR is zero/NaN
+                                 if (not atr_val_log or pd.isna(atr_val_log)) and "option_utbot" in self.indicators:
+                                     try:
+                                         res_ut = self.indicators["option_utbot"].calculate(df_scan, use_ha=use_ha_flag)
+                                         ut_atr_series = res_ut.metadata.get("trail_series") # Use trail if ATR not available
+                                         # UTBot metadata has 'atr' as a float (iloc[-1])
+                                         atr_val_log = res_ut.metadata.get("atr", 0.0)
+                                     except: pass
+                                     
+                                 if pd.isna(atr_val_log): atr_val_log = 0.0
+                                 
+                             except Exception as e:
+                                 # Specifically log the error to debug if it fails even with pandas imported
+                                 logger.error(f"ATR LOGGING ERROR for {symbol}: {e}")
+                                 atr_val_log = 0.0
+
+                        # Short symbol logic
+                        match = re.search(r'(\d+[A-Z]{3})\d{2}(\d+[CP]E)', symbol)
+                        if match:
+                            expiry_part = match.group(1)
+                            strike_part = match.group(2)
+                            short_sym = f"{expiry_part[:2]}{expiry_part[2:].capitalize()}{strike_part}"
+                        else:
+                            short_sym = symbol[-10:] if len(symbol) > 10 else symbol
+
+                        # Signal tracking
+                        stored_signal = "*" if symbol in self._signal_wait_state else ""
+                        rejection_suffix = ""
+                        if l_status == "UP" and symbol in self._last_reject_reasons:
                             reason = self._last_reject_reasons[symbol]
                             if reason:
-                                # Shorten reason for log (e.g. "Low volume (10 < 100)" -> "VOL")
                                 if "EMA" in reason: rejection_suffix = ":WAIT_EMA"
                                 elif "ADX" in reason: rejection_suffix = ":WAIT_ADX"
                                 elif "RSI" in reason: rejection_suffix = ":WAIT_RSI"
@@ -719,68 +742,20 @@ class TradingEngine:
                                 elif "expensive" in reason: rejection_suffix = ":WAIT_VWAP_CAP"
                                 elif "VWAP" in reason: rejection_suffix = ":WAIT_VWAP"
                                 elif "Momentum" in reason: rejection_suffix = ":WAIT_MOM"
-                                # Enhanced: Show low volatility
                                 elif "Volatility" in reason or "ATR" in reason: rejection_suffix = ":WAIT_ATR" 
                                 else: rejection_suffix = ":WAIT"
-                        
-                        # Short symbol using regex (e.g. NIFTY03FEB2625300PE -> 03Feb25300PE)
-                        # We use a more specific pattern to capture DDMMM and skip the YY year
-                        match = re.search(r'(\d+[A-Z]{3})\d{2}(\d+[CP]E)', symbol)
-                        if match:
-                            expiry_part = match.group(1) # e.g. 03FEB
-                            strike_part = match.group(2) # e.g. 25300PE
-                            short_sym = f"{expiry_part[:2]}{expiry_part[2:].capitalize()}{strike_part}"
-                        else:
-                            # Fallback for unexpected formats
-                            match_old = re.search(r'(\d+[CP]E)$', symbol)
-                            short_sym = match_old.group(1) if match_old else (symbol[-10:] if len(symbol) > 10 else symbol)
-                        
-                        # Fetch ATR if available
-                        atr_str = ""
-                        try:
-                            # ATR is calculated in _process_strike_data but not stored globally for simple access
-                            # However, we can peek into the dataframe if it has 'ATR' column or use cached value?
-                            # _check_entry_conditions returns ATR, maybe we can cache it?
-                            # Simpler: just use the ONE global indicator instance to quick-calc if data exists
-                            if symbol in data_map:
-                                df_scan = data_map[symbol]
-                                if len(df_scan) > 20: # Need some history
-                                    # This is slightly expensive to recalc every scan logic, 
-                                    # but safer than assuming where it's stored. 
-                                    # OR we can rely on _last_reject_reasons giving us a hint? No.
-                                    # Let's trust the 'option_tech' indicator is fast.
-                                    # Actually, let's use a try-except block with the dataframe
-                                    # Re-calculating full indicators just for log is bad. 
-                                    # Optimization: Check if 'ATR' exists in df? 
-                                    # The indicators usually return a RESULT object, they don't modify DF in place unless told.
-                                    # The bot uses `self.indicators["option_tech"].calculate(df)`
-                                    # Let's do a quick calculation or check if we stored it.
-                                    # We don't store ATR globally. Let's calculate it quickly.
-                                    
-                                    # Better approach: We don't want to slow down scanning.
-                                    # Let's just print "ATR" if we have it in the recent calc cache.
-                                    # We don't have a specific ATR cache. 
-                                    # Let's Add it to self.cache or self._last_atr?
-                                    pass 
-                        except: pass
 
-                        # Fallback: Just re-calculate it. It's fast enough for 2 symbols.
-                        if symbol in data_map:
-                             try:
-                                 df_scan = data_map[symbol]
-                                 if len(df_scan) > 14:
-                                     # Create a lightweight calc just for ATR? 
-                                     # No, just use the existing one.
-                                     use_ha = self.config.get("option", {}).get("ltf", {}).get("use_ha", False)
-                                     res = self.indicators["option_tech"].calculate(df_scan, use_ha=use_ha)
-                                     val = res.metadata.get("atr", 0.0)
-                                     if val > 0:
-                                         atr_str = f"|ATR:{val:.1f}"
-                             except: pass
+                        # Build descriptive line
+                        sig_meta = stored_signal + rejection_suffix
+                        ltf_desc = f"LTF-{opt_ltf_tf} {l_status}{sig_meta}"
+                        
+                        line = f"{short_sym}: {htf_desc}, {ltf_desc} | ATR: {atr_val_log:.1f}, LTP: {strike_price:.1f}"
+                        scan_summary.append(line)
 
-                        scan_summary.append(f"{short_sym}:{htf_label}{state_emoji}{stored_signal}{rejection_suffix}{atr_str}|{strike_price:.1f}")
                     if scan_summary:
-                        print(f"        SCAN | {' | '.join(scan_summary)}")
+                        print(f"        SCAN:  {scan_summary[0]}")
+                        for s_line in scan_summary[1:]:
+                            print(f"               {s_line}")
 
             # ========== PROCESS SIGNALS (Using Shared Data) ==========
             tasks = []
@@ -942,7 +917,7 @@ class TradingEngine:
                             side=side,
                             price=limit_price,
                             ltf_signal=utbot_result,
-                            atr=atr_val if use_filters else 0.0 # Pass ATR if available
+                            atr=atr_val # Pass ATR if available
                         )
                         
                         # Clear signal state after successful entry
