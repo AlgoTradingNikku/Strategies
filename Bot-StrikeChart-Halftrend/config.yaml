@@ -1,4 +1,4 @@
-strategy_name: "Bot-Only-Strike-Chart"
+strategy_name: "Bot-StrikeChart-Halftrend"
 
 # ========================================
 # 1. ASSET SELECTION & MODE
@@ -9,18 +9,46 @@ index_exchange: "NSE_INDEX"    # Exchange for index data
 
 # Option Contract Selection
 strike_selection:
-  mode: "MANUAL"               # "AUTO" or "MANUAL"
-  step: 0                      # 0=ATM, -1=ITM1, 1=OTM1
-  expiry: "WEEKLY"             # "WEEKLY", "NEXT_WEEK"
-  offset: 0                    # 0 for current week, 1 for next week
+  mode: "AUTO"            # "AUTO" or "MANUAL"
 
-  # The bot will scan ALL symbols in this list and execute ANY that match the logic.
-  # Example: If Bullish, it checks all CE symbols. If valid setup, it buys.
+  # ── AUTO Mode Settings ──
+  # When mode=AUTO, the bot automatically resolves ATM/ITM/OTM strikes
+  # using the OpenAlgo optionsymbol() API. No need to type strike symbols manually.
+  offset: "ATM"                # Strike offset label (maps to OpenAlgo API):
+                               #   "ATM"  = At The Money (nearest to Nifty LTP)
+                               #   "ITM1" = 1 strike In The Money (CE=lower, PE=higher)
+                               #   "ITM2" = 2 strikes In The Money
+                               #   "OTM1" = 1 strike Out Of The Money
+                               #   "OTM3" = 3 strikes Out Of The Money
+                               #   etc.
+  option_types: "BOTH"         # Which option types to scan:
+                               #   "CE"   = Call options only
+                               #   "PE"   = Put options only
+                               #   "BOTH" = Scan both CE and PE strikes
+  strike_lock: True            # Lock strike during active trades:
+                               #   True  = Once a strike is resolved and a trade is entered,
+                               #           keep scanning the SAME strike until all positions
+                               #           are closed (flat). Prevents mid-trade strike switching.
+                               #   False = Recalculate the strike every scan cycle.
+                               #           WARNING: May cause the bot to switch strikes
+                               #           while a trade is still active.
+                               #   RECOMMENDED: True (safe, avoids confusion)
+
+  # ── Expiry Settings (used by AUTO mode) ──
+  expiry: "WEEKLY"             # "WEEKLY" or "MONTHLY"
+  expiry_offset: 0             # 0 = Current week expiry, 1 = Next week expiry
+                               # Example: If today is Wednesday 12 Feb,
+                               #   0 = picks 13 Feb (this Thursday)
+                               #   1 = picks 20 Feb (next Thursday)
+
+  # ── MANUAL Mode Settings ──
+  # When mode=MANUAL, the bot scans ALL symbols listed below.
+  # It checks every symbol, and buys any that match the entry logic.
   manual_strikes: 
     #- "RELIANCE24FEB261390CE"
     #- "RELIANCE24FEB261390PE"
-    - "NIFTY10FEB2625800CE"
-    - "NIFTY10FEB2625800PE"
+    - "NIFTY17FEB2625800CE"
+    - "NIFTY17FEB2625800PE"
     #-"NIFTY20JAN2625500CE"
 
   # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
@@ -34,19 +62,19 @@ option:
     timeframe: "15m"             # HTF for trend direction (5m, 15m, 30m, 1h)
     repaint: False               # ALWAYS False for HTF (requires candle close)
     use_ha: False                # False = OHLC (Recommended), True = HA
-    sensitivity: 1.0             # UTBot sensitivity on HTF
-    atr: 10                      # UTBot ATR period on HTF
+    amplitude: 1                 # HalfTrend amplitude (period for highest/lowest detection)
+    channel_deviation: 1         # HalfTrend channel deviation multiplier
 
   # 2. LTF (Lower Timeframe) - Entry Signal Timing
   ltf:
-    timeframe: "3m"            # Option chart timeframe for utbot, filters(VWAP/EMA/Volume/ADX/RSI) checks
+    timeframe: "3m"            # Option chart timeframe for halftrend, filters(VWAP/EMA/Volume/ADX/RSI) checks
     repaint: False               # True = Enter on Live Candle (Faster, but signal can flicker)
                                 # False = Enter on Candle Close (Confirmed, but lags by 1 candle)
                                 # ADVICE: Use 'False' for 1m TF to avoid fakeouts. 
                                 # Use 'True' for 5m+ TF where waiting for a close is too slow.
     use_ha: False               # False = OHLC (Recommended for Options), True = HA
-    sensitivity: 1.0            # UTBot Sensitivity (Key Factor!)
-    atr: 10                     # UTBot ATR Period
+    amplitude: 1                # HalfTrend amplitude (period for highest/lowest detection)
+    channel_deviation: 1        # HalfTrend channel deviation multiplier
 
 max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
 max_lots: 1                   # Number of lots per trade (Default: 1)
@@ -55,7 +83,7 @@ nifty_lot_size: 65            # Lot size for Nifty Options (Required)
 
 entry_conditions:
   # Logic Toggles
-  use_indicator: True   # If False, bot ignores UTBot signal and scans every candle
+  use_indicator: True   # If False, bot ignores HalfTrend signal and scans every candle
                         # The Problem: If the market is moving sideways, 
                         #your filters might flicker "True" multiple times, leading to over-trading.
 
@@ -103,7 +131,7 @@ entry_conditions:
   # 7: Min ATR Filter (Avoid Dead Markets)
   check_min_atr: False            #entry if ATR < min_atr
   min_atr: 6.0                    # Minimum volatility required to enter
-                                  # atr value of utbot is used
+                                  # atr value of halftrend is used
   # ATR Cheat Sheet (Nifty Options):
   # < 5   : Dead/Flat Market (avoid premiums don't move)
   # 5-10  : Low Volatility (slow movement)
@@ -129,10 +157,10 @@ re_entry:
 # ========================================
 # Controls how trades are exited
 exit_conditions:
-  use_utbot_sell: False           # Exit on UTBot sell_signal
+  use_utbot_sell: False           # Exit on HalfTrend sell_signal
   use_tsl: True                   # Keep TSL as safety net (Always recommended)
-  tsl_priority: "TSL_FIRST"    # "TSL_FIRST" = Ignore UTBot, wait for TSL
-                                  # "SIGNAL_FIRST" = Exit immediately on UTBot sell
+  tsl_priority: "TSL_FIRST"    # "TSL_FIRST" = Ignore HalfTrend, wait for TSL
+                                  # "SIGNAL_FIRST" = Exit immediately on HalfTrend sell
 
 # ========================================
 # TSL & RISK MANAGEMENT
@@ -145,7 +173,7 @@ tsl:
   trail_pct: 4.0                # TSL = High - 4%
   
   # Points Mode settings (if mode="POINTS")
-  trail_points: 4.0             # TSL = High - 4 points (fixed gap)
+  trail_points: 3.0             # TSL = High - 4 points (fixed gap)
   
   # TSL Cushion (Extra buffer when TSL about to be hit - prevents premature exit)
   # Application to all the modes.
@@ -195,7 +223,7 @@ system:
   
   data_limits:
     # trend_bars removed (unused)
-    exec_bars: 50               # Bars to fetch for Option Signal check
+    exec_bars: 120               # Bars to fetch for Option Signal check (HalfTrend needs 100+ for best ATR quality)
     
   cooldowns:
     error_sec: 60               # Cooldown after error/crash (Safe mode)
@@ -209,7 +237,7 @@ greeks_monitoring:
 # ========================================
 # SECURITY NOTE: Consider using environment variable OPENALGO_API_KEY instead of hardcoding.
 # The bot will check for env variable first, then fall back to this value.
-api_key: "d9cc2b856cdbcb6e938217543dc9517748cd04888e360ded3c76be1000a01633"
+api_key: "ea1f55da6cb827c27f43e05088d9ec4a19dcdde979af53114785ccbd4b96db61"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)

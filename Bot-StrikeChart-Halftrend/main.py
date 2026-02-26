@@ -56,8 +56,9 @@ def print_startup_banner(config: dict, logger):
     index_query = config.get("index_query", "NIFTY")
     index_exchange = config.get("index_exchange", "NSE_INDEX")
     
-    # Manual strikes
+    # Strike selection info
     strike_cfg = config.get("strike_selection", {})
+    strike_mode = strike_cfg.get("mode", "MANUAL").upper()
     manual_strikes = strike_cfg.get("manual_strikes", [])
     
     # Indicator settings
@@ -87,7 +88,19 @@ def print_startup_banner(config: dict, logger):
     print(f"Max Lots:         {config.get('max_lots', 1)}")
     print(f"Lot Size (Nifty): {config.get('nifty_lot_size', 65)}")
     
-    if manual_strikes:
+    if strike_mode == "AUTO":
+        offset = strike_cfg.get("offset", "ATM")
+        option_types = strike_cfg.get("option_types", "BOTH")
+        strike_lock = strike_cfg.get("strike_lock", True)
+        expiry = strike_cfg.get("expiry", "WEEKLY")
+        expiry_offset = strike_cfg.get("expiry_offset", 0)
+        print(f"Strike Mode:      AUTO (Resolved dynamically via OpenAlgo)")
+        print(f"  Offset:         {offset}")
+        print(f"  Option Types:   {option_types}")
+        print(f"  Strike Lock:    {'ON (locked during trades)' if strike_lock else 'OFF (recalculates every cycle)'}")
+        print(f"  Expiry:         {expiry} (offset={expiry_offset})")
+    elif manual_strikes:
+        print(f"Strike Mode:      MANUAL")
         print(f"Manual Strikes:   {len(manual_strikes)} configured")
         for strike in manual_strikes[:4]:  # Show first 4
             print(f"  - {strike}")

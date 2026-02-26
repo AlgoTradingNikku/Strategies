@@ -73,6 +73,11 @@ class TradingEngine:
         # Load indicators from config
         self.indicators = self._load_indicators()
         
+        # Log which indicator class is actually loaded (for clarity)
+        signal_indicator = self.indicators.get("option_utbot")
+        if signal_indicator:
+            print(f"[INFO] Signal Indicator: {signal_indicator.__class__.__name__} (from {signal_indicator.__class__.__module__})")
+        
         # Trade tracking
         self.trades: Dict[str, Trade] = {}
         
@@ -107,6 +112,12 @@ class TradingEngine:
         self._last_utbot_state = {}
         self.htf_states = {}
         self._last_reject_reasons = {}
+        
+        # AUTO Strike Resolution State
+        self._auto_resolved_strikes: list = []    # Currently resolved symbols (e.g. ["NIFTY12FEB2626000CE", ...])
+        self._auto_expiry_date: str = ""           # Resolved expiry date string (e.g. "12FEB26")
+        self._auto_last_resolve_time: float = 0    # Timestamp of last successful resolution
+        self._auto_resolve_failed: bool = False    # Flag to avoid spamming API on repeated failures
         
         # BUG FIX #8: Validate manual strikes format
         self._validate_and_load_strikes()
@@ -164,6 +175,143 @@ class TradingEngine:
             print(f"✅ Loaded {len(valid_strikes)} valid strikes (ignored {len(invalid_strikes)} invalid)\n")
             logger.info(f"Loaded {len(valid_strikes)} valid strikes, ignored {len(invalid_strikes)} invalid")
     
+    def _resolve_auto_strikes(self) -> list:
+        """
+        AUTO Mode: Resolve option strike symbols using OpenAlgo APIs.
+        
+        Flow:
+        1. Get available expiry dates from client.expiry()
+        2. Pick the correct expiry based on expiry_offset
+        3. Call client.optionsymbol() for each option_type (CE/PE/BOTH)
+        4. Return list of resolved symbols
+        
+        Returns:
+            List of resolved symbol strings, e.g. ["NIFTY12FEB2626000CE", "NIFTY12FEB2626000PE"]
+            Returns empty list on failure.
+        """
+        strike_cfg = self.config.get("strike_selection", {})
+        offset = strike_cfg.get("offset", "ATM").upper()
+        option_types = strike_cfg.get("option_types", "BOTH").upper()
+        expiry_type = strike_cfg.get("expiry", "WEEKLY").upper()
+        expiry_offset = strike_cfg.get("expiry_offset", 0)
+        strike_lock = strike_cfg.get("strike_lock", True)
+        
+        index_query = self.config.get("index_query", "NIFTY")
+        index_exchange = self.config.get("index_exchange", "NSE_INDEX")
+        
+        # STRIKE LOCK: If enabled and we have active positions, reuse cached strikes
+        if strike_lock and self._auto_resolved_strikes:
+            active_count = len([t for t in self.trades.values() if t.state == TradeState.POSITION])
+            if active_count > 0:
+                return self._auto_resolved_strikes  # Keep using same strikes
+        
+        # STEP 1: Get expiry dates
+        try:
+            expiry_resp = self.client.expiry(
+                symbol=index_query,
+                exchange="NFO",
+                instrumenttype="options"
+            )
+            
+            if not expiry_resp or expiry_resp.get("status") != "success":
+                logger.error(f"[AUTO] Expiry API failed: {expiry_resp}")
+                if not self._auto_resolve_failed:
+                    print(f"[AUTO] ❌ Failed to fetch expiry dates from OpenAlgo.")
+                    self._auto_resolve_failed = True
+                return self._auto_resolved_strikes  # Return cached (may be empty)
+            
+            expiry_dates = expiry_resp.get("data", [])
+            if not expiry_dates:
+                logger.error("[AUTO] No expiry dates returned")
+                return self._auto_resolved_strikes
+            
+        except Exception as e:
+            logger.error(f"[AUTO] Expiry API error: {e}")
+            if not self._auto_resolve_failed:
+                print(f"[AUTO] ❌ Expiry API error: {e}")
+                self._auto_resolve_failed = True
+            return self._auto_resolved_strikes
+        
+        # STEP 2: Pick the correct expiry date
+        # expiry_dates format: ["12-FEB-26", "19-FEB-26", "26-FEB-26", ...]
+        # For WEEKLY: pick index [expiry_offset] (0 = this week, 1 = next week)
+        # For MONTHLY: pick the last entry that matches the month pattern (future enhancement)
+        target_idx = min(expiry_offset, len(expiry_dates) - 1)
+        raw_expiry = expiry_dates[target_idx]  # e.g. "12-FEB-26"
+        
+        # Convert "12-FEB-26" → "12FEB26" (format expected by optionsymbol API)
+        expiry_date_api = raw_expiry.replace("-", "")  # "12FEB26"
+        
+        # STEP 3: Resolve symbols for each option type
+        types_to_resolve = []
+        if option_types == "BOTH":
+            types_to_resolve = ["CE", "PE"]
+        elif option_types in ["CE", "PE"]:
+            types_to_resolve = [option_types]
+        else:
+            logger.error(f"[AUTO] Invalid option_types: {option_types}. Must be CE, PE, or BOTH.")
+            return self._auto_resolved_strikes
+        
+        resolved_symbols = []
+        underlying_ltp = 0.0
+        
+        for opt_type in types_to_resolve:
+            try:
+                resp = self.client.optionsymbol(
+                    underlying=index_query,
+                    exchange=index_exchange,
+                    expiry_date=expiry_date_api,
+                    offset=offset,
+                    option_type=opt_type
+                )
+                
+                if resp and resp.get("status") == "success":
+                    symbol = resp.get("symbol", "")
+                    underlying_ltp = resp.get("underlying_ltp", 0.0)
+                    if symbol:
+                        resolved_symbols.append(symbol)
+                        logger.info(f"[AUTO] Resolved {opt_type}: {symbol} (Nifty={underlying_ltp})")
+                    else:
+                        logger.warning(f"[AUTO] optionsymbol returned empty symbol for {opt_type}")
+                else:
+                    msg = resp.get("message", "Unknown error") if resp else "No response"
+                    logger.error(f"[AUTO] optionsymbol failed for {opt_type}: {msg}")
+                    print(f"[AUTO] ❌ Failed to resolve {offset} {opt_type}: {msg}")
+                    
+            except Exception as e:
+                logger.error(f"[AUTO] optionsymbol error for {opt_type}: {e}")
+                print(f"[AUTO] ❌ API error resolving {offset} {opt_type}: {e}")
+        
+        # STEP 4: Update cache and return
+        if resolved_symbols:
+            # Check if strikes changed from previous resolution
+            if set(resolved_symbols) != set(self._auto_resolved_strikes):
+                old_strikes = self._auto_resolved_strikes
+                self._auto_resolved_strikes = resolved_symbols
+                self._auto_expiry_date = expiry_date_api
+                self._auto_last_resolve_time = time.time()
+                self._auto_resolve_failed = False
+                
+                # Log the change
+                now = datetime.now().strftime("%H:%M:%S")
+                print(f"\n[{now}] [AUTO] ✅ Strikes Resolved (Nifty={underlying_ltp:.1f}):")
+                for sym in resolved_symbols:
+                    print(f"         → {sym}")
+                if old_strikes:
+                    print(f"         (Previous: {old_strikes})")
+                
+                # Trigger WebSocket resubscription if strikes changed
+                if old_strikes and self.config.get("use_websocket", True):
+                    asyncio.create_task(self._resubscribe_websocket())
+            
+        else:
+            # All resolutions failed
+            if not self._auto_resolve_failed:
+                print(f"[AUTO] ❌ Could not resolve any strikes for {offset}. Check API/config.")
+                self._auto_resolve_failed = True
+        
+        return self._auto_resolved_strikes
+    
     def _load_indicators(self) -> dict:
         """Load indicators from config - Option-Centric mode"""
         indicators = {}
@@ -171,10 +319,10 @@ class TradingEngine:
         # --- OPTION INDICATORS (Primary - Used for signals) ---
         opt_ltf_config = self.config.get("option", {}).get("ltf", {})
         
-        # Option UTBot (for signal generation)
-        indicators["option_utbot"] = IndicatorRegistry.create("utbot", {
-            "sensitivity": opt_ltf_config.get("sensitivity", 1.0),
-            "atr_period": opt_ltf_config.get("atr", 10)
+        # Option HalfTrend (for signal generation - replaces UTBot)
+        indicators["option_utbot"] = IndicatorRegistry.create("halftrend", {
+            "amplitude": opt_ltf_config.get("amplitude", opt_ltf_config.get("sensitivity", 2)),
+            "channel_deviation": opt_ltf_config.get("channel_deviation", opt_ltf_config.get("atr", 2))
         })
         
         # Option Technicals (for entry conditions: EMA, RSI, ADX, VWAP)
@@ -274,7 +422,7 @@ class TradingEngine:
             bool: True if connected successfully, False otherwise
         """
         try:
-            # Get manual strikes from config
+            # Get strikes based on mode
             strike_cfg = self.config.get("strike_selection", {})
             mode = strike_cfg.get("mode", "AUTO").upper()
             
@@ -283,6 +431,10 @@ class TradingEngine:
             if mode == "MANUAL":
                 manual_strikes = strike_cfg.get("manual_strikes", [])
                 symbols_to_subscribe.extend(manual_strikes)
+            elif mode == "AUTO":
+                # Use cached auto-resolved strikes (may be empty at startup)
+                if self._auto_resolved_strikes:
+                    symbols_to_subscribe.extend(self._auto_resolved_strikes)
             
             # Add Index to subscription list
             index_query = self.config.get("index_query", "NIFTY")
@@ -426,10 +578,33 @@ class TradingEngine:
             
             print("[CONFIG] Validation passed ✓")
             
-            # Check if manual strikes changed (for WebSocket resubscription)
-            old_strikes = set(self.config.get("strike_selection", {}).get("manual_strikes", []))
-            new_strikes = set(new_config.get("strike_selection", {}).get("manual_strikes", []))
-            strikes_changed = (old_strikes != new_strikes)
+            # Check if strike config changed (for WebSocket resubscription)
+            old_strike_cfg = self.config.get("strike_selection", {})
+            new_strike_cfg = new_config.get("strike_selection", {})
+            old_mode = old_strike_cfg.get("mode", "MANUAL").upper()
+            new_mode = new_strike_cfg.get("mode", "MANUAL").upper()
+            
+            strikes_changed = False
+            if new_mode == "MANUAL":
+                old_strikes = set(old_strike_cfg.get("manual_strikes", []))
+                new_strikes = set(new_strike_cfg.get("manual_strikes", []))
+                strikes_changed = (old_strikes != new_strikes)
+            elif new_mode == "AUTO":
+                # Check if AUTO-relevant settings changed (offset, option_types, expiry, etc.)
+                auto_keys = ["offset", "option_types", "expiry", "expiry_offset"]
+                for key in auto_keys:
+                    if old_strike_cfg.get(key) != new_strike_cfg.get(key):
+                        strikes_changed = True
+                        break
+                # Also detect mode switch (MANUAL→AUTO or AUTO→MANUAL)
+                if old_mode != new_mode:
+                    strikes_changed = True
+            
+            # If mode changed or AUTO settings changed, clear auto cache
+            if old_mode != new_mode or (new_mode == "AUTO" and strikes_changed):
+                self._auto_resolved_strikes = []
+                self._auto_resolve_failed = False
+                print("[CONFIG] Strike settings changed. Auto-resolved strikes cleared for re-resolution.")
 
             # Apply new config
             self.config = new_config
@@ -449,7 +624,7 @@ class TradingEngine:
             
             # ENHANCEMENT #2: Resubscribe WebSocket if strikes changed
             if strikes_changed and self.config.get("use_websocket", True):
-                print("[CONFIG] Manual strikes changed. Resubscribing WebSocket...")
+                print("[CONFIG] Strike config changed. Resubscribing WebSocket...")
                 # Schedule async resubscription
                 asyncio.create_task(self._resubscribe_websocket())
             
@@ -538,26 +713,30 @@ class TradingEngine:
         """
         Option-Centric Signal Scanner.
         
-        Scans each strike in manual_strikes for UTBot buy signals on Option chart.
+        Scans strikes for HalfTrend buy signals on Option chart.
+        Supports both AUTO and MANUAL strike selection modes.
         When signal detected, validates using entry_conditions before executing.
         """
-        # Get manual strikes from config
+        # Get strikes based on mode (AUTO or MANUAL)
         strike_cfg = self.config.get("strike_selection", {})
         mode = strike_cfg.get("mode", "AUTO").upper()
         
-        if mode != "MANUAL":
-            # AUTO mode not implemented in Option-Centric version
-            if self._heartbeat_counter % 12 == 0:
-                print("[WARN] Option-Centric mode requires MANUAL strike selection.")
-            self._heartbeat_counter += 1
-            return
-        
-        manual_strikes = strike_cfg.get("manual_strikes", [])
-        if not manual_strikes:
-            if self._heartbeat_counter % 12 == 0:
-                print("[WARN] No manual_strikes configured.")
-            self._heartbeat_counter += 1
-            return
+        if mode == "AUTO":
+            # AUTO: Resolve strikes dynamically using OpenAlgo API
+            manual_strikes = self._resolve_auto_strikes()
+            if not manual_strikes:
+                if self._heartbeat_counter % 12 == 0:
+                    print("[AUTO] Waiting for strike resolution... (check API connection)")
+                self._heartbeat_counter += 1
+                return
+        else:
+            # MANUAL: Read from config
+            manual_strikes = strike_cfg.get("manual_strikes", [])
+            if not manual_strikes:
+                if self._heartbeat_counter % 12 == 0:
+                    print("[WARN] No manual_strikes configured.")
+                self._heartbeat_counter += 1
+                return
         
         # Check trading hours
         if not self._is_within_trading_hours():
@@ -826,8 +1005,8 @@ class TradingEngine:
                     res_htf = indic.calculate(
                         df_htf_confirmed, 
                         use_ha=htf_use_ha,
-                        sensitivity=htf_cfg.get("sensitivity", 1.0),
-                        atr_period=htf_cfg.get("atr", 10)
+                        amplitude=htf_cfg.get("amplitude", htf_cfg.get("sensitivity", 2)),
+                        channel_deviation=htf_cfg.get("channel_deviation", htf_cfg.get("atr", 2))
                     )
                     htf_trend = res_htf.trend
                     htf_trendline = res_htf.metadata.get("stop_level", 0.0)
@@ -876,7 +1055,7 @@ class TradingEngine:
                     if symbol not in self._signal_wait_state:
                         # Log ONLY the first time the signal is detected
                         curr_price = df_opt['Close'].iloc[-1]
-                        msg = f"\n[SIGNAL] UTBot BUY detected on {symbol} @ {curr_price:.2f}"
+                        msg = f"\n[SIGNAL] HalfTrend BUY detected on {symbol} @ {curr_price:.2f}"
                         print(msg)
                         logger.info(msg.strip())
                         
@@ -953,13 +1132,13 @@ class TradingEngine:
                         if priority == "SIGNAL_FIRST":
                             # Exit immediately on UTBot sell
                             curr_price = df_opt['Close'].iloc[-1]
-                            msg = f"\n[EXIT SIGNAL] UTBot SELL detected on {symbol} @ {curr_price:.2f}. Exiting..."
+                            msg = f"\n[EXIT SIGNAL] HalfTrend SELL detected on {symbol} @ {curr_price:.2f}. Exiting..."
                             print(msg)
                             logger.info(msg.strip())
-                            await self._execute_exit(self.trades[symbol], "UTBot Sell Signal")
+                            await self._execute_exit(self.trades[symbol], "HalfTrend Sell Signal")
                         else:
                             # TSL_FIRST: Just log, don't exit
-                            print(f"[INFO] UTBot SELL on {symbol} (TSL_FIRST mode - waiting for TSL)")
+                            print(f"[INFO] HalfTrend SELL on {symbol} (TSL_FIRST mode - waiting for TSL)")
         except Exception as e:
             logger.error(f"Error processing {symbol}: {e}", exc_info=True)
 

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "backtest": {
+      "source": "marketcalls/vectorbt-backtesting-skills",
+      "sourceType": "github",
+      "computedHash": "7602a8884bdb930aa0896d7afca2070c1c1c92d79613ad0106022cebf625a68e"
+    },
+    "optimize": {
+      "source": "marketcalls/vectorbt-backtesting-skills",
+      "sourceType": "github",
+      "computedHash": "63b540794e20623c8c607b6048bbab5ce362595b5ff4edded6bb4de7bf3b02ae"
+    },
+    "quick-stats": {
+      "source": "marketcalls/vectorbt-backtesting-skills",
+      "sourceType": "github",
+      "computedHash": "892dde282a3e0e03f249a0e7d7d64acff2c54f152b83ad2c9edeabaeb7c6f504"
+    },
+    "strategy-compare": {
+      "source": "marketcalls/vectorbt-backtesting-skills",
+      "sourceType": "github",
+      "computedHash": "8a571f5d2221a8a4344bba55453744b9d46efb937597a25653943eda0567545e"
+    },
+    "vectorbt-expert": {
+      "source": "marketcalls/vectorbt-backtesting-skills",
+      "sourceType": "github",
+      "computedHash": "6d6787732acbf3ca8b3465019066f61fc51424ad63da0fbdafcd8216e33c466f"
+    }
+  }
+}

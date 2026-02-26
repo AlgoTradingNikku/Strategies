@@ -38,7 +38,13 @@ class ConfigValidator:
             "schema": {
                 "mode": {"type": str, "enum": ["AUTO", "MANUAL"], "required": True},
                 "manual_strikes": {"type": list, "required": False},
-                "max_option_price": {"type": (int, float), "min": 0, "required": False}
+                "max_option_price": {"type": (int, float), "min": 0, "required": False},
+                # AUTO mode fields
+                "offset": {"type": str, "required": False},
+                "option_types": {"type": str, "enum": ["CE", "PE", "BOTH"], "required": False},
+                "strike_lock": {"type": bool, "required": False},
+                "expiry": {"type": str, "enum": ["WEEKLY", "MONTHLY"], "required": False},
+                "expiry_offset": {"type": int, "min": 0, "max": 4, "required": False}
             }
         },
         
@@ -169,9 +175,12 @@ class ConfigValidator:
     def _validate_custom_rules(self, config: Dict, errors: List[str]):
         """Custom validation logic for cross-field dependencies"""
         
-        # 1. Manual strikes format validation
+        # 1. Strike selection validation (mode-specific)
         strike_cfg = config.get("strike_selection", {})
-        if strike_cfg.get("mode") == "MANUAL":
+        strike_mode = strike_cfg.get("mode", "MANUAL").upper()
+        
+        if strike_mode == "MANUAL":
+            # MANUAL: Require manual_strikes list
             manual_strikes = strike_cfg.get("manual_strikes", [])
             if not manual_strikes:
                 errors.append("strike_selection.manual_strikes: Required when mode=MANUAL")
@@ -183,6 +192,16 @@ class ConfigValidator:
                         errors.append(f"strike_selection.manual_strikes[{i}]: Must be string")
                     elif not valid_pattern.match(strike):
                         errors.append(f"strike_selection.manual_strikes[{i}]: Invalid format '{strike}'")
+        
+        elif strike_mode == "AUTO":
+            # AUTO: Validate offset format (ATM, ITM1-9, OTM1-9)
+            offset = strike_cfg.get("offset", "ATM").upper()
+            valid_offsets = re.compile(r'^(ATM|ITM[1-9]|OTM[1-9])$')
+            if not valid_offsets.match(offset):
+                errors.append(
+                    f"strike_selection.offset: Invalid value '{offset}'. "
+                    f"Must be ATM, ITM1-ITM9, or OTM1-OTM9"
+                )
         
         # 2. RSI range validation
         entry_cfg = config.get("entry_conditions", {})

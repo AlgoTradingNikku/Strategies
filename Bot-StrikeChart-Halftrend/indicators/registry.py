@@ -7,7 +7,7 @@ To add a new indicator, just register it here and use it in config.yaml.
 
 from typing import Type, Dict
 from .base import BaseIndicator
-from .utbot import UTBotIndicator
+from .halftrend import HalfTrendIndicator
 from .technical import TechnicalIndicator
 
 
@@ -16,9 +16,9 @@ class IndicatorRegistry:
     Factory for creating indicators by name.
     
     Example:
-        # Create UTBot from config
-        params = {"sensitivity": 1.0, "atr_period": 10}
-        indicator = IndicatorRegistry.create("utbot", params)
+        # Create HalfTrend from config
+        params = {"amplitude": 2, "channel_deviation": 2}
+        indicator = IndicatorRegistry.create("halftrend", params)
         
         # Use it
         signal = indicator.calculate(df, use_ha=True)
@@ -31,7 +31,7 @@ class IndicatorRegistry:
     
     # Registry of available indicators
     _registry: Dict[str, Type[BaseIndicator]] = {
-        "utbot": UTBotIndicator,
+        "halftrend": HalfTrendIndicator,
         "technical": TechnicalIndicator,
         # Add new indicators here:
     }
