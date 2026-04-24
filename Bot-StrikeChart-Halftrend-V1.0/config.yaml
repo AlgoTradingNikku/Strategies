@@ -1,0 +1,260 @@
+strategy_name: "Bot-StrikeChart-Halftrend"
+
+# ========================================
+# 1. ASSET SELECTION & MODE
+# ========================================
+live_trade: True               # Set to True for real orders, False for observation only
+index_query: "NIFTY"           # Underlying index symbol
+index_exchange: "NSE_INDEX"    # Exchange for index data
+
+# Option Contract Selection
+strike_selection:
+  mode: "AUTO"            # "AUTO" or "MANUAL"
+
+  # ── AUTO Mode Settings ──
+  # When mode=AUTO, the bot automatically resolves ATM/ITM/OTM strikes
+  # using the OpenAlgo optionsymbol() API. No need to type strike symbols manually.
+  offset: "ATM"                # Strike offset label (maps to OpenAlgo API):
+                               #   "ATM"  = At The Money (nearest to Nifty LTP)
+                               #   "ITM1" = 1 strike In The Money (CE=lower, PE=higher)
+                               #   "ITM2" = 2 strikes In The Money
+                               #   "OTM1" = 1 strike Out Of The Money
+                               #   "OTM3" = 3 strikes Out Of The Money
+                               #   etc.
+  option_types: "BOTH"         # Which option types to scan:
+                               #   "CE"   = Call options only
+                               #   "PE"   = Put options only
+                               #   "BOTH" = Scan both CE and PE strikes
+  strike_lock: True            # Lock strike during active trades:
+                               #   True  = Once a strike is resolved and a trade is entered,
+                               #           keep scanning the SAME strike until all positions
+                               #           are closed (flat). Prevents mid-trade strike switching.
+                               #   False = Recalculate the strike every scan cycle.
+                               #           WARNING: May cause the bot to switch strikes
+                               #           while a trade is still active.
+                               #   RECOMMENDED: True (safe, avoids confusion)
+
+  # ── Expiry Settings (used by AUTO mode) ──
+  expiry: "WEEKLY"             # "WEEKLY" or "MONTHLY"
+  expiry_offset: 0             # 0 = Current week expiry, 1 = Next week expiry
+                               # Example: If today is Wednesday 12 Feb,
+                               #   0 = picks 13 Feb (this Thursday)
+                               #   1 = picks 20 Feb (next Thursday)
+
+  # ── MANUAL Mode Settings ──
+  # When mode=MANUAL, the bot scans ALL symbols listed below.
+  # It checks every symbol, and buys any that match the entry logic.
+  manual_strikes: 
+    #- "RELIANCE24FEB261390CE"
+    #- "RELIANCE24FEB261390PE"
+    - "NIFTY17FEB2625800CE"
+    - "NIFTY17FEB2625800PE"
+    #-"NIFTY20JAN2625500CE"
+
+  # Prevents buying expensive options. Set to 0 to DISABLE (Unlimited).
+  max_option_price: 0          # Limit entry if Price > X. (0 = No Limit)
+  
+# Option Chart Settings (for entry validation)
+option:
+  # 1. HTF (Higher Timeframe) - Trend Direction Filter
+  htf:
+    enabled: False               # Set to True to enable HTF filtering
+    timeframe: "15m"             # HTF for trend direction (5m, 15m, 30m, 1h)
+    repaint: False               # ALWAYS False for HTF (requires candle close)
+    use_ha: False                # False = OHLC (Recommended), True = HA
+    amplitude: 1                 # HalfTrend amplitude (period for highest/lowest detection)
+    channel_deviation: 1         # HalfTrend channel deviation multiplier
+
+  # 2. LTF (Lower Timeframe) - Entry Signal Timing
+  ltf:
+    timeframe: "3m"            # Option chart timeframe for halftrend, filters(VWAP/EMA/Volume/ADX/RSI) checks
+    repaint: False               # True = Enter on Live Candle (Faster, but signal can flicker)
+                                # False = Enter on Candle Close (Confirmed, but lags by 1 candle)
+                                # ADVICE: Use 'False' for 1m TF to avoid fakeouts. 
+                                # Use 'True' for 5m+ TF where waiting for a close is too slow.
+    use_ha: False               # False = OHLC (Recommended for Options), True = HA
+    amplitude: 1                # HalfTrend amplitude (period for highest/lowest detection)
+    channel_deviation: 1        # HalfTrend channel deviation multiplier
+
+max_positions: 2              # Maximum simultaneous open trades (Capital Protection)
+max_lots: 1                   # Number of lots per trade (Default: 1)
+nifty_lot_size: 65            # Lot size for Nifty Options (Required)
+
+
+entry_conditions:
+  # Logic Toggles
+  use_indicator: True   # If False, bot ignores HalfTrend signal and scans every candle
+                        # The Problem: If the market is moving sideways, 
+                        #your filters might flicker "True" multiple times, leading to over-trading.
+
+  # 1: VWAP Checks
+  check_vwap_bullish: False       # LTP > VWAP (Entry above fair value)
+  check_vwap_cap: False           # LTP <= VWAP + (ATR * multiplier) (Not too expensive)
+  vwap_cap_atr_mult: 1.5         # Multiplier for ATR cap
+  
+
+  # 2:Momentum Logic Mode
+  momentum_check_mode: "ALL"  # 'ALL', 'ANY', 'NONE'
+
+  # a.  EMA Trend Check
+  check_ema_trend: False          # EMA Fast > EMA Slow (Momentum confirmation)
+  ema_fast: 9
+  ema_slow: 20
+
+  # b. Momentum Candle Filter
+  check_momentum_candle: False
+  mom_ema_period: 9
+  mom_body_above_pct: 0.70       # 0.80 = 80% of body must be above EMA
+  mom_no_lower_wick: True        # True = Green candle must have no lower wick
+  mom_wick_threshold_pct: 0.0005 # Threshold for wick detection (0.0005 = 0.05%)
+
+  # 3: Volume Check
+  check_volume: False            # Volume > Avg * multiplier
+  vol_multiplier: 1.2
+  vol_avg_period: 5              # SMA period for average volume
+  
+  # 4: Candle Quality Check
+  check_wick_ratio: False         # Upper Wick <= Body (Reject rejection candles)
+                                 # (Pinbar / Shooting Star)
+  
+  # 5: ADX Check (Optional - Trend Strength)
+  check_adx: False               # ADX > adx_min
+  adx_min: 22    # Try 18 when utbot on, try 22 on off  
+  adx_period: 14
+  
+  # 6: RSI Check (Optional - Momentum)
+  check_rsi: False               # RSI > rsi_min AND RSI < rsi_max
+  rsi_min: 52                    # Minimum RSI for bullish entry
+  rsi_max: 100                   # Maximum RSI (100 = no upper limit)
+  rsi_period: 14
+  
+  # 7: Min ATR Filter (Avoid Dead Markets)
+  check_min_atr: False            #entry if ATR < min_atr
+  min_atr: 6.0                    # Minimum volatility required to enter
+                                  # atr value of halftrend is used
+  # ATR Cheat Sheet (Nifty Options):
+  # < 5   : Dead/Flat Market (avoid premiums don't move)
+  # 5-10  : Low Volatility (slow movement)
+  # 10-20 : Normal/Healthy (good for trading)
+  # > 20  : High Volatility (fast moves)
+
+# ========================================
+# AUTO RE-ENTRY LOGIC (Option Chart - NEW)
+# ========================================
+# Allows controlled re-entry on pullback after initial signal
+re_entry:
+  enabled: True
+  max_attempts: 2                # Max re-entry attempts per signal
+  # Pullback Conditions (all must be true):
+  # 1. Price pulls back into EMA9-EMA21 zone
+  # 2. No close below EMA21
+  # 3. Fresh bullish candle closes above EMA9
+  pullback_ema_fast: 9
+  pullback_ema_slow: 21
+
+# ========================================
+# EXIT CONDITIONS (NEW)
+# ========================================
+# Controls how trades are exited
+exit_conditions:
+  use_utbot_sell: False           # Exit on HalfTrend sell_signal
+  use_tsl: True                   # Keep TSL as safety net (Always recommended)
+  tsl_priority: "TSL_FIRST"    # "TSL_FIRST" = Ignore HalfTrend, wait for TSL
+                                  # "SIGNAL_FIRST" = Exit immediately on HalfTrend sell
+
+# ========================================
+# TSL & RISK MANAGEMENT
+# ========================================
+tsl:
+  mode: "POINTS"                # "ATR", "PERCENT", or "POINTS"
+  atr_multiplier: 1.5           # TSL = High - (ATR * 1.5). Lower this to 1.0 for tighter stops.
+  
+  # Percent Mode settings (if mode="PERCENT")
+  trail_pct: 4.0                # TSL = High - 4%
+  
+  # Points Mode settings (if mode="POINTS")
+  trail_points: 3.0             # TSL = High - 4 points (fixed gap)
+  
+  # TSL Cushion (Extra buffer when TSL about to be hit - prevents premature exit)
+  # Application to all the modes.
+  cushion:
+    enabled: False               # Enable/Disable cushion feature
+    cushion_points: 2.0         # Points (Rs) to move TSL down when hit (always in points)
+    max_attempts: 2             # Max times to apply cushion before actual exit
+
+  # Profit Guard (Lock profits as price moves up)
+  enable_profit_guard: True
+  guard_1_pct: 5.0              # Stage 1: At 5% profit...
+  guard_1_trail: 2.0            # ...move TSL to 2% profit (Breakeven+)
+  guard_2_pct: 8.0              # Stage 2: At 8% profit...
+  guard_2_trail: 4.0            # ...move TSL to 4% profit
+  guard_3_pct: 12.0             # Stage 3: At 12% profit...
+  guard_3_trail: 6.0            # ...move TSL to 6% profit
+  
+# ========================================
+# RE-ENTRY PROTECTION
+# ========================================
+re_entry_protection:
+  enabled: True
+  cooldown_after_loss_mins: 0    # Wait 3 mins (1 Candle3m) after a LOSS (Whipsaw protection)
+                                 # Lost on 25700CE? Cooldown for 25700CE ONLY.
+  cooldown_after_profit_mins: 0  # Wait 0 mins after a PROFIT (Immediate re-entry allowed)
+
+# ========================================
+# 4. EXECUTION
+# ========================================
+execution:
+  order_type: "LIMIT"           # "LIMIT" (Simple Limit Order) or "SMART_LIMIT" (Advanced Chasing)
+  order_timeout_sec: 8          # Wait 8s for fill then cancel
+  enable_bot_auto_sell: True    # If False, bot tracks PnL but DOES NOT SELL. User must exit manually.
+  
+  # Parallel Strike Scanning (NEW - Performance Enhancement)
+  parallel_scanning: True       # Scan all strikes simultaneously (4x faster for 4 strikes)
+  selection_mode: "PRICE"       # Options: "PRICE" (cheapest first), "CONFIG_ORDER" (list order)
+                                # Future Enhancement: "CONFIDENCE" (score-based selection)
+
+# ========================================
+# ML PREDICTIVE FILTER (Phase 2)
+# ========================================
+ml_filter:
+  enabled: True                  # Set to True to start collecting data/filtering
+  min_training_samples: 50       # Min trades before model starts "vetoing" signals
+  confidence_threshold: 0.60    # Score required to pass (0.60 = 60% win prob)
+  save_model_path: "ml_model.joblib"
+# ========================================
+
+# SYSTEM CONFIGURATION (Advanced)
+system:
+  loop_intervals:
+    scanner: 5                  # Run signal scanner every 5s (Min 3s recommended)
+    risk_monitor: 1             # Run risk monitor every 1s (Min 1s recommended)
+    position_sync: 10           # Sync positions every 10s (Min 5s recommended)
+    config_monitor: 2           # Check config changes every 2s
+  
+  data_limits:
+    # trend_bars removed (unused)
+    exec_bars: 120               # Bars to fetch for Option Signal check (HalfTrend needs 100+ for best ATR quality)
+    
+  cooldowns:
+    error_sec: 60               # Cooldown after error/crash (Safe mode)
+
+greeks_monitoring:
+  enabled: False                # Display option Greeks in heartbeat (Disabled as requested)
+                                # When enabled, shows Delta, Gamma, Theta, Vega, IV
+
+# ========================================
+# 9. API & SYSTEM
+# ========================================
+# SECURITY NOTE: Consider using environment variable OPENALGO_API_KEY instead of hardcoding.
+# The bot will check for env variable first, then fall back to this value.
+api_key: "247dd24173e81109a625ffa78f7be332c959cd4924b78ade241ffd16a8dd1220"
+api_host: "http://127.0.0.1:5000"
+use_websocket: True
+use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)
+
+trading_hours:
+  enabled: False
+  start_time: "09:00"           # Post-opening settle
+  end_time: "15:30"             # Market Close
+  sq_off_time: "15:20"          # Hard exit all positions
+  avoid_lunch: False

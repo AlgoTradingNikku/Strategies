@@ -237,7 +237,7 @@ greeks_monitoring:
 # ========================================
 # SECURITY NOTE: Consider using environment variable OPENALGO_API_KEY instead of hardcoding.
 # The bot will check for env variable first, then fall back to this value.
-api_key: "ea1f55da6cb827c27f43e05088d9ec4a19dcdde979af53114785ccbd4b96db61"
+api_key: "2bea871fa529840a4ffe01e6a562ae49d1cbecbea1303b8fbcd1ec9863d45441"
 api_host: "http://127.0.0.1:5000"
 use_websocket: True
 use_threading: True             # Run Scanner & Risk Manager in parallel (Recommended: True)

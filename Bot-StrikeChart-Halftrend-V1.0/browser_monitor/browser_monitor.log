@@ -1,0 +1,76 @@
+18:43:16 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:43:16 │ INFO    │ Poll Interval  : 1s
+18:43:16 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:43:29 │ INFO    │ 🚀 Launching Chromium browser...
+18:43:31 │ INFO    │ 📈 Opening chart: https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:43:47 │ INFO    │ 📊 Opening Strategy Tester panel...
+18:43:47 │ WARNING │    ⚠️  Could not find Strategy Tester tab.
+18:43:47 │ WARNING │    Please open it manually: click 'Strategy Tester' at the bottom.
+18:43:47 │ WARNING │    ⚠️  Could not find 'List of Trades' button.
+18:43:47 │ WARNING │    Please click it manually in the Strategy Tester panel.
+18:43:47 │ INFO    │ =======================================================
+18:43:47 │ INFO    │ 🟢 MONITORING STARTED — watching for new trades
+18:43:47 │ INFO    │    Press Ctrl+C to stop
+18:43:47 │ INFO    │ =======================================================
+18:46:18 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:46:18 │ INFO    │ Poll Interval  : 1s
+18:46:18 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:46:19 │ INFO    │ 🚀 Launching Chromium browser...
+18:46:36 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:46:36 │ INFO    │ Poll Interval  : 1s
+18:46:36 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:46:37 │ INFO    │ 🚀 Launching Chromium browser...
+18:48:04 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:48:04 │ INFO    │ Poll Interval  : 1s
+18:48:04 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:48:04 │ INFO    │ 🚀 Launching Chromium browser...
+18:48:51 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:48:51 │ INFO    │ Poll Interval  : 1s
+18:48:51 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:48:52 │ INFO    │ 🚀 Launching Chromium browser...
+18:51:34 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:51:34 │ INFO    │ Poll Interval  : 1s
+18:51:34 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:51:34 │ INFO    │ 🚀 Launching Chromium browser...
+18:51:36 │ INFO    │ 📈 Opening chart: https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:51:53 │ INFO    │ 📊 Opening Strategy Tester panel...
+18:51:53 │ WARNING │    ⚠️  Could not find Strategy Tester tab.
+18:51:53 │ WARNING │    Please open it manually: click 'Strategy Tester' at the bottom.
+18:51:53 │ WARNING │    ⚠️  Could not find 'List of Trades' button.
+18:51:53 │ WARNING │    Please click it manually in the Strategy Tester panel.
+18:51:53 │ INFO    │ =======================================================
+18:51:53 │ INFO    │ 🟢 MONITORING STARTED — watching for new trades
+18:51:53 │ INFO    │    Press Ctrl+C to stop
+18:51:53 │ INFO    │ =======================================================
+18:56:50 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:56:50 │ INFO    │ Poll Interval  : 1s
+18:56:50 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:56:50 │ INFO    │ 🚀 Launching Chrome browser...
+18:56:50 │ INFO    │ 📈 Opening chart: https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:57:06 │ INFO    │ 📊 Opening Strategy Tester panel...
+18:57:06 │ WARNING │    ⚠️  Could not find Strategy Tester tab.
+18:57:06 │ WARNING │    Please open it manually: click 'Strategy Tester' at the bottom.
+18:57:07 │ WARNING │    ⚠️  Could not find 'List of Trades' button.
+18:57:07 │ WARNING │    Please click it manually in the Strategy Tester panel.
+18:57:07 │ INFO    │ =======================================================
+18:57:07 │ INFO    │ 🟢 MONITORING STARTED — watching for new trades
+18:57:07 │ INFO    │    Press Ctrl+C to stop
+18:57:07 │ INFO    │ =======================================================
+18:59:12 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+18:59:12 │ INFO    │ Poll Interval  : 1s
+18:59:12 │ INFO    │ OpenAlgo       : DISABLED (print only)
+18:59:27 │ INFO    │ 🔗 Connecting to existing Chrome instance (localhost:9222)...
+18:59:27 │ ERROR   │ ❌ Failed to connect to Chrome: BrowserType.connect_over_cdp: connect ECONNREFUSED ::1:9222
+Call log:
+  - <ws preparing> retrieving websocket url from http://localhost:9222
+
+18:59:27 │ ERROR   │    Make sure Chrome is running with: chrome.exe --remote-debugging-port=9222
+19:01:44 │ INFO    │ Chart URL      : https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY
+19:01:44 │ INFO    │ Poll Interval  : 1s
+19:01:44 │ INFO    │ OpenAlgo       : DISABLED (print only)
+19:01:44 │ INFO    │ 🔗 Connecting to existing Chrome instance (localhost:9222)...
+19:01:45 │ ERROR   │ ❌ Failed to connect to Chrome: BrowserType.connect_over_cdp: connect ECONNREFUSED ::1:9222
+Call log:
+  - <ws preparing> retrieving websocket url from http://localhost:9222
+
+19:01:45 │ ERROR   │    Make sure Chrome is running with: chrome.exe --remote-debugging-port=9222
