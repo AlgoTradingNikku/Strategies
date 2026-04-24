@@ -2,3 +2,10 @@ backtrader
 pandas
 openalgo==1.0.45
 PyYAML
+
+numpy
+requests
+schedule
+python-dotenv
+flask
+flask-socketio

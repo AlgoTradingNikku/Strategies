@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAlgo Bot Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg:       #0a0d0f;
+    --surface:  #111518;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.13);
+    --text:     #e8eaec;
+    --muted:    #6b7580;
+    --accent:   #00d4a0;
+    --accent2:  #0099ff;
+    --red:      #ff4d4d;
+    --yellow:   #f5c518;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* NAV */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px; border-bottom: 1px solid var(--border);
+    background: var(--surface); position: sticky; top: 0; z-index: 100;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; }
+  .nav-logo {
+    width: 32px; height: 32px; background: var(--accent);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  }
+  .nav-logo svg { width: 18px; height: 18px; }
+  .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .brand-sub  { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .nav-status { display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status-dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 1.5s infinite; }
+  .status-dot.error { background: var(--red); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .status-label { font-size: 12px; font-family: var(--mono); color: var(--muted); }
+  .mkt-time { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; }
+
+  /* LAYOUT */
+  .main { display: grid; grid-template-columns: 1fr 340px; gap: 0; flex: 1; }
+  .left  { padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; border-right: 1px solid var(--border); }
+  .right { padding: 20px 20px; display: flex; flex-direction: column; gap: 16px; background: var(--surface); }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-family: var(--mono); }
+  .metric-val   { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+  .metric-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+  .up   { color: var(--accent) !important; }
+  .down { color: var(--red)    !important; }
+  .neutral { color: var(--text) !important; }
+
+  /* SECTION TITLE */
+  .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: var(--mono); }
+
+  /* WATCHLIST TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  thead th {
+    text-align: left; padding: 8px 12px; font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border); font-weight: 400;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody td { padding: 10px 12px; }
+  .sym-name { font-family: var(--sans); font-weight: 600; font-size: 13px; }
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 20px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  }
+  .pill-buy  { background: rgba(0,212,160,0.15); color: var(--accent); }
+  .pill-sell { background: rgba(255,77,77,0.15);  color: var(--red); }
+  .pill-hold { background: rgba(255,255,255,0.07); color: var(--muted); }
+
+  /* P&L CHART */
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .chart-wrap { position: relative; height: 180px; }
+
+  /* POSITIONS */
+  .pos-list { display: flex; flex-direction: column; gap: 8px; }
+  .pos-card {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .pos-sym  { font-weight: 600; font-size: 13px; }
+  .pos-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .pos-pnl  { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+
+  /* CONTROLS */
+  .ctrl-card {
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .form-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono); }
+  input[type=text], input[type=number], select {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; color: var(--text);
+    font-family: var(--mono); font-size: 12px; width: 100%;
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: #1a1e22; }
+  .range-row { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .range-val { font-family: var(--mono); font-size: 12px; color: var(--accent); min-width: 42px; text-align: right; }
+  .btn {
+    width: 100%; padding: 10px; border-radius: 7px; font-family: var(--sans);
+    font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.98); }
+  .btn-start { background: var(--accent); color: #000; }
+  .btn-stop  { background: var(--red);   color: #fff; }
+  .btn-sq    { background: transparent; border: 1px solid var(--border2); color: var(--text); margin-top: 6px; }
+
+  /* ACTIVITY LOG */
+  .log-box {
+    background: #070a0c; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 11px;
+    height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+  }
+  .log-box::-webkit-scrollbar { width: 4px; }
+  .log-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .log-entry { display: flex; gap: 8px; }
+  .log-ts    { color: #3a4550; flex-shrink: 0; }
+  .log-msg   { color: var(--muted); }
+  .log-buy   .log-msg { color: var(--accent); }
+  .log-sell  .log-msg { color: var(--red); }
+  .log-warn  .log-msg { color: var(--yellow); }
+  .log-error .log-msg { color: var(--red); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+    .right { border-top: 1px solid var(--border); }
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <svg viewBox="0 0 18 18" fill="none">
+        <polyline points="1,14 6,7 10,10 15,3" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="12,3 15,3 15,6" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-name">OpenAlgo Bot</div>
+      <div class="brand-sub">NSE / BSE Auto-Trader</div>
+    </div>
+  </div>
+  <div class="nav-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">DISCONNECTED</span>
+  </div>
+  <div class="mkt-time" id="mktTime">--:--:-- IST</div>
+</nav>
+
+<div class="main">
+  <!-- LEFT PANEL -->
+  <div class="left">
+
+    <!-- METRICS -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Available Cash</div>
+        <div class="metric-val neutral" id="mCash">₹0</div>
+        <div class="metric-sub">in account</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Unrealised P&L</div>
+        <div class="metric-val" id="mPnl">₹0</div>
+        <div class="metric-sub" id="mPnlSub">today</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Open Trades</div>
+        <div class="metric-val neutral" id="mOpen">0</div>
+        <div class="metric-sub" id="mOpenSub">of 4 max</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Win Rate</div>
+        <div class="metric-val" id="mWin">—</div>
+        <div class="metric-sub" id="mWinSub">0 trades</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Signals Today</div>
+        <div class="metric-val neutral" id="mSigs">0</div>
+        <div class="metric-sub" id="mSigSub">buy / sell</div>
+      </div>
+    </div>
+
+    <!-- WATCHLIST -->
+    <div>
+      <div class="section-head">
+        <span class="section-title">AI Watchlist</span>
+        <span class="section-title" id="scanTime">last scan: —</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Symbol</th><th>LTP</th><th>RSI</th><th>MACD Hist</th><th>Signal</th><th>Position</th>
+          </tr></thead>
+          <tbody id="watchBody"><tr><td colspan="6" style="color:var(--muted);padding:20px;text-align:center;">Waiting for first scan...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- P&L CHART -->
+    <div class="chart-card">
+      <div class="section-head" style="margin-bottom:10px;">
+        <span class="section-title">P&L History</span>
+        <span class="section-title" id="chartSub">live session</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="pnlChart" role="img" aria-label="Live session P&L chart">Live P&L tracking chart.</canvas>
+      </div>
+    </div>
+
+    <!-- CLOSED TRADES -->
+    <div>
+      <div class="section-head">
+        <span class="section-title">Closed Trades</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Symbol</th><th>Action</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Reason</th>
+          </tr></thead>
+          <tbody id="closedBody"><tr><td colspan="7" style="color:var(--muted);padding:20px;text-align:center;">No closed trades yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+
+    <!-- BOT CONTROLS -->
+    <div class="ctrl-card">
+      <div class="section-title" style="margin-bottom:14px;">Bot Controls</div>
+      <div class="form-row">
+        <div class="form-label">Symbols (comma-separated)</div>
+        <input type="text" id="cfgSymbols" value="RELIANCE,INFY,TCS,HDFCBANK,SBIN,WIPRO">
+      </div>
+      <div class="form-row">
+        <div class="form-label">Strategy</div>
+        <select id="cfgStrategy">
+          <option value="5m">Momentum + RSI (5m)</option>
+          <option value="15m">Momentum + RSI (15m)</option>
+          <option value="1m">Momentum + RSI (1m)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label">Capital per Trade (₹)</div>
+        <div class="range-row">
+          <input type="range" min="5000" max="100000" step="5000" value="25000" id="cfgCap"
+            oninput="document.getElementById('cfgCapVal').textContent='₹'+Number(this.value).toLocaleString('en-IN')">
+          <span class="range-val" id="cfgCapVal">₹25,000</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">Stop Loss %</div>
+        <div class="range-row">
+          <input type="range" min="0.5" max="5" step="0.5" value="2" id="cfgSL"
+            oninput="document.getElementById('cfgSLVal').textContent=this.value+'%'">
+          <span class="range-val" id="cfgSLVal">2%</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">Take Profit %</div>
+        <div class="range-row">
+          <input type="range" min="1" max="10" step="0.5" value="4" id="cfgTP"
+            oninput="document.getElementById('cfgTPVal').textContent=this.value+'%'">
+          <span class="range-val" id="cfgTPVal">4%</span>
+        </div>
+      </div>
+      <button class="btn btn-start" id="startBtn" onclick="startBot()">▶  Start Bot</button>
+      <button class="btn btn-sq" onclick="squareOff()">⏹  Square Off All</button>
+    </div>
+
+    <!-- OPEN POSITIONS -->
+    <div>
+      <div class="section-title" style="margin-bottom:10px;">Open Positions</div>
+      <div class="pos-list" id="positionsList">
+        <div style="color:var(--muted);font-size:12px;font-family:var(--mono);padding:8px 0;">No open positions</div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY LOG -->
+    <div>
+      <div class="section-head">
+        <span class="section-title">Activity Log</span>
+        <span class="section-title" style="cursor:pointer;" onclick="clearLog()">clear</span>
+      </div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const socket = io();
+let running = false;
+let buySigs = 0, sellSigs = 0;
+const pnlHistory = { labels: [], data: [] };
+let pnlChart;
+
+// ── Clock ────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const t = now.toLocaleTimeString('en-IN', { hour12: false });
+  document.getElementById('mktTime').textContent = t + ' IST';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── P&L Chart ────────────────────────────────────────────────────────────
+function initChart() {
+  const ctx = document.getElementById('pnlChart').getContext('2d');
+  pnlChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: pnlHistory.labels,
+      datasets: [{
+        data: pnlHistory.data,
+        borderColor: '#00d4a0',
+        backgroundColor: 'rgba(0,212,160,0.06)',
+        fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b7580', font: { size: 10, family: 'JetBrains Mono' }, maxTicksLimit: 6 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#6b7580', font: { size: 10, family: 'JetBrains Mono' }, callback: v => '₹' + v.toLocaleString('en-IN') }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function updateChart(pnl) {
+  const now = new Date().toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  pnlHistory.labels.push(now);
+  pnlHistory.data.push(parseFloat(pnl.toFixed(2)));
+  if (pnlHistory.labels.length > 80) { pnlHistory.labels.shift(); pnlHistory.data.shift(); }
+  pnlChart.update('none');
+}
+
+// ── Summary update ───────────────────────────────────────────────────────
+socket.on('summary', d => {
+  running = d.running;
+  const dot = document.getElementById('statusDot');
+  const lbl = document.getElementById('statusLabel');
+  if (!d.connected) {
+    dot.className = 'status-dot error'; lbl.textContent = 'DISCONNECTED';
+  } else if (d.running) {
+    dot.className = 'status-dot live'; lbl.textContent = 'BOT RUNNING';
+  } else {
+    dot.className = 'status-dot'; lbl.textContent = 'CONNECTED · IDLE';
+  }
+
+  const btn = document.getElementById('startBtn');
+  if (d.running) {
+    btn.textContent = '⏸  Stop Bot'; btn.className = 'btn btn-stop';
+    btn.onclick = stopBot;
+  } else {
+    btn.textContent = '▶  Start Bot'; btn.className = 'btn btn-start';
+    btn.onclick = startBot;
+  }
+
+  const cash = d.available_cash;
+  document.getElementById('mCash').textContent = '₹' + cash.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
+  const pnl = d.total_pnl;
+  const pnlEl = document.getElementById('mPnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + '₹' + Math.abs(pnl).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  pnlEl.className = 'metric-val ' + (pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'neutral');
+
+  document.getElementById('mOpen').textContent = d.running ? (document.getElementById('positionsList').querySelectorAll('.pos-card').length) : '0';
+  const wr = d.win_rate;
+  const wrEl = document.getElementById('mWin');
+  wrEl.textContent = d.total_trades ? wr + '%' : '—';
+  wrEl.className = 'metric-val ' + (wr >= 50 ? 'up' : wr > 0 ? 'down' : 'neutral');
+  document.getElementById('mWinSub').textContent = d.total_trades + ' trades';
+  document.getElementById('mSigSub').textContent = buySigs + ' buy · ' + sellSigs + ' sell';
+
+  updateChart(pnl);
+});
+
+// ── Watchlist ────────────────────────────────────────────────────────────
+socket.on('watchlist', list => {
+  document.getElementById('scanTime').textContent = 'last scan: ' + new Date().toLocaleTimeString('en-IN', { hour12: false });
+  const tbody = document.getElementById('watchBody');
+  if (!list.length) return;
+  buySigs  = list.filter(r => r.signal === 'BUY').length;
+  sellSigs = list.filter(r => r.signal === 'SELL').length;
+  document.getElementById('mSigs').textContent = buySigs + sellSigs;
+  tbody.innerHTML = list.map(r => `
+    <tr>
+      <td><span class="sym-name">${r.symbol}</span></td>
+      <td>₹${(r.ltp||0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      <td style="font-family:var(--mono); color:${r.rsi < 35 ? 'var(--accent)' : r.rsi > 65 ? 'var(--red)' : 'var(--muted)'}">${r.rsi != null ? r.rsi : '—'}</td>
+      <td style="font-family:var(--mono); color:${r.macd_hist > 0 ? 'var(--accent)' : r.macd_hist < 0 ? 'var(--red)' : 'var(--muted)'}">${r.macd_hist != null ? r.macd_hist : '—'}</td>
+      <td><span class="pill pill-${r.signal.toLowerCase()}">${r.signal}</span></td>
+      <td style="font-family:var(--mono);color:var(--muted)">${r.in_position ? '● OPEN' : '—'}</td>
+    </tr>`).join('');
+});
+
+// ── Positions ────────────────────────────────────────────────────────────
+socket.on('positions', list => {
+  document.getElementById('mOpen').textContent = list.length;
+  const cont = document.getElementById('positionsList');
+  if (!list.length) {
+    cont.innerHTML = '<div style="color:var(--muted);font-size:12px;font-family:var(--mono);padding:8px 0;">No open positions</div>';
+    return;
+  }
+  cont.innerHTML = list.map(p => {
+    const pnl = p.unrealised_pnl;
+    return `<div class="pos-card">
+      <div>
+        <div class="pos-sym">${p.symbol}</div>
+        <div class="pos-meta">${p.action} · ${p.qty} qty · In @ ₹${p.entry_price} · ${p.entry_time}</div>
+        <div class="pos-meta" style="margin-top:2px;">SL ₹${p.stop_loss} | TP ₹${p.take_profit}</div>
+      </div>
+      <div class="pos-pnl ${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}₹${Math.abs(pnl).toFixed(2)}</div>
+    </div>`;
+  }).join('');
+});
+
+// ── Log ──────────────────────────────────────────────────────────────────
+function appendLog(entry) {
+  const box = document.getElementById('logBox');
+  const arr = Array.isArray(entry) ? entry : [entry];
+  arr.forEach(e => {
+    const d = document.createElement('div');
+    d.className = 'log-entry log-' + (e.kind || 'info');
+    d.innerHTML = `<span class="log-ts">${e.time}</span><span class="log-msg">${e.msg}</span>`;
+    box.appendChild(d);
+  });
+  box.scrollTop = box.scrollHeight;
+  if (box.children.length > 150) box.removeChild(box.firstChild);
+}
+socket.on('log', entry => appendLog(entry));
+
+function clearLog() { document.getElementById('logBox').innerHTML = ''; }
+
+// ── Closed trades ────────────────────────────────────────────────────────
+function refreshClosed() {
+  fetch('/api/closed_trades').then(r => r.json()).then(list => {
+    const tbody = document.getElementById('closedBody');
+    if (!list.length) return;
+    tbody.innerHTML = [...list].reverse().map(t => {
+      const pnl = t.pnl;
+      return `<tr>
+        <td class="sym-name">${t.symbol}</td>
+        <td><span class="pill pill-${t.action.toLowerCase()}">${t.action}</span></td>
+        <td style="font-family:var(--mono)">${t.qty}</td>
+        <td style="font-family:var(--mono)">₹${t.entry_price}</td>
+        <td style="font-family:var(--mono)">₹${t.exit_price}</td>
+        <td style="font-family:var(--mono)" class="${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}₹${Math.abs(pnl).toFixed(2)}</td>
+        <td style="font-family:var(--mono);color:var(--muted)">${t.reason}</td>
+      </tr>`;
+    }).join('');
+  });
+}
+setInterval(refreshClosed, 10000);
+
+// ── Bot actions ──────────────────────────────────────────────────────────
+function startBot() {
+  const payload = {
+    symbols:           document.getElementById('cfgSymbols').value,
+    candle_interval:   document.getElementById('cfgStrategy').value,
+    capital_per_trade: document.getElementById('cfgCap').value,
+    stop_loss_pct:     document.getElementById('cfgSL').value,
+    take_profit_pct:   document.getElementById('cfgTP').value,
+  };
+  fetch('/api/bot/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+    .then(r => r.json()).then(d => appendLog({ time: new Date().toLocaleTimeString('en-IN',{hour12:false}), msg: d.msg, kind: 'info' }));
+}
+
+function stopBot() {
+  fetch('/api/bot/stop', { method: 'POST' })
+    .then(r => r.json()).then(d => appendLog({ time: new Date().toLocaleTimeString('en-IN',{hour12:false}), msg: d.msg, kind: 'warn' }));
+}
+
+function squareOff() {
+  if (!confirm('Square off ALL open positions now?')) return;
+  fetch('/api/bot/squareoff', { method: 'POST' })
+    .then(r => r.json()).then(d => appendLog({ time: new Date().toLocaleTimeString('en-IN',{hour12:false}), msg: d.msg, kind: 'warn' }));
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+initChart();
+fetch('/api/summary').then(r=>r.json()).then(d => socket.emit('summary', d));
+</script>
+</body>
+</html>

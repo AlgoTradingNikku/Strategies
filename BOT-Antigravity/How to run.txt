@@ -1,0 +1,17 @@
+Everything runs from one trading_bot.py. When you start it, Flask + SocketIO boots on port 8080 and serves the full dark-themed dashboard. The bot scan loop runs in a background thread and pushes live updates to your browser via WebSocket — no page refresh needed.
+The dashboard gives you:
+
+Live RSI + MACD values for every symbol in your watchlist
+Real-time P&L chart that draws itself as trades happen
+Open positions with unrealised P&L, SL and TP levels updating every cycle
+Closed trades table with entry/exit price and reason (SL hit / TP hit)
+Start/Stop bot and Square-Off buttons right from the UI — no terminal needed after launch
+Activity log streaming every bot event in real time
+
+The architecture is clean — OpenAlgoClient → SignalEngine → PositionManager → TradingBot loop, with Flask REST + SocketIO sitting on top sharing state. Want me to add TradingView webhook support or a backtest mode next?
+
+
+=============
+
+OpenAlgoClient handles all REST calls to your local OpenAlgo server, SignalEngine computes RSI + MACD indicators on live candle data, and PositionManager tracks all open trades with per-trade SL/TP.
+The BUY signal fires when RSI drops below 35 AND the MACD histogram crosses from negative to positive. The SELL (short) signal is the mirror. It scans every 5 minutes and auto-squares off all MIS positions at 15:10 IST.
