@@ -222,3 +222,4 @@
 2026-04-24 14:19:32  WARNING   No history for SBIN
 2026-04-24 14:19:33  WARNING   No history for WIPRO
 2026-04-24 14:20:26  INFO      127.0.0.1 - - [24/Apr/2026 14:20:26] "GET /api/closed_trades HTTP/1.1" 200 -
+2026-04-24 14:21:26  INFO      127.0.0.1 - - [24/Apr/2026 14:21:26] "GET /api/closed_trades HTTP/1.1" 200 -
