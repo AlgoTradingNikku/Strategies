@@ -1,8 +1,0 @@
-openalgo==1.0.45
-pandas>=2.0.0
-numpy>=1.26.0
-requests>=2.31.0
-schedule>=1.2.0
-python-dotenv>=1.0.0
-flask>=3.0.0
-flask-socketio>=5.3.6

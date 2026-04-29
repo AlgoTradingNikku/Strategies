@@ -1,0 +1,98 @@
+2026-04-29 22:51:24 [INFO] ==============================================================
+2026-04-29 22:51:24 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-04-29 22:51:24 [INFO] ==============================================================
+2026-04-29 22:51:24 [INFO]   Symbols    : IOC
+2026-04-29 22:51:24 [INFO]   Timeframes : 5m
+2026-04-29 22:51:24 [INFO]   Exchange   : NSE
+2026-04-29 22:51:24 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-04-29 22:51:24 [INFO]   Host       : http://127.0.0.1:5000
+2026-04-29 22:51:24 [INFO] ==============================================================
+2026-04-29 22:51:24 [INFO]   Press Ctrl+C to stop the bot
+2026-04-29 22:51:24 [INFO] ==============================================================
+2026-04-29 22:51:24 [INFO] [WS] Connecting to WebSocket...
+2026-04-29 22:51:24 [INFO] Websocket connected
+2026-04-29 22:51:24 [INFO] [WS] Subscribed to LTP for: ['IOC']
+2026-04-29 22:51:26 [INFO] [IOC|5m] Worker started.
+2026-04-29 22:51:26 [INFO] Started worker: IOC @ 5m
+2026-04-29 22:51:26 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:28 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:28 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:51:33 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:34 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:34 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:51:39 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:40 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:40 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:51:45 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:46 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:46 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:51:51 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:52 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:52 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:51:57 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:51:58 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:51:58 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:04 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:09 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:09 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:09 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:14 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:15 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:15 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:20 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:21 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:21 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:26 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:28 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:28 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:33 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:34 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:34 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:39 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:40 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:40 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:45 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:47 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:52 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29
+2026-04-29 22:52:53 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 22:52:53 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 22:52:53 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-04-29 22:52:53 [INFO] [IOC|5m] Worker stopped.
+2026-04-29 22:52:54 [INFO] [WS] Disconnecting...
+2026-04-29 22:52:54 [INFO] [WS] Disconnected.
+2026-04-29 22:52:54 [INFO] All workers stopped. Bye!
+2026-04-29 23:11:34 [INFO] ==============================================================
+2026-04-29 23:11:34 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-04-29 23:11:34 [INFO] ==============================================================
+2026-04-29 23:11:34 [INFO]   Symbols    : IOC
+2026-04-29 23:11:34 [INFO]   Timeframes : 5m
+2026-04-29 23:11:34 [INFO]   Exchange   : NSE
+2026-04-29 23:11:34 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-04-29 23:11:34 [INFO]   Host       : http://127.0.0.1:5000
+2026-04-29 23:11:34 [INFO] ==============================================================
+2026-04-29 23:11:34 [INFO]   Press Ctrl+C to stop the bot
+2026-04-29 23:11:34 [INFO] ==============================================================
+2026-04-29 23:11:34 [INFO] [WS] Connecting to WebSocket...
+2026-04-29 23:11:34 [INFO] Websocket connected
+2026-04-29 23:11:35 [INFO] [WS] Subscribed to LTP for: ['IOC']
+2026-04-29 23:11:36 [INFO] [IOC|5m] Worker started.
+2026-04-29 23:11:36 [INFO] Started worker: IOC @ 5m
+2026-04-29 23:11:36 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29 | candle=0:05:00
+2026-04-29 23:11:38 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 23:11:38 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 23:15:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29 | candle=0:05:00
+2026-04-29 23:15:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 23:15:04 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 23:20:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-24 to=2026-04-29 | candle=0:05:00
+2026-04-29 23:20:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-04-29 23:20:01 [INFO] [IOC|5m] Received 300 candles | first=2026-04-24 09:15 | last=2026-04-29 15:25
+2026-04-29 23:20:18 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-04-29 23:20:18 [INFO] [IOC|5m] Worker stopped.
+2026-04-29 23:20:19 [INFO] [WS] Disconnecting...
+2026-04-29 23:20:19 [INFO] [WS] Disconnected.
+2026-04-29 23:20:19 [INFO] All workers stopped. Bye!
