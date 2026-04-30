@@ -298,7 +298,7 @@ class TimeframeWorker:
         )
 
         try:
-            df = self.client.history(
+            raw = self.client.history(
                 symbol=self.symbol,
                 exchange=self.exchange,
                 interval=self.timeframe,
@@ -307,6 +307,28 @@ class TimeframeWorker:
             )
         except Exception as exc:
             log.error("[%s|%s] History fetch error: %s", self.symbol, self.timeframe, exc)
+            return None
+
+        # The SDK may return a DataFrame directly or a dict like {"data": <DataFrame|list>}
+        if isinstance(raw, pd.DataFrame):
+            df = raw
+        elif isinstance(raw, dict):
+            data = raw.get("data")
+            if isinstance(data, pd.DataFrame):
+                df = data
+            elif isinstance(data, list) and data:
+                df = pd.DataFrame(data)
+            else:
+                log.warning(
+                    "[%s|%s] Unexpected history dict payload: %s",
+                    self.symbol, self.timeframe, raw,
+                )
+                return None
+        else:
+            log.warning(
+                "[%s|%s] Unexpected history response type: %s",
+                self.symbol, self.timeframe, type(raw),
+            )
             return None
 
         if df is None or df.empty:
@@ -364,16 +386,50 @@ class TimeframeWorker:
             use_heikin_ashi=self.use_heikin_ashi,
         )
 
-        # Look at the last *closed* candle (iloc[-2]) to avoid repainting
-        # (iloc[-1] is the still-forming current candle)
+        # ── Dynamically find the last CLOSED candle ───────────────────────────
+        # The broker API sometimes doesn't include the currently-forming bar,
+        # so we can't assume iloc[-1] is always the live candle.
+        # Compare the last bar's timestamp against the current boundary:
+        #   • last bar timestamp >= boundary  →  it IS the forming candle → use iloc[-2]
+        #   • last bar timestamp <  boundary  →  API lagged, ALL bars closed → use iloc[-1]
         if len(df) < 2:
             return
 
-        last_closed = df.iloc[-2]
-        signal_ts = df.index[-2]
+        last_bar_ts = df.index[-1].to_pydatetime().replace(tzinfo=None)
+        boundary_naive = boundary.replace(tzinfo=None)
 
-        buy_signal = bool(last_closed["buy"])
+        if last_bar_ts >= boundary_naive:
+            # Normal case: last bar is the currently-forming candle
+            closed_idx = -2
+        else:
+            # API lag: broker hasn't pushed the current candle yet, all bars closed
+            closed_idx = -1
+            log.debug(
+                "[%s|%s] API lag detected — last bar %s < boundary %s, using iloc[-1].",
+                self.symbol, self.timeframe,
+                last_bar_ts.strftime("%H:%M"),
+                boundary_naive.strftime("%H:%M"),
+            )
+
+        last_closed = df.iloc[closed_idx]
+        signal_ts   = df.index[closed_idx]
+
+        buy_signal  = bool(last_closed["buy"])
         sell_signal = bool(last_closed["sell"])
+
+        # ── Scan summary — always logged so you can confirm the bot is running ──
+        pos_val   = int(last_closed["pos"])
+        pos_label = "LONG" if pos_val == 1 else ("SHORT" if pos_val == -1 else "FLAT")
+        sig_label = "BUY" if buy_signal else ("SELL" if sell_signal else "NONE")
+        log.info(
+            "[%s|%s] SCAN  bar=%s  close=%.2f  ATRStop=%.2f  pos=%s  signal=%s",
+            self.symbol, self.timeframe,
+            signal_ts.strftime("%H:%M"),
+            last_closed["close"],
+            last_closed["xATRTrailingStop"],
+            pos_label,
+            sig_label,
+        )
 
         if not buy_signal and not sell_signal:
             return

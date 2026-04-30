@@ -13,8 +13,9 @@ openalgo:
 # ------------------------------------------------------------
 symbols:
   - IOC
-  #- BANKINDIA
-  #- PNB
+  - BANKINDIA
+  - PNB
+  - RPOWER
 
 exchange: "NSE"
 
