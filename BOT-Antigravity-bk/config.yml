@@ -1,0 +1,60 @@
+# ============================================================
+# UT Bot Antigravity - Configuration
+# ============================================================
+
+openalgo:
+  apikey: "0ea69e6165a81731f9a37d4ab47778f7649ead857a80ac777b727863d1cf780c"
+  username: "rahul.tew"
+  base_url: "http://127.0.0.1:5000"
+  ws_url: "ws://127.0.0.1:8765"
+
+# ------------------------------------------------------------
+# Symbols & Exchange
+# ------------------------------------------------------------
+symbols:
+  - IOC
+  - BANKINDIA
+  - PNB
+  - RPOWER
+
+exchange: "NSE"
+
+# ------------------------------------------------------------
+# Timeframes to monitor (can be any combination)
+# Valid values: 1m, 3m, 5m, 10m, 15m, 30m, 1h, D
+# ------------------------------------------------------------
+timeframes:
+  - "5m"
+  #- "15m"
+  #- "30m"
+
+# ------------------------------------------------------------
+# UT Bot Strategy Parameters
+# ------------------------------------------------------------
+strategy:
+  # Key Value — changes the sensitivity of the ATR trailing stop
+  key_value: 2
+
+  # ATR Period used to compute volatility
+  atr_period: 1
+
+  # Use Heikin Ashi candles for signal source (true/false)
+  use_heikin_ashi: false
+
+# ------------------------------------------------------------
+# Historical Data
+# ------------------------------------------------------------
+data:
+  # Number of calendar days to look back for historical candles
+  lookback_days: 5
+
+# ------------------------------------------------------------
+# Signal Check
+# ------------------------------------------------------------
+bot:
+  # Interval (in seconds) between signal checks
+  signal_check_interval: 5
+
+  # Market open/close times (IST, 24h format)
+  market_open: "09:15"
+  market_close: "23:30"
