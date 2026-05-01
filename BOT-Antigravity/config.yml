@@ -58,3 +58,22 @@ bot:
   # Market open/close times (IST, 24h format)
   market_open: "09:15"
   market_close: "23:30"
+
+# ------------------------------------------------------------
+# ML Filter (XGBoost Signal Confidence Scorer)
+# ------------------------------------------------------------
+ml:
+  # Always log signals to signals.db for training data collection
+  log_signals: true
+
+  # Set to true AFTER you have trained a model (python ml_filter.py --train)
+  enabled: false
+
+  # Minimum confidence score [0.0-1.0] to allow a Telegram alert through
+  confidence_threshold: 0.60
+
+  # How many candles ahead to measure outcome for labelling
+  label_lookahead: 5
+
+  # Minimum % price move to count as a WIN when labelling
+  win_threshold_pct: 0.3

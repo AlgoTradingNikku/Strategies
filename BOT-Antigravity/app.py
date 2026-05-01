@@ -44,6 +44,18 @@ import yaml
 from openalgo import api
 
 # ---------------------------------------------------------------------------
+# ML components (optional — bot works without a trained model)
+# ---------------------------------------------------------------------------
+try:
+    from signal_logger import log_signal, extract_features, signal_count, labeled_count
+    from ml_filter import MLFilter
+    _ML_AVAILABLE = True
+except ImportError as _ml_err:
+    _ML_AVAILABLE = False
+    log_signal = extract_features = signal_count = labeled_count = None  # type: ignore
+    MLFilter = None  # type: ignore
+
+# ---------------------------------------------------------------------------
 # Ensure UTF-8 output on Windows so emojis / box-drawing chars don't crash
 # ---------------------------------------------------------------------------
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
@@ -271,6 +283,16 @@ class TimeframeWorker:
         self._candle_duration: timedelta = _parse_timeframe(timeframe)
         self._last_fetched_boundary: datetime | None = None
 
+        # ── ML Filter ────────────────────────────────────────────────────────
+        ml_cfg = config.get("ml", {})
+        self._ml_log_signals  = bool(ml_cfg.get("log_signals", True))
+        self._ml_enabled      = bool(ml_cfg.get("enabled",     False)) and _ML_AVAILABLE
+        ml_threshold          = float(ml_cfg.get("confidence_threshold", 0.60))
+        if _ML_AVAILABLE and MLFilter is not None:
+            self._ml_filter = MLFilter(threshold=ml_threshold)
+        else:
+            self._ml_filter = None
+
     # ------------------------------------------------------------------
     def _current_boundary(self) -> datetime:
         """Return the start of the candle bar that is currently open."""
@@ -441,24 +463,79 @@ class TimeframeWorker:
         if signal_ts == self._last_signal_ts and signal_type == self._last_signal_type:
             return
 
-        self._last_signal_ts = signal_ts
+        self._last_signal_ts   = signal_ts
         self._last_signal_type = signal_type
 
-        close_price = last_closed["close"]
-        atr_stop = last_closed["xATRTrailingStop"]
+        close_price = float(last_closed["close"])
+        atr_stop    = float(last_closed["xATRTrailingStop"])
 
+        # ── ML Feature extraction ─────────────────────────────────────────────
+        features     = {}
+        ml_conf      = -1.0      # -1 = model not loaded
+        ml_fired     = True      # default: always fire
+        ml_conf_str  = ""
+
+        if _ML_AVAILABLE and extract_features is not None:
+            try:
+                features = extract_features(df, closed_idx)
+            except Exception as _fe:
+                log.warning("[%s|%s] Feature extraction error: %s", self.symbol, self.timeframe, _fe)
+
+        # ── Log signal for future training ────────────────────────────────────
+        if self._ml_log_signals and _ML_AVAILABLE and log_signal is not None:
+            try:
+                log_signal(
+                    bar_time    = signal_ts.to_pydatetime(),
+                    symbol      = self.symbol,
+                    timeframe   = self.timeframe,
+                    signal_type = signal_type,
+                    features    = features,
+                )
+                n_total  = signal_count()
+                n_labeled = labeled_count()
+                log.info(
+                    "[%s|%s] Signal logged — DB: %d total, %d labeled",
+                    self.symbol, self.timeframe, n_total, n_labeled,
+                )
+            except Exception as _le:
+                log.warning("[%s|%s] Signal logging error: %s", self.symbol, self.timeframe, _le)
+
+        # ── ML filter gate ────────────────────────────────────────────────────
+        if self._ml_enabled and self._ml_filter is not None and self._ml_filter.is_ready():
+            ml_fired, ml_conf = self._ml_filter.should_fire(features, signal_type)
+            ml_conf_str = f"\nML Confidence : {ml_conf*100:.0f}%"
+            if not ml_fired:
+                log.info(
+                    "[%s|%s] %s signal SUPPRESSED by ML filter (conf=%.0f%% < %.0f%%)",
+                    self.symbol, self.timeframe, signal_type,
+                    ml_conf * 100, self._ml_filter.threshold * 100,
+                )
+                return
+            log.info(
+                "[%s|%s] %s signal PASSED ML filter (conf=%.0f%%)",
+                self.symbol, self.timeframe, signal_type, ml_conf * 100,
+            )
+
+        # ── Build Telegram message ────────────────────────────────────────────
         if signal_type == "BUY":
-            emoji = "🟢"
+            emoji          = "🟢"
             direction_word = "Buy"
         else:
-            emoji = "🔴"
+            emoji          = "🔴"
             direction_word = "Sell"
 
+        # Confidence badge (only shown when model is active)
+        if ml_conf >= 0:
+            badge = f" ✅ {ml_conf*100:.0f}%" if ml_fired else f" ❌ {ml_conf*100:.0f}%"
+        else:
+            badge = ""
+
         message = (
-            f"{emoji} *{direction_word} Signal* — {self.symbol} on {self.timeframe} chart\n"
-            f"Close : {close_price:.2f}\n"
+            f"{emoji} *{direction_word} Signal{badge}* — {self.symbol} on {self.timeframe} chart\n"
+            f"Close    : {close_price:.2f}\n"
             f"ATR Stop : {atr_stop:.2f}\n"
             f"Bar Time : {signal_ts.strftime('%Y-%m-%d %H:%M')}"
+            f"{ml_conf_str}"
         )
 
         log.info("[%s|%s] %s signal detected @ %s (close=%.2f)",
