@@ -253,12 +253,14 @@ class TimeframeWorker:
         client,
         config: dict,
         stop_event: threading.Event,
+        ltp_map: dict | None = None,
     ):
         self.symbol = symbol
         self.timeframe = timeframe
         self.client = client
         self.config = config
         self.stop_event = stop_event
+        self._ltp_map = ltp_map if ltp_map is not None else {}
 
         strat = config.get("strategy", {})
         self.key_value = float(strat.get("key_value", 2))
@@ -530,11 +532,15 @@ class TimeframeWorker:
         else:
             badge = ""
 
+        bar_close_ts = signal_ts + self._candle_duration
+        ltp_val = self._ltp_map.get(self.symbol)
+        ltp_str = f"{ltp_val:.2f}" if ltp_val is not None else "N/A"
         message = (
             f"{emoji} *{direction_word} Signal{badge}* — {self.symbol} on {self.timeframe} chart\n"
-            f"Close    : {close_price:.2f}\n"
-            f"ATR Stop : {atr_stop:.2f}\n"
-            f"Bar Time : {signal_ts.strftime('%Y-%m-%d %H:%M')}"
+            f"LTP        : {ltp_str}\n"
+            f"Bar Close  : {close_price:.2f}\n"
+            f"ATR Stop   : {atr_stop:.2f}\n"
+            f"Bar Closed : {bar_close_ts.strftime('%Y-%m-%d %H:%M')}"
             f"{ml_conf_str}"
         )
 
@@ -685,6 +691,13 @@ def _print_banner(config: dict):
 
 def main():
     config = load_config()
+
+    # Apply log level from config (bot.log_level: DEBUG | INFO | WARNING | ERROR)
+    _log_level_str = config.get("bot", {}).get("log_level", "INFO").upper()
+    _log_level = getattr(logging, _log_level_str, logging.INFO)
+    logging.getLogger().setLevel(_log_level)
+    log.info("Log level set to: %s", _log_level_str)
+
     _print_banner(config)
 
     oa_cfg = config.get("openalgo", {})
@@ -728,6 +741,7 @@ def main():
                 client=client,
                 config=config,
                 stop_event=stop_event,
+                ltp_map=ws_monitor.ltp_map,
             )
             t = threading.Thread(
                 target=worker.run,

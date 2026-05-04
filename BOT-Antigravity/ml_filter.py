@@ -86,7 +86,7 @@ class MLFilter:
             except Exception as exc:
                 log.warning("Could not load ML model (%s) — pass-through mode.", exc)
         else:
-            log.info("No ML model at %s — running in pass-through mode.", path.name)
+            log.debug("No ML model at %s — running in pass-through mode.", path.name)
 
     def is_ready(self) -> bool:
         """True when a model is loaded and active."""

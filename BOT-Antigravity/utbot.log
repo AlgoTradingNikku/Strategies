@@ -444,3 +444,1355 @@ Shutting down — waiting for workers to stop...
 2026-05-01 19:02:10 [INFO] [WS] Disconnecting...
 2026-05-01 19:02:10 [INFO] [WS] Disconnected.
 2026-05-01 19:02:10 [INFO] All workers stopped. Bye!
+2026-05-04 09:41:29 [INFO] ==============================================================
+2026-05-04 09:41:29 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 09:41:29 [INFO] ==============================================================
+2026-05-04 09:41:29 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 09:41:29 [INFO]   Timeframes : 5m
+2026-05-04 09:41:29 [INFO]   Exchange   : NSE
+2026-05-04 09:41:29 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 09:41:29 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 09:41:29 [INFO] ==============================================================
+2026-05-04 09:41:29 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 09:41:29 [INFO] ==============================================================
+2026-05-04 09:41:29 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 09:41:29 [INFO] Websocket connected
+2026-05-04 09:41:30 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 09:41:31 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:41:31 [INFO] [IOC|5m] Worker started.
+2026-05-04 09:41:31 [INFO] Started worker: IOC @ 5m
+2026-05-04 09:41:31 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:41:31 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:41:31 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-04 09:41:31 [INFO] Started worker: BANKINDIA @ 5m
+2026-05-04 09:41:31 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:41:31 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:41:31 [INFO] [PNB|5m] Worker started.
+2026-05-04 09:41:31 [INFO] Started worker: PNB @ 5m
+2026-05-04 09:41:31 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:41:31 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:41:31 [INFO] [RPOWER|5m] Worker started.
+2026-05-04 09:41:31 [INFO] Started worker: RPOWER @ 5m
+2026-05-04 09:41:31 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:41:35 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:41:35 [WARNING] [BANKINDIA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:41:35 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:41:35 [WARNING] [RPOWER|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:41:35 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:41:35 [WARNING] [PNB|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:41:35 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:41:35 [WARNING] [IOC|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:42:38 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-04 09:42:38 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-04 09:42:38 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-04 09:42:38 [INFO] [PNB|5m] Worker stopped.
+2026-05-04 09:42:38 [INFO] [IOC|5m] Worker stopped.
+2026-05-04 09:42:38 [INFO] [WS] Disconnecting...
+2026-05-04 09:42:38 [INFO] [WS] Disconnected.
+2026-05-04 09:42:38 [INFO] All workers stopped. Bye!
+2026-05-04 09:43:03 [INFO] ==============================================================
+2026-05-04 09:43:03 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 09:43:03 [INFO] ==============================================================
+2026-05-04 09:43:03 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 09:43:03 [INFO]   Timeframes : 5m
+2026-05-04 09:43:03 [INFO]   Exchange   : NSE
+2026-05-04 09:43:03 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 09:43:03 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 09:43:03 [INFO] ==============================================================
+2026-05-04 09:43:03 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 09:43:03 [INFO] ==============================================================
+2026-05-04 09:43:03 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 09:43:03 [INFO] Websocket connected
+2026-05-04 09:43:03 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 09:43:05 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:43:05 [INFO] [IOC|5m] Worker started.
+2026-05-04 09:43:05 [INFO] Started worker: IOC @ 5m
+2026-05-04 09:43:05 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:43:05 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:43:05 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-04 09:43:05 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:43:05 [INFO] Started worker: BANKINDIA @ 5m
+2026-05-04 09:43:05 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:43:05 [INFO] [PNB|5m] Worker started.
+2026-05-04 09:43:05 [INFO] Started worker: PNB @ 5m
+2026-05-04 09:43:05 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:43:05 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 09:43:05 [INFO] [RPOWER|5m] Worker started.
+2026-05-04 09:43:05 [INFO] Started worker: RPOWER @ 5m
+2026-05-04 09:43:05 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:43:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:43:07 [WARNING] [PNB|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:43:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:43:07 [WARNING] [RPOWER|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:43:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:43:07 [WARNING] [BANKINDIA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:43:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:43:07 [WARNING] [IOC|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:45:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:45:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:45:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:45:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:45:03 [WARNING] [PNB|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:45:03 [WARNING] [BANKINDIA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:45:03 [WARNING] [RPOWER|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:45:03 [WARNING] [IOC|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:50:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:50:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:50:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:50:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:50:04 [WARNING] [PNB|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:50:04 [WARNING] [BANKINDIA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:50:04 [WARNING] [RPOWER|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:50:04 [WARNING] [IOC|5m] Unexpected history dict payload: {'status': 'error', 'message': 'No data available for the specified period', 'error_type': 'no_data'}
+2026-05-04 09:55:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:55:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:55:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:55:00 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:55:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:55:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:55:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 09:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 09:55:06 [INFO] [RPOWER|5m] Received 158 candles | first=2026-04-29 09:15 | last=2026-05-04 09:50
+2026-05-04 09:55:06 [INFO] [RPOWER|5m] SCAN  bar=09:50  close=28.38  ATRStop=28.60  pos=SHORT  signal=NONE
+2026-05-04 09:55:06 [INFO] [BANKINDIA|5m] Received 158 candles | first=2026-04-29 09:15 | last=2026-05-04 09:50
+2026-05-04 09:55:06 [INFO] [IOC|5m] Received 158 candles | first=2026-04-29 09:15 | last=2026-05-04 09:50
+2026-05-04 09:55:06 [INFO] [PNB|5m] Received 158 candles | first=2026-04-29 09:15 | last=2026-05-04 09:50
+2026-05-04 09:55:06 [INFO] [BANKINDIA|5m] SCAN  bar=09:50  close=141.47  ATRStop=140.15  pos=LONG  signal=NONE
+2026-05-04 09:55:06 [INFO] [IOC|5m] SCAN  bar=09:50  close=143.20  ATRStop=142.58  pos=LONG  signal=NONE
+2026-05-04 09:55:06 [INFO] [PNB|5m] SCAN  bar=09:50  close=110.52  ATRStop=111.60  pos=SHORT  signal=SELL
+2026-05-04 09:55:06 [INFO] [PNB|5m] Signal logged — DB: 1 total, 0 labeled
+2026-05-04 09:55:06 [INFO] [PNB|5m] SELL signal detected @ 2026-05-04 09:50:00+05:30 (close=110.52)
+2026-05-04 09:55:07 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 10:00:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:00:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:00:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:00:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:00:03 [INFO] [RPOWER|5m] Received 159 candles | first=2026-04-29 09:15 | last=2026-05-04 09:55
+2026-05-04 10:00:03 [INFO] [RPOWER|5m] SCAN  bar=09:55  close=28.49  ATRStop=28.60  pos=SHORT  signal=NONE
+2026-05-04 10:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:00:03 [INFO] [BANKINDIA|5m] Received 159 candles | first=2026-04-29 09:15 | last=2026-05-04 09:55
+2026-05-04 10:00:03 [INFO] [BANKINDIA|5m] SCAN  bar=09:55  close=141.99  ATRStop=140.95  pos=LONG  signal=NONE
+2026-05-04 10:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:00:03 [INFO] [PNB|5m] Received 159 candles | first=2026-04-29 09:15 | last=2026-05-04 09:55
+2026-05-04 10:00:03 [INFO] [PNB|5m] SCAN  bar=09:55  close=110.64  ATRStop=111.12  pos=SHORT  signal=NONE
+2026-05-04 10:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:00:03 [INFO] [IOC|5m] Received 159 candles | first=2026-04-29 09:15 | last=2026-05-04 09:55
+2026-05-04 10:00:03 [INFO] [IOC|5m] SCAN  bar=09:55  close=143.30  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:04:45 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-04 10:04:45 [INFO] [IOC|5m] Worker stopped.
+2026-05-04 10:04:45 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-04 10:04:45 [INFO] [PNB|5m] Worker stopped.
+2026-05-04 10:04:45 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-04 10:04:46 [INFO] [WS] Disconnecting...
+2026-05-04 10:04:46 [INFO] [WS] Disconnected.
+2026-05-04 10:04:46 [INFO] All workers stopped. Bye!
+2026-05-04 10:04:53 [INFO] ==============================================================
+2026-05-04 10:04:53 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 10:04:53 [INFO] ==============================================================
+2026-05-04 10:04:53 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 10:04:53 [INFO]   Timeframes : 5m
+2026-05-04 10:04:53 [INFO]   Exchange   : NSE
+2026-05-04 10:04:53 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 10:04:53 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 10:04:53 [INFO] ==============================================================
+2026-05-04 10:04:53 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 10:04:53 [INFO] ==============================================================
+2026-05-04 10:04:53 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 10:04:53 [INFO] Websocket connected
+2026-05-04 10:04:54 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 10:04:55 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 10:04:55 [INFO] [IOC|5m] Worker started.
+2026-05-04 10:04:55 [INFO] Started worker: IOC @ 5m
+2026-05-04 10:04:55 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:04:55 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 10:04:55 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-04 10:04:55 [INFO] Started worker: BANKINDIA @ 5m
+2026-05-04 10:04:55 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:04:55 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 10:04:55 [INFO] [PNB|5m] Worker started.
+2026-05-04 10:04:55 [INFO] Started worker: PNB @ 5m
+2026-05-04 10:04:55 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:04:55 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 10:04:55 [INFO] [RPOWER|5m] Worker started.
+2026-05-04 10:04:55 [INFO] Started worker: RPOWER @ 5m
+2026-05-04 10:04:55 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:04:57 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:04:57 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:04:57 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:04:57 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:05:03 [INFO] [IOC|5m] Received 160 candles | first=2026-04-29 09:15 | last=2026-05-04 10:00
+2026-05-04 10:05:03 [INFO] [RPOWER|5m] Received 160 candles | first=2026-04-29 09:15 | last=2026-05-04 10:00
+2026-05-04 10:05:03 [INFO] [BANKINDIA|5m] Received 160 candles | first=2026-04-29 09:15 | last=2026-05-04 10:00
+2026-05-04 10:05:03 [INFO] [PNB|5m] Received 160 candles | first=2026-04-29 09:15 | last=2026-05-04 10:00
+2026-05-04 10:05:03 [INFO] [IOC|5m] SCAN  bar=09:55  close=143.30  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:05:03 [INFO] [RPOWER|5m] SCAN  bar=09:55  close=28.49  ATRStop=28.60  pos=SHORT  signal=NONE
+2026-05-04 10:05:03 [INFO] [BANKINDIA|5m] SCAN  bar=09:55  close=141.99  ATRStop=140.95  pos=LONG  signal=NONE
+2026-05-04 10:05:03 [INFO] [PNB|5m] SCAN  bar=09:55  close=110.64  ATRStop=111.12  pos=SHORT  signal=NONE
+2026-05-04 10:05:08 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:05:08 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:05:08 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:05:08 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:05:09 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:05:09 [INFO] [IOC|5m] Received 161 candles | first=2026-04-29 09:15 | last=2026-05-04 10:05
+2026-05-04 10:05:09 [INFO] [IOC|5m] SCAN  bar=10:00  close=143.33  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:05:09 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:05:09 [INFO] [RPOWER|5m] Received 161 candles | first=2026-04-29 09:15 | last=2026-05-04 10:05
+2026-05-04 10:05:09 [INFO] [RPOWER|5m] SCAN  bar=10:00  close=28.44  ATRStop=28.60  pos=SHORT  signal=NONE
+2026-05-04 10:05:09 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:05:09 [INFO] [BANKINDIA|5m] Received 161 candles | first=2026-04-29 09:15 | last=2026-05-04 10:05
+2026-05-04 10:05:09 [INFO] [BANKINDIA|5m] SCAN  bar=10:00  close=141.88  ATRStop=140.95  pos=LONG  signal=NONE
+2026-05-04 10:05:09 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:05:09 [INFO] [PNB|5m] Received 161 candles | first=2026-04-29 09:15 | last=2026-05-04 10:05
+2026-05-04 10:05:09 [INFO] [PNB|5m] SCAN  bar=10:00  close=110.60  ATRStop=111.04  pos=SHORT  signal=NONE
+2026-05-04 10:10:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:10:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:10:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:10:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:10:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:10:05 [INFO] [IOC|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:10:05 [INFO] [IOC|5m] SCAN  bar=10:05  close=143.15  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:10:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:10:05 [INFO] [RPOWER|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:10:05 [INFO] [RPOWER|5m] SCAN  bar=10:05  close=28.37  ATRStop=28.57  pos=SHORT  signal=NONE
+2026-05-04 10:10:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:10:06 [INFO] [BANKINDIA|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:10:06 [INFO] [BANKINDIA|5m] SCAN  bar=10:05  close=141.77  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:10:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:10:06 [INFO] [PNB|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:10:06 [INFO] [PNB|5m] SCAN  bar=10:05  close=110.54  ATRStop=111.02  pos=SHORT  signal=NONE
+2026-05-04 10:15:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:15:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:15:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:15:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:15:02 [INFO] [IOC|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:15:02 [INFO] [IOC|5m] SCAN  bar=10:10  close=143.12  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:15:02 [INFO] [RPOWER|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:15:02 [INFO] [RPOWER|5m] SCAN  bar=10:10  close=28.36  ATRStop=28.48  pos=SHORT  signal=NONE
+2026-05-04 10:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:15:02 [INFO] [BANKINDIA|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:15:02 [INFO] [BANKINDIA|5m] SCAN  bar=10:10  close=141.73  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:15:02 [INFO] [PNB|5m] Received 162 candles | first=2026-04-29 09:15 | last=2026-05-04 10:10
+2026-05-04 10:15:02 [INFO] [PNB|5m] SCAN  bar=10:10  close=110.55  ATRStop=110.79  pos=SHORT  signal=NONE
+2026-05-04 10:20:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:20:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:20:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:20:03 [INFO] [IOC|5m] Received 163 candles | first=2026-04-29 09:15 | last=2026-05-04 10:15
+2026-05-04 10:20:03 [INFO] [IOC|5m] SCAN  bar=10:15  close=142.93  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:20:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:20:03 [INFO] [RPOWER|5m] Received 163 candles | first=2026-04-29 09:15 | last=2026-05-04 10:15
+2026-05-04 10:20:03 [INFO] [RPOWER|5m] SCAN  bar=10:15  close=28.33  ATRStop=28.48  pos=SHORT  signal=NONE
+2026-05-04 10:20:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:20:04 [INFO] [BANKINDIA|5m] Received 163 candles | first=2026-04-29 09:15 | last=2026-05-04 10:15
+2026-05-04 10:20:04 [INFO] [BANKINDIA|5m] SCAN  bar=10:15  close=141.62  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:20:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:20:04 [INFO] [PNB|5m] Received 163 candles | first=2026-04-29 09:15 | last=2026-05-04 10:15
+2026-05-04 10:20:04 [INFO] [PNB|5m] SCAN  bar=10:15  close=110.40  ATRStop=110.79  pos=SHORT  signal=NONE
+2026-05-04 10:25:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:25:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:25:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:25:04 [INFO] [IOC|5m] Received 164 candles | first=2026-04-29 09:15 | last=2026-05-04 10:20
+2026-05-04 10:25:04 [INFO] [IOC|5m] SCAN  bar=10:20  close=142.90  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:25:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:25:04 [INFO] [RPOWER|5m] Received 164 candles | first=2026-04-29 09:15 | last=2026-05-04 10:20
+2026-05-04 10:25:04 [INFO] [RPOWER|5m] SCAN  bar=10:20  close=28.32  ATRStop=28.48  pos=SHORT  signal=NONE
+2026-05-04 10:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:25:05 [INFO] [BANKINDIA|5m] Received 164 candles | first=2026-04-29 09:15 | last=2026-05-04 10:20
+2026-05-04 10:25:05 [INFO] [BANKINDIA|5m] SCAN  bar=10:20  close=141.43  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:25:05 [INFO] [PNB|5m] Received 165 candles | first=2026-04-29 09:15 | last=2026-05-04 10:25
+2026-05-04 10:25:05 [INFO] [PNB|5m] SCAN  bar=10:20  close=110.05  ATRStop=110.75  pos=SHORT  signal=NONE
+2026-05-04 10:30:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:30:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:30:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:30:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:30:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:30:01 [INFO] [IOC|5m] Received 165 candles | first=2026-04-29 09:15 | last=2026-05-04 10:25
+2026-05-04 10:30:01 [INFO] [IOC|5m] SCAN  bar=10:25  close=143.05  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:30:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:30:01 [INFO] [RPOWER|5m] Received 165 candles | first=2026-04-29 09:15 | last=2026-05-04 10:25
+2026-05-04 10:30:01 [INFO] [RPOWER|5m] SCAN  bar=10:25  close=28.41  ATRStop=28.48  pos=SHORT  signal=NONE
+2026-05-04 10:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:30:02 [INFO] [BANKINDIA|5m] Received 165 candles | first=2026-04-29 09:15 | last=2026-05-04 10:25
+2026-05-04 10:30:02 [INFO] [BANKINDIA|5m] SCAN  bar=10:25  close=141.70  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:30:02 [INFO] [PNB|5m] Received 165 candles | first=2026-04-29 09:15 | last=2026-05-04 10:25
+2026-05-04 10:30:02 [INFO] [PNB|5m] SCAN  bar=10:25  close=110.15  ATRStop=110.49  pos=SHORT  signal=NONE
+2026-05-04 10:35:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:35:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:35:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:35:02 [INFO] [IOC|5m] Received 166 candles | first=2026-04-29 09:15 | last=2026-05-04 10:30
+2026-05-04 10:35:02 [INFO] [IOC|5m] SCAN  bar=10:30  close=143.05  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:35:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:35:02 [INFO] [RPOWER|5m] Received 166 candles | first=2026-04-29 09:15 | last=2026-05-04 10:30
+2026-05-04 10:35:02 [INFO] [RPOWER|5m] SCAN  bar=10:30  close=28.45  ATRStop=28.48  pos=SHORT  signal=NONE
+2026-05-04 10:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:35:03 [INFO] [BANKINDIA|5m] Received 166 candles | first=2026-04-29 09:15 | last=2026-05-04 10:30
+2026-05-04 10:35:03 [INFO] [BANKINDIA|5m] SCAN  bar=10:30  close=141.76  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:35:03 [INFO] [PNB|5m] Received 166 candles | first=2026-04-29 09:15 | last=2026-05-04 10:30
+2026-05-04 10:35:03 [INFO] [PNB|5m] SCAN  bar=10:30  close=110.08  ATRStop=110.49  pos=SHORT  signal=NONE
+2026-05-04 10:40:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:40:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:40:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:40:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:40:04 [INFO] [IOC|5m] Received 167 candles | first=2026-04-29 09:15 | last=2026-05-04 10:35
+2026-05-04 10:40:04 [INFO] [IOC|5m] SCAN  bar=10:35  close=143.15  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:40:04 [INFO] [RPOWER|5m] Received 167 candles | first=2026-04-29 09:15 | last=2026-05-04 10:35
+2026-05-04 10:40:04 [INFO] [RPOWER|5m] SCAN  bar=10:35  close=28.49  ATRStop=28.31  pos=LONG  signal=BUY
+2026-05-04 10:40:04 [INFO] [RPOWER|5m] Signal logged — DB: 2 total, 0 labeled
+2026-05-04 10:40:04 [INFO] [RPOWER|5m] BUY signal detected @ 2026-05-04 10:35:00+05:30 (close=28.49)
+2026-05-04 10:40:04 [INFO] [RPOWER|5m] Telegram alert sent.
+2026-05-04 10:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:40:04 [INFO] [PNB|5m] Received 167 candles | first=2026-04-29 09:15 | last=2026-05-04 10:35
+2026-05-04 10:40:04 [INFO] [PNB|5m] SCAN  bar=10:35  close=110.01  ATRStop=110.39  pos=SHORT  signal=NONE
+2026-05-04 10:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:40:04 [INFO] [BANKINDIA|5m] Received 167 candles | first=2026-04-29 09:15 | last=2026-05-04 10:35
+2026-05-04 10:40:04 [INFO] [BANKINDIA|5m] SCAN  bar=10:35  close=141.75  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:45:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:45:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:45:01 [INFO] [BANKINDIA|5m] Received 168 candles | first=2026-04-29 09:15 | last=2026-05-04 10:40
+2026-05-04 10:45:01 [INFO] [BANKINDIA|5m] SCAN  bar=10:40  close=141.58  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:45:01 [INFO] [PNB|5m] Received 168 candles | first=2026-04-29 09:15 | last=2026-05-04 10:40
+2026-05-04 10:45:01 [INFO] [PNB|5m] SCAN  bar=10:40  close=110.02  ATRStop=110.28  pos=SHORT  signal=NONE
+2026-05-04 10:45:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:45:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:45:05 [INFO] [IOC|5m] Received 168 candles | first=2026-04-29 09:15 | last=2026-05-04 10:40
+2026-05-04 10:45:05 [INFO] [IOC|5m] SCAN  bar=10:40  close=143.08  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:45:05 [INFO] [RPOWER|5m] Received 169 candles | first=2026-04-29 09:15 | last=2026-05-04 10:45
+2026-05-04 10:45:05 [INFO] [RPOWER|5m] SCAN  bar=10:40  close=28.52  ATRStop=28.31  pos=LONG  signal=NONE
+2026-05-04 10:50:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:50:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:50:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:50:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:50:02 [INFO] [IOC|5m] Received 169 candles | first=2026-04-29 09:15 | last=2026-05-04 10:45
+2026-05-04 10:50:02 [INFO] [IOC|5m] SCAN  bar=10:45  close=143.13  ATRStop=142.80  pos=LONG  signal=NONE
+2026-05-04 10:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:50:02 [INFO] [RPOWER|5m] Received 169 candles | first=2026-04-29 09:15 | last=2026-05-04 10:45
+2026-05-04 10:50:02 [INFO] [RPOWER|5m] SCAN  bar=10:45  close=28.55  ATRStop=28.39  pos=LONG  signal=NONE
+2026-05-04 10:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:50:02 [INFO] [BANKINDIA|5m] Received 169 candles | first=2026-04-29 09:15 | last=2026-05-04 10:45
+2026-05-04 10:50:02 [INFO] [BANKINDIA|5m] SCAN  bar=10:45  close=141.51  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:50:02 [INFO] [PNB|5m] Received 169 candles | first=2026-04-29 09:15 | last=2026-05-04 10:45
+2026-05-04 10:50:02 [INFO] [PNB|5m] SCAN  bar=10:45  close=109.90  ATRStop=110.28  pos=SHORT  signal=NONE
+2026-05-04 10:55:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:55:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:55:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:55:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 10:55:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:55:03 [INFO] [IOC|5m] Received 170 candles | first=2026-04-29 09:15 | last=2026-05-04 10:50
+2026-05-04 10:55:03 [INFO] [IOC|5m] SCAN  bar=10:50  close=143.17  ATRStop=142.89  pos=LONG  signal=NONE
+2026-05-04 10:55:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:55:03 [INFO] [RPOWER|5m] Received 170 candles | first=2026-04-29 09:15 | last=2026-05-04 10:50
+2026-05-04 10:55:03 [INFO] [RPOWER|5m] SCAN  bar=10:50  close=28.62  ATRStop=28.44  pos=LONG  signal=NONE
+2026-05-04 10:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:55:04 [INFO] [BANKINDIA|5m] Received 170 candles | first=2026-04-29 09:15 | last=2026-05-04 10:50
+2026-05-04 10:55:04 [INFO] [BANKINDIA|5m] SCAN  bar=10:50  close=141.50  ATRStop=141.33  pos=LONG  signal=NONE
+2026-05-04 10:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 10:55:04 [INFO] [PNB|5m] Received 170 candles | first=2026-04-29 09:15 | last=2026-05-04 10:50
+2026-05-04 10:55:04 [INFO] [PNB|5m] SCAN  bar=10:50  close=109.88  ATRStop=110.16  pos=SHORT  signal=NONE
+2026-05-04 11:00:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:00:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:00:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:00:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:00:05 [INFO] [IOC|5m] Received 171 candles | first=2026-04-29 09:15 | last=2026-05-04 10:55
+2026-05-04 11:00:05 [INFO] [IOC|5m] SCAN  bar=10:55  close=143.10  ATRStop=142.89  pos=LONG  signal=NONE
+2026-05-04 11:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:00:05 [INFO] [RPOWER|5m] Received 171 candles | first=2026-04-29 09:15 | last=2026-05-04 10:55
+2026-05-04 11:00:05 [INFO] [RPOWER|5m] SCAN  bar=10:55  close=28.58  ATRStop=28.44  pos=LONG  signal=NONE
+2026-05-04 11:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:00:05 [INFO] [PNB|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:00:05 [INFO] [PNB|5m] SCAN  bar=10:55  close=109.60  ATRStop=110.16  pos=SHORT  signal=NONE
+2026-05-04 11:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:00:05 [INFO] [BANKINDIA|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:00:05 [INFO] [BANKINDIA|5m] SCAN  bar=10:55  close=141.26  ATRStop=141.86  pos=SHORT  signal=SELL
+2026-05-04 11:00:05 [INFO] [BANKINDIA|5m] Signal logged — DB: 3 total, 0 labeled
+2026-05-04 11:00:05 [INFO] [BANKINDIA|5m] SELL signal detected @ 2026-05-04 10:55:00+05:30 (close=141.26)
+2026-05-04 11:00:05 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-04 11:05:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:05:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:05:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:05:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:05:02 [INFO] [RPOWER|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:05:02 [INFO] [RPOWER|5m] SCAN  bar=11:00  close=28.73  ATRStop=28.44  pos=LONG  signal=NONE
+2026-05-04 11:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:05:02 [INFO] [IOC|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:05:02 [INFO] [IOC|5m] SCAN  bar=11:00  close=143.35  ATRStop=142.89  pos=LONG  signal=NONE
+2026-05-04 11:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:05:02 [INFO] [PNB|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:05:02 [INFO] [PNB|5m] SCAN  bar=11:00  close=109.75  ATRStop=110.16  pos=SHORT  signal=NONE
+2026-05-04 11:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:05:02 [INFO] [BANKINDIA|5m] Received 172 candles | first=2026-04-29 09:15 | last=2026-05-04 11:00
+2026-05-04 11:05:02 [INFO] [BANKINDIA|5m] SCAN  bar=11:00  close=141.68  ATRStop=141.86  pos=SHORT  signal=NONE
+2026-05-04 11:10:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:10:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:10:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:10:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:10:04 [INFO] [PNB|5m] Received 173 candles | first=2026-04-29 09:15 | last=2026-05-04 11:05
+2026-05-04 11:10:04 [INFO] [PNB|5m] SCAN  bar=11:05  close=109.80  ATRStop=110.16  pos=SHORT  signal=NONE
+2026-05-04 11:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:10:04 [INFO] [IOC|5m] Received 173 candles | first=2026-04-29 09:15 | last=2026-05-04 11:05
+2026-05-04 11:10:04 [INFO] [IOC|5m] SCAN  bar=11:05  close=143.41  ATRStop=143.01  pos=LONG  signal=NONE
+2026-05-04 11:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:10:04 [INFO] [RPOWER|5m] Received 173 candles | first=2026-04-29 09:15 | last=2026-05-04 11:05
+2026-05-04 11:10:04 [INFO] [RPOWER|5m] SCAN  bar=11:05  close=28.98  ATRStop=28.44  pos=LONG  signal=NONE
+2026-05-04 11:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:10:04 [INFO] [BANKINDIA|5m] Received 173 candles | first=2026-04-29 09:15 | last=2026-05-04 11:05
+2026-05-04 11:10:04 [INFO] [BANKINDIA|5m] SCAN  bar=11:05  close=141.57  ATRStop=141.86  pos=SHORT  signal=NONE
+2026-05-04 11:14:05 [INFO] ==============================================================
+2026-05-04 11:14:05 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 11:14:05 [INFO] ==============================================================
+2026-05-04 11:14:05 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 11:14:05 [INFO]   Timeframes : 5m
+2026-05-04 11:14:05 [INFO]   Exchange   : NSE
+2026-05-04 11:14:05 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 11:14:05 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 11:14:05 [INFO] ==============================================================
+2026-05-04 11:14:05 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 11:14:05 [INFO] ==============================================================
+2026-05-04 11:14:05 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 11:14:05 [INFO] Websocket connected
+2026-05-04 11:14:06 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 11:15:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:15:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:15:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:15:01 [INFO] [IOC|5m] Received 174 candles | first=2026-04-29 09:15 | last=2026-05-04 11:10
+2026-05-04 11:15:01 [INFO] [IOC|5m] SCAN  bar=11:10  close=143.57  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-04 11:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:15:01 [INFO] [RPOWER|5m] Received 174 candles | first=2026-04-29 09:15 | last=2026-05-04 11:10
+2026-05-04 11:15:01 [INFO] [RPOWER|5m] SCAN  bar=11:10  close=28.97  ATRStop=28.53  pos=LONG  signal=NONE
+2026-05-04 11:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:15:01 [INFO] [BANKINDIA|5m] Received 174 candles | first=2026-04-29 09:15 | last=2026-05-04 11:10
+2026-05-04 11:15:01 [INFO] [BANKINDIA|5m] SCAN  bar=11:10  close=141.85  ATRStop=141.86  pos=SHORT  signal=NONE
+2026-05-04 11:15:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:15:05 [INFO] [PNB|5m] Received 175 candles | first=2026-04-29 09:15 | last=2026-05-04 11:15
+2026-05-04 11:15:05 [INFO] [PNB|5m] SCAN  bar=11:10  close=109.90  ATRStop=110.16  pos=SHORT  signal=NONE
+2026-05-04 11:20:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:20:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:20:01 [INFO] [PNB|5m] Received 175 candles | first=2026-04-29 09:15 | last=2026-05-04 11:15
+2026-05-04 11:20:01 [INFO] [PNB|5m] SCAN  bar=11:15  close=109.83  ATRStop=110.13  pos=SHORT  signal=NONE
+2026-05-04 11:20:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:20:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:20:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:20:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:20:02 [INFO] [IOC|5m] Received 175 candles | first=2026-04-29 09:15 | last=2026-05-04 11:15
+2026-05-04 11:20:02 [INFO] [IOC|5m] SCAN  bar=11:15  close=143.46  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-04 11:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:20:03 [INFO] [BANKINDIA|5m] Received 175 candles | first=2026-04-29 09:15 | last=2026-05-04 11:15
+2026-05-04 11:20:03 [INFO] [BANKINDIA|5m] SCAN  bar=11:15  close=140.84  ATRStop=141.86  pos=SHORT  signal=NONE
+2026-05-04 11:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:20:03 [INFO] [RPOWER|5m] Received 175 candles | first=2026-04-29 09:15 | last=2026-05-04 11:15
+2026-05-04 11:20:03 [INFO] [RPOWER|5m] SCAN  bar=11:15  close=28.88  ATRStop=28.60  pos=LONG  signal=NONE
+2026-05-04 11:25:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:25:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:25:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:25:03 [INFO] [PNB|5m] Received 176 candles | first=2026-04-29 09:15 | last=2026-05-04 11:20
+2026-05-04 11:25:03 [INFO] [PNB|5m] SCAN  bar=11:20  close=109.90  ATRStop=110.12  pos=SHORT  signal=NONE
+2026-05-04 11:25:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:25:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:25:04 [INFO] [IOC|5m] Received 176 candles | first=2026-04-29 09:15 | last=2026-05-04 11:20
+2026-05-04 11:25:04 [INFO] [IOC|5m] SCAN  bar=11:20  close=143.47  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-04 11:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:25:04 [INFO] [RPOWER|5m] Received 176 candles | first=2026-04-29 09:15 | last=2026-05-04 11:20
+2026-05-04 11:25:04 [INFO] [RPOWER|5m] SCAN  bar=11:20  close=28.89  ATRStop=28.75  pos=LONG  signal=NONE
+2026-05-04 11:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:25:05 [INFO] [BANKINDIA|5m] Received 176 candles | first=2026-04-29 09:15 | last=2026-05-04 11:20
+2026-05-04 11:25:05 [INFO] [BANKINDIA|5m] SCAN  bar=11:20  close=140.95  ATRStop=141.27  pos=SHORT  signal=NONE
+2026-05-04 11:30:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:30:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:30:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:30:01 [INFO] [RPOWER|5m] Received 177 candles | first=2026-04-29 09:15 | last=2026-05-04 11:25
+2026-05-04 11:30:01 [INFO] [RPOWER|5m] SCAN  bar=11:25  close=28.97  ATRStop=28.75  pos=LONG  signal=NONE
+2026-05-04 11:30:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:30:01 [INFO] [BANKINDIA|5m] Received 177 candles | first=2026-04-29 09:15 | last=2026-05-04 11:25
+2026-05-04 11:30:01 [INFO] [BANKINDIA|5m] SCAN  bar=11:25  close=140.93  ATRStop=141.27  pos=SHORT  signal=NONE
+2026-05-04 11:30:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:30:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:30:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:30:04 [INFO] [PNB|5m] Received 177 candles | first=2026-04-29 09:15 | last=2026-05-04 11:25
+2026-05-04 11:30:04 [INFO] [PNB|5m] SCAN  bar=11:25  close=109.92  ATRStop=110.10  pos=SHORT  signal=NONE
+2026-05-04 11:30:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:30:05 [INFO] [IOC|5m] Received 177 candles | first=2026-04-29 09:15 | last=2026-05-04 11:25
+2026-05-04 11:30:05 [INFO] [IOC|5m] SCAN  bar=11:25  close=143.95  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-04 11:35:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:35:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:35:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:35:01 [INFO] [PNB|5m] Received 178 candles | first=2026-04-29 09:15 | last=2026-05-04 11:30
+2026-05-04 11:35:01 [INFO] [PNB|5m] SCAN  bar=11:30  close=109.86  ATRStop=110.10  pos=SHORT  signal=NONE
+2026-05-04 11:35:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:35:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:35:01 [INFO] [IOC|5m] Received 178 candles | first=2026-04-29 09:15 | last=2026-05-04 11:30
+2026-05-04 11:35:01 [INFO] [IOC|5m] SCAN  bar=11:30  close=143.71  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-04 11:35:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:35:02 [INFO] [RPOWER|5m] Received 178 candles | first=2026-04-29 09:15 | last=2026-05-04 11:30
+2026-05-04 11:35:02 [INFO] [RPOWER|5m] SCAN  bar=11:30  close=28.99  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 11:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:35:02 [INFO] [BANKINDIA|5m] Received 178 candles | first=2026-04-29 09:15 | last=2026-05-04 11:30
+2026-05-04 11:35:02 [INFO] [BANKINDIA|5m] SCAN  bar=11:30  close=140.85  ATRStop=141.27  pos=SHORT  signal=NONE
+2026-05-04 11:40:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:40:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:40:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:40:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:40:03 [INFO] [IOC|5m] Received 179 candles | first=2026-04-29 09:15 | last=2026-05-04 11:35
+2026-05-04 11:40:03 [INFO] [IOC|5m] SCAN  bar=11:35  close=143.80  ATRStop=143.30  pos=LONG  signal=NONE
+2026-05-04 11:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:40:03 [INFO] [PNB|5m] Received 179 candles | first=2026-04-29 09:15 | last=2026-05-04 11:35
+2026-05-04 11:40:03 [INFO] [PNB|5m] SCAN  bar=11:35  close=110.12  ATRStop=109.46  pos=LONG  signal=BUY
+2026-05-04 11:40:03 [INFO] [PNB|5m] Signal logged — DB: 4 total, 0 labeled
+2026-05-04 11:40:03 [INFO] [PNB|5m] BUY signal detected @ 2026-05-04 11:35:00+05:30 (close=110.12)
+2026-05-04 11:40:03 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 11:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:40:04 [INFO] [RPOWER|5m] Received 179 candles | first=2026-04-29 09:15 | last=2026-05-04 11:35
+2026-05-04 11:40:04 [INFO] [RPOWER|5m] SCAN  bar=11:35  close=29.08  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 11:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:40:04 [INFO] [BANKINDIA|5m] Received 179 candles | first=2026-04-29 09:15 | last=2026-05-04 11:35
+2026-05-04 11:40:04 [INFO] [BANKINDIA|5m] SCAN  bar=11:35  close=140.77  ATRStop=141.27  pos=SHORT  signal=NONE
+2026-05-04 11:45:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:45:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:45:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:45:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:45:04 [INFO] [IOC|5m] Received 180 candles | first=2026-04-29 09:15 | last=2026-05-04 11:40
+2026-05-04 11:45:04 [INFO] [IOC|5m] SCAN  bar=11:40  close=143.81  ATRStop=143.35  pos=LONG  signal=NONE
+2026-05-04 11:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:45:05 [INFO] [PNB|5m] Received 180 candles | first=2026-04-29 09:15 | last=2026-05-04 11:40
+2026-05-04 11:45:05 [INFO] [PNB|5m] SCAN  bar=11:40  close=110.22  ATRStop=109.92  pos=LONG  signal=NONE
+2026-05-04 11:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:45:05 [INFO] [RPOWER|5m] Received 180 candles | first=2026-04-29 09:15 | last=2026-05-04 11:40
+2026-05-04 11:45:05 [INFO] [RPOWER|5m] SCAN  bar=11:40  close=29.11  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 11:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:45:05 [INFO] [BANKINDIA|5m] Received 181 candles | first=2026-04-29 09:15 | last=2026-05-04 11:45
+2026-05-04 11:45:05 [INFO] [BANKINDIA|5m] SCAN  bar=11:40  close=140.87  ATRStop=141.27  pos=SHORT  signal=NONE
+2026-05-04 11:50:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:50:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:50:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:50:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:50:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:50:01 [INFO] [IOC|5m] Received 181 candles | first=2026-04-29 09:15 | last=2026-05-04 11:45
+2026-05-04 11:50:01 [INFO] [IOC|5m] SCAN  bar=11:45  close=143.83  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-04 11:50:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:50:01 [INFO] [PNB|5m] Received 181 candles | first=2026-04-29 09:15 | last=2026-05-04 11:45
+2026-05-04 11:50:01 [INFO] [PNB|5m] SCAN  bar=11:45  close=110.03  ATRStop=109.92  pos=LONG  signal=NONE
+2026-05-04 11:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:50:02 [INFO] [RPOWER|5m] Received 181 candles | first=2026-04-29 09:15 | last=2026-05-04 11:45
+2026-05-04 11:50:02 [INFO] [RPOWER|5m] SCAN  bar=11:45  close=29.01  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 11:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:50:02 [INFO] [BANKINDIA|5m] Received 181 candles | first=2026-04-29 09:15 | last=2026-05-04 11:45
+2026-05-04 11:50:02 [INFO] [BANKINDIA|5m] SCAN  bar=11:45  close=140.99  ATRStop=141.23  pos=SHORT  signal=NONE
+2026-05-04 11:55:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:55:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:55:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:55:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 11:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:55:04 [INFO] [IOC|5m] Received 182 candles | first=2026-04-29 09:15 | last=2026-05-04 11:50
+2026-05-04 11:55:04 [INFO] [IOC|5m] SCAN  bar=11:50  close=143.80  ATRStop=143.56  pos=LONG  signal=NONE
+2026-05-04 11:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:55:04 [INFO] [PNB|5m] Received 182 candles | first=2026-04-29 09:15 | last=2026-05-04 11:50
+2026-05-04 11:55:04 [INFO] [PNB|5m] SCAN  bar=11:50  close=110.20  ATRStop=109.92  pos=LONG  signal=NONE
+2026-05-04 11:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:55:04 [INFO] [RPOWER|5m] Received 182 candles | first=2026-04-29 09:15 | last=2026-05-04 11:50
+2026-05-04 11:55:04 [INFO] [RPOWER|5m] SCAN  bar=11:50  close=29.02  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 11:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 11:55:04 [INFO] [BANKINDIA|5m] Received 182 candles | first=2026-04-29 09:15 | last=2026-05-04 11:50
+2026-05-04 11:55:04 [INFO] [BANKINDIA|5m] SCAN  bar=11:50  close=140.91  ATRStop=141.07  pos=SHORT  signal=NONE
+2026-05-04 12:00:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:00:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:00:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:00:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:00:05 [INFO] [IOC|5m] Received 183 candles | first=2026-04-29 09:15 | last=2026-05-04 11:55
+2026-05-04 12:00:05 [INFO] [IOC|5m] SCAN  bar=11:55  close=143.80  ATRStop=143.56  pos=LONG  signal=NONE
+2026-05-04 12:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:00:05 [INFO] [RPOWER|5m] Received 184 candles | first=2026-04-29 09:15 | last=2026-05-04 12:00
+2026-05-04 12:00:05 [INFO] [RPOWER|5m] SCAN  bar=11:55  close=28.94  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 12:00:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:00:06 [INFO] [PNB|5m] Received 184 candles | first=2026-04-29 09:15 | last=2026-05-04 12:00
+2026-05-04 12:00:06 [INFO] [PNB|5m] SCAN  bar=11:55  close=110.07  ATRStop=109.92  pos=LONG  signal=NONE
+2026-05-04 12:00:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:00:06 [INFO] [BANKINDIA|5m] Received 184 candles | first=2026-04-29 09:15 | last=2026-05-04 12:00
+2026-05-04 12:00:06 [INFO] [BANKINDIA|5m] SCAN  bar=11:55  close=140.76  ATRStop=141.07  pos=SHORT  signal=NONE
+2026-05-04 12:05:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:05:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:05:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:05:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:05:02 [INFO] [IOC|5m] Received 34 candles | first=2026-05-04 09:15 | last=2026-05-04 12:00
+2026-05-04 12:05:02 [INFO] [IOC|5m] SCAN  bar=12:00  close=143.80  ATRStop=143.56  pos=FLAT  signal=NONE
+2026-05-04 12:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:05:02 [INFO] [RPOWER|5m] Received 34 candles | first=2026-05-04 09:15 | last=2026-05-04 12:00
+2026-05-04 12:05:02 [INFO] [RPOWER|5m] SCAN  bar=12:00  close=28.91  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 12:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:05:02 [INFO] [BANKINDIA|5m] Received 184 candles | first=2026-04-29 09:15 | last=2026-05-04 12:00
+2026-05-04 12:05:02 [INFO] [BANKINDIA|5m] SCAN  bar=12:00  close=140.63  ATRStop=141.07  pos=SHORT  signal=NONE
+2026-05-04 12:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:05:02 [INFO] [PNB|5m] Received 184 candles | first=2026-04-29 09:15 | last=2026-05-04 12:00
+2026-05-04 12:05:02 [INFO] [PNB|5m] SCAN  bar=12:00  close=109.89  ATRStop=110.31  pos=SHORT  signal=SELL
+2026-05-04 12:05:02 [INFO] [PNB|5m] Signal logged — DB: 5 total, 0 labeled
+2026-05-04 12:05:02 [INFO] [PNB|5m] SELL signal detected @ 2026-05-04 12:00:00+05:30 (close=109.89)
+2026-05-04 12:05:03 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 12:10:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:10:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:10:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:10:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:10:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:10:03 [INFO] [RPOWER|5m] Received 185 candles | first=2026-04-29 09:15 | last=2026-05-04 12:05
+2026-05-04 12:10:03 [INFO] [RPOWER|5m] SCAN  bar=12:05  close=28.91  ATRStop=28.87  pos=LONG  signal=NONE
+2026-05-04 12:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:10:04 [INFO] [IOC|5m] Received 185 candles | first=2026-04-29 09:15 | last=2026-05-04 12:05
+2026-05-04 12:10:04 [INFO] [IOC|5m] SCAN  bar=12:05  close=143.54  ATRStop=144.16  pos=SHORT  signal=SELL
+2026-05-04 12:10:04 [INFO] [IOC|5m] Signal logged — DB: 6 total, 0 labeled
+2026-05-04 12:10:04 [INFO] [IOC|5m] SELL signal detected @ 2026-05-04 12:05:00+05:30 (close=143.54)
+2026-05-04 12:10:04 [INFO] [IOC|5m] Telegram alert sent.
+2026-05-04 12:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:10:04 [INFO] [PNB|5m] Received 185 candles | first=2026-04-29 09:15 | last=2026-05-04 12:05
+2026-05-04 12:10:04 [INFO] [PNB|5m] SCAN  bar=12:05  close=109.84  ATRStop=110.08  pos=SHORT  signal=NONE
+2026-05-04 12:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:10:04 [INFO] [BANKINDIA|5m] Received 185 candles | first=2026-04-29 09:15 | last=2026-05-04 12:05
+2026-05-04 12:10:04 [INFO] [BANKINDIA|5m] SCAN  bar=12:05  close=140.00  ATRStop=141.07  pos=SHORT  signal=NONE
+2026-05-04 12:15:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:15:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:15:01 [INFO] [PNB|5m] Received 186 candles | first=2026-04-29 09:15 | last=2026-05-04 12:10
+2026-05-04 12:15:01 [INFO] [PNB|5m] SCAN  bar=12:10  close=109.63  ATRStop=110.08  pos=SHORT  signal=NONE
+2026-05-04 12:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:15:01 [INFO] [BANKINDIA|5m] Received 186 candles | first=2026-04-29 09:15 | last=2026-05-04 12:10
+2026-05-04 12:15:01 [INFO] [BANKINDIA|5m] SCAN  bar=12:10  close=139.58  ATRStop=140.42  pos=SHORT  signal=NONE
+2026-05-04 12:15:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:15:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:15:05 [INFO] [RPOWER|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:15:05 [INFO] [RPOWER|5m] SCAN  bar=12:10  close=28.79  ATRStop=29.07  pos=SHORT  signal=SELL
+2026-05-04 12:15:05 [INFO] [RPOWER|5m] Signal logged — DB: 7 total, 0 labeled
+2026-05-04 12:15:05 [INFO] [RPOWER|5m] SELL signal detected @ 2026-05-04 12:10:00+05:30 (close=28.79)
+2026-05-04 12:15:05 [INFO] [RPOWER|5m] Telegram alert sent.
+2026-05-04 12:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:15:05 [INFO] [IOC|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:15:05 [INFO] [IOC|5m] SCAN  bar=12:10  close=143.26  ATRStop=143.92  pos=SHORT  signal=NONE
+2026-05-04 12:20:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:20:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:20:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:20:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:20:03 [INFO] [BANKINDIA|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:20:03 [INFO] [BANKINDIA|5m] SCAN  bar=12:15  close=139.89  ATRStop=140.42  pos=SHORT  signal=NONE
+2026-05-04 12:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:20:03 [INFO] [RPOWER|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:20:03 [INFO] [RPOWER|5m] SCAN  bar=12:15  close=28.81  ATRStop=28.99  pos=SHORT  signal=NONE
+2026-05-04 12:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:20:03 [INFO] [PNB|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:20:03 [INFO] [PNB|5m] SCAN  bar=12:15  close=109.76  ATRStop=110.08  pos=SHORT  signal=NONE
+2026-05-04 12:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:20:03 [INFO] [IOC|5m] Received 187 candles | first=2026-04-29 09:15 | last=2026-05-04 12:15
+2026-05-04 12:20:03 [INFO] [IOC|5m] SCAN  bar=12:15  close=143.30  ATRStop=143.66  pos=SHORT  signal=NONE
+2026-05-04 12:25:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:25:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:25:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:25:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:25:05 [INFO] [BANKINDIA|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:25:05 [INFO] [BANKINDIA|5m] SCAN  bar=12:20  close=139.68  ATRStop=140.26  pos=SHORT  signal=NONE
+2026-05-04 12:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:25:05 [INFO] [RPOWER|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:25:05 [INFO] [RPOWER|5m] SCAN  bar=12:20  close=28.78  ATRStop=28.98  pos=SHORT  signal=NONE
+2026-05-04 12:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:25:05 [INFO] [PNB|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:25:05 [INFO] [PNB|5m] SCAN  bar=12:20  close=109.63  ATRStop=110.03  pos=SHORT  signal=NONE
+2026-05-04 12:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:25:05 [INFO] [IOC|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:25:05 [INFO] [IOC|5m] SCAN  bar=12:20  close=143.25  ATRStop=143.55  pos=SHORT  signal=NONE
+2026-05-04 12:30:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:30:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:30:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:30:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:30:02 [INFO] [BANKINDIA|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:30:02 [INFO] [BANKINDIA|5m] SCAN  bar=12:25  close=139.91  ATRStop=140.26  pos=SHORT  signal=NONE
+2026-05-04 12:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:30:02 [INFO] [RPOWER|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:30:03 [INFO] [RPOWER|5m] SCAN  bar=12:25  close=28.80  ATRStop=28.90  pos=SHORT  signal=NONE
+2026-05-04 12:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:30:03 [INFO] [IOC|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:30:03 [INFO] [IOC|5m] SCAN  bar=12:25  close=143.21  ATRStop=143.55  pos=SHORT  signal=NONE
+2026-05-04 12:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:30:03 [INFO] [PNB|5m] Received 189 candles | first=2026-04-29 09:15 | last=2026-05-04 12:25
+2026-05-04 12:30:03 [INFO] [PNB|5m] SCAN  bar=12:25  close=109.68  ATRStop=109.92  pos=SHORT  signal=NONE
+2026-05-04 12:35:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:35:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:35:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:35:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:35:05 [INFO] [PNB|5m] Received 190 candles | first=2026-04-29 09:15 | last=2026-05-04 12:30
+2026-05-04 12:35:05 [INFO] [PNB|5m] SCAN  bar=12:30  close=109.45  ATRStop=109.92  pos=SHORT  signal=NONE
+2026-05-04 12:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:35:05 [INFO] [IOC|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:35:05 [INFO] [IOC|5m] SCAN  bar=12:30  close=143.05  ATRStop=143.55  pos=SHORT  signal=NONE
+2026-05-04 12:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:35:05 [INFO] [BANKINDIA|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:35:05 [INFO] [BANKINDIA|5m] SCAN  bar=12:30  close=139.85  ATRStop=140.13  pos=SHORT  signal=NONE
+2026-05-04 12:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:35:05 [INFO] [RPOWER|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:35:05 [INFO] [RPOWER|5m] SCAN  bar=12:30  close=28.63  ATRStop=28.90  pos=SHORT  signal=NONE
+2026-05-04 12:40:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:40:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:40:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:40:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:40:03 [INFO] [PNB|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:40:03 [INFO] [PNB|5m] SCAN  bar=12:35  close=109.47  ATRStop=109.92  pos=SHORT  signal=NONE
+2026-05-04 12:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:40:03 [INFO] [RPOWER|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:40:03 [INFO] [RPOWER|5m] SCAN  bar=12:35  close=28.67  ATRStop=28.83  pos=SHORT  signal=NONE
+2026-05-04 12:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:40:03 [INFO] [IOC|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:40:03 [INFO] [IOC|5m] SCAN  bar=12:35  close=143.07  ATRStop=143.25  pos=SHORT  signal=NONE
+2026-05-04 12:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:40:03 [INFO] [BANKINDIA|5m] Received 191 candles | first=2026-04-29 09:15 | last=2026-05-04 12:35
+2026-05-04 12:40:03 [INFO] [BANKINDIA|5m] SCAN  bar=12:35  close=139.70  ATRStop=140.13  pos=SHORT  signal=NONE
+2026-05-04 12:45:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:45:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:45:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:45:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:45:05 [INFO] [PNB|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:45:05 [INFO] [PNB|5m] SCAN  bar=12:40  close=109.21  ATRStop=109.92  pos=SHORT  signal=NONE
+2026-05-04 12:45:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:45:06 [INFO] [RPOWER|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:45:06 [INFO] [RPOWER|5m] SCAN  bar=12:40  close=28.64  ATRStop=28.83  pos=SHORT  signal=NONE
+2026-05-04 12:45:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:45:06 [INFO] [IOC|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:45:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:45:06 [INFO] [IOC|5m] SCAN  bar=12:40  close=142.94  ATRStop=143.25  pos=SHORT  signal=NONE
+2026-05-04 12:45:06 [INFO] [BANKINDIA|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:45:06 [INFO] [BANKINDIA|5m] SCAN  bar=12:40  close=139.54  ATRStop=140.00  pos=SHORT  signal=NONE
+2026-05-04 12:50:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:50:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:50:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:50:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:50:03 [INFO] [PNB|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:50:03 [INFO] [PNB|5m] SCAN  bar=12:45  close=109.04  ATRStop=109.52  pos=SHORT  signal=NONE
+2026-05-04 12:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:50:03 [INFO] [RPOWER|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:50:03 [INFO] [RPOWER|5m] SCAN  bar=12:45  close=28.57  ATRStop=28.79  pos=SHORT  signal=NONE
+2026-05-04 12:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:50:03 [INFO] [IOC|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:50:03 [INFO] [IOC|5m] SCAN  bar=12:45  close=142.84  ATRStop=143.25  pos=SHORT  signal=NONE
+2026-05-04 12:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:50:03 [INFO] [BANKINDIA|5m] Received 193 candles | first=2026-04-29 09:15 | last=2026-05-04 12:45
+2026-05-04 12:50:04 [INFO] [BANKINDIA|5m] SCAN  bar=12:45  close=138.94  ATRStop=140.00  pos=SHORT  signal=NONE
+2026-05-04 12:55:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:55:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:55:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:55:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 12:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:55:05 [INFO] [PNB|5m] Received 194 candles | first=2026-04-29 09:15 | last=2026-05-04 12:50
+2026-05-04 12:55:05 [INFO] [PNB|5m] SCAN  bar=12:50  close=109.21  ATRStop=109.52  pos=SHORT  signal=NONE
+2026-05-04 12:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:55:05 [INFO] [RPOWER|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 12:55:05 [INFO] [RPOWER|5m] SCAN  bar=12:50  close=28.61  ATRStop=28.79  pos=SHORT  signal=NONE
+2026-05-04 12:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:55:06 [INFO] [IOC|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 12:55:06 [INFO] [IOC|5m] SCAN  bar=12:50  close=142.80  ATRStop=143.25  pos=SHORT  signal=NONE
+2026-05-04 12:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 12:55:06 [INFO] [BANKINDIA|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 12:55:06 [INFO] [BANKINDIA|5m] SCAN  bar=12:50  close=139.15  ATRStop=139.89  pos=SHORT  signal=NONE
+2026-05-04 13:00:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:00:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:00:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:00:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:00:03 [INFO] [PNB|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 13:00:03 [INFO] [PNB|5m] SCAN  bar=12:55  close=109.05  ATRStop=109.45  pos=SHORT  signal=NONE
+2026-05-04 13:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:00:03 [INFO] [RPOWER|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 13:00:03 [INFO] [RPOWER|5m] SCAN  bar=12:55  close=28.59  ATRStop=28.69  pos=SHORT  signal=NONE
+2026-05-04 13:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:00:03 [INFO] [BANKINDIA|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 13:00:03 [INFO] [BANKINDIA|5m] SCAN  bar=12:55  close=138.97  ATRStop=139.49  pos=SHORT  signal=NONE
+2026-05-04 13:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:00:03 [INFO] [IOC|5m] Received 195 candles | first=2026-04-29 09:15 | last=2026-05-04 12:55
+2026-05-04 13:00:03 [INFO] [IOC|5m] SCAN  bar=12:55  close=142.72  ATRStop=143.20  pos=SHORT  signal=NONE
+2026-05-04 13:05:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:05:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:05:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:05:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:05:05 [INFO] [PNB|5m] Received 196 candles | first=2026-04-29 09:15 | last=2026-05-04 13:00
+2026-05-04 13:05:05 [INFO] [PNB|5m] SCAN  bar=13:00  close=109.07  ATRStop=109.43  pos=SHORT  signal=NONE
+2026-05-04 13:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:05:05 [INFO] [RPOWER|5m] Received 196 candles | first=2026-04-29 09:15 | last=2026-05-04 13:00
+2026-05-04 13:05:05 [INFO] [RPOWER|5m] SCAN  bar=13:00  close=28.58  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:05:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:05:06 [INFO] [BANKINDIA|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:05:06 [INFO] [BANKINDIA|5m] SCAN  bar=13:00  close=138.99  ATRStop=139.49  pos=SHORT  signal=NONE
+2026-05-04 13:05:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:05:06 [INFO] [IOC|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:05:06 [INFO] [IOC|5m] SCAN  bar=13:00  close=142.66  ATRStop=143.00  pos=SHORT  signal=NONE
+2026-05-04 13:10:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:10:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:10:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:10:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:10:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:10:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:10:05 [INFO] [PNB|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:10:05 [INFO] [PNB|5m] SCAN  bar=13:05  close=109.10  ATRStop=109.34  pos=SHORT  signal=NONE
+2026-05-04 13:10:05 [INFO] [RPOWER|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:10:05 [INFO] [RPOWER|5m] SCAN  bar=13:05  close=28.60  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:10:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:10:06 [INFO] [BANKINDIA|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:10:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:10:06 [INFO] [BANKINDIA|5m] SCAN  bar=13:05  close=138.99  ATRStop=139.29  pos=SHORT  signal=NONE
+2026-05-04 13:10:06 [INFO] [IOC|5m] Received 197 candles | first=2026-04-29 09:15 | last=2026-05-04 13:05
+2026-05-04 13:10:06 [INFO] [IOC|5m] SCAN  bar=13:05  close=142.71  ATRStop=143.00  pos=SHORT  signal=NONE
+2026-05-04 13:15:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:15:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:15:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:15:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:15:03 [INFO] [PNB|5m] Received 198 candles | first=2026-04-29 09:15 | last=2026-05-04 13:10
+2026-05-04 13:15:03 [INFO] [PNB|5m] SCAN  bar=13:10  close=109.09  ATRStop=109.31  pos=SHORT  signal=NONE
+2026-05-04 13:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:15:03 [INFO] [RPOWER|5m] Received 198 candles | first=2026-04-29 09:15 | last=2026-05-04 13:10
+2026-05-04 13:15:03 [INFO] [RPOWER|5m] SCAN  bar=13:10  close=28.63  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:15:03 [INFO] [IOC|5m] Received 198 candles | first=2026-04-29 09:15 | last=2026-05-04 13:10
+2026-05-04 13:15:03 [INFO] [IOC|5m] SCAN  bar=13:10  close=142.67  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:15:03 [INFO] [BANKINDIA|5m] Received 198 candles | first=2026-04-29 09:15 | last=2026-05-04 13:10
+2026-05-04 13:15:03 [INFO] [BANKINDIA|5m] SCAN  bar=13:10  close=138.89  ATRStop=139.29  pos=SHORT  signal=NONE
+2026-05-04 13:20:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:20:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:20:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:20:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:20:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:20:07 [INFO] [PNB|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:20:07 [INFO] [PNB|5m] SCAN  bar=13:15  close=108.47  ATRStop=109.31  pos=SHORT  signal=NONE
+2026-05-04 13:20:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:20:07 [INFO] [BANKINDIA|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:20:07 [INFO] [BANKINDIA|5m] SCAN  bar=13:15  close=138.68  ATRStop=139.29  pos=SHORT  signal=NONE
+2026-05-04 13:20:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:20:07 [INFO] [RPOWER|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:20:07 [INFO] [RPOWER|5m] SCAN  bar=13:15  close=28.60  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:20:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:20:07 [INFO] [IOC|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:20:07 [INFO] [IOC|5m] SCAN  bar=13:15  close=142.67  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:25:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:25:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:25:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:25:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:25:04 [INFO] [PNB|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:25:04 [INFO] [PNB|5m] SCAN  bar=13:20  close=108.51  ATRStop=109.19  pos=SHORT  signal=NONE
+2026-05-04 13:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:25:04 [INFO] [IOC|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:25:04 [INFO] [IOC|5m] SCAN  bar=13:20  close=142.42  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:25:04 [INFO] [BANKINDIA|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:25:04 [INFO] [BANKINDIA|5m] SCAN  bar=13:20  close=138.68  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:25:04 [INFO] [RPOWER|5m] Received 200 candles | first=2026-04-29 09:15 | last=2026-05-04 13:20
+2026-05-04 13:25:04 [INFO] [RPOWER|5m] SCAN  bar=13:20  close=28.50  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:30:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:30:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:30:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:30:02 [INFO] [IOC|5m] Received 201 candles | first=2026-04-29 09:15 | last=2026-05-04 13:25
+2026-05-04 13:30:02 [INFO] [IOC|5m] SCAN  bar=13:25  close=142.17  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:30:03 [INFO] [RPOWER|5m] Received 201 candles | first=2026-04-29 09:15 | last=2026-05-04 13:25
+2026-05-04 13:30:03 [INFO] [RPOWER|5m] SCAN  bar=13:25  close=28.38  ATRStop=28.66  pos=SHORT  signal=NONE
+2026-05-04 13:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:30:03 [INFO] [BANKINDIA|5m] Received 201 candles | first=2026-04-29 09:15 | last=2026-05-04 13:25
+2026-05-04 13:30:03 [INFO] [BANKINDIA|5m] SCAN  bar=13:25  close=138.41  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:30:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:30:06 [INFO] [PNB|5m] Received 202 candles | first=2026-04-29 09:15 | last=2026-05-04 13:30
+2026-05-04 13:30:06 [INFO] [PNB|5m] SCAN  bar=13:25  close=108.30  ATRStop=109.06  pos=SHORT  signal=NONE
+2026-05-04 13:35:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:35:02 [INFO] [PNB|5m] Received 202 candles | first=2026-04-29 09:15 | last=2026-05-04 13:30
+2026-05-04 13:35:02 [INFO] [PNB|5m] SCAN  bar=13:30  close=108.30  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 13:35:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:35:03 [INFO] [IOC|5m] Received 202 candles | first=2026-04-29 09:15 | last=2026-05-04 13:30
+2026-05-04 13:35:03 [INFO] [IOC|5m] SCAN  bar=13:30  close=142.28  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:35:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:35:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:35:05 [INFO] [RPOWER|5m] Received 202 candles | first=2026-04-29 09:15 | last=2026-05-04 13:30
+2026-05-04 13:35:05 [INFO] [RPOWER|5m] SCAN  bar=13:30  close=28.29  ATRStop=28.51  pos=SHORT  signal=NONE
+2026-05-04 13:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:35:05 [INFO] [BANKINDIA|5m] Received 202 candles | first=2026-04-29 09:15 | last=2026-05-04 13:30
+2026-05-04 13:35:05 [INFO] [BANKINDIA|5m] SCAN  bar=13:30  close=138.53  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:40:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:40:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:40:01 [INFO] [RPOWER|5m] Received 203 candles | first=2026-04-29 09:15 | last=2026-05-04 13:35
+2026-05-04 13:40:01 [INFO] [RPOWER|5m] SCAN  bar=13:35  close=28.40  ATRStop=28.51  pos=SHORT  signal=NONE
+2026-05-04 13:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:40:01 [INFO] [BANKINDIA|5m] Received 203 candles | first=2026-04-29 09:15 | last=2026-05-04 13:35
+2026-05-04 13:40:01 [INFO] [BANKINDIA|5m] SCAN  bar=13:35  close=138.68  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:40:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:40:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:40:03 [INFO] [PNB|5m] Received 203 candles | first=2026-04-29 09:15 | last=2026-05-04 13:35
+2026-05-04 13:40:03 [INFO] [PNB|5m] SCAN  bar=13:35  close=108.41  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 13:40:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:40:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:40:05 [INFO] [IOC|5m] Received 203 candles | first=2026-04-29 09:15 | last=2026-05-04 13:35
+2026-05-04 13:40:05 [INFO] [IOC|5m] SCAN  bar=13:35  close=142.45  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:45:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:45:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:45:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:45:02 [INFO] [IOC|5m] Received 204 candles | first=2026-04-29 09:15 | last=2026-05-04 13:40
+2026-05-04 13:45:02 [INFO] [IOC|5m] SCAN  bar=13:40  close=142.61  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:45:02 [INFO] [RPOWER|5m] Received 204 candles | first=2026-04-29 09:15 | last=2026-05-04 13:40
+2026-05-04 13:45:02 [INFO] [RPOWER|5m] SCAN  bar=13:40  close=28.52  ATRStop=28.26  pos=LONG  signal=BUY
+2026-05-04 13:45:02 [INFO] [RPOWER|5m] Signal logged — DB: 8 total, 0 labeled
+2026-05-04 13:45:02 [INFO] [RPOWER|5m] BUY signal detected @ 2026-05-04 13:40:00+05:30 (close=28.52)
+2026-05-04 13:45:02 [INFO] [RPOWER|5m] Telegram alert sent.
+2026-05-04 13:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:45:03 [INFO] [BANKINDIA|5m] Received 204 candles | first=2026-04-29 09:15 | last=2026-05-04 13:40
+2026-05-04 13:45:03 [INFO] [BANKINDIA|5m] SCAN  bar=13:40  close=138.79  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:45:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:45:05 [INFO] [PNB|5m] Received 204 candles | first=2026-04-29 09:15 | last=2026-05-04 13:40
+2026-05-04 13:45:05 [INFO] [PNB|5m] SCAN  bar=13:40  close=108.65  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 13:50:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:50:02 [INFO] [PNB|5m] Received 205 candles | first=2026-04-29 09:15 | last=2026-05-04 13:45
+2026-05-04 13:50:02 [INFO] [PNB|5m] SCAN  bar=13:45  close=108.63  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 13:50:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:50:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:50:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:50:03 [INFO] [IOC|5m] Received 205 candles | first=2026-04-29 09:15 | last=2026-05-04 13:45
+2026-05-04 13:50:03 [INFO] [IOC|5m] SCAN  bar=13:45  close=142.36  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:50:04 [INFO] [RPOWER|5m] Received 205 candles | first=2026-04-29 09:15 | last=2026-05-04 13:45
+2026-05-04 13:50:04 [INFO] [RPOWER|5m] SCAN  bar=13:45  close=28.54  ATRStop=28.34  pos=LONG  signal=NONE
+2026-05-04 13:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:50:04 [INFO] [BANKINDIA|5m] Received 205 candles | first=2026-04-29 09:15 | last=2026-05-04 13:45
+2026-05-04 13:50:04 [INFO] [BANKINDIA|5m] SCAN  bar=13:45  close=138.92  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 13:55:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:55:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:55:04 [INFO] [PNB|5m] Received 206 candles | first=2026-04-29 09:15 | last=2026-05-04 13:50
+2026-05-04 13:55:04 [INFO] [PNB|5m] SCAN  bar=13:50  close=108.50  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 13:55:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:55:04 [INFO] [IOC|5m] Received 206 candles | first=2026-04-29 09:15 | last=2026-05-04 13:50
+2026-05-04 13:55:04 [INFO] [IOC|5m] SCAN  bar=13:50  close=142.37  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 13:55:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 13:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:55:05 [INFO] [RPOWER|5m] Received 206 candles | first=2026-04-29 09:15 | last=2026-05-04 13:50
+2026-05-04 13:55:05 [INFO] [RPOWER|5m] SCAN  bar=13:50  close=28.51  ATRStop=28.35  pos=LONG  signal=NONE
+2026-05-04 13:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 13:55:05 [INFO] [BANKINDIA|5m] Received 207 candles | first=2026-04-29 09:15 | last=2026-05-04 13:55
+2026-05-04 13:55:05 [INFO] [BANKINDIA|5m] SCAN  bar=13:50  close=138.63  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 14:00:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:00:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:00:01 [INFO] [IOC|5m] Received 207 candles | first=2026-04-29 09:15 | last=2026-05-04 13:55
+2026-05-04 14:00:01 [INFO] [IOC|5m] SCAN  bar=13:55  close=142.49  ATRStop=142.91  pos=SHORT  signal=NONE
+2026-05-04 14:00:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:00:01 [INFO] [RPOWER|5m] Received 207 candles | first=2026-04-29 09:15 | last=2026-05-04 13:55
+2026-05-04 14:00:01 [INFO] [RPOWER|5m] SCAN  bar=13:55  close=28.55  ATRStop=28.39  pos=LONG  signal=NONE
+2026-05-04 14:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:00:02 [INFO] [BANKINDIA|5m] Received 207 candles | first=2026-04-29 09:15 | last=2026-05-04 13:55
+2026-05-04 14:00:02 [INFO] [BANKINDIA|5m] SCAN  bar=13:55  close=138.66  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 14:00:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:00:05 [INFO] [PNB|5m] Received 208 candles | first=2026-04-29 09:15 | last=2026-05-04 14:00
+2026-05-04 14:00:05 [INFO] [PNB|5m] SCAN  bar=13:55  close=108.42  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 14:05:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:05:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:05:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:05:02 [INFO] [PNB|5m] Received 208 candles | first=2026-04-29 09:15 | last=2026-05-04 14:00
+2026-05-04 14:05:02 [INFO] [PNB|5m] SCAN  bar=14:00  close=108.50  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 14:05:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:05:02 [INFO] [IOC|5m] Received 208 candles | first=2026-04-29 09:15 | last=2026-05-04 14:00
+2026-05-04 14:05:02 [INFO] [IOC|5m] SCAN  bar=14:00  close=142.36  ATRStop=142.80  pos=SHORT  signal=NONE
+2026-05-04 14:05:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:05:02 [INFO] [RPOWER|5m] Received 208 candles | first=2026-04-29 09:15 | last=2026-05-04 14:00
+2026-05-04 14:05:02 [INFO] [RPOWER|5m] SCAN  bar=14:00  close=28.58  ATRStop=28.42  pos=LONG  signal=NONE
+2026-05-04 14:05:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:05:03 [INFO] [BANKINDIA|5m] Received 208 candles | first=2026-04-29 09:15 | last=2026-05-04 14:00
+2026-05-04 14:05:03 [INFO] [BANKINDIA|5m] SCAN  bar=14:00  close=138.89  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 14:10:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:10:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:10:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:10:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:10:04 [INFO] [PNB|5m] Received 209 candles | first=2026-04-29 09:15 | last=2026-05-04 14:05
+2026-05-04 14:10:04 [INFO] [PNB|5m] SCAN  bar=14:05  close=108.57  ATRStop=108.76  pos=SHORT  signal=NONE
+2026-05-04 14:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:10:04 [INFO] [IOC|5m] Received 209 candles | first=2026-04-29 09:15 | last=2026-05-04 14:05
+2026-05-04 14:10:04 [INFO] [IOC|5m] SCAN  bar=14:05  close=142.47  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:10:04 [INFO] [RPOWER|5m] Received 209 candles | first=2026-04-29 09:15 | last=2026-05-04 14:05
+2026-05-04 14:10:04 [INFO] [RPOWER|5m] SCAN  bar=14:05  close=28.62  ATRStop=28.46  pos=LONG  signal=NONE
+2026-05-04 14:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:10:04 [INFO] [BANKINDIA|5m] Received 209 candles | first=2026-04-29 09:15 | last=2026-05-04 14:05
+2026-05-04 14:10:04 [INFO] [BANKINDIA|5m] SCAN  bar=14:05  close=138.88  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 14:15:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:15:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:15:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:15:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:15:01 [INFO] [PNB|5m] Received 210 candles | first=2026-04-29 09:15 | last=2026-05-04 14:10
+2026-05-04 14:15:01 [INFO] [PNB|5m] SCAN  bar=14:10  close=108.89  ATRStop=108.21  pos=LONG  signal=BUY
+2026-05-04 14:15:01 [INFO] [PNB|5m] Signal logged — DB: 9 total, 0 labeled
+2026-05-04 14:15:01 [INFO] [PNB|5m] BUY signal detected @ 2026-05-04 14:10:00+05:30 (close=108.89)
+2026-05-04 14:15:01 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:15:01 [INFO] [RPOWER|5m] Received 210 candles | first=2026-04-29 09:15 | last=2026-05-04 14:10
+2026-05-04 14:15:01 [INFO] [RPOWER|5m] SCAN  bar=14:10  close=28.68  ATRStop=28.48  pos=LONG  signal=NONE
+2026-05-04 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:15:01 [INFO] [BANKINDIA|5m] Received 210 candles | first=2026-04-29 09:15 | last=2026-05-04 14:10
+2026-05-04 14:15:01 [INFO] [BANKINDIA|5m] SCAN  bar=14:10  close=139.00  ATRStop=139.04  pos=SHORT  signal=NONE
+2026-05-04 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:15:01 [INFO] [IOC|5m] Received 210 candles | first=2026-04-29 09:15 | last=2026-05-04 14:10
+2026-05-04 14:15:01 [INFO] [IOC|5m] SCAN  bar=14:10  close=142.57  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:20:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:20:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:20:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:20:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:20:03 [INFO] [PNB|5m] Received 211 candles | first=2026-04-29 09:15 | last=2026-05-04 14:15
+2026-05-04 14:20:03 [INFO] [PNB|5m] SCAN  bar=14:15  close=109.04  ATRStop=108.60  pos=LONG  signal=NONE
+2026-05-04 14:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:20:03 [INFO] [BANKINDIA|5m] Received 211 candles | first=2026-04-29 09:15 | last=2026-05-04 14:15
+2026-05-04 14:20:03 [INFO] [BANKINDIA|5m] SCAN  bar=14:15  close=139.43  ATRStop=138.47  pos=LONG  signal=BUY
+2026-05-04 14:20:03 [INFO] [BANKINDIA|5m] Signal logged — DB: 10 total, 0 labeled
+2026-05-04 14:20:03 [INFO] [BANKINDIA|5m] BUY signal detected @ 2026-05-04 14:15:00+05:30 (close=139.43)
+2026-05-04 14:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:20:03 [INFO] [RPOWER|5m] Received 211 candles | first=2026-04-29 09:15 | last=2026-05-04 14:15
+2026-05-04 14:20:03 [INFO] [RPOWER|5m] SCAN  bar=14:15  close=28.74  ATRStop=28.52  pos=LONG  signal=NONE
+2026-05-04 14:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:20:03 [INFO] [IOC|5m] Received 211 candles | first=2026-04-29 09:15 | last=2026-05-04 14:15
+2026-05-04 14:20:03 [INFO] [IOC|5m] SCAN  bar=14:15  close=142.70  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:20:03 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-04 14:25:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:25:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:25:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:25:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:25:05 [INFO] [PNB|5m] Received 212 candles | first=2026-04-29 09:15 | last=2026-05-04 14:20
+2026-05-04 14:25:05 [INFO] [PNB|5m] SCAN  bar=14:20  close=108.92  ATRStop=108.60  pos=LONG  signal=NONE
+2026-05-04 14:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:25:05 [INFO] [BANKINDIA|5m] Received 212 candles | first=2026-04-29 09:15 | last=2026-05-04 14:20
+2026-05-04 14:25:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:20  close=138.90  ATRStop=138.47  pos=LONG  signal=NONE
+2026-05-04 14:25:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:25:05 [INFO] [IOC|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:25:05 [INFO] [IOC|5m] SCAN  bar=14:20  close=142.60  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:25:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:25:06 [INFO] [RPOWER|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:25:06 [INFO] [RPOWER|5m] SCAN  bar=14:20  close=28.71  ATRStop=28.55  pos=LONG  signal=NONE
+2026-05-04 14:30:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:30:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:30:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:30:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:30:02 [INFO] [PNB|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:30:02 [INFO] [PNB|5m] SCAN  bar=14:25  close=108.95  ATRStop=108.77  pos=LONG  signal=NONE
+2026-05-04 14:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:30:02 [INFO] [BANKINDIA|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:30:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:25  close=138.95  ATRStop=138.55  pos=LONG  signal=NONE
+2026-05-04 14:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:30:02 [INFO] [IOC|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:30:03 [INFO] [IOC|5m] SCAN  bar=14:25  close=142.66  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:30:03 [INFO] [RPOWER|5m] Received 213 candles | first=2026-04-29 09:15 | last=2026-05-04 14:25
+2026-05-04 14:30:03 [INFO] [RPOWER|5m] SCAN  bar=14:25  close=28.72  ATRStop=28.56  pos=LONG  signal=NONE
+2026-05-04 14:35:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:35:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:35:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:35:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:35:03 [INFO] [PNB|5m] Received 214 candles | first=2026-04-29 09:15 | last=2026-05-04 14:30
+2026-05-04 14:35:03 [INFO] [PNB|5m] SCAN  bar=14:30  close=108.78  ATRStop=108.77  pos=LONG  signal=NONE
+2026-05-04 14:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:35:04 [INFO] [BANKINDIA|5m] Received 214 candles | first=2026-04-29 09:15 | last=2026-05-04 14:30
+2026-05-04 14:35:04 [INFO] [BANKINDIA|5m] SCAN  bar=14:30  close=138.90  ATRStop=138.55  pos=LONG  signal=NONE
+2026-05-04 14:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:35:04 [INFO] [IOC|5m] Received 214 candles | first=2026-04-29 09:15 | last=2026-05-04 14:30
+2026-05-04 14:35:04 [INFO] [IOC|5m] SCAN  bar=14:30  close=142.56  ATRStop=142.75  pos=SHORT  signal=NONE
+2026-05-04 14:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:35:04 [INFO] [RPOWER|5m] Received 214 candles | first=2026-04-29 09:15 | last=2026-05-04 14:30
+2026-05-04 14:35:04 [INFO] [RPOWER|5m] SCAN  bar=14:30  close=28.73  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 14:40:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:40:01 [INFO] [RPOWER|5m] Received 215 candles | first=2026-04-29 09:15 | last=2026-05-04 14:35
+2026-05-04 14:40:01 [INFO] [RPOWER|5m] SCAN  bar=14:35  close=28.65  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 14:40:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:40:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:40:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:40:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:40:05 [INFO] [PNB|5m] Received 215 candles | first=2026-04-29 09:15 | last=2026-05-04 14:35
+2026-05-04 14:40:05 [INFO] [PNB|5m] SCAN  bar=14:35  close=108.74  ATRStop=109.02  pos=SHORT  signal=SELL
+2026-05-04 14:40:05 [INFO] [PNB|5m] Signal logged — DB: 11 total, 0 labeled
+2026-05-04 14:40:05 [INFO] [PNB|5m] SELL signal detected @ 2026-05-04 14:35:00+05:30 (close=108.74)
+2026-05-04 14:40:05 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 14:40:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:40:05 [INFO] [BANKINDIA|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:40:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:35  close=138.68  ATRStop=138.55  pos=LONG  signal=NONE
+2026-05-04 14:40:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:40:06 [INFO] [IOC|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:40:06 [INFO] [IOC|5m] SCAN  bar=14:35  close=142.56  ATRStop=142.70  pos=SHORT  signal=NONE
+2026-05-04 14:45:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:45:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:45:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:45:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:45:01 [INFO] [PNB|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:45:01 [INFO] [PNB|5m] SCAN  bar=14:40  close=108.80  ATRStop=109.02  pos=SHORT  signal=NONE
+2026-05-04 14:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:45:02 [INFO] [BANKINDIA|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:45:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:40  close=138.50  ATRStop=139.22  pos=SHORT  signal=SELL
+2026-05-04 14:45:02 [INFO] [BANKINDIA|5m] Signal logged — DB: 12 total, 0 labeled
+2026-05-04 14:45:02 [INFO] [BANKINDIA|5m] SELL signal detected @ 2026-05-04 14:40:00+05:30 (close=138.50)
+2026-05-04 14:45:02 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-04 14:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:45:02 [INFO] [RPOWER|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:45:02 [INFO] [RPOWER|5m] SCAN  bar=14:40  close=28.65  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 14:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:45:02 [INFO] [IOC|5m] Received 216 candles | first=2026-04-29 09:15 | last=2026-05-04 14:40
+2026-05-04 14:45:02 [INFO] [IOC|5m] SCAN  bar=14:40  close=142.35  ATRStop=142.70  pos=SHORT  signal=NONE
+2026-05-04 14:50:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:50:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:50:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:50:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:50:03 [INFO] [PNB|5m] Received 217 candles | first=2026-04-29 09:15 | last=2026-05-04 14:45
+2026-05-04 14:50:03 [INFO] [PNB|5m] SCAN  bar=14:45  close=108.63  ATRStop=109.02  pos=SHORT  signal=NONE
+2026-05-04 14:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:50:03 [INFO] [BANKINDIA|5m] Received 217 candles | first=2026-04-29 09:15 | last=2026-05-04 14:45
+2026-05-04 14:50:03 [INFO] [BANKINDIA|5m] SCAN  bar=14:45  close=138.57  ATRStop=138.93  pos=SHORT  signal=NONE
+2026-05-04 14:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:50:03 [INFO] [RPOWER|5m] Received 217 candles | first=2026-04-29 09:15 | last=2026-05-04 14:45
+2026-05-04 14:50:03 [INFO] [RPOWER|5m] SCAN  bar=14:45  close=28.63  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 14:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:50:04 [INFO] [IOC|5m] Received 217 candles | first=2026-04-29 09:15 | last=2026-05-04 14:45
+2026-05-04 14:50:04 [INFO] [IOC|5m] SCAN  bar=14:45  close=142.20  ATRStop=142.56  pos=SHORT  signal=NONE
+2026-05-04 14:55:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:55:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:55:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:55:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 14:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:55:06 [INFO] [PNB|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 14:55:06 [INFO] [PNB|5m] SCAN  bar=14:50  close=108.64  ATRStop=108.86  pos=SHORT  signal=NONE
+2026-05-04 14:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:55:06 [INFO] [BANKINDIA|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 14:55:06 [INFO] [BANKINDIA|5m] SCAN  bar=14:50  close=138.57  ATRStop=138.83  pos=SHORT  signal=NONE
+2026-05-04 14:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:55:06 [INFO] [RPOWER|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 14:55:06 [INFO] [RPOWER|5m] SCAN  bar=14:50  close=28.64  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 14:55:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 14:55:06 [INFO] [IOC|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 14:55:06 [INFO] [IOC|5m] SCAN  bar=14:50  close=142.22  ATRStop=142.56  pos=SHORT  signal=NONE
+2026-05-04 15:00:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:00:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:00:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:00:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:00:03 [INFO] [PNB|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 15:00:03 [INFO] [PNB|5m] SCAN  bar=14:55  close=108.51  ATRStop=108.86  pos=SHORT  signal=NONE
+2026-05-04 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:00:03 [INFO] [BANKINDIA|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 15:00:03 [INFO] [BANKINDIA|5m] SCAN  bar=14:55  close=138.47  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:00:03 [INFO] [RPOWER|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 15:00:03 [INFO] [RPOWER|5m] SCAN  bar=14:55  close=28.68  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:00:03 [INFO] [IOC|5m] Received 219 candles | first=2026-04-29 09:15 | last=2026-05-04 14:55
+2026-05-04 15:00:03 [INFO] [IOC|5m] SCAN  bar=14:55  close=142.15  ATRStop=142.51  pos=SHORT  signal=NONE
+2026-05-04 15:05:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:05:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:05:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:05:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:05:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:05:04 [INFO] [PNB|5m] Received 220 candles | first=2026-04-29 09:15 | last=2026-05-04 15:00
+2026-05-04 15:05:05 [INFO] [PNB|5m] SCAN  bar=15:00  close=108.70  ATRStop=108.86  pos=SHORT  signal=NONE
+2026-05-04 15:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:05:05 [INFO] [BANKINDIA|5m] Received 220 candles | first=2026-04-29 09:15 | last=2026-05-04 15:00
+2026-05-04 15:05:05 [INFO] [BANKINDIA|5m] SCAN  bar=15:00  close=138.55  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:05:05 [INFO] [IOC|5m] Received 220 candles | first=2026-04-29 09:15 | last=2026-05-04 15:00
+2026-05-04 15:05:05 [INFO] [IOC|5m] SCAN  bar=15:00  close=142.15  ATRStop=142.45  pos=SHORT  signal=NONE
+2026-05-04 15:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:05:05 [INFO] [RPOWER|5m] Received 220 candles | first=2026-04-29 09:15 | last=2026-05-04 15:00
+2026-05-04 15:05:05 [INFO] [RPOWER|5m] SCAN  bar=15:00  close=28.72  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 15:10:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:10:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:10:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:10:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:10:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:10:01 [INFO] [PNB|5m] Received 221 candles | first=2026-04-29 09:15 | last=2026-05-04 15:05
+2026-05-04 15:10:01 [INFO] [PNB|5m] SCAN  bar=15:05  close=108.91  ATRStop=108.41  pos=LONG  signal=BUY
+2026-05-04 15:10:01 [INFO] [PNB|5m] Signal logged — DB: 13 total, 0 labeled
+2026-05-04 15:10:01 [INFO] [PNB|5m] BUY signal detected @ 2026-05-04 15:05:00+05:30 (close=108.91)
+2026-05-04 15:10:01 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-04 15:10:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:10:01 [INFO] [BANKINDIA|5m] Received 221 candles | first=2026-04-29 09:15 | last=2026-05-04 15:05
+2026-05-04 15:10:01 [INFO] [BANKINDIA|5m] SCAN  bar=15:05  close=138.80  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:10:02 [INFO] [IOC|5m] Received 221 candles | first=2026-04-29 09:15 | last=2026-05-04 15:05
+2026-05-04 15:10:02 [INFO] [IOC|5m] SCAN  bar=15:05  close=142.23  ATRStop=142.45  pos=SHORT  signal=NONE
+2026-05-04 15:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:10:02 [INFO] [RPOWER|5m] Received 221 candles | first=2026-04-29 09:15 | last=2026-05-04 15:05
+2026-05-04 15:10:02 [INFO] [RPOWER|5m] SCAN  bar=15:05  close=28.69  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 15:15:02 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:15:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:15:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:15:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:15:03 [INFO] [PNB|5m] Received 222 candles | first=2026-04-29 09:15 | last=2026-05-04 15:10
+2026-05-04 15:15:03 [INFO] [PNB|5m] SCAN  bar=15:10  close=108.87  ATRStop=108.57  pos=LONG  signal=NONE
+2026-05-04 15:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:15:03 [INFO] [BANKINDIA|5m] Received 222 candles | first=2026-04-29 09:15 | last=2026-05-04 15:10
+2026-05-04 15:15:03 [INFO] [BANKINDIA|5m] SCAN  bar=15:10  close=138.62  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:15:03 [INFO] [IOC|5m] Received 222 candles | first=2026-04-29 09:15 | last=2026-05-04 15:10
+2026-05-04 15:15:03 [INFO] [IOC|5m] SCAN  bar=15:10  close=142.15  ATRStop=142.45  pos=SHORT  signal=NONE
+2026-05-04 15:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:15:03 [INFO] [RPOWER|5m] Received 222 candles | first=2026-04-29 09:15 | last=2026-05-04 15:10
+2026-05-04 15:15:03 [INFO] [RPOWER|5m] SCAN  bar=15:10  close=28.65  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 15:20:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:20:03 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:20:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:20:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:20:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:20:04 [INFO] [PNB|5m] Received 223 candles | first=2026-04-29 09:15 | last=2026-05-04 15:15
+2026-05-04 15:20:04 [INFO] [PNB|5m] SCAN  bar=15:15  close=108.66  ATRStop=108.57  pos=LONG  signal=NONE
+2026-05-04 15:20:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:20:04 [INFO] [BANKINDIA|5m] Received 223 candles | first=2026-04-29 09:15 | last=2026-05-04 15:15
+2026-05-04 15:20:04 [INFO] [BANKINDIA|5m] SCAN  bar=15:15  close=138.63  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:20:05 [INFO] [IOC|5m] Received 73 candles | first=2026-05-04 09:15 | last=2026-05-04 15:15
+2026-05-04 15:20:05 [INFO] [IOC|5m] SCAN  bar=15:15  close=142.15  ATRStop=142.45  pos=SHORT  signal=NONE
+2026-05-04 15:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:20:05 [INFO] [RPOWER|5m] Received 73 candles | first=2026-05-04 09:15 | last=2026-05-04 15:15
+2026-05-04 15:20:05 [INFO] [RPOWER|5m] SCAN  bar=15:15  close=28.73  ATRStop=28.59  pos=LONG  signal=NONE
+2026-05-04 15:25:00 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:25:00 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:25:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:25:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-04-29 to=2026-05-04 | candle=0:05:00
+2026-05-04 15:25:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:25:01 [INFO] [PNB|5m] Received 224 candles | first=2026-04-29 09:15 | last=2026-05-04 15:20
+2026-05-04 15:25:01 [INFO] [PNB|5m] SCAN  bar=15:20  close=108.61  ATRStop=108.57  pos=LONG  signal=NONE
+2026-05-04 15:25:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:25:01 [INFO] [BANKINDIA|5m] Received 224 candles | first=2026-04-29 09:15 | last=2026-05-04 15:20
+2026-05-04 15:25:01 [INFO] [BANKINDIA|5m] SCAN  bar=15:20  close=138.76  ATRStop=138.81  pos=SHORT  signal=NONE
+2026-05-04 15:25:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:25:02 [INFO] [IOC|5m] Received 224 candles | first=2026-04-29 09:15 | last=2026-05-04 15:20
+2026-05-04 15:25:02 [INFO] [IOC|5m] SCAN  bar=15:20  close=142.29  ATRStop=142.45  pos=SHORT  signal=NONE
+2026-05-04 15:25:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-04 15:25:02 [INFO] [RPOWER|5m] Received 224 candles | first=2026-04-29 09:15 | last=2026-05-04 15:20
+2026-05-04 15:25:02 [INFO] [RPOWER|5m] SCAN  bar=15:20  close=28.80  ATRStop=28.62  pos=LONG  signal=NONE
+2026-05-04 15:36:11 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-04 15:36:11 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-04 15:36:11 [INFO] [IOC|5m] Worker stopped.
+2026-05-04 15:36:11 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-04 15:36:11 [INFO] [PNB|5m] Worker stopped.
+2026-05-04 15:36:11 [INFO] [WS] Disconnecting...
+2026-05-04 15:36:11 [INFO] [WS] Disconnected.
+2026-05-04 15:36:11 [INFO] All workers stopped. Bye!
+2026-05-04 15:36:22 [INFO] ==============================================================
+2026-05-04 15:36:22 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 15:36:22 [INFO] ==============================================================
+2026-05-04 15:36:22 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 15:36:22 [INFO]   Timeframes : 5m
+2026-05-04 15:36:22 [INFO]   Exchange   : NSE
+2026-05-04 15:36:22 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 15:36:22 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 15:36:22 [INFO] ==============================================================
+2026-05-04 15:36:22 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 15:36:22 [INFO] ==============================================================
+2026-05-04 15:36:22 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 15:36:22 [INFO] Websocket connected
+2026-05-04 15:36:22 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 15:36:24 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 15:36:24 [INFO] [IOC|5m] Worker started.
+2026-05-04 15:36:24 [INFO] Started worker: IOC @ 5m
+2026-05-04 15:36:24 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 15:36:24 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-04 15:36:24 [INFO] Started worker: BANKINDIA @ 5m
+2026-05-04 15:36:24 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 15:36:24 [INFO] [PNB|5m] Worker started.
+2026-05-04 15:36:24 [INFO] Started worker: PNB @ 5m
+2026-05-04 15:36:24 [INFO] No ML model at ml_model.pkl — running in pass-through mode.
+2026-05-04 15:36:24 [INFO] [RPOWER|5m] Worker started.
+2026-05-04 15:36:24 [INFO] Started worker: RPOWER @ 5m
+2026-05-04 15:43:09 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-04 15:43:09 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-04 15:43:09 [INFO] [IOC|5m] Worker stopped.
+2026-05-04 15:43:09 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-04 15:43:09 [INFO] [PNB|5m] Worker stopped.
+2026-05-04 15:43:09 [INFO] [WS] Disconnecting...
+2026-05-04 15:43:10 [INFO] [WS] Disconnected.
+2026-05-04 15:43:10 [INFO] All workers stopped. Bye!
+2026-05-04 15:43:19 [INFO] Log level set to: INFO
+2026-05-04 15:43:19 [INFO] ==============================================================
+2026-05-04 15:43:19 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-04 15:43:19 [INFO] ==============================================================
+2026-05-04 15:43:19 [INFO]   Symbols    : IOC, BANKINDIA, PNB, RPOWER
+2026-05-04 15:43:19 [INFO]   Timeframes : 5m
+2026-05-04 15:43:19 [INFO]   Exchange   : NSE
+2026-05-04 15:43:19 [INFO]   Key Value  : 2  |  ATR Period: 1  |  HA: False
+2026-05-04 15:43:19 [INFO]   Host       : http://127.0.0.1:5000
+2026-05-04 15:43:19 [INFO] ==============================================================
+2026-05-04 15:43:19 [INFO]   Press Ctrl+C to stop the bot
+2026-05-04 15:43:19 [INFO] ==============================================================
+2026-05-04 15:43:19 [INFO] [WS] Connecting to WebSocket...
+2026-05-04 15:43:19 [INFO] Websocket connected
+2026-05-04 15:43:19 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-04 15:43:21 [INFO] [IOC|5m] Worker started.
+2026-05-04 15:43:21 [INFO] Started worker: IOC @ 5m
+2026-05-04 15:43:21 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-04 15:43:21 [INFO] Started worker: BANKINDIA @ 5m
+2026-05-04 15:43:21 [INFO] [PNB|5m] Worker started.
+2026-05-04 15:43:21 [INFO] Started worker: PNB @ 5m
+2026-05-04 15:43:21 [INFO] [RPOWER|5m] Worker started.
+2026-05-04 15:43:21 [INFO] Started worker: RPOWER @ 5m

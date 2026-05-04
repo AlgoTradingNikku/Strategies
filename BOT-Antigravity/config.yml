@@ -57,7 +57,13 @@ bot:
 
   # Market open/close times (IST, 24h format)
   market_open: "09:15"
-  market_close: "23:30"
+  market_close: "15:30"
+
+  # Logging verbosity: DEBUG | INFO | WARNING | ERROR
+  # DEBUG   → shows all internal details (candle boundaries, skipped fetches, etc.)
+  # INFO    → normal operation messages (signals, scans, alerts)
+  # WARNING → only problems / unexpected events
+  log_level: "INFO"
 
 # ------------------------------------------------------------
 # ML Filter (XGBoost Signal Confidence Scorer)
