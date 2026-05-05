@@ -538,8 +538,8 @@ class TimeframeWorker:
         message = (
             f"{emoji} *{direction_word} Signal{badge}* — {self.symbol} on {self.timeframe} chart\n"
             f"LTP        : {ltp_str}\n"
-            f"Bar Close  : {close_price:.2f}\n"
             f"ATR Stop   : {atr_stop:.2f}\n"
+            f"Bar Close  : {close_price:.2f}\n"
             f"Bar Closed : {bar_close_ts.strftime('%Y-%m-%d %H:%M')}"
             f"{ml_conf_str}"
         )
@@ -594,11 +594,32 @@ class LivePriceMonitor:
         self.ltp_map: dict[str, float] = {}
 
     def _on_data(self, data: dict):
-        if data.get("type") != "market_data":
-            return
-        sym = data.get("symbol", "")
-        ltp_val = data.get("data", {}).get("ltp")
-        if ltp_val is not None:
+        # ── Debug: log first 10 raw messages at INFO so we can confirm format ──
+        if not hasattr(self, "_dbg_count"):
+            self._dbg_count = 0
+        if self._dbg_count < 10:
+            log.info("[WS] RAW payload #%d: %s", self._dbg_count + 1, data)
+            self._dbg_count += 1
+
+        msg_type = data.get("type")
+        inner_data = data.get("data", {}) if isinstance(data.get("data"), dict) else {}
+
+        # Try to extract symbol — could be at root or nested in "data"
+        sym = (
+            data.get("symbol")
+            or inner_data.get("symbol")
+            or ""
+        )
+
+        # Try to extract ltp — could be at root, inside "data", or keyed differently
+        ltp_val = (
+            inner_data.get("ltp")
+            or data.get("ltp")
+            or inner_data.get("last_price")
+            or data.get("last_price")
+        )
+
+        if sym and ltp_val is not None:
             self.ltp_map[sym] = float(ltp_val)
             log.debug("[WS] %s LTP = %.2f", sym, self.ltp_map[sym])
 
