@@ -32,6 +32,7 @@ Stop:
 
 import sys
 import os
+import atexit
 import threading
 import time
 import logging
@@ -295,6 +296,23 @@ class TimeframeWorker:
         else:
             self._ml_filter = None
 
+        # ── Trading (Order Placement) ─────────────────────────────────────────
+        trading_cfg = config.get("trading", {})
+        self._trading_enabled   = bool(trading_cfg.get("enabled", False))
+        self._trading_strategy  = trading_cfg.get("strategy_name", "UTBot")
+
+        # Determine if this is an option symbol (exchange == NFO)
+        self._is_option = (self.exchange == "NFO")
+        if self._is_option:
+            t_cfg = trading_cfg.get("options", {})
+        else:
+            t_cfg = trading_cfg.get("equity", {})
+
+        self._trading_sub_enabled = bool(t_cfg.get("enabled", True))
+        self._trading_quantity    = int(t_cfg.get("quantity", 1))
+        self._trading_product     = t_cfg.get("product", "MIS")
+        self._trading_price_type  = t_cfg.get("price_type", "MARKET")
+
     # ------------------------------------------------------------------
     def _current_boundary(self) -> datetime:
         """Return the start of the candle bar that is currently open."""
@@ -518,6 +536,18 @@ class TimeframeWorker:
                 self.symbol, self.timeframe, signal_type, ml_conf * 100,
             )
 
+        # ── Place order (if trading is enabled) ────────────────────────────────
+        order_str = ""
+        order_result = None
+        if self._trading_enabled and self._trading_sub_enabled:
+            order_result = self._place_order(signal_type)
+            if order_result:
+                order_str = f"\n📋 Order    : {order_result}"
+        elif self._trading_enabled and not self._trading_sub_enabled:
+            asset_type = "options" if self._is_option else "equity"
+            log.info("[%s|%s] Trading disabled for %s, skipping order.",
+                     self.symbol, self.timeframe, asset_type)
+
         # ── Build Telegram message ────────────────────────────────────────────
         if signal_type == "BUY":
             emoji          = "🟢"
@@ -533,7 +563,19 @@ class TimeframeWorker:
             badge = ""
 
         bar_close_ts = signal_ts + self._candle_duration
+
+        # Try ltp_map first (populated by LivePriceMonitor), then fall back
+        # to reading the SDK's internal ltp_data store directly
         ltp_val = self._ltp_map.get(self.symbol)
+        if ltp_val is None:
+            try:
+                sdk_data = getattr(self.client, "ltp_data", {})
+                key = f"{self.exchange}:{self.symbol}"
+                entry = sdk_data.get(key)
+                if entry and entry.get("price") is not None:
+                    ltp_val = float(entry["price"])
+            except Exception:
+                pass
         ltp_str = f"{ltp_val:.2f}" if ltp_val is not None else "N/A"
         message = (
             f"{emoji} *{direction_word} Signal{badge}* — {self.symbol} on {self.timeframe} chart\n"
@@ -542,6 +584,7 @@ class TimeframeWorker:
             f"Bar Close  : {close_price:.2f}\n"
             f"Bar Closed : {bar_close_ts.strftime('%Y-%m-%d %H:%M')}"
             f"{ml_conf_str}"
+            f"{order_str}"
         )
 
         log.info("[%s|%s] %s signal detected @ %s (close=%.2f)",
@@ -554,6 +597,59 @@ class TimeframeWorker:
                         self.symbol, self.timeframe, result["error"])
         else:
             log.info("[%s|%s] Telegram alert sent.", self.symbol, self.timeframe)
+
+    # ------------------------------------------------------------------
+    def _place_order(self, signal_type: str) -> str | None:
+        """
+        Place a BUY or SELL order via OpenAlgo.
+
+        Returns a short status string for the Telegram message,
+        or None if the order could not be placed.
+        """
+        action   = signal_type  # "BUY" or "SELL"
+        quantity = self._trading_quantity
+        product  = self._trading_product
+        ptype    = self._trading_price_type
+        asset    = "OPT" if self._is_option else "EQ"
+
+        log.info(
+            "[%s|%s] Placing %s order: %s %d × %s (%s / %s)",
+            self.symbol, self.timeframe, asset,
+            action, quantity, self.symbol, product, ptype,
+        )
+
+        try:
+            response = self.client.placeorder(
+                strategy=self._trading_strategy,
+                symbol=self.symbol,
+                action=action,
+                exchange=self.exchange,
+                price_type=ptype,
+                product=product,
+                quantity=quantity,
+            )
+
+            if isinstance(response, dict) and response.get("status") == "success":
+                oid = response.get("orderid", "—")
+                log.info(
+                    "[%s|%s] ✅ Order SUCCESS | id=%s | %s %d %s",
+                    self.symbol, self.timeframe, oid, action, quantity, product,
+                )
+                return f"{action} {quantity} ✅ (id: {oid})"
+            else:
+                msg = response.get("message", str(response)) if isinstance(response, dict) else str(response)
+                log.warning(
+                    "[%s|%s] ⚠️ Order REJECTED: %s",
+                    self.symbol, self.timeframe, msg,
+                )
+                return f"{action} {quantity} ❌ ({msg})"
+
+        except Exception as exc:
+            log.error(
+                "[%s|%s] Order placement error: %s",
+                self.symbol, self.timeframe, exc,
+            )
+            return f"{action} {quantity} ❌ (error)"
 
     # ------------------------------------------------------------------
     def run(self):
@@ -582,67 +678,66 @@ class LivePriceMonitor:
     """
     Opens a single WebSocket connection to OpenAlgo and subscribes to
     LTP (Last Traded Price) updates for all configured symbols.
-    Prints live prices to the console — can be extended to feed into
-    the signal engine if sub-candle real-time updates are needed.
+
+    Accepts a list of instrument dicts, each with {"exchange": ..., "symbol": ...}.
+    This allows mixing exchanges (e.g. NSE equity + NFO options) in one connection.
+
+    The SDK stores LTP internally as:
+        client.ltp_data["NSE:SYMBOL"] = {"price": <float>, "timestamp": <int>}
+    We poll this store every second and sync into ltp_map so workers
+    always get a fresh price regardless of callback timing.
     """
 
-    def __init__(self, client, symbols: list[str], exchange: str, stop_event: threading.Event):
+    def __init__(self, client, instruments: list[dict], stop_event: threading.Event):
         self.client = client
-        self.exchange = exchange
         self.stop_event = stop_event
-        self.instruments = [{"exchange": exchange, "symbol": s} for s in symbols]
+        self.instruments = instruments  # [{"exchange": "NSE", "symbol": "IOC"}, ...]
         self.ltp_map: dict[str, float] = {}
 
-    def _on_data(self, data: dict):
-        # ── Debug: log first 10 raw messages at INFO so we can confirm format ──
-        if not hasattr(self, "_dbg_count"):
-            self._dbg_count = 0
-        if self._dbg_count < 10:
-            log.info("[WS] RAW payload #%d: %s", self._dbg_count + 1, data)
-            self._dbg_count += 1
-
-        msg_type = data.get("type")
-        inner_data = data.get("data", {}) if isinstance(data.get("data"), dict) else {}
-
-        # Try to extract symbol — could be at root or nested in "data"
-        sym = (
-            data.get("symbol")
-            or inner_data.get("symbol")
-            or ""
-        )
-
-        # Try to extract ltp — could be at root, inside "data", or keyed differently
-        ltp_val = (
-            inner_data.get("ltp")
-            or data.get("ltp")
-            or inner_data.get("last_price")
-            or data.get("last_price")
-        )
-
-        if sym and ltp_val is not None:
-            self.ltp_map[sym] = float(ltp_val)
-            log.debug("[WS] %s LTP = %.2f", sym, self.ltp_map[sym])
+    def _sync_from_sdk(self):
+        """Pull latest prices from SDK internal ltp_data store into ltp_map."""
+        try:
+            sdk_data = getattr(self.client, "ltp_data", {})
+            for inst in self.instruments:
+                key = f"{inst['exchange']}:{inst['symbol']}"
+                entry = sdk_data.get(key)
+                if entry and "price" in entry and entry["price"] is not None:
+                    new_price = float(entry["price"])
+                    sym = inst["symbol"]
+                    if self.ltp_map.get(sym) != new_price:
+                        self.ltp_map[sym] = new_price
+                        log.debug("[WS] %s LTP = %.2f", sym, new_price)
+        except Exception as exc:
+            log.debug("[WS] ltp_data sync error: %s", exc)
 
     def run(self):
-        log.info("[WS] Connecting to WebSocket...")
-        try:
-            self.client.connect()
-            self.client.subscribe_ltp(self.instruments, on_data_received=self._on_data)
-            log.info("[WS] Subscribed to LTP for: %s", [i["symbol"] for i in self.instruments])
+        """Connect to WebSocket with automatic reconnection on failure."""
+        reconnect_delay = 5  # seconds between reconnect attempts
 
-            while not self.stop_event.is_set():
-                time.sleep(1)
-
-        except Exception as exc:
-            log.error("[WS] WebSocket error: %s", exc)
-        finally:
-            log.info("[WS] Disconnecting...")
+        while not self.stop_event.is_set():
+            log.info("[WS] Connecting to WebSocket...")
             try:
-                self.client.unsubscribe_ltp(self.instruments)
-                self.client.disconnect()
-            except Exception:
-                pass
-            log.info("[WS] Disconnected.")
+                self.client.connect()
+                self.client.subscribe_ltp(self.instruments)
+                log.info("[WS] Subscribed to LTP for: %s", [i["symbol"] for i in self.instruments])
+
+                while not self.stop_event.is_set():
+                    self._sync_from_sdk()
+                    time.sleep(1)
+
+            except Exception as exc:
+                log.warning("[WS] WebSocket error: %s — reconnecting in %ds...", exc, reconnect_delay)
+            finally:
+                try:
+                    self.client.unsubscribe_ltp(self.instruments)
+                    self.client.disconnect()
+                except Exception:
+                    pass
+
+            if not self.stop_event.is_set():
+                self.stop_event.wait(timeout=reconnect_delay)
+
+        log.info("[WS] Disconnected.")
 
 
 # ============================================================================
@@ -685,6 +780,7 @@ def _is_market_hours(config: dict) -> bool:
 
 def _print_banner(config: dict):
     symbols = config.get("symbols", [])
+    index_symbols = config.get("index_symbols", [])
     timeframes = config.get("timeframes", [])
     strat = config.get("strategy", {})
 
@@ -693,14 +789,19 @@ def _print_banner(config: dict):
     log.info(sep)
     log.info("  UT BOT ANTIGRAVITY — Signal Monitor")
     log.info(sep)
-    log.info("  Symbols    : %s", ", ".join(symbols))
-    log.info("  Timeframes : %s", ", ".join(timeframes))
-    log.info("  Exchange   : %s", config.get("exchange", "NSE"))
-    log.info("  Key Value  : %s  |  ATR Period: %s  |  HA: %s",
+    log.info("  Symbols       : %s", ", ".join(symbols))
+    if index_symbols:
+        log.info("  Index Symbols : %s", ", ".join(index_symbols))
+        log.info("  Index Exchange: %s (history via NFO)", config.get("index_exchange", "NSE_INDEX"))
+        idx_tfs = config.get("index_timeframes", timeframes)
+        log.info("  Index TFs     : %s", ", ".join(idx_tfs))
+    log.info("  Timeframes    : %s", ", ".join(timeframes))
+    log.info("  Exchange      : %s", config.get("exchange", "NSE"))
+    log.info("  Key Value     : %s  |  ATR Period: %s  |  HA: %s",
              strat.get("key_value", 2),
              strat.get("atr_period", 1),
              strat.get("use_heikin_ashi", False))
-    log.info("  Host       : %s", config.get("openalgo", {}).get("base_url", ""))
+    log.info("  Host          : %s", config.get("openalgo", {}).get("base_url", ""))
     log.info(sep)
     log.info("  Press Ctrl+C to stop the bot")
     log.info(sep)
@@ -710,8 +811,35 @@ def _print_banner(config: dict):
 # MAIN
 # ============================================================================
 
+# ---------------------------------------------------------------------------
+# Single-instance lock  (prevents duplicate Telegram alerts)
+# ---------------------------------------------------------------------------
+_LOCK_FILE = _bot_dir / ".utbot.lock"
+
+
+def _check_single_instance():
+    """Exit if another bot instance is already running."""
+    if _LOCK_FILE.exists():
+        try:
+            old_pid = int(_LOCK_FILE.read_text().strip())
+            os.kill(old_pid, 0)  # signal 0 = check existence, don't kill
+            log.error(
+                "Another bot instance (PID %d) is already running! "
+                "Kill it first or delete %s.  Exiting.",
+                old_pid, _LOCK_FILE,
+            )
+            sys.exit(1)
+        except (ValueError, ProcessLookupError, PermissionError, OSError):
+            pass  # stale lock file — previous process is gone
+
+    _LOCK_FILE.write_text(str(os.getpid()))
+    atexit.register(lambda: _LOCK_FILE.unlink(missing_ok=True))
+    log.info("Lock acquired (PID %d)", os.getpid())
+
+
 def main():
     config = load_config()
+    _check_single_instance()
 
     # Apply log level from config (bot.log_level: DEBUG | INFO | WARNING | ERROR)
     _log_level_str = config.get("bot", {}).get("log_level", "INFO").upper()
@@ -727,12 +855,21 @@ def main():
     ws_url = oa_cfg.get("ws_url", "ws://127.0.0.1:8765")
 
     symbols: list[str] = config.get("symbols", [])
+    index_symbols: list[str] = config.get("index_symbols", [])
     timeframes: list[str] = config.get("timeframes", ["5m"])
+    index_timeframes: list[str] = config.get("index_timeframes", timeframes)
     exchange: str = config.get("exchange", "NSE")
+    index_exchange: str = config.get("index_exchange", "NSE_INDEX")
 
+    # Option contracts trade on NFO — use NFO for history & LTP
+    option_exchange = "NFO"
+
+    if not symbols and not index_symbols:
+        log.warning("No symbols configured — bot will idle until config is updated.")
     if not symbols:
-        log.error("No symbols configured in config.yml. Exiting.")
-        sys.exit(1)
+        log.info("Equity symbols list is empty — skipping equity workers.")
+    if not index_symbols:
+        log.info("Index symbols list is empty — skipping option workers.")
 
     # ---- OpenAlgo API client ------------------------------------------------
     client = api(api_key=api_key, host=base_url, ws_url=ws_url)
@@ -740,8 +877,15 @@ def main():
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
 
-    # ---- WebSocket live price monitor (one shared connection) ---------------
-    ws_monitor = LivePriceMonitor(client, symbols, exchange, stop_event)
+    # ---- Build a single instrument list for WebSocket (all exchanges) -------
+    all_ws_instruments: list[dict] = []
+    for s in symbols:
+        all_ws_instruments.append({"exchange": exchange, "symbol": s})
+    for s in index_symbols:
+        all_ws_instruments.append({"exchange": option_exchange, "symbol": s})
+
+    # ---- Single WebSocket live price monitor --------------------------------
+    ws_monitor = LivePriceMonitor(client, all_ws_instruments, stop_event)
     ws_thread = threading.Thread(
         target=ws_monitor.run,
         name="WS-LivePrices",
@@ -750,10 +894,13 @@ def main():
     threads.append(ws_thread)
     ws_thread.start()
 
+    # Shared LTP map — workers read from this
+    shared_ltp_map = ws_monitor.ltp_map
+
     # Give WS a moment to connect before spawning signal workers
     time.sleep(2)
 
-    # ---- One worker thread per (symbol, timeframe) pair --------------------
+    # ---- One worker thread per (equity symbol, timeframe) pair ---------------
     for symbol in symbols:
         for tf in timeframes:
             worker = TimeframeWorker(
@@ -762,7 +909,7 @@ def main():
                 client=client,
                 config=config,
                 stop_event=stop_event,
-                ltp_map=ws_monitor.ltp_map,
+                ltp_map=shared_ltp_map,
             )
             t = threading.Thread(
                 target=worker.run,
@@ -771,7 +918,30 @@ def main():
             )
             threads.append(t)
             t.start()
-            log.info("Started worker: %s @ %s", symbol, tf)
+            log.info("Started worker: %s @ %s [%s]", symbol, tf, exchange)
+
+    # ---- One worker thread per (option/index symbol, timeframe) pair ---------
+    for idx_sym in index_symbols:
+        # Override exchange to NFO for option contract history & LTP
+        idx_config = dict(config)
+        idx_config["exchange"] = option_exchange
+        for tf in index_timeframes:
+            worker = TimeframeWorker(
+                symbol=idx_sym,
+                timeframe=tf,
+                client=client,
+                config=idx_config,
+                stop_event=stop_event,
+                ltp_map=shared_ltp_map,
+            )
+            t = threading.Thread(
+                target=worker.run,
+                name=f"Worker-{idx_sym}-{tf}",
+                daemon=True,
+            )
+            threads.append(t)
+            t.start()
+            log.info("Started worker: %s @ %s [%s]", idx_sym, tf, option_exchange)
 
     # ---- Keep main thread alive; handle Ctrl+C gracefully ------------------
     try:
