@@ -536,11 +536,29 @@ class TimeframeWorker:
                 self.symbol, self.timeframe, signal_type, ml_conf * 100,
             )
 
+        # ── Resolve LTP (needed for LIMIT orders and Telegram message) ────────
+        # Try ltp_map first (populated by LivePriceMonitor), then fall back
+        # to reading the SDK's internal ltp_data store directly
+        ltp_val = self._ltp_map.get(self.symbol)
+        if ltp_val is None:
+            try:
+                sdk_data = getattr(self.client, "ltp_data", {})
+                key = f"{self.exchange}:{self.symbol}"
+                entry = sdk_data.get(key)
+                if entry and entry.get("price") is not None:
+                    ltp_val = float(entry["price"])
+            except Exception:
+                pass
+        ltp_str = f"{ltp_val:.2f}" if ltp_val is not None else "N/A"
+
+        # Order price: prefer LTP, fall back to bar close price
+        order_price = ltp_val if ltp_val is not None else close_price
+
         # ── Place order (if trading is enabled) ────────────────────────────────
         order_str = ""
         order_result = None
         if self._trading_enabled and self._trading_sub_enabled:
-            order_result = self._place_order(signal_type)
+            order_result = self._place_order(signal_type, order_price)
             if order_result:
                 order_str = f"\n📋 Order    : {order_result}"
         elif self._trading_enabled and not self._trading_sub_enabled:
@@ -563,20 +581,6 @@ class TimeframeWorker:
             badge = ""
 
         bar_close_ts = signal_ts + self._candle_duration
-
-        # Try ltp_map first (populated by LivePriceMonitor), then fall back
-        # to reading the SDK's internal ltp_data store directly
-        ltp_val = self._ltp_map.get(self.symbol)
-        if ltp_val is None:
-            try:
-                sdk_data = getattr(self.client, "ltp_data", {})
-                key = f"{self.exchange}:{self.symbol}"
-                entry = sdk_data.get(key)
-                if entry and entry.get("price") is not None:
-                    ltp_val = float(entry["price"])
-            except Exception:
-                pass
-        ltp_str = f"{ltp_val:.2f}" if ltp_val is not None else "N/A"
         message = (
             f"{emoji} *{direction_word} Signal{badge}* — {self.symbol} on {self.timeframe} chart\n"
             f"LTP        : {ltp_str}\n"
@@ -599,9 +603,16 @@ class TimeframeWorker:
             log.info("[%s|%s] Telegram alert sent.", self.symbol, self.timeframe)
 
     # ------------------------------------------------------------------
-    def _place_order(self, signal_type: str) -> str | None:
+    def _place_order(self, signal_type: str, price: float = 0.0) -> str | None:
         """
         Place a BUY or SELL order via OpenAlgo.
+
+        Parameters
+        ----------
+        signal_type : str
+            "BUY" or "SELL".
+        price : float
+            Price for LIMIT orders (LTP or bar close).
 
         Returns a short status string for the Telegram message,
         or None if the order could not be placed.
@@ -613,10 +624,17 @@ class TimeframeWorker:
         asset    = "OPT" if self._is_option else "EQ"
 
         log.info(
-            "[%s|%s] Placing %s order: %s %d × %s (%s / %s)",
+            "[%s|%s] Placing %s order: %s %d × %s (%s / %s @ %.2f)",
             self.symbol, self.timeframe, asset,
-            action, quantity, self.symbol, product, ptype,
+            action, quantity, self.symbol, product, ptype, price,
         )
+
+        # Build optional kwargs for non-MARKET orders
+        extra_kwargs: dict = {}
+        if ptype == "LIMIT" and price > 0:
+            extra_kwargs["price"] = str(price)
+        elif ptype in ("SL", "SL-M") and price > 0:
+            extra_kwargs["trigger_price"] = str(price)
 
         try:
             response = self.client.placeorder(
@@ -627,6 +645,7 @@ class TimeframeWorker:
                 price_type=ptype,
                 product=product,
                 quantity=quantity,
+                **extra_kwargs,
             )
 
             if isinstance(response, dict) and response.get("status") == "success":
@@ -829,7 +848,7 @@ def _check_single_instance():
                 old_pid, _LOCK_FILE,
             )
             sys.exit(1)
-        except (ValueError, ProcessLookupError, PermissionError, OSError):
+        except (ValueError, ProcessLookupError, PermissionError, OSError, SystemError):
             pass  # stale lock file — previous process is gone
 
     _LOCK_FILE.write_text(str(os.getpid()))
