@@ -12449,3 +12449,1772 @@ Shutting down — waiting for workers to stop...
 2026-05-13 16:07:34 [INFO] [BANKINDIA|5m] Worker stopped.
 2026-05-13 16:07:35 [INFO] [WS] Disconnected.
 2026-05-13 16:07:35 [INFO] All workers stopped. Bye!
+2026-05-14 13:26:23 [INFO] Lock acquired (PID 13436)
+2026-05-14 13:26:23 [INFO] Log level set to: INFO
+2026-05-14 13:26:23 [INFO] ==============================================================
+2026-05-14 13:26:23 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 13:26:23 [INFO] ==============================================================
+2026-05-14 13:26:23 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 13:26:23 [INFO]   Index Symbols : NIFTY19MAY2623300PE, NIFTY19MAY2623300PE
+2026-05-14 13:26:23 [INFO]   Index Exchange: NSE_INDEX (history via NFO)
+2026-05-14 13:26:23 [INFO]   Index TFs     : 5m
+2026-05-14 13:26:23 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 13:26:23 [INFO]   Exchange      : NSE
+2026-05-14 13:26:23 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 13:26:23 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 13:26:23 [INFO] ==============================================================
+2026-05-14 13:26:23 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 13:26:23 [INFO] ==============================================================
+2026-05-14 13:26:23 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 13:26:23 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 13:26:28 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER', 'NIFTY19MAY2623300PE', 'NIFTY19MAY2623300PE']
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [IOC|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 13:26:29 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [IOC|15m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 13:26:29 [INFO] [IOC|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 13:26:29 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 13:26:29 [INFO] [BANKINDIA|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [PNB|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 13:26:29 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [PNB|15m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 13:26:29 [INFO] [PNB|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 13:26:29 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 13:26:29 [INFO] [RPOWER|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:26:29 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:29 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:26:29 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:26:29 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:26:29 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [IOC|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [IOC|5m] SCAN  bar=13:20  close=140.54  ATRStop=141.14  pos=SHORT  signal=SELL
+2026-05-14 13:26:32 [INFO] [IOC|5m] Signal logged — DB: 183 total, 156 labeled
+2026-05-14 13:26:32 [INFO] [IOC|5m] Placing EQ order: SELL 1 × IOC (CNC / LIMIT @ 140.54)
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [NIFTY19MAY2623300PE|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:20  close=61.30  ATRStop=65.60  pos=SHORT  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [BANKINDIA|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [BANKINDIA|5m] SCAN  bar=13:20  close=143.69  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [NIFTY19MAY2623300PE|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:20  close=61.30  ATRStop=65.60  pos=SHORT  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [BANKINDIA|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:26:32 [INFO] [BANKINDIA|15m] SCAN  bar=13:00  close=143.76  ATRStop=143.00  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [IOC|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:26:32 [INFO] [IOC|15m] SCAN  bar=13:00  close=140.88  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [RPOWER|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:26:32 [INFO] [RPOWER|15m] SCAN  bar=13:00  close=27.27  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [PNB|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [PNB|5m] SCAN  bar=13:20  close=104.45  ATRStop=104.25  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [PNB|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:26:32 [INFO] [PNB|15m] SCAN  bar=13:00  close=104.56  ATRStop=103.96  pos=LONG  signal=NONE
+2026-05-14 13:26:32 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:26:32 [INFO] [RPOWER|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:26:32 [INFO] [RPOWER|5m] SCAN  bar=13:20  close=27.24  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:26:33 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 13:26:33 [WARNING] [IOC|5m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell IOC in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051498567288","status":"error"}
+
+2026-05-14 13:26:33 [INFO] [IOC|5m] SELL signal detected @ 2026-05-14 13:20:00+05:30 (close=140.54)
+2026-05-14 13:26:33 [WARNING] [IOC|5m] Telegram alert failed: HTTP error: 404 Client Error: NOT FOUND for url: http://127.0.0.1:5000/api/v1/telegram/notify
+2026-05-14 13:30:02 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:02 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:03 [INFO] [BANKINDIA|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:30:03 [INFO] [IOC|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:30:03 [INFO] [RPOWER|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:30:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:03 [INFO] [PNB|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:30:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:03 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:30:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:25  close=60.65  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:30:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:05 [INFO] [BANKINDIA|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:30:05 [INFO] [BANKINDIA|15m] SCAN  bar=13:15  close=143.66  ATRStop=143.02  pos=LONG  signal=NONE
+2026-05-14 13:30:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:05 [INFO] [PNB|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:05 [INFO] [PNB|5m] SCAN  bar=13:25  close=104.44  ATRStop=104.25  pos=LONG  signal=NONE
+2026-05-14 13:30:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [RPOWER|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:30:06 [INFO] [RPOWER|15m] SCAN  bar=13:15  close=27.19  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [IOC|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:30:06 [INFO] [IOC|15m] SCAN  bar=13:15  close=140.69  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [NIFTY19MAY2623300PE|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:06 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:25  close=60.65  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [PNB|15m] Received 92 candles | first=2026-05-11 09:15 | last=2026-05-14 13:15
+2026-05-14 13:30:06 [INFO] [PNB|15m] SCAN  bar=13:15  close=104.44  ATRStop=103.96  pos=LONG  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [BANKINDIA|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:06 [INFO] [BANKINDIA|5m] SCAN  bar=13:25  close=143.66  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [RPOWER|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:06 [INFO] [RPOWER|5m] SCAN  bar=13:25  close=27.19  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:30:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:30:06 [INFO] [IOC|5m] Received 276 candles | first=2026-05-11 09:15 | last=2026-05-14 13:25
+2026-05-14 13:30:06 [INFO] [IOC|5m] SCAN  bar=13:25  close=140.69  ATRStop=141.14  pos=SHORT  signal=NONE
+2026-05-14 13:35:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:01 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:02 [INFO] [NIFTY19MAY2623300PE|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:30  close=58.65  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:03 [INFO] [PNB|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:03 [INFO] [PNB|5m] SCAN  bar=13:30  close=104.46  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:30  close=58.65  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:04 [INFO] [BANKINDIA|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:04 [INFO] [BANKINDIA|5m] SCAN  bar=13:30  close=143.76  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:35:04 [INFO] [RPOWER|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:35:04 [INFO] [RPOWER|5m] SCAN  bar=13:30  close=27.24  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:35:04 [INFO] [IOC|5m] Received 277 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:35:04 [INFO] [IOC|5m] SCAN  bar=13:30  close=140.63  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:40:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:35  close=57.80  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:40:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:05 [INFO] [PNB|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:05 [INFO] [PNB|5m] SCAN  bar=13:35  close=104.43  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:40:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:06 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:35  close=57.80  ATRStop=64.55  pos=SHORT  signal=NONE
+2026-05-14 13:40:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:06 [INFO] [BANKINDIA|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:06 [INFO] [BANKINDIA|5m] SCAN  bar=13:35  close=143.73  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:40:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:07 [INFO] [IOC|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:07 [INFO] [IOC|5m] SCAN  bar=13:35  close=140.65  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:40:07 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:40:07 [INFO] [RPOWER|5m] Received 278 candles | first=2026-05-11 09:15 | last=2026-05-14 13:35
+2026-05-14 13:40:07 [INFO] [RPOWER|5m] SCAN  bar=13:35  close=27.24  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:45:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:01 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:40  close=55.00  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:45:02 [INFO] [BANKINDIA|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:45:02 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:02 [INFO] [PNB|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:02 [INFO] [PNB|5m] SCAN  bar=13:40  close=104.57  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:45:02 [INFO] [RPOWER|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:45:02 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:02 [INFO] [IOC|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:45:02 [INFO] [PNB|15m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:02 [INFO] [NIFTY19MAY2623300PE|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:40  close=55.00  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:45:03 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:03 [INFO] [BANKINDIA|15m] Received 93 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:45:04 [INFO] [BANKINDIA|15m] SCAN  bar=13:30  close=143.83  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 13:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:04 [INFO] [BANKINDIA|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:04 [INFO] [BANKINDIA|5m] SCAN  bar=13:40  close=143.83  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:04 [INFO] [IOC|15m] Received 93 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:45:04 [INFO] [IOC|15m] SCAN  bar=13:30  close=140.67  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 13:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:04 [INFO] [IOC|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:04 [INFO] [IOC|5m] SCAN  bar=13:40  close=140.67  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:04 [INFO] [RPOWER|15m] Received 93 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:45:04 [INFO] [RPOWER|15m] SCAN  bar=13:30  close=27.28  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 13:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:05 [INFO] [PNB|15m] Received 93 candles | first=2026-05-11 09:15 | last=2026-05-14 13:30
+2026-05-14 13:45:05 [INFO] [PNB|15m] SCAN  bar=13:30  close=104.57  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 13:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:45:05 [INFO] [RPOWER|5m] Received 279 candles | first=2026-05-11 09:15 | last=2026-05-14 13:40
+2026-05-14 13:45:05 [INFO] [RPOWER|5m] SCAN  bar=13:40  close=27.28  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:50:00 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:00 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:01 [INFO] [IOC|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:01 [INFO] [IOC|5m] SCAN  bar=13:45  close=140.61  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:50:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:01 [INFO] [RPOWER|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:01 [INFO] [RPOWER|5m] SCAN  bar=13:45  close=27.19  ATRStop=27.34  pos=SHORT  signal=NONE
+2026-05-14 13:50:02 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:03 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:45  close=56.75  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:50:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:03 [INFO] [PNB|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:03 [INFO] [PNB|5m] SCAN  bar=13:45  close=104.50  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:45  close=56.75  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:50:04 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:50:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:50:05 [INFO] [BANKINDIA|5m] Received 280 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:50:05 [INFO] [BANKINDIA|5m] SCAN  bar=13:45  close=143.64  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:55:01 [INFO] [BANKINDIA|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:01 [INFO] [IOC|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:02 [INFO] [RPOWER|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:02 [INFO] [BANKINDIA|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:02 [INFO] [BANKINDIA|5m] SCAN  bar=13:50  close=143.55  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:55:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:02 [INFO] [IOC|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:02 [INFO] [IOC|5m] SCAN  bar=13:50  close=140.45  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:55:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:02 [INFO] [RPOWER|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:02 [INFO] [RPOWER|5m] SCAN  bar=13:50  close=27.15  ATRStop=27.33  pos=SHORT  signal=NONE
+2026-05-14 13:55:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:04 [INFO] [PNB|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:55:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:55:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:05 [INFO] [PNB|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:05 [INFO] [PNB|5m] SCAN  bar=13:50  close=104.44  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:55:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 281 candles | first=2026-05-11 09:15 | last=2026-05-14 13:50
+2026-05-14 13:55:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:57:20 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 13:57:20 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 13:57:20 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 13:57:21 [INFO] [WS] Disconnected.
+2026-05-14 13:57:21 [INFO] All workers stopped. Bye!
+2026-05-14 13:57:39 [INFO] Lock acquired (PID 33508)
+2026-05-14 13:57:39 [INFO] Log level set to: INFO
+2026-05-14 13:57:39 [INFO] ==============================================================
+2026-05-14 13:57:39 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 13:57:39 [INFO] ==============================================================
+2026-05-14 13:57:39 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 13:57:39 [INFO]   Index Symbols : NIFTY19MAY2623300PE, NIFTY19MAY2623300PE
+2026-05-14 13:57:39 [INFO]   Index Exchange: NSE_INDEX (history via NFO)
+2026-05-14 13:57:39 [INFO]   Index TFs     : 5m
+2026-05-14 13:57:39 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 13:57:39 [INFO]   Exchange      : NSE
+2026-05-14 13:57:39 [INFO]   Data Source   : OPENALGO
+2026-05-14 13:57:39 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 13:57:39 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 13:57:39 [INFO] ==============================================================
+2026-05-14 13:57:39 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 13:57:39 [INFO] ==============================================================
+2026-05-14 13:57:39 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 13:57:39 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 13:57:44 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER', 'NIFTY19MAY2623300PE', 'NIFTY19MAY2623300PE']
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [IOC|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 13:57:44 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [IOC|15m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 13:57:44 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 13:57:44 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 13:57:44 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [PNB|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 13:57:44 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [PNB|15m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 13:57:44 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 13:57:44 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 13:57:44 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:57:44 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:44 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:57:44 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:57:44 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:57:44 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:47 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:57:55 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [PNB|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [BANKINDIA|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [IOC|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:57:55 [INFO] [IOC|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [RPOWER|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:57:55 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [BANKINDIA|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:57:55 [INFO] [PNB|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:57:55 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:57:55 [INFO] [PNB|5m] SCAN  bar=13:50  close=104.44  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [RPOWER|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:57:55 [INFO] [BANKINDIA|5m] SCAN  bar=13:50  close=143.55  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [IOC|15m] SCAN  bar=13:30  close=140.67  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [IOC|5m] SCAN  bar=13:50  close=140.45  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:57:55 [INFO] [RPOWER|15m] SCAN  bar=13:30  close=27.28  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:57:55 [INFO] [BANKINDIA|15m] SCAN  bar=13:30  close=143.83  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [PNB|15m] SCAN  bar=13:30  close=104.57  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 13:57:55 [INFO] [RPOWER|5m] SCAN  bar=13:50  close=27.15  ATRStop=27.33  pos=SHORT  signal=NONE
+2026-05-14 13:58:07 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 13:58:07 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 13:58:07 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 13:58:08 [INFO] [WS] Disconnected.
+2026-05-14 13:58:08 [INFO] All workers stopped. Bye!
+2026-05-14 13:58:14 [INFO] Lock acquired (PID 31212)
+2026-05-14 13:58:14 [INFO] Log level set to: INFO
+2026-05-14 13:58:14 [INFO] ==============================================================
+2026-05-14 13:58:14 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 13:58:14 [INFO] ==============================================================
+2026-05-14 13:58:14 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 13:58:14 [INFO]   Index Symbols : NIFTY19MAY2623300PE, NIFTY19MAY2623300PE
+2026-05-14 13:58:14 [INFO]   Index Exchange: NSE_INDEX (history via NFO)
+2026-05-14 13:58:14 [INFO]   Index TFs     : 5m
+2026-05-14 13:58:14 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 13:58:14 [INFO]   Exchange      : NSE
+2026-05-14 13:58:14 [INFO]   Data Source   : OPENALGO
+2026-05-14 13:58:14 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 13:58:14 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 13:58:14 [INFO] ==============================================================
+2026-05-14 13:58:14 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 13:58:14 [INFO] ==============================================================
+2026-05-14 13:58:14 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 13:58:14 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [IOC|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 13:58:17 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [IOC|15m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 13:58:17 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 13:58:17 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 13:58:17 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [PNB|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 13:58:17 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [PNB|15m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 13:58:17 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 13:58:17 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 13:58:17 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:58:17 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:17 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 13:58:17 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 13:58:17 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 13:58:17 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 13:58:19 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER', 'NIFTY19MAY2623300PE', 'NIFTY19MAY2623300PE']
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [BANKINDIA|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [BANKINDIA|5m] SCAN  bar=13:50  close=143.55  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [RPOWER|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [RPOWER|5m] SCAN  bar=13:50  close=27.15  ATRStop=27.33  pos=SHORT  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [IOC|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [IOC|5m] SCAN  bar=13:50  close=140.45  ATRStop=140.91  pos=SHORT  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [BANKINDIA|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:58:20 [INFO] [BANKINDIA|15m] SCAN  bar=13:30  close=143.83  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [PNB|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [PNB|5m] SCAN  bar=13:50  close=104.44  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [RPOWER|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:58:20 [INFO] [RPOWER|15m] SCAN  bar=13:30  close=27.28  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [PNB|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:58:20 [INFO] [PNB|15m] SCAN  bar=13:30  close=104.57  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [IOC|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 13:58:20 [INFO] [IOC|15m] SCAN  bar=13:30  close=140.67  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 13:58:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 13:58:20 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 13:58:20 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:50  close=56.25  ATRStop=61.30  pos=SHORT  signal=NONE
+2026-05-14 14:00:00 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:00 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:00 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:00 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:00:01 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:00:01 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:01 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:00:01 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:00:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:01 [INFO] [BANKINDIA|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:01 [INFO] [BANKINDIA|5m] SCAN  bar=13:55  close=143.51  ATRStop=143.83  pos=SHORT  signal=SELL
+2026-05-14 14:00:01 [INFO] [BANKINDIA|5m] Signal logged — DB: 184 total, 156 labeled
+2026-05-14 14:00:01 [INFO] [BANKINDIA|5m] Placing EQ order: SELL 1 × BANKINDIA (CNC / LIMIT @ 143.51)
+2026-05-14 14:00:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:02 [INFO] [RPOWER|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:02 [INFO] [RPOWER|5m] SCAN  bar=13:55  close=27.10  ATRStop=27.28  pos=SHORT  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [PNB|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 14:00:03 [INFO] [PNB|15m] SCAN  bar=13:45  close=104.44  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [RPOWER|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 14:00:03 [INFO] [RPOWER|15m] SCAN  bar=13:45  close=27.10  ATRStop=27.56  pos=SHORT  signal=SELL
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:55  close=54.75  ATRStop=60.55  pos=SHORT  signal=NONE
+2026-05-14 14:00:03 [INFO] [RPOWER|15m] Signal logged — DB: 185 total, 156 labeled
+2026-05-14 14:00:03 [INFO] [RPOWER|15m] Placing EQ order: SELL 1 × RPOWER (CNC / LIMIT @ 27.10)
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [IOC|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:03 [INFO] [IOC|5m] SCAN  bar=13:55  close=140.48  ATRStop=140.76  pos=SHORT  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [PNB|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:03 [INFO] [PNB|5m] SCAN  bar=13:55  close=104.44  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [IOC|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 14:00:03 [INFO] [IOC|15m] SCAN  bar=13:45  close=140.48  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 282 candles | first=2026-05-11 09:15 | last=2026-05-14 13:55
+2026-05-14 14:00:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=13:55  close=54.75  ATRStop=60.55  pos=SHORT  signal=NONE
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 14:00:03 [WARNING] [BANKINDIA|5m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell BANKINDIA in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051443971335","status":"error"}
+
+2026-05-14 14:00:03 [INFO] [BANKINDIA|5m] SELL signal detected @ 2026-05-14 13:55:00+05:30 (close=143.51)
+2026-05-14 14:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:00:03 [INFO] [BANKINDIA|15m] Received 94 candles | first=2026-05-11 09:15 | last=2026-05-14 13:45
+2026-05-14 14:00:03 [INFO] [BANKINDIA|15m] SCAN  bar=13:45  close=143.51  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 14:00:03 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-14 14:00:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 14:00:04 [WARNING] [RPOWER|15m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell RPOWER in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051415703742","status":"error"}
+
+2026-05-14 14:00:04 [INFO] [RPOWER|15m] SELL signal detected @ 2026-05-14 13:45:00+05:30 (close=27.10)
+2026-05-14 14:00:04 [INFO] [RPOWER|15m] Telegram alert sent.
+2026-05-14 14:05:03 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:03 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:03 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:03 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:05:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:04 [INFO] [RPOWER|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:04 [INFO] [RPOWER|5m] SCAN  bar=14:00  close=27.11  ATRStop=27.25  pos=SHORT  signal=NONE
+2026-05-14 14:05:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:00  close=53.50  ATRStop=58.80  pos=SHORT  signal=NONE
+2026-05-14 14:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:05 [INFO] [IOC|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:05 [INFO] [IOC|5m] SCAN  bar=14:00  close=140.59  ATRStop=140.76  pos=SHORT  signal=NONE
+2026-05-14 14:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:00  close=53.50  ATRStop=58.80  pos=SHORT  signal=NONE
+2026-05-14 14:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:05 [INFO] [BANKINDIA|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:00  close=143.73  ATRStop=143.83  pos=SHORT  signal=NONE
+2026-05-14 14:05:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:05:05 [INFO] [PNB|5m] Received 283 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:05:05 [INFO] [PNB|5m] SCAN  bar=14:00  close=104.57  ATRStop=104.28  pos=LONG  signal=NONE
+2026-05-14 14:10:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:00 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:00 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:00 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:05  close=52.35  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:10:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:01 [INFO] [IOC|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:01 [INFO] [IOC|5m] SCAN  bar=14:05  close=141.00  ATRStop=140.16  pos=LONG  signal=BUY
+2026-05-14 14:10:01 [INFO] [IOC|5m] Signal logged — DB: 186 total, 156 labeled
+2026-05-14 14:10:01 [INFO] [IOC|5m] Placing EQ order: BUY 1 × IOC (CNC / LIMIT @ 141.00)
+2026-05-14 14:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:02 [INFO] [PNB|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:02 [INFO] [PNB|5m] SCAN  bar=14:05  close=104.62  ATRStop=104.46  pos=LONG  signal=NONE
+2026-05-14 14:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:02 [INFO] [NIFTY19MAY2623300PE|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:05  close=52.35  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:02 [INFO] [BANKINDIA|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:05  close=143.85  ATRStop=143.53  pos=LONG  signal=BUY
+2026-05-14 14:10:02 [INFO] [BANKINDIA|5m] Signal logged — DB: 187 total, 156 labeled
+2026-05-14 14:10:02 [INFO] [BANKINDIA|5m] Placing EQ order: BUY 1 × BANKINDIA (CNC / LIMIT @ 143.85)
+2026-05-14 14:10:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:10:02 [INFO] [IOC|5m] ✅ Order SUCCESS | id=26051449127919 | BUY 1 CNC
+2026-05-14 14:10:02 [INFO] [IOC|5m] BUY signal detected @ 2026-05-14 14:05:00+05:30 (close=141.00)
+2026-05-14 14:10:02 [INFO] [IOC|5m] Telegram alert sent.
+2026-05-14 14:10:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:10:03 [INFO] [BANKINDIA|5m] ✅ Order SUCCESS | id=26051496574965 | BUY 1 CNC
+2026-05-14 14:10:03 [INFO] [BANKINDIA|5m] BUY signal detected @ 2026-05-14 14:05:00+05:30 (close=143.85)
+2026-05-14 14:10:03 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-14 14:10:04 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:10:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:10:05 [INFO] [RPOWER|5m] Received 284 candles | first=2026-05-11 09:15 | last=2026-05-14 14:05
+2026-05-14 14:10:05 [INFO] [RPOWER|5m] SCAN  bar=14:05  close=27.15  ATRStop=27.25  pos=SHORT  signal=NONE
+2026-05-14 14:15:00 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:15:01 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:01 [INFO] [RPOWER|15m] Received 95 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:15:01 [INFO] [RPOWER|15m] SCAN  bar=14:00  close=27.14  ATRStop=27.46  pos=SHORT  signal=NONE
+2026-05-14 14:15:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:01 [INFO] [RPOWER|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:01 [INFO] [RPOWER|5m] SCAN  bar=14:10  close=27.14  ATRStop=27.25  pos=SHORT  signal=NONE
+2026-05-14 14:15:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:02 [INFO] [NIFTY19MAY2623300PE|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:10  close=53.80  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:15:02 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:02 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:03 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:03 [INFO] [PNB|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:03 [INFO] [PNB|5m] SCAN  bar=14:10  close=104.73  ATRStop=104.46  pos=LONG  signal=NONE
+2026-05-14 14:15:03 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:10  close=53.80  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:15:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:03 [INFO] [IOC|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:03 [INFO] [IOC|5m] SCAN  bar=14:10  close=140.78  ATRStop=140.34  pos=LONG  signal=NONE
+2026-05-14 14:15:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:04 [INFO] [BANKINDIA|5m] Received 285 candles | first=2026-05-11 09:15 | last=2026-05-14 14:10
+2026-05-14 14:15:04 [INFO] [BANKINDIA|5m] SCAN  bar=14:10  close=143.76  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:15:04 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:15:04 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:15:04 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:05 [INFO] [PNB|15m] Received 95 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:15:05 [INFO] [PNB|15m] SCAN  bar=14:00  close=104.73  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 14:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:05 [INFO] [IOC|15m] Received 95 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:15:05 [INFO] [IOC|15m] SCAN  bar=14:00  close=140.78  ATRStop=140.32  pos=LONG  signal=NONE
+2026-05-14 14:15:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:15:06 [INFO] [BANKINDIA|15m] Received 95 candles | first=2026-05-11 09:15 | last=2026-05-14 14:00
+2026-05-14 14:15:06 [INFO] [BANKINDIA|15m] SCAN  bar=14:00  close=143.76  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 14:20:02 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:03 [INFO] [RPOWER|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:03 [INFO] [RPOWER|5m] SCAN  bar=14:15  close=27.10  ATRStop=27.25  pos=SHORT  signal=NONE
+2026-05-14 14:20:03 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:04 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:04 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:20:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:15  close=56.20  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:05 [INFO] [PNB|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:05 [INFO] [PNB|5m] SCAN  bar=14:15  close=104.45  ATRStop=105.05  pos=SHORT  signal=SELL
+2026-05-14 14:20:05 [INFO] [PNB|5m] Signal logged — DB: 188 total, 156 labeled
+2026-05-14 14:20:05 [INFO] [PNB|5m] Placing EQ order: SELL 1 × PNB (CNC / LIMIT @ 104.45)
+2026-05-14 14:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:15  close=56.20  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:05 [INFO] [IOC|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:05 [INFO] [IOC|5m] SCAN  bar=14:15  close=140.80  ATRStop=140.46  pos=LONG  signal=NONE
+2026-05-14 14:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 14:20:05 [WARNING] [PNB|5m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell PNB in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051488002348","status":"error"}
+
+2026-05-14 14:20:05 [INFO] [PNB|5m] SELL signal detected @ 2026-05-14 14:15:00+05:30 (close=104.45)
+2026-05-14 14:20:05 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-14 14:20:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:20:05 [INFO] [BANKINDIA|5m] Received 286 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:20:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:15  close=143.55  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:25:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:01 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:20  close=53.50  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:25:01 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:01 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:20  close=53.50  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:25:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:02 [INFO] [IOC|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:02 [INFO] [IOC|5m] SCAN  bar=14:20  close=140.83  ATRStop=140.46  pos=LONG  signal=NONE
+2026-05-14 14:25:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:02 [INFO] [PNB|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:02 [INFO] [PNB|5m] SCAN  bar=14:20  close=104.66  ATRStop=105.05  pos=SHORT  signal=NONE
+2026-05-14 14:25:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:02 [INFO] [BANKINDIA|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:20  close=143.68  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:25:03 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:25:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:25:04 [INFO] [RPOWER|5m] Received 287 candles | first=2026-05-11 09:15 | last=2026-05-14 14:20
+2026-05-14 14:25:04 [INFO] [RPOWER|5m] SCAN  bar=14:20  close=27.09  ATRStop=27.19  pos=SHORT  signal=NONE
+2026-05-14 14:30:00 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:00 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:00 [INFO] [RPOWER|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:00 [INFO] [RPOWER|5m] SCAN  bar=14:25  close=27.16  ATRStop=27.19  pos=SHORT  signal=NONE
+2026-05-14 14:30:01 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:30:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:02 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:30:02 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:02 [INFO] [PNB|15m] Received 96 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:30:02 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:30:02 [INFO] [PNB|15m] SCAN  bar=14:15  close=104.70  ATRStop=104.13  pos=LONG  signal=NONE
+2026-05-14 14:30:02 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:02 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:30:03 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:03 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [IOC|15m] Received 96 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:30:03 [INFO] [IOC|15m] SCAN  bar=14:15  close=140.94  ATRStop=140.36  pos=LONG  signal=NONE
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:25  close=50.40  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [BANKINDIA|15m] Received 96 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:30:03 [INFO] [BANKINDIA|15m] SCAN  bar=14:15  close=143.76  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:25  close=50.40  ATRStop=57.85  pos=SHORT  signal=NONE
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [IOC|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:03 [INFO] [IOC|5m] SCAN  bar=14:25  close=140.94  ATRStop=140.62  pos=LONG  signal=NONE
+2026-05-14 14:30:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:03 [INFO] [RPOWER|15m] Received 96 candles | first=2026-05-11 09:15 | last=2026-05-14 14:15
+2026-05-14 14:30:03 [INFO] [RPOWER|15m] SCAN  bar=14:15  close=27.16  ATRStop=27.38  pos=SHORT  signal=NONE
+2026-05-14 14:30:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:04 [INFO] [BANKINDIA|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:04 [INFO] [BANKINDIA|5m] SCAN  bar=14:25  close=143.76  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:30:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:30:04 [INFO] [PNB|5m] Received 288 candles | first=2026-05-11 09:15 | last=2026-05-14 14:25
+2026-05-14 14:30:04 [INFO] [PNB|5m] SCAN  bar=14:25  close=104.70  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:35:01 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:02 [INFO] [RPOWER|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:02 [INFO] [RPOWER|5m] SCAN  bar=14:30  close=27.28  ATRStop=27.00  pos=LONG  signal=BUY
+2026-05-14 14:35:02 [INFO] [RPOWER|5m] Signal logged — DB: 189 total, 156 labeled
+2026-05-14 14:35:02 [INFO] [RPOWER|5m] Placing EQ order: BUY 1 × RPOWER (CNC / LIMIT @ 27.28)
+2026-05-14 14:35:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:35:03 [INFO] [RPOWER|5m] ✅ Order SUCCESS | id=26051430374028 | BUY 1 CNC
+2026-05-14 14:35:03 [INFO] [RPOWER|5m] BUY signal detected @ 2026-05-14 14:30:00+05:30 (close=27.28)
+2026-05-14 14:35:03 [INFO] [RPOWER|5m] Telegram alert sent.
+2026-05-14 14:35:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:04 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:30  close=49.45  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:35:04 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:04 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:35:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:30  close=49.45  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:05 [INFO] [IOC|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:05 [INFO] [IOC|5m] SCAN  bar=14:30  close=140.88  ATRStop=140.62  pos=LONG  signal=NONE
+2026-05-14 14:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:05 [INFO] [PNB|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:05 [INFO] [PNB|5m] SCAN  bar=14:30  close=104.74  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:35:05 [INFO] [BANKINDIA|5m] Received 289 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:35:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:30  close=143.79  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:40:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:00 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:35  close=52.80  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:40:01 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:01 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:35  close=52.80  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:01 [INFO] [IOC|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:01 [INFO] [IOC|5m] SCAN  bar=14:35  close=140.51  ATRStop=141.57  pos=SHORT  signal=SELL
+2026-05-14 14:40:01 [INFO] [IOC|5m] Signal logged — DB: 190 total, 156 labeled
+2026-05-14 14:40:01 [INFO] [IOC|5m] Placing EQ order: SELL 1 × IOC (CNC / LIMIT @ 140.51)
+2026-05-14 14:40:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:02 [INFO] [PNB|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:02 [INFO] [PNB|5m] SCAN  bar=14:35  close=104.85  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:40:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:40:02 [INFO] [IOC|5m] ✅ Order SUCCESS | id=26051451054877 | SELL 1 CNC
+2026-05-14 14:40:02 [INFO] [IOC|5m] SELL signal detected @ 2026-05-14 14:35:00+05:30 (close=140.51)
+2026-05-14 14:40:02 [INFO] [IOC|5m] Telegram alert sent.
+2026-05-14 14:40:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:02 [INFO] [BANKINDIA|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:35  close=143.90  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:40:03 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:40:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:40:04 [INFO] [RPOWER|5m] Received 290 candles | first=2026-05-11 09:15 | last=2026-05-14 14:35
+2026-05-14 14:40:04 [INFO] [RPOWER|5m] SCAN  bar=14:35  close=27.44  ATRStop=27.06  pos=LONG  signal=NONE
+2026-05-14 14:45:00 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:45:00 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:00 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:01 [INFO] [BANKINDIA|15m] Received 97 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:45:01 [INFO] [BANKINDIA|15m] SCAN  bar=14:30  close=143.83  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 14:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:01 [INFO] [RPOWER|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:01 [INFO] [RPOWER|5m] SCAN  bar=14:40  close=27.41  ATRStop=27.06  pos=LONG  signal=NONE
+2026-05-14 14:45:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:01 [INFO] [RPOWER|15m] Received 97 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:45:01 [INFO] [RPOWER|15m] SCAN  bar=14:30  close=27.41  ATRStop=26.63  pos=LONG  signal=BUY
+2026-05-14 14:45:01 [INFO] [RPOWER|15m] Signal logged — DB: 191 total, 156 labeled
+2026-05-14 14:45:01 [INFO] [RPOWER|15m] Placing EQ order: BUY 1 × RPOWER (CNC / LIMIT @ 27.41)
+2026-05-14 14:45:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:45:02 [INFO] [RPOWER|15m] ✅ Order SUCCESS | id=26051442537656 | BUY 1 CNC
+2026-05-14 14:45:02 [INFO] [RPOWER|15m] BUY signal detected @ 2026-05-14 14:30:00+05:30 (close=27.41)
+2026-05-14 14:45:02 [INFO] [RPOWER|15m] Telegram alert sent.
+2026-05-14 14:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:02 [INFO] [NIFTY19MAY2623300PE|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:02 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:40  close=53.55  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:45:02 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:40  close=53.55  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:45:03 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:03 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:03 [INFO] [PNB|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:03 [INFO] [PNB|5m] SCAN  bar=14:40  close=104.69  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:45:03 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:45:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:03 [INFO] [IOC|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:03 [INFO] [IOC|5m] SCAN  bar=14:40  close=140.40  ATRStop=140.74  pos=SHORT  signal=NONE
+2026-05-14 14:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:04 [INFO] [BANKINDIA|5m] Received 291 candles | first=2026-05-11 09:15 | last=2026-05-14 14:40
+2026-05-14 14:45:04 [INFO] [BANKINDIA|5m] SCAN  bar=14:40  close=143.83  ATRStop=143.53  pos=LONG  signal=NONE
+2026-05-14 14:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:04 [INFO] [PNB|15m] Received 97 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:45:04 [INFO] [PNB|15m] SCAN  bar=14:30  close=104.69  ATRStop=104.19  pos=LONG  signal=NONE
+2026-05-14 14:45:04 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 14:45:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:45:05 [INFO] [IOC|15m] Received 97 candles | first=2026-05-11 09:15 | last=2026-05-14 14:30
+2026-05-14 14:45:05 [INFO] [IOC|15m] SCAN  bar=14:30  close=140.40  ATRStop=140.36  pos=LONG  signal=NONE
+2026-05-14 14:50:01 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:02 [INFO] [RPOWER|5m] Received 292 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 14:50:02 [INFO] [RPOWER|5m] SCAN  bar=14:45  close=27.33  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 14:50:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:03 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:03 [INFO] [NIFTY19MAY2623300PE|5m] Received 292 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 14:50:03 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:45  close=56.00  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:50:03 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:04 [INFO] [NIFTY19MAY2623300PE|5m] Received 292 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 14:50:04 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:45  close=56.00  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:50:04 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:04 [INFO] [PNB|5m] Received 292 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 14:50:04 [INFO] [PNB|5m] SCAN  bar=14:45  close=104.58  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:50:04 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:50:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:05 [INFO] [BANKINDIA|5m] Received 292 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 14:50:05 [INFO] [BANKINDIA|5m] SCAN  bar=14:45  close=143.44  ATRStop=144.30  pos=SHORT  signal=SELL
+2026-05-14 14:50:05 [INFO] [BANKINDIA|5m] Signal logged — DB: 192 total, 156 labeled
+2026-05-14 14:50:05 [INFO] [BANKINDIA|5m] Placing EQ order: SELL 1 × BANKINDIA (CNC / LIMIT @ 143.44)
+2026-05-14 14:50:06 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 14:50:06 [INFO] [BANKINDIA|5m] ✅ Order SUCCESS | id=26051419081722 | SELL 1 CNC
+2026-05-14 14:50:06 [INFO] [BANKINDIA|5m] SELL signal detected @ 2026-05-14 14:45:00+05:30 (close=143.44)
+2026-05-14 14:50:06 [INFO] [BANKINDIA|5m] Telegram alert sent.
+2026-05-14 14:50:15 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:50:15 [INFO] [IOC|5m] Received 68 candles | first=2026-05-14 09:15 | last=2026-05-14 14:50
+2026-05-14 14:50:15 [INFO] [IOC|5m] SCAN  bar=14:45  close=140.27  ATRStop=140.74  pos=SHORT  signal=NONE
+2026-05-14 14:55:00 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:00 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:01 [INFO] [PNB|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:01 [INFO] [PNB|5m] SCAN  bar=14:50  close=104.61  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 14:55:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:01 [INFO] [IOC|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:01 [INFO] [IOC|5m] SCAN  bar=14:50  close=140.32  ATRStop=140.74  pos=SHORT  signal=NONE
+2026-05-14 14:55:01 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:02 [INFO] [BANKINDIA|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:02 [INFO] [BANKINDIA|5m] SCAN  bar=14:50  close=143.57  ATRStop=144.23  pos=SHORT  signal=NONE
+2026-05-14 14:55:03 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:03 [INFO] [RPOWER|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:04 [INFO] [RPOWER|5m] SCAN  bar=14:50  close=27.26  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 14:55:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:04 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 14:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:50  close=55.65  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 14:55:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 14:55:05 [INFO] [NIFTY19MAY2623300PE|5m] Received 293 candles | first=2026-05-11 09:15 | last=2026-05-14 14:50
+2026-05-14 14:55:05 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:50  close=55.65  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 15:00:00 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:01 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:01 [INFO] [PNB|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:55  close=54.65  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 15:00:01 [INFO] [PNB|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:01 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:01 [INFO] [NIFTY19MAY2623300PE|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:01 [INFO] [NIFTY19MAY2623300PE|5m] SCAN  bar=14:55  close=54.65  ATRStop=57.45  pos=SHORT  signal=NONE
+2026-05-14 15:00:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:01 [INFO] [PNB|15m] Received 98 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 15:00:01 [INFO] [PNB|15m] SCAN  bar=14:45  close=104.72  ATRStop=104.22  pos=LONG  signal=NONE
+2026-05-14 15:00:01 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:00:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:02 [INFO] [PNB|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:02 [INFO] [PNB|5m] SCAN  bar=14:55  close=104.72  ATRStop=104.88  pos=SHORT  signal=NONE
+2026-05-14 15:00:02 [INFO] [BANKINDIA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:00:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:02 [INFO] [IOC|15m] Received 98 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 15:00:02 [INFO] [IOC|15m] SCAN  bar=14:45  close=140.48  ATRStop=140.36  pos=LONG  signal=NONE
+2026-05-14 15:00:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:02 [INFO] [IOC|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:02 [INFO] [IOC|5m] SCAN  bar=14:55  close=140.48  ATRStop=140.74  pos=SHORT  signal=NONE
+2026-05-14 15:00:02 [INFO] [BANKINDIA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:03 [INFO] [BANKINDIA|15m] Received 98 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 15:00:03 [INFO] [BANKINDIA|15m] SCAN  bar=14:45  close=144.03  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 15:00:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:03 [INFO] [BANKINDIA|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:03 [INFO] [BANKINDIA|5m] SCAN  bar=14:55  close=144.03  ATRStop=144.23  pos=SHORT  signal=NONE
+2026-05-14 15:00:03 [INFO] [RPOWER|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:00:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:04 [INFO] [RPOWER|15m] Received 98 candles | first=2026-05-11 09:15 | last=2026-05-14 14:45
+2026-05-14 15:00:04 [INFO] [RPOWER|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:00:04 [INFO] [RPOWER|15m] SCAN  bar=14:45  close=28.01  ATRStop=26.63  pos=LONG  signal=NONE
+2026-05-14 15:00:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 15:00:05 [INFO] [RPOWER|5m] Received 294 candles | first=2026-05-11 09:15 | last=2026-05-14 14:55
+2026-05-14 15:00:05 [INFO] [RPOWER|5m] SCAN  bar=14:55  close=28.01  ATRStop=27.13  pos=LONG  signal=NONE
+2026-05-14 15:03:10 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:03:10 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:03:10 [INFO] [WS] Disconnected.
+2026-05-14 15:03:10 [INFO] All workers stopped. Bye!
+2026-05-14 15:03:20 [INFO] Lock acquired (PID 25144)
+2026-05-14 15:03:20 [INFO] Log level set to: INFO
+2026-05-14 15:03:20 [INFO] ==============================================================
+2026-05-14 15:03:20 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:03:20 [INFO] ==============================================================
+2026-05-14 15:03:20 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:03:20 [INFO]   Index Symbols : NIFTY19MAY2623300PE, NIFTY19MAY2623300PE
+2026-05-14 15:03:20 [INFO]   Index Exchange: NSE_INDEX (history via NFO)
+2026-05-14 15:03:20 [INFO]   Index TFs     : 5m
+2026-05-14 15:03:20 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:03:20 [INFO]   Exchange      : NSE
+2026-05-14 15:03:20 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:03:20 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:03:20 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:03:20 [INFO] ==============================================================
+2026-05-14 15:03:20 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:03:20 [INFO] ==============================================================
+2026-05-14 15:03:20 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 15:03:20 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [IOC|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 15:03:24 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [IOC|15m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 15:03:24 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 15:03:24 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 15:03:24 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [PNB|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 15:03:24 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [PNB|15m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 15:03:24 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 15:03:24 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 15:03:24 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 15:03:24 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:24 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:03:24 [INFO] [NIFTY19MAY2623300PE|5m] Worker started.
+2026-05-14 15:03:24 [INFO] Started worker: NIFTY19MAY2623300PE @ 5m [NFO]
+2026-05-14 15:03:24 [INFO] [NIFTY19MAY2623300PE|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:03:25 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER', 'NIFTY19MAY2623300PE', 'NIFTY19MAY2623300PE']
+2026-05-14 15:03:34 [INFO] [IOC|5m] Received 295 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:34 [INFO] [IOC|5m] SCAN  bar=09:30  close=140.23  ATRStop=140.68  pos=SHORT  signal=NONE
+2026-05-14 15:03:34 [INFO] [IOC|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:34 [INFO] [IOC|15m] SCAN  bar=09:30  close=140.23  ATRStop=140.89  pos=SHORT  signal=SELL
+2026-05-14 15:03:34 [INFO] [IOC|15m] Signal logged — DB: 193 total, 156 labeled
+2026-05-14 15:03:34 [INFO] [IOC|15m] Placing EQ order: SELL 1 × IOC (CNC / LIMIT @ 140.23)
+2026-05-14 15:03:34 [INFO] [BANKINDIA|5m] Received 295 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:34 [INFO] [BANKINDIA|5m] SCAN  bar=09:30  close=143.60  ATRStop=144.13  pos=SHORT  signal=NONE
+2026-05-14 15:03:35 [INFO] [BANKINDIA|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:35 [INFO] [BANKINDIA|15m] SCAN  bar=09:30  close=143.60  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 15:03:35 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 15:03:35 [WARNING] [IOC|15m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell IOC in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051442432347","status":"error"}
+
+2026-05-14 15:03:35 [INFO] [IOC|15m] SELL signal detected @ 2026-05-14 09:30:00 (close=140.23)
+2026-05-14 15:03:35 [INFO] [IOC|15m] Telegram alert sent.
+2026-05-14 15:03:35 [INFO] [PNB|5m] Received 295 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:35 [INFO] [PNB|5m] SCAN  bar=09:30  close=104.42  ATRStop=105.26  pos=SHORT  signal=SELL
+2026-05-14 15:03:35 [INFO] [PNB|5m] Signal logged — DB: 194 total, 156 labeled
+2026-05-14 15:03:35 [INFO] [PNB|5m] Placing EQ order: SELL 1 × PNB (CNC / LIMIT @ 104.42)
+2026-05-14 15:03:35 [INFO] [PNB|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:35 [INFO] [PNB|15m] SCAN  bar=09:30  close=104.42  ATRStop=104.23  pos=LONG  signal=NONE
+2026-05-14 15:03:36 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 15:03:36 [WARNING] [PNB|5m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell PNB in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051403586733","status":"error"}
+
+2026-05-14 15:03:36 [INFO] [PNB|5m] SELL signal detected @ 2026-05-14 09:30:00 (close=104.42)
+2026-05-14 15:03:36 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-14 15:03:36 [INFO] [RPOWER|5m] Received 295 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:36 [INFO] [RPOWER|5m] SCAN  bar=09:30  close=27.99  ATRStop=27.37  pos=LONG  signal=NONE
+2026-05-14 15:03:36 [INFO] [RPOWER|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:03:36 [INFO] [RPOWER|15m] SCAN  bar=09:30  close=27.99  ATRStop=27.37  pos=LONG  signal=NONE
+2026-05-14 15:03:38 [ERROR] HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: NIFTY19MAY2623300PE"}}}
+2026-05-14 15:03:38 [ERROR] $NIFTY19MAY2623300PE: possibly delisted; no timezone found
+2026-05-14 15:03:38 [ERROR] 
+1 Failed download:
+2026-05-14 15:03:38 [ERROR] ['NIFTY19MAY2623300PE']: possibly delisted; no timezone found
+2026-05-14 15:03:38 [WARNING] [NIFTY19MAY2623300PE|5m] No historical data returned from yfinance.
+2026-05-14 15:03:38 [ERROR] HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: NIFTY19MAY2623300PE"}}}
+2026-05-14 15:03:39 [ERROR] $NIFTY19MAY2623300PE: possibly delisted; no timezone found
+2026-05-14 15:03:39 [ERROR] 
+1 Failed download:
+2026-05-14 15:03:39 [ERROR] ['NIFTY19MAY2623300PE']: possibly delisted; no timezone found
+2026-05-14 15:03:39 [WARNING] [NIFTY19MAY2623300PE|5m] No historical data returned from yfinance.
+2026-05-14 15:04:15 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:04:15 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [NIFTY19MAY2623300PE|5m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:04:15 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:04:16 [INFO] [WS] Disconnected.
+2026-05-14 15:04:16 [INFO] All workers stopped. Bye!
+2026-05-14 15:04:21 [INFO] Lock acquired (PID 29668)
+2026-05-14 15:04:21 [INFO] Log level set to: INFO
+2026-05-14 15:04:21 [INFO] ==============================================================
+2026-05-14 15:04:21 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:04:21 [INFO] ==============================================================
+2026-05-14 15:04:21 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:04:21 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:04:21 [INFO]   Exchange      : NSE
+2026-05-14 15:04:21 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:04:21 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:04:21 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:04:21 [INFO] ==============================================================
+2026-05-14 15:04:21 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:04:21 [INFO] ==============================================================
+2026-05-14 15:04:21 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:09:59 [INFO] Lock acquired (PID 29088)
+2026-05-14 15:09:59 [INFO] Log level set to: INFO
+2026-05-14 15:09:59 [INFO] ==============================================================
+2026-05-14 15:09:59 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:09:59 [INFO] ==============================================================
+2026-05-14 15:09:59 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:09:59 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:09:59 [INFO]   Exchange      : NSE
+2026-05-14 15:09:59 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:09:59 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:09:59 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:09:59 [INFO] ==============================================================
+2026-05-14 15:09:59 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:09:59 [INFO] ==============================================================
+2026-05-14 15:09:59 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:09:59 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 15:09:59 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [IOC|5m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 15:10:02 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [IOC|15m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 15:10:02 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 15:10:02 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 15:10:02 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [PNB|5m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 15:10:02 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [PNB|15m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 15:10:02 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 15:10:02 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:10:02 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:10:02 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 15:10:02 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 15:10:02 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:10:03 [INFO] [IOC|5m] Received 296 candles | first=2026-05-11 03:45 | last=2026-05-14 09:35
+2026-05-14 15:10:03 [INFO] [IOC|5m] SCAN  bar=09:35  close=140.25  ATRStop=140.39  pos=SHORT  signal=NONE
+2026-05-14 15:10:03 [INFO] [IOC|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:10:03 [INFO] [IOC|15m] SCAN  bar=09:30  close=140.25  ATRStop=140.91  pos=SHORT  signal=SELL
+2026-05-14 15:10:03 [INFO] [IOC|15m] Signal logged — DB: 195 total, 156 labeled
+2026-05-14 15:10:03 [INFO] [IOC|15m] Placing EQ order: SELL 1 × IOC (CNC / LIMIT @ 140.25)
+2026-05-14 15:10:03 [INFO] [BANKINDIA|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:10:03 [INFO] [BANKINDIA|5m] SCAN  bar=09:40  close=143.58  ATRStop=143.60  pos=SHORT  signal=NONE
+2026-05-14 15:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 15:10:04 [WARNING] [IOC|15m] ⚠️ Order REJECTED: HTTP 400: {"message":"Cannot sell IOC in CNC. No positions or holdings available. CNC (delivery) requires existing shares. Use MIS for intraday short selling.","mode":"analyze","orderid":"26051423869174","status":"error"}
+
+2026-05-14 15:10:04 [INFO] [WS] Subscribed to LTP for: ['IOC', 'BANKINDIA', 'PNB', 'RPOWER']
+2026-05-14 15:10:04 [INFO] [IOC|15m] SELL signal detected @ 2026-05-14 09:30:00 (close=140.25)
+2026-05-14 15:10:04 [INFO] [IOC|15m] Telegram alert sent.
+2026-05-14 15:10:04 [INFO] [BANKINDIA|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:10:04 [INFO] [BANKINDIA|15m] SCAN  bar=09:30  close=143.58  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 15:10:04 [INFO] [PNB|5m] Received 296 candles | first=2026-05-11 03:45 | last=2026-05-14 09:35
+2026-05-14 15:10:04 [INFO] [PNB|5m] SCAN  bar=09:35  close=104.34  ATRStop=104.62  pos=SHORT  signal=NONE
+2026-05-14 15:10:04 [INFO] [PNB|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:10:04 [INFO] [PNB|15m] SCAN  bar=09:30  close=104.34  ATRStop=104.23  pos=LONG  signal=NONE
+2026-05-14 15:10:05 [INFO] [RPOWER|5m] Received 296 candles | first=2026-05-11 03:45 | last=2026-05-14 09:35
+2026-05-14 15:10:05 [INFO] [RPOWER|5m] SCAN  bar=09:35  close=27.80  ATRStop=27.31  pos=LONG  signal=NONE
+2026-05-14 15:10:05 [INFO] [RPOWER|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:10:05 [INFO] [RPOWER|15m] SCAN  bar=09:30  close=27.80  ATRStop=26.70  pos=LONG  signal=NONE
+2026-05-14 15:11:58 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:11:58 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:11:58 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:11:59 [INFO] [WS] Disconnected.
+2026-05-14 15:11:59 [INFO] All workers stopped. Bye!
+2026-05-14 15:12:03 [INFO] Lock acquired (PID 28256)
+2026-05-14 15:12:03 [INFO] Log level set to: INFO
+2026-05-14 15:12:03 [INFO] ==============================================================
+2026-05-14 15:12:03 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:12:03 [INFO] ==============================================================
+2026-05-14 15:12:03 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:12:03 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:12:03 [INFO]   Exchange      : NSE
+2026-05-14 15:12:03 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:12:03 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:12:03 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:12:03 [INFO] ==============================================================
+2026-05-14 15:12:03 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:12:03 [INFO] ==============================================================
+2026-05-14 15:12:03 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:12:03 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [IOC|5m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 15:12:04 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [IOC|15m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 15:12:04 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 15:12:04 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 15:12:04 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [PNB|5m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 15:12:04 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [PNB|15m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 15:12:04 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 15:12:04 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:12:04 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:12:04 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 15:12:04 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 15:12:04 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:12:05 [INFO] [IOC|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:12:05 [INFO] [IOC|5m] SCAN  bar=09:40  close=140.20  ATRStop=140.40  pos=SHORT  signal=NONE
+2026-05-14 15:12:05 [INFO] [IOC|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:12:05 [INFO] [IOC|15m] SCAN  bar=09:30  close=140.20  ATRStop=140.86  pos=SHORT  signal=SELL
+2026-05-14 15:12:05 [INFO] [IOC|15m] Signal logged — DB: 196 total, 156 labeled
+2026-05-14 15:12:05 [INFO] [IOC|15m] Placing EQ order: SELL 1 × IOC (CNC / LIMIT @ 140.20)
+2026-05-14 15:12:05 [ERROR] [IOC|15m] Order placement error: 'NoneType' object has no attribute 'placeorder'
+2026-05-14 15:12:05 [INFO] [IOC|15m] SELL signal detected @ 2026-05-14 09:30:00 (close=140.20)
+2026-05-14 15:12:05 [INFO] [IOC|15m] Telegram alert sent.
+2026-05-14 15:12:06 [INFO] [BANKINDIA|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:12:06 [INFO] [BANKINDIA|5m] SCAN  bar=09:40  close=143.58  ATRStop=143.76  pos=SHORT  signal=NONE
+2026-05-14 15:12:06 [INFO] [BANKINDIA|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:12:06 [INFO] [BANKINDIA|15m] SCAN  bar=09:30  close=143.58  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 15:12:06 [INFO] [PNB|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:12:06 [INFO] [PNB|5m] SCAN  bar=09:40  close=104.37  ATRStop=104.59  pos=SHORT  signal=NONE
+2026-05-14 15:12:07 [INFO] [PNB|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:12:07 [INFO] [PNB|15m] SCAN  bar=09:30  close=104.37  ATRStop=104.23  pos=LONG  signal=NONE
+2026-05-14 15:12:07 [INFO] [RPOWER|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:12:07 [INFO] [RPOWER|5m] SCAN  bar=09:40  close=27.68  ATRStop=27.34  pos=LONG  signal=NONE
+2026-05-14 15:12:07 [INFO] [RPOWER|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:12:07 [INFO] [RPOWER|15m] SCAN  bar=09:30  close=27.68  ATRStop=26.65  pos=LONG  signal=NONE
+2026-05-14 15:14:55 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:14:55 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:14:55 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:14:55 [INFO] All workers stopped. Bye!
+2026-05-14 15:14:59 [INFO] Lock acquired (PID 36364)
+2026-05-14 15:14:59 [INFO] Log level set to: INFO
+2026-05-14 15:14:59 [INFO] ==============================================================
+2026-05-14 15:14:59 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:14:59 [INFO] ==============================================================
+2026-05-14 15:14:59 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:14:59 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:14:59 [INFO]   Exchange      : NSE
+2026-05-14 15:14:59 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:14:59 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:14:59 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:14:59 [INFO] ==============================================================
+2026-05-14 15:14:59 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:14:59 [INFO] ==============================================================
+2026-05-14 15:14:59 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:14:59 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [IOC|5m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 15:15:00 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [IOC|15m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 15:15:00 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 15:15:00 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 15:15:00 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [PNB|5m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 15:15:00 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [PNB|15m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 15:15:00 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 15:15:00 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:15:00 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:15:00 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 15:15:00 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 15:15:00 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:15:01 [INFO] [IOC|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:15:01 [INFO] [IOC|5m] SCAN  bar=09:40  close=140.23  ATRStop=140.49  pos=SHORT  signal=NONE
+2026-05-14 15:15:02 [INFO] [IOC|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:15:02 [INFO] [IOC|15m] SCAN  bar=09:30  close=140.23  ATRStop=140.89  pos=SHORT  signal=SELL
+2026-05-14 15:15:02 [INFO] [IOC|15m] Signal logged — DB: 197 total, 156 labeled
+2026-05-14 15:15:02 [WARNING] [IOC|15m] Order skipped — no OpenAlgo client (data_source=yfinance). Set data_source to 'openalgo' to place orders.
+2026-05-14 15:15:02 [INFO] [IOC|15m] SELL signal detected @ 2026-05-14 09:30:00 (close=140.23)
+2026-05-14 15:15:02 [INFO] [IOC|15m] Telegram alert sent.
+2026-05-14 15:15:02 [INFO] [BANKINDIA|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:15:02 [INFO] [BANKINDIA|5m] SCAN  bar=09:40  close=143.75  ATRStop=143.81  pos=SHORT  signal=NONE
+2026-05-14 15:15:02 [INFO] [BANKINDIA|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:15:02 [INFO] [BANKINDIA|15m] SCAN  bar=09:30  close=143.75  ATRStop=143.21  pos=LONG  signal=NONE
+2026-05-14 15:15:03 [INFO] [PNB|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:15:03 [INFO] [PNB|5m] SCAN  bar=09:40  close=104.54  ATRStop=104.62  pos=SHORT  signal=NONE
+2026-05-14 15:15:03 [INFO] [PNB|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:15:03 [INFO] [PNB|15m] SCAN  bar=09:30  close=104.54  ATRStop=104.23  pos=LONG  signal=NONE
+2026-05-14 15:15:03 [INFO] [RPOWER|5m] Received 297 candles | first=2026-05-11 03:45 | last=2026-05-14 09:40
+2026-05-14 15:15:03 [INFO] [RPOWER|5m] SCAN  bar=09:40  close=27.60  ATRStop=27.31  pos=LONG  signal=NONE
+2026-05-14 15:15:04 [INFO] [RPOWER|15m] Received 99 candles | first=2026-05-11 03:45 | last=2026-05-14 09:30
+2026-05-14 15:15:04 [INFO] [RPOWER|15m] SCAN  bar=09:30  close=27.60  ATRStop=26.65  pos=LONG  signal=NONE
+2026-05-14 15:20:02 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:20:02 [INFO] [IOC|5m] Received 298 candles | first=2026-05-11 03:45 | last=2026-05-14 09:45
+2026-05-14 15:20:02 [INFO] [IOC|5m] SCAN  bar=09:45  close=140.32  ATRStop=140.49  pos=SHORT  signal=NONE
+2026-05-14 15:20:03 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:20:03 [INFO] [BANKINDIA|5m] Received 299 candles | first=2026-05-11 03:45 | last=2026-05-14 09:50
+2026-05-14 15:20:03 [INFO] [BANKINDIA|5m] SCAN  bar=09:50  close=144.00  ATRStop=144.00  pos=LONG  signal=NONE
+2026-05-14 15:20:03 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:20:04 [INFO] [PNB|5m] Received 298 candles | first=2026-05-11 03:45 | last=2026-05-14 09:45
+2026-05-14 15:20:04 [INFO] [PNB|5m] SCAN  bar=09:45  close=104.72  ATRStop=104.32  pos=LONG  signal=BUY
+2026-05-14 15:20:04 [INFO] [PNB|5m] Signal logged — DB: 198 total, 156 labeled
+2026-05-14 15:20:04 [WARNING] [PNB|5m] Order skipped — no OpenAlgo client (data_source=yfinance). Set data_source to 'openalgo' to place orders.
+2026-05-14 15:20:04 [INFO] [PNB|5m] BUY signal detected @ 2026-05-14 09:45:00 (close=104.72)
+2026-05-14 15:20:04 [INFO] [PNB|5m] Telegram alert sent.
+2026-05-14 15:20:04 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:20:04 [INFO] [RPOWER|5m] Received 298 candles | first=2026-05-11 03:45 | last=2026-05-14 09:45
+2026-05-14 15:20:04 [INFO] [RPOWER|5m] SCAN  bar=09:45  close=27.73  ATRStop=27.39  pos=LONG  signal=NONE
+2026-05-14 15:22:38 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:22:38 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:22:38 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:22:38 [INFO] All workers stopped. Bye!
+2026-05-14 15:32:39 [INFO] Lock acquired (PID 19048)
+2026-05-14 15:32:39 [INFO] Log level set to: INFO
+2026-05-14 15:32:39 [INFO] ==============================================================
+2026-05-14 15:32:39 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:32:39 [INFO] ==============================================================
+2026-05-14 15:32:39 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-14 15:32:39 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:32:39 [INFO]   Exchange      : NSE
+2026-05-14 15:32:39 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:32:39 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:32:39 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:32:39 [INFO] ==============================================================
+2026-05-14 15:32:39 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:32:39 [INFO] ==============================================================
+2026-05-14 15:32:39 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:32:39 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [IOC|5m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [IOC|15m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [PNB|5m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [PNB|15m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [RPOWER|5m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-14 15:32:41 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:32:41 [INFO] [RPOWER|15m] Worker started.
+2026-05-14 15:32:41 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-14 15:43:21 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:43:21 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [PNB|5m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [PNB|15m] Worker stopped.
+2026-05-14 15:43:21 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 15:43:21 [INFO] All workers stopped. Bye!
+2026-05-14 15:43:36 [INFO] Lock acquired (PID 18140)
+2026-05-14 15:43:36 [INFO] Log level set to: INFO
+2026-05-14 15:43:36 [INFO] ==============================================================
+2026-05-14 15:43:36 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:43:36 [INFO] ==============================================================
+2026-05-14 15:43:36 [INFO]   Symbols       : TSLA
+2026-05-14 15:43:36 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:43:36 [INFO]   Exchange      : NASDAQ
+2026-05-14 15:43:36 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:43:36 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:43:36 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:43:36 [INFO] ==============================================================
+2026-05-14 15:43:36 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:43:36 [INFO] ==============================================================
+2026-05-14 15:43:36 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:43:36 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 15:43:38 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:43:38 [INFO] [TSLA|5m] Worker started.
+2026-05-14 15:43:38 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 15:43:38 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:43:38 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:43:38 [INFO] [TSLA|15m] Worker started.
+2026-05-14 15:43:38 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 15:43:38 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:43:43 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 15:43:43 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 15:43:43 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 15:43:43 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 15:45:03 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:45:04 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 15:45:04 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 15:45:04 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:45:04 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 15:45:04 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 15:50:04 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:50:04 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 15:50:04 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 15:55:00 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:55:00 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 15:55:00 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 15:58:32 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:58:32 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 15:58:32 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 15:58:32 [INFO] All workers stopped. Bye!
+2026-05-14 15:58:40 [INFO] Lock acquired (PID 13152)
+2026-05-14 15:58:40 [INFO] Log level set to: INFO
+2026-05-14 15:58:40 [INFO] ==============================================================
+2026-05-14 15:58:40 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 15:58:40 [INFO] ==============================================================
+2026-05-14 15:58:40 [INFO]   Symbols       : TSLA
+2026-05-14 15:58:40 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 15:58:40 [INFO]   Exchange      : NASDAQ
+2026-05-14 15:58:40 [INFO]   Data Source   : YFINANCE
+2026-05-14 15:58:40 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 15:58:40 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 15:58:40 [INFO] ==============================================================
+2026-05-14 15:58:40 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 15:58:40 [INFO] ==============================================================
+2026-05-14 15:58:40 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 15:58:40 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 15:58:42 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:58:42 [INFO] [TSLA|5m] Worker started.
+2026-05-14 15:58:42 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 15:58:42 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 15:58:42 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 15:58:42 [INFO] [TSLA|15m] Worker started.
+2026-05-14 15:58:42 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 15:58:42 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 15:58:48 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 15:58:48 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 15:58:48 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 15:58:48 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 15:59:58 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 15:59:58 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 15:59:58 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 15:59:58 [INFO] All workers stopped. Bye!
+2026-05-14 16:00:18 [INFO] Lock acquired (PID 2440)
+2026-05-14 16:00:18 [INFO] Log level set to: INFO
+2026-05-14 16:00:18 [INFO] ==============================================================
+2026-05-14 16:00:18 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:00:18 [INFO] ==============================================================
+2026-05-14 16:00:18 [INFO]   Symbols       : TSLA
+2026-05-14 16:00:18 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:00:18 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:00:18 [INFO]   Data Source   : TWELVEDATA
+2026-05-14 16:00:18 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:00:18 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:00:18 [INFO] ==============================================================
+2026-05-14 16:00:18 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:00:18 [INFO] ==============================================================
+2026-05-14 16:00:18 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:00:18 [INFO] Data source is TWELVEDATA — skipping OpenAlgo client & WebSocket.
+2026-05-14 16:00:19 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:00:19 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:00:19 [INFO] [TSLA|5m] Fetching history | source=twelvedata | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:00:19 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:00:19 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:00:19 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:00:19 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:00:19 [INFO] [TSLA|15m] Fetching history | source=twelvedata | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:00:19 [ERROR] [TSLA|5m] TwelveData API key is missing in config.yml
+2026-05-14 16:00:19 [ERROR] [TSLA|15m] TwelveData API key is missing in config.yml
+2026-05-14 16:00:53 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 16:00:53 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:00:53 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:00:53 [INFO] All workers stopped. Bye!
+2026-05-14 16:01:25 [INFO] Lock acquired (PID 24904)
+2026-05-14 16:01:25 [INFO] Log level set to: INFO
+2026-05-14 16:01:25 [INFO] ==============================================================
+2026-05-14 16:01:25 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:01:25 [INFO] ==============================================================
+2026-05-14 16:01:25 [INFO]   Symbols       : TSLA
+2026-05-14 16:01:25 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:01:25 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:01:25 [INFO]   Data Source   : TVDATAFEED
+2026-05-14 16:01:25 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:01:25 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:01:25 [INFO] ==============================================================
+2026-05-14 16:01:25 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:01:25 [INFO] ==============================================================
+2026-05-14 16:01:25 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:01:25 [INFO] Data source is TVDATAFEED — skipping OpenAlgo client & WebSocket.
+2026-05-14 16:01:26 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:01:26 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:01:26 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:01:26 [INFO] [TSLA|5m] Fetching history | source=tvdatafeed | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:01:26 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:01:26 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:01:26 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:01:26 [INFO] [TSLA|15m] Fetching history | source=tvdatafeed | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:01:26 [WARNING] you are using nologin method, data you access may be limited
+2026-05-14 16:01:26 [WARNING] you are using nologin method, data you access may be limited
+2026-05-14 16:01:27 [INFO] [TSLA|5m] Received 1440 candles | first=2026-04-17 22:30 | last=2026-05-14 01:25
+2026-05-14 16:01:27 [INFO] [TSLA|5m] SCAN  bar=01:25  close=445.25  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 16:01:27 [INFO] [TSLA|15m] Received 480 candles | first=2026-04-17 22:30 | last=2026-05-14 01:15
+2026-05-14 16:01:27 [INFO] [TSLA|15m] SCAN  bar=01:15  close=445.25  ATRStop=447.79  pos=SHORT  signal=NONE
+2026-05-14 16:03:20 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 16:03:20 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:03:20 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:03:20 [INFO] All workers stopped. Bye!
+2026-05-14 16:03:25 [INFO] Lock acquired (PID 1888)
+2026-05-14 16:03:25 [INFO] Log level set to: INFO
+2026-05-14 16:03:25 [INFO] ==============================================================
+2026-05-14 16:03:25 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:03:25 [INFO] ==============================================================
+2026-05-14 16:03:25 [INFO]   Symbols       : TSLA
+2026-05-14 16:03:25 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:03:25 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:03:25 [INFO]   Data Source   : OPENALGO
+2026-05-14 16:03:25 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:03:25 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:03:25 [INFO] ==============================================================
+2026-05-14 16:03:25 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:03:25 [INFO] ==============================================================
+2026-05-14 16:03:25 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:03:25 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 16:03:25 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 16:03:28 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:03:28 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:03:28 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:03:28 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:03:28 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:03:28 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:03:28 [INFO] [TSLA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:03:28 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:03:28 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:03:28 [WARNING] [TSLA|15m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:03:28 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:03:28 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:03:30 [INFO] [WS] Subscribed to LTP for: ['TSLA']
+2026-05-14 16:03:46 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 16:03:46 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:03:46 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:03:46 [INFO] [WS] Disconnected.
+2026-05-14 16:03:46 [INFO] All workers stopped. Bye!
+2026-05-14 16:04:16 [INFO] Lock acquired (PID 14612)
+2026-05-14 16:04:16 [INFO] Log level set to: INFO
+2026-05-14 16:04:16 [INFO] ==============================================================
+2026-05-14 16:04:16 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:04:16 [INFO] ==============================================================
+2026-05-14 16:04:16 [INFO]   Symbols       : IOC
+2026-05-14 16:04:16 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:04:16 [INFO]   Exchange      : NSE
+2026-05-14 16:04:16 [INFO]   Data Source   : OPENALGO
+2026-05-14 16:04:16 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:04:16 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:04:16 [INFO] ==============================================================
+2026-05-14 16:04:16 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:04:16 [INFO] ==============================================================
+2026-05-14 16:04:16 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:04:16 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 16:04:16 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 16:04:18 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:04:18 [INFO] [IOC|5m] Worker started.
+2026-05-14 16:04:18 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-14 16:04:18 [INFO] [IOC|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:04:18 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:04:18 [INFO] [IOC|15m] Worker started.
+2026-05-14 16:04:18 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-14 16:04:18 [INFO] [IOC|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:04:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 16:04:20 [INFO] [IOC|15m] Received 100 candles | first=2026-05-11 09:15 | last=2026-05-14 15:15
+2026-05-14 16:04:20 [INFO] [IOC|15m] SCAN  bar=15:15  close=140.69  ATRStop=140.97  pos=SHORT  signal=NONE
+2026-05-14 16:04:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 200 OK"
+2026-05-14 16:04:20 [INFO] [IOC|5m] Received 300 candles | first=2026-05-11 09:15 | last=2026-05-14 15:25
+2026-05-14 16:04:20 [INFO] [IOC|5m] SCAN  bar=15:25  close=140.69  ATRStop=139.73  pos=LONG  signal=BUY
+2026-05-14 16:04:20 [INFO] [IOC|5m] Signal logged — DB: 199 total, 156 labeled
+2026-05-14 16:04:20 [INFO] [IOC|5m] Placing EQ order: BUY 1 × IOC (CNC / LIMIT @ 140.69)
+2026-05-14 16:04:20 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/placeorder "HTTP/1.1 200 OK"
+2026-05-14 16:04:20 [INFO] [IOC|5m] ✅ Order SUCCESS | id=26051461316382 | BUY 1 CNC
+2026-05-14 16:04:20 [INFO] [IOC|5m] BUY signal detected @ 2026-05-14 15:25:00+05:30 (close=140.69)
+2026-05-14 16:04:21 [INFO] [WS] Subscribed to LTP for: ['IOC']
+2026-05-14 16:04:21 [INFO] [IOC|5m] Telegram alert sent.
+2026-05-14 16:04:28 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-14 16:04:28 [INFO] [IOC|5m] Worker stopped.
+2026-05-14 16:04:28 [INFO] [IOC|15m] Worker stopped.
+2026-05-14 16:04:29 [INFO] [WS] Disconnected.
+2026-05-14 16:04:29 [INFO] All workers stopped. Bye!
+2026-05-14 16:08:30 [INFO] Lock acquired (PID 12232)
+2026-05-14 16:08:30 [INFO] Log level set to: INFO
+2026-05-14 16:08:30 [INFO] ==============================================================
+2026-05-14 16:08:30 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:08:30 [INFO] ==============================================================
+2026-05-14 16:08:30 [INFO]   Symbols       : TSLA
+2026-05-14 16:08:30 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:08:30 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:08:30 [INFO]   Data Source   : OPENALGO
+2026-05-14 16:08:30 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:08:30 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:08:30 [INFO] ==============================================================
+2026-05-14 16:08:30 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:08:30 [INFO] ==============================================================
+2026-05-14 16:08:30 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:08:30 [INFO] [WS] Connecting to WebSocket...
+2026-05-14 16:08:30 [ERROR] [WinError 10054] An existing connection was forcibly closed by the remote host - goodbye
+2026-05-14 16:08:33 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:08:33 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:08:33 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:08:33 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:08:33 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:08:33 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:08:33 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:08:33 [INFO] [TSLA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:08:34 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:08:34 [WARNING] [TSLA|15m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:08:34 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:08:34 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:08:35 [INFO] [WS] Subscribed to LTP for: ['TSLA']
+2026-05-14 16:10:04 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:10:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:10:04 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:15:00 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:15:00 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:15:00 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:15:04 [INFO] [TSLA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:15:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:15:05 [WARNING] [TSLA|15m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:20:01 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:20:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:20:01 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:25:02 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:25:03 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:25:03 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:30:01 [INFO] [TSLA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:30:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:30:02 [WARNING] [TSLA|15m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:30:03 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:30:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:30:04 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:35:04 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:35:05 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:35:05 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:40:00 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:40:01 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:40:01 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:45:01 [INFO] [TSLA|5m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:45:02 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:45:02 [WARNING] [TSLA|5m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:45:03 [INFO] [TSLA|15m] Fetching history | source=openalgo | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:45:04 [INFO] HTTP Request: POST http://127.0.0.1:5000/api/v1/history "HTTP/1.1 400 BAD REQUEST"
+2026-05-14 16:45:04 [WARNING] [TSLA|15m] Unexpected history dict payload: {'status': 'error', 'message': 'HTTP 400: {"message":{"exchange":["Must be one of: NSE, NFO, CDS, BSE, BFO, BCD, MCX, NCDEX, NCO, NSE_INDEX, BSE_INDEX, MCX_INDEX, GLOBAL_INDEX, CRYPTO."]},"status":"error"}\n', 'code': 400, 'error_type': 'http_error'}
+2026-05-14 16:47:28 [INFO] 
+[Config changed] Auto-reloading bot...
+2026-05-14 16:47:28 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:47:28 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:47:28 [INFO] [WS] Disconnected.
+2026-05-14 16:47:32 [INFO] Lock acquired (PID 21212)
+2026-05-14 16:47:32 [INFO] Log level set to: INFO
+2026-05-14 16:47:32 [INFO] ==============================================================
+2026-05-14 16:47:32 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:47:32 [INFO] ==============================================================
+2026-05-14 16:47:32 [INFO]   Symbols       : TSLA
+2026-05-14 16:47:32 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:47:32 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:47:32 [INFO]   Data Source   : YFINANCE
+2026-05-14 16:47:32 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:47:32 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:47:32 [INFO] ==============================================================
+2026-05-14 16:47:32 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:47:32 [INFO] ==============================================================
+2026-05-14 16:47:32 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:47:32 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 16:47:34 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:47:34 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:47:34 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:47:34 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:47:34 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:47:34 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:47:34 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:47:34 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:47:40 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 16:47:40 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 16:47:40 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 16:47:40 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 16:48:46 [INFO] 
+[Config changed] Auto-reloading bot...
+2026-05-14 16:48:46 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:48:46 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:48:48 [INFO] Lock acquired (PID 21496)
+2026-05-14 16:48:48 [INFO] Log level set to: INFO
+2026-05-14 16:48:48 [INFO] ==============================================================
+2026-05-14 16:48:48 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:48:48 [INFO] ==============================================================
+2026-05-14 16:48:48 [INFO]   Symbols       : TSLA
+2026-05-14 16:48:48 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:48:48 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:48:48 [INFO]   Data Source   : YFINANCE
+2026-05-14 16:48:48 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:48:48 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:48:48 [INFO] ==============================================================
+2026-05-14 16:48:48 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:48:48 [INFO] ==============================================================
+2026-05-14 16:48:48 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:48:48 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 16:48:49 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:48:49 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:48:49 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:48:49 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:48:49 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:48:49 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:48:49 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:48:49 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:48:50 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 16:48:50 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 16:48:51 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 16:48:51 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 16:49:07 [INFO] 
+[Config changed] Auto-reloading bot...
+2026-05-14 16:49:07 [INFO] [TSLA|5m] Worker stopped.
+2026-05-14 16:49:07 [INFO] [TSLA|15m] Worker stopped.
+2026-05-14 16:49:08 [INFO] Lock acquired (PID 18412)
+2026-05-14 16:49:08 [INFO] Log level set to: INFO
+2026-05-14 16:49:08 [INFO] ==============================================================
+2026-05-14 16:49:08 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-14 16:49:08 [INFO] ==============================================================
+2026-05-14 16:49:08 [INFO]   Symbols       : TSLA
+2026-05-14 16:49:08 [INFO]   Timeframes    : 5m, 15m
+2026-05-14 16:49:08 [INFO]   Exchange      : NASDAQ
+2026-05-14 16:49:08 [INFO]   Data Source   : YFINANCE
+2026-05-14 16:49:08 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-14 16:49:08 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-14 16:49:08 [INFO] ==============================================================
+2026-05-14 16:49:08 [INFO]   Press Ctrl+C to stop the bot
+2026-05-14 16:49:08 [INFO] ==============================================================
+2026-05-14 16:49:08 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-14 16:49:08 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-14 16:49:09 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:49:09 [INFO] [TSLA|5m] Worker started.
+2026-05-14 16:49:09 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-14 16:49:09 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:49:09 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-14 16:49:09 [INFO] [TSLA|15m] Worker started.
+2026-05-14 16:49:09 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-14 16:49:09 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:15:00
+2026-05-14 16:49:10 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 16:49:10 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 16:49:10 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
+2026-05-14 16:49:10 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE

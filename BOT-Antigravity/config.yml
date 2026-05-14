@@ -1,16 +1,42 @@
+data_source: "yfinance"   # Can be "openalgo", "yfinance", "twelvedata", or "tvdatafeed"
+
+# ------------------------------------------------------------
+# Telegram Alerts
+# ------------------------------------------------------------
+telegram:
+  mode: "direct"            # "openalgo" (via OpenAlgo server) or "direct" (via Telegram Bot API)
+  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"    # Required when mode is "direct" — get from @BotFather
+  chat_id: "939814804"      # Rahul's Telegram ID for @openalgo_rahul_bot
+
 openalgo:
-  apikey: "3b0efae720a743cd0c7d2b9fcffb8eb2cf8832420c214e4746db4568ec80f4f3"
+  #Termial
+  #apikey: "3b0efae720a743cd0c7d2b9fcffb8eb2cf8832420c214e4746db4568ec80f4f3"
+  
+  #docker
+  apikey: "cd6aa9453a385603f2dd158b53ea0179463be18c704bed45564e8d0ba336263b"
+
   username: "rahul.tew"
   base_url: "http://127.0.0.1:5000"
   ws_url: "ws://127.0.0.1:8765"
 
+# ------------------------------------------------------------
+# Additional Data Sources
+# ------------------------------------------------------------
+twelvedata:
+  apikey: ""                # Required if using data_source: "twelvedata"
+
+tvdatafeed:
+  username: ""              # Optional (leave blank for free tier without login)
+  password: ""              # Optional (leave blank for free tier without login)
+
 # Equity
-exchange: "NSE"
+exchange: "NASDAQ"   # NSE or NASDAQ
 symbols:
-  - IOC
-  - BANKINDIA
-  - PNB
-  - RPOWER
+  #- IOC
+  #- BANKINDIA
+  #- PNB
+  #- RPOWER
+  - TSLA
 
 timeframes:
   - "5m"
@@ -20,8 +46,8 @@ timeframes:
 # index/option
 index_exchange: "NSE_INDEX"    # Exchange for index data
 index_symbols:
-  - NIFTY19MAY2623300PE
-  - NIFTY19MAY2623300PE
+  #- NIFTY19MAY2623300PE
+  #- NIFTY19MAY2623300PE
   
 index_timeframes:
   - "5m"
@@ -39,8 +65,9 @@ data:
 
 bot:
   signal_check_interval: 5
-  market_open: "09:15"
-  market_close: "15:30"
+  market_hours_check: false   # Set to false to run 24/7 (ignores market_open/close)
+  market_open: "09:15"       # For US 07:00 PM IST, INDIA - 09:15
+  market_close: "15:30"      # For US 01:30 AM IST, INDIA - 15:30
   log_level: "INFO"
 
 ml:

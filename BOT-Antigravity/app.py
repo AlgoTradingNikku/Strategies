@@ -279,6 +279,7 @@ class TimeframeWorker:
         self._last_signal_type = None
 
         self.exchange = config.get("exchange", "NSE")
+        self.data_source = config.get("data_source", "openalgo").lower()
 
         # Candle-boundary caching ─────────────────────────────────────────────
         # Parse the timeframe string into a timedelta so we know how often a
@@ -325,7 +326,7 @@ class TimeframeWorker:
 
     # ------------------------------------------------------------------
     def _fetch_history(self) -> pd.DataFrame | None:
-        """Fetch OHLCV candles from OpenAlgo."""
+        """Fetch OHLCV candles from OpenAlgo or yfinance."""
         end_dt = datetime.now()
         start_dt = end_dt - timedelta(days=self.lookback_days)
 
@@ -333,64 +334,171 @@ class TimeframeWorker:
         end_str = end_dt.strftime("%Y-%m-%d")
 
         log.info(
-            "[%s|%s] Fetching history | lookback=%d days | from=%s to=%s | candle=%s",
-            self.symbol, self.timeframe,
+            "[%s|%s] Fetching history | source=%s | lookback=%d days | from=%s to=%s | candle=%s",
+            self.symbol, self.timeframe, self.data_source,
             self.lookback_days, start_str, end_str,
             str(self._candle_duration),
         )
 
         try:
-            raw = self.client.history(
-                symbol=self.symbol,
-                exchange=self.exchange,
-                interval=self.timeframe,
-                start_date=start_str,
-                end_date=end_str,
-            )
+            if self.data_source == "yfinance":
+                import yfinance as yf
+                yf_symbol = self.symbol
+                if self.exchange == "NSE":
+                    yf_symbol = f"{self.symbol}.NS"
+                elif self.exchange == "BSE":
+                    yf_symbol = f"{self.symbol}.BO"
+                
+                df = yf.download(tickers=yf_symbol, start=start_dt, end=end_dt, interval=self.timeframe, progress=False)
+                
+                if df.empty:
+                    log.warning("[%s|%s] No historical data returned from yfinance.", self.symbol, self.timeframe)
+                    return None
+                    
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = [c[0] for c in df.columns]
+                
+                df.columns = [c.lower() for c in df.columns]
+                if df.index.tz is not None:
+                    df.index = df.index.tz_localize(None)
+
+            elif self.data_source == "tvdatafeed":
+                from tvDatafeed import TvDatafeed, Interval
+                tv_cfg = self.config.get("tvdatafeed", {})
+                username = tv_cfg.get("username", "")
+                password = tv_cfg.get("password", "")
+                
+                if username and password:
+                    tv = TvDatafeed(username=username, password=password)
+                else:
+                    tv = TvDatafeed()
+                
+                interval_map = {
+                    "1m": Interval.in_1_minute,
+                    "3m": Interval.in_3_minute,
+                    "5m": Interval.in_5_minute,
+                    "15m": Interval.in_15_minute,
+                    "30m": Interval.in_30_minute,
+                    "45m": Interval.in_45_minute,
+                    "1h": Interval.in_1_hour,
+                    "2h": Interval.in_2_hour,
+                    "3h": Interval.in_3_hour,
+                    "4h": Interval.in_4_hour,
+                    "1d": Interval.in_daily,
+                    "1W": Interval.in_weekly,
+                    "1M": Interval.in_monthly,
+                }
+                tv_interval = interval_map.get(self.timeframe, Interval.in_5_minute)
+                
+                tf_minutes = int(self._candle_duration.total_seconds() / 60)
+                bars_per_day = (24 * 60) // tf_minutes if tf_minutes > 0 else 1
+                n_bars = min(5000, self.lookback_days * bars_per_day)
+                
+                df = tv.get_hist(
+                    symbol=self.symbol,
+                    exchange=self.exchange,
+                    interval=tv_interval,
+                    n_bars=n_bars
+                )
+                
+                if df is None or df.empty:
+                    log.warning("[%s|%s] No historical data returned from tvdatafeed.", self.symbol, self.timeframe)
+                    return None
+                    
+                df.columns = [c.lower() for c in df.columns]
+                if "symbol" in df.columns:
+                    df = df.drop(columns=["symbol"])
+                if df.index.tz is not None:
+                    df.index = df.index.tz_localize(None)
+
+            elif self.data_source == "twelvedata":
+                from twelvedata import TDClient
+                td_cfg = self.config.get("twelvedata", {})
+                apikey = td_cfg.get("apikey", "")
+                
+                if not apikey:
+                    log.error("[%s|%s] TwelveData API key is missing in config.yml", self.symbol, self.timeframe)
+                    return None
+                    
+                td = TDClient(apikey=apikey)
+                
+                td_interval = self.timeframe
+                if td_interval.endswith("m") and td_interval != "1month":
+                    td_interval = td_interval + "in"
+                elif td_interval == "1d":
+                    td_interval = "1day"
+                elif td_interval == "1W":
+                    td_interval = "1week"
+                    
+                ts = td.time_series(
+                    symbol=self.symbol,
+                    interval=td_interval,
+                    start_date=start_str,
+                    end_date=end_str,
+                    outputsize=5000
+                )
+                
+                df = ts.as_pandas()
+                
+                if df is None or df.empty:
+                    log.warning("[%s|%s] No historical data returned from twelvedata.", self.symbol, self.timeframe)
+                    return None
+                
+                df = df.iloc[::-1] # Twelve Data returns newest first
+                
+                df.columns = [c.lower() for c in df.columns]
+                if df.index.tz is not None:
+                    df.index = df.index.tz_localize(None)
+
+            else:
+                raw = self.client.history(
+                    symbol=self.symbol,
+                    exchange=self.exchange,
+                    interval=self.timeframe,
+                    start_date=start_str,
+                    end_date=end_str,
+                )
+                
+                if isinstance(raw, pd.DataFrame):
+                    df = raw
+                elif isinstance(raw, dict):
+                    data = raw.get("data")
+                    if isinstance(data, pd.DataFrame):
+                        df = data
+                    elif isinstance(data, list) and data:
+                        df = pd.DataFrame(data)
+                    else:
+                        log.warning(
+                            "[%s|%s] Unexpected history dict payload: %s",
+                            self.symbol, self.timeframe, raw,
+                        )
+                        return None
+                else:
+                    log.warning(
+                        "[%s|%s] Unexpected history response type: %s",
+                        self.symbol, self.timeframe, type(raw),
+                    )
+                    return None
+
+                if df is None or df.empty:
+                    log.warning("[%s|%s] No historical data returned.", self.symbol, self.timeframe)
+                    return None
+
+                if "datetime" in df.columns:
+                    df["datetime"] = pd.to_datetime(df["datetime"])
+                    df = df.set_index("datetime")
+                elif "timestamp" in df.columns:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"])
+                    df = df.set_index("timestamp")
+                else:
+                    df.index = pd.to_datetime(df.index)
+
+                df = df.sort_index()
+                df.columns = [c.lower() for c in df.columns]
+
         except Exception as exc:
             log.error("[%s|%s] History fetch error: %s", self.symbol, self.timeframe, exc)
             return None
-
-        # The SDK may return a DataFrame directly or a dict like {"data": <DataFrame|list>}
-        if isinstance(raw, pd.DataFrame):
-            df = raw
-        elif isinstance(raw, dict):
-            data = raw.get("data")
-            if isinstance(data, pd.DataFrame):
-                df = data
-            elif isinstance(data, list) and data:
-                df = pd.DataFrame(data)
-            else:
-                log.warning(
-                    "[%s|%s] Unexpected history dict payload: %s",
-                    self.symbol, self.timeframe, raw,
-                )
-                return None
-        else:
-            log.warning(
-                "[%s|%s] Unexpected history response type: %s",
-                self.symbol, self.timeframe, type(raw),
-            )
-            return None
-
-        if df is None or df.empty:
-            log.warning("[%s|%s] No historical data returned.", self.symbol, self.timeframe)
-            return None
-
-        # Normalise index to datetime
-        if "datetime" in df.columns:
-            df["datetime"] = pd.to_datetime(df["datetime"])
-            df = df.set_index("datetime")
-        elif "timestamp" in df.columns:
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            df = df.set_index("timestamp")
-        else:
-            df.index = pd.to_datetime(df.index)
-
-        df = df.sort_index()
-
-        # Ensure lowercase column names
-        df.columns = [c.lower() for c in df.columns]
 
         first_bar = df.index[0].strftime("%Y-%m-%d %H:%M")
         last_bar  = df.index[-1].strftime("%Y-%m-%d %H:%M")
@@ -540,7 +648,7 @@ class TimeframeWorker:
         # Try ltp_map first (populated by LivePriceMonitor), then fall back
         # to reading the SDK's internal ltp_data store directly
         ltp_val = self._ltp_map.get(self.symbol)
-        if ltp_val is None:
+        if ltp_val is None and self.data_source == "openalgo":
             try:
                 sdk_data = getattr(self.client, "ltp_data", {})
                 key = f"{self.exchange}:{self.symbol}"
@@ -549,6 +657,10 @@ class TimeframeWorker:
                     ltp_val = float(entry["price"])
             except Exception:
                 pass
+                
+        # Fallback to the latest price in the dataframe if not using openalgo
+        if ltp_val is None and self.data_source != "openalgo":
+            ltp_val = float(df.iloc[-1]["close"])
         ltp_str = f"{ltp_val:.2f}" if ltp_val is not None else "N/A"
 
         # Order price: prefer LTP, fall back to bar close price
@@ -622,6 +734,14 @@ class TimeframeWorker:
         product  = self._trading_product
         ptype    = self._trading_price_type
         asset    = "OPT" if self._is_option else "EQ"
+
+        if self.client is None:
+            log.warning(
+                "[%s|%s] Order skipped — no OpenAlgo client (data_source=%s). "
+                "Set data_source to 'openalgo' to place orders.",
+                self.symbol, self.timeframe, self.data_source,
+            )
+            return f"{action} {quantity} ⏭️ (no broker)"
 
         log.info(
             "[%s|%s] Placing %s order: %s %d × %s (%s / %s @ %.2f)",
@@ -779,8 +899,14 @@ def _parse_timeframe(tf: str) -> timedelta:
 
 
 def _is_market_hours(config: dict) -> bool:
-    """Return True if current IST time is within configured market hours (Mon–Fri only)."""
+    """Return True if current time is within configured market hours (Mon–Fri only).
+    If market_hours_check is False, always returns True (bot runs 24/7)."""
     bot_cfg = config.get("bot", {})
+
+    # Toggle: if disabled, always allow scanning
+    if not bot_cfg.get("market_hours_check", True):
+        return True
+
     open_str = bot_cfg.get("market_open", "09:15")
     close_str = bot_cfg.get("market_close", "15:30")
 
@@ -816,6 +942,7 @@ def _print_banner(config: dict):
         log.info("  Index TFs     : %s", ", ".join(idx_tfs))
     log.info("  Timeframes    : %s", ", ".join(timeframes))
     log.info("  Exchange      : %s", config.get("exchange", "NSE"))
+    log.info("  Data Source   : %s", config.get("data_source", "openalgo").upper())
     log.info("  Key Value     : %s  |  ATR Period: %s  |  HA: %s",
              strat.get("key_value", 2),
              strat.get("atr_period", 1),
@@ -873,10 +1000,10 @@ def main():
     base_url = oa_cfg.get("base_url", "http://127.0.0.1:5000")
     ws_url = oa_cfg.get("ws_url", "ws://127.0.0.1:8765")
 
-    symbols: list[str] = config.get("symbols", [])
-    index_symbols: list[str] = config.get("index_symbols", [])
-    timeframes: list[str] = config.get("timeframes", ["5m"])
-    index_timeframes: list[str] = config.get("index_timeframes", timeframes)
+    symbols: list[str] = config.get("symbols") or []
+    index_symbols: list[str] = config.get("index_symbols") or []
+    timeframes: list[str] = config.get("timeframes") or ["5m"]
+    index_timeframes: list[str] = config.get("index_timeframes") or timeframes
     exchange: str = config.get("exchange", "NSE")
     index_exchange: str = config.get("index_exchange", "NSE_INDEX")
 
@@ -890,34 +1017,41 @@ def main():
     if not index_symbols:
         log.info("Index symbols list is empty — skipping option workers.")
 
-    # ---- OpenAlgo API client ------------------------------------------------
-    client = api(api_key=api_key, host=base_url, ws_url=ws_url)
+    data_source = config.get("data_source", "openalgo").lower()
 
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
 
-    # ---- Build a single instrument list for WebSocket (all exchanges) -------
-    all_ws_instruments: list[dict] = []
-    for s in symbols:
-        all_ws_instruments.append({"exchange": exchange, "symbol": s})
-    for s in index_symbols:
-        all_ws_instruments.append({"exchange": option_exchange, "symbol": s})
+    # ---- OpenAlgo API client (only needed for openalgo data source) ---------
+    if data_source == "openalgo":
+        client = api(api_key=api_key, host=base_url, ws_url=ws_url)
 
-    # ---- Single WebSocket live price monitor --------------------------------
-    ws_monitor = LivePriceMonitor(client, all_ws_instruments, stop_event)
-    ws_thread = threading.Thread(
-        target=ws_monitor.run,
-        name="WS-LivePrices",
-        daemon=True,
-    )
-    threads.append(ws_thread)
-    ws_thread.start()
+        # ---- Build a single instrument list for WebSocket (all exchanges) ---
+        all_ws_instruments: list[dict] = []
+        for s in symbols:
+            all_ws_instruments.append({"exchange": exchange, "symbol": s})
+        for s in index_symbols:
+            all_ws_instruments.append({"exchange": option_exchange, "symbol": s})
 
-    # Shared LTP map — workers read from this
-    shared_ltp_map = ws_monitor.ltp_map
+        # ---- Single WebSocket live price monitor ----------------------------
+        ws_monitor = LivePriceMonitor(client, all_ws_instruments, stop_event)
+        ws_thread = threading.Thread(
+            target=ws_monitor.run,
+            name="WS-LivePrices",
+            daemon=True,
+        )
+        threads.append(ws_thread)
+        ws_thread.start()
 
-    # Give WS a moment to connect before spawning signal workers
-    time.sleep(2)
+        # Shared LTP map — workers read from this
+        shared_ltp_map = ws_monitor.ltp_map
+
+        # Give WS a moment to connect before spawning signal workers
+        time.sleep(2)
+    else:
+        client = None
+        shared_ltp_map = {}
+        log.info("Data source is %s — skipping OpenAlgo client & WebSocket.", data_source.upper())
 
     # ---- One worker thread per (equity symbol, timeframe) pair ---------------
     for symbol in symbols:
@@ -963,16 +1097,34 @@ def main():
             log.info("Started worker: %s @ %s [%s]", idx_sym, tf, option_exchange)
 
     # ---- Keep main thread alive; handle Ctrl+C gracefully ------------------
+    config_path = "config.yml"
+    last_mtime = os.path.getmtime(config_path) if os.path.exists(config_path) else 0
+    reloading = False
+
     try:
         while True:
-            time.sleep(1)
+            time.sleep(2)
+            # Check if config.yml has been modified
+            if os.path.exists(config_path):
+                current_mtime = os.path.getmtime(config_path)
+                if current_mtime != last_mtime:
+                    log.info("\n[Config changed] Auto-reloading bot...")
+                    reloading = True
+                    stop_event.set()
+                    break
     except KeyboardInterrupt:
         log.info("\nShutting down — waiting for workers to stop...")
         stop_event.set()
 
-        for t in threads:
-            t.join(timeout=10)
+    for t in threads:
+        t.join(timeout=10)
 
+    if reloading:
+        # Must release lock file before replacing process, otherwise new process throws error
+        _LOCK_FILE.unlink(missing_ok=True)
+        # Re-execute the exact same script and python executable
+        os.execv(sys.executable, ['python'] + sys.argv)
+    else:
         log.info("All workers stopped. Bye!")
 
 
