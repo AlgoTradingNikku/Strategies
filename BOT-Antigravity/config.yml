@@ -30,13 +30,13 @@ tvdatafeed:
   password: ""              # Optional (leave blank for free tier without login)
 
 # Equity
-exchange: "NASDAQ"   # NSE or NASDAQ
+exchange: "NSE"   # NSE or NASDAQ
 symbols:
-  #- IOC
-  #- BANKINDIA
-  #- PNB
-  #- RPOWER
-  - TSLA
+  - IOC
+  - BANKINDIA
+  - PNB
+  - RPOWER
+  #- TSLA
 
 timeframes:
   - "5m"

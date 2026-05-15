@@ -14218,3 +14218,108 @@ Shutting down — waiting for workers to stop...
 2026-05-14 16:49:10 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
 2026-05-14 16:49:10 [INFO] [TSLA|15m] Received 78 candles | first=2026-05-11 13:30 | last=2026-05-13 19:45
 2026-05-14 16:49:10 [INFO] [TSLA|15m] SCAN  bar=19:45  close=445.18  ATRStop=447.62  pos=SHORT  signal=NONE
+2026-05-14 16:50:00 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:50:01 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 16:50:01 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-14 16:55:01 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-09 to=2026-05-14 | candle=0:05:00
+2026-05-14 16:55:02 [INFO] [TSLA|5m] Received 234 candles | first=2026-05-11 13:30 | last=2026-05-13 19:55
+2026-05-14 16:55:02 [INFO] [TSLA|5m] SCAN  bar=19:55  close=445.18  ATRStop=446.17  pos=SHORT  signal=NONE
+2026-05-15 10:19:50 [INFO] Lock acquired (PID 26392)
+2026-05-15 10:19:50 [INFO] Log level set to: INFO
+2026-05-15 10:19:50 [INFO] ==============================================================
+2026-05-15 10:19:50 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-15 10:19:50 [INFO] ==============================================================
+2026-05-15 10:19:50 [INFO]   Symbols       : TSLA
+2026-05-15 10:19:50 [INFO]   Timeframes    : 5m, 15m
+2026-05-15 10:19:50 [INFO]   Exchange      : NASDAQ
+2026-05-15 10:19:50 [INFO]   Data Source   : YFINANCE
+2026-05-15 10:19:50 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-15 10:19:50 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-15 10:19:50 [INFO] ==============================================================
+2026-05-15 10:19:50 [INFO]   Press Ctrl+C to stop the bot
+2026-05-15 10:19:50 [INFO] ==============================================================
+2026-05-15 10:19:50 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-15 10:19:50 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-15 10:19:55 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:19:55 [INFO] [TSLA|5m] Worker started.
+2026-05-15 10:19:55 [INFO] Started worker: TSLA @ 5m [NASDAQ]
+2026-05-15 10:19:55 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:19:55 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:19:55 [INFO] [TSLA|15m] Worker started.
+2026-05-15 10:19:55 [INFO] Started worker: TSLA @ 15m [NASDAQ]
+2026-05-15 10:19:55 [INFO] [TSLA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:20:02 [INFO] [TSLA|5m] Received 312 candles | first=2026-05-11 13:30 | last=2026-05-14 19:55
+2026-05-15 10:20:02 [INFO] [TSLA|5m] SCAN  bar=19:55  close=443.18  ATRStop=444.98  pos=SHORT  signal=NONE
+2026-05-15 10:20:03 [INFO] [TSLA|15m] Received 104 candles | first=2026-05-11 13:30 | last=2026-05-14 19:45
+2026-05-15 10:20:03 [INFO] [TSLA|15m] SCAN  bar=19:45  close=443.18  ATRStop=446.10  pos=SHORT  signal=NONE
+2026-05-15 10:20:07 [INFO] [TSLA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:20:08 [INFO] [TSLA|5m] Received 312 candles | first=2026-05-11 13:30 | last=2026-05-14 19:55
+2026-05-15 10:20:08 [INFO] [TSLA|5m] SCAN  bar=19:55  close=443.18  ATRStop=444.98  pos=SHORT  signal=NONE
+2026-05-15 10:20:43 [INFO] 
+[Config changed] Auto-reloading bot...
+2026-05-15 10:20:43 [INFO] [TSLA|5m] Worker stopped.
+2026-05-15 10:20:43 [INFO] [TSLA|15m] Worker stopped.
+2026-05-15 10:20:45 [INFO] Lock acquired (PID 28100)
+2026-05-15 10:20:45 [INFO] Log level set to: INFO
+2026-05-15 10:20:45 [INFO] ==============================================================
+2026-05-15 10:20:45 [INFO]   UT BOT ANTIGRAVITY — Signal Monitor
+2026-05-15 10:20:45 [INFO] ==============================================================
+2026-05-15 10:20:45 [INFO]   Symbols       : IOC, BANKINDIA, PNB, RPOWER
+2026-05-15 10:20:45 [INFO]   Timeframes    : 5m, 15m
+2026-05-15 10:20:45 [INFO]   Exchange      : NSE
+2026-05-15 10:20:45 [INFO]   Data Source   : YFINANCE
+2026-05-15 10:20:45 [INFO]   Key Value     : 2  |  ATR Period: 1  |  HA: False
+2026-05-15 10:20:45 [INFO]   Host          : http://127.0.0.1:5000
+2026-05-15 10:20:45 [INFO] ==============================================================
+2026-05-15 10:20:45 [INFO]   Press Ctrl+C to stop the bot
+2026-05-15 10:20:45 [INFO] ==============================================================
+2026-05-15 10:20:45 [INFO] Index symbols list is empty — skipping option workers.
+2026-05-15 10:20:45 [INFO] Data source is YFINANCE — skipping OpenAlgo client & WebSocket.
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [IOC|5m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: IOC @ 5m [NSE]
+2026-05-15 10:20:47 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [IOC|15m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: IOC @ 15m [NSE]
+2026-05-15 10:20:47 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [BANKINDIA|5m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: BANKINDIA @ 5m [NSE]
+2026-05-15 10:20:47 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [BANKINDIA|15m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: BANKINDIA @ 15m [NSE]
+2026-05-15 10:20:47 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [PNB|5m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: PNB @ 5m [NSE]
+2026-05-15 10:20:47 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [PNB|15m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: PNB @ 15m [NSE]
+2026-05-15 10:20:47 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [RPOWER|5m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: RPOWER @ 5m [NSE]
+2026-05-15 10:20:47 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:20:47 [INFO] ML model loaded — filter active (threshold=60%)
+2026-05-15 10:20:47 [INFO] [RPOWER|15m] Worker started.
+2026-05-15 10:20:47 [INFO] Started worker: RPOWER @ 15m [NSE]
+2026-05-15 10:20:47 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:20:49 [INFO] [IOC|5m] Received 313 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:49 [INFO] [IOC|5m] SCAN  bar=04:45  close=137.62  ATRStop=138.04  pos=SHORT  signal=NONE
+2026-05-15 10:20:49 [INFO] [IOC|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:49 [INFO] [IOC|15m] SCAN  bar=04:45  close=137.62  ATRStop=138.04  pos=SHORT  signal=NONE
+2026-05-15 10:20:49 [INFO] [BANKINDIA|5m] Received 314 candles | first=2026-05-11 03:45 | last=2026-05-15 04:50
+2026-05-15 10:20:49 [INFO] [BANKINDIA|5m] SCAN  bar=04:50  close=144.68  ATRStop=144.72  pos=SHORT  signal=NONE
+2026-05-15 10:20:49 [INFO] [BANKINDIA|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:49 [INFO] [BANKINDIA|15m] SCAN  bar=04:45  close=144.68  ATRStop=144.67  pos=LONG  signal=NONE
+2026-05-15 10:20:50 [INFO] [PNB|5m] Received 313 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:50 [INFO] [PNB|5m] SCAN  bar=04:45  close=104.07  ATRStop=104.26  pos=SHORT  signal=NONE
+2026-05-15 10:20:50 [INFO] [PNB|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:50 [INFO] [PNB|15m] SCAN  bar=04:45  close=104.07  ATRStop=104.45  pos=SHORT  signal=NONE
+2026-05-15 10:20:50 [INFO] [RPOWER|5m] Received 313 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:50 [INFO] [RPOWER|5m] SCAN  bar=04:45  close=27.55  ATRStop=27.45  pos=LONG  signal=NONE
+2026-05-15 10:20:50 [INFO] [RPOWER|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:20:50 [INFO] [RPOWER|15m] SCAN  bar=04:45  close=27.55  ATRStop=27.71  pos=SHORT  signal=NONE
