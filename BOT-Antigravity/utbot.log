@@ -14323,3 +14323,119 @@ Shutting down — waiting for workers to stop...
 2026-05-15 10:20:50 [INFO] [RPOWER|5m] SCAN  bar=04:45  close=27.55  ATRStop=27.45  pos=LONG  signal=NONE
 2026-05-15 10:20:50 [INFO] [RPOWER|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
 2026-05-15 10:20:50 [INFO] [RPOWER|15m] SCAN  bar=04:45  close=27.55  ATRStop=27.71  pos=SHORT  signal=NONE
+2026-05-15 10:25:00 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:25:00 [INFO] [BANKINDIA|5m] Received 314 candles | first=2026-05-11 03:45 | last=2026-05-15 04:50
+2026-05-15 10:25:00 [INFO] [BANKINDIA|5m] SCAN  bar=04:50  close=144.75  ATRStop=145.27  pos=SHORT  signal=NONE
+2026-05-15 10:25:00 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:25:00 [INFO] [PNB|5m] Received 314 candles | first=2026-05-11 03:45 | last=2026-05-15 04:50
+2026-05-15 10:25:00 [INFO] [PNB|5m] SCAN  bar=04:50  close=104.10  ATRStop=104.26  pos=SHORT  signal=NONE
+2026-05-15 10:25:00 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:25:00 [INFO] [RPOWER|5m] Received 314 candles | first=2026-05-11 03:45 | last=2026-05-15 04:50
+2026-05-15 10:25:00 [INFO] [RPOWER|5m] SCAN  bar=04:50  close=27.55  ATRStop=27.47  pos=LONG  signal=NONE
+2026-05-15 10:25:04 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:25:05 [INFO] [IOC|5m] Received 315 candles | first=2026-05-11 03:45 | last=2026-05-15 04:55
+2026-05-15 10:25:05 [INFO] [IOC|5m] SCAN  bar=04:55  close=137.86  ATRStop=137.88  pos=SHORT  signal=NONE
+2026-05-15 10:30:00 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:30:00 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:30:00 [INFO] [IOC|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:30:00 [INFO] [IOC|15m] SCAN  bar=04:45  close=137.75  ATRStop=138.41  pos=SHORT  signal=NONE
+2026-05-15 10:30:00 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:30:00 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:30:00 [INFO] [IOC|5m] Received 315 candles | first=2026-05-11 03:45 | last=2026-05-15 04:55
+2026-05-15 10:30:00 [INFO] [IOC|5m] SCAN  bar=04:55  close=137.75  ATRStop=138.04  pos=SHORT  signal=NONE
+2026-05-15 10:30:01 [INFO] [BANKINDIA|15m] Received 105 candles | first=2026-05-11 03:45 | last=2026-05-15 04:45
+2026-05-15 10:30:01 [INFO] [BANKINDIA|15m] SCAN  bar=04:45  close=144.55  ATRStop=146.09  pos=SHORT  signal=SELL
+2026-05-15 10:30:01 [INFO] [BANKINDIA|15m] Signal logged — DB: 200 total, 156 labeled
+2026-05-15 10:30:01 [WARNING] [BANKINDIA|15m] Order skipped — no OpenAlgo client (data_source=yfinance). Set data_source to 'openalgo' to place orders.
+2026-05-15 10:30:01 [INFO] [BANKINDIA|15m] SELL signal detected @ 2026-05-15 04:45:00 (close=144.55)
+2026-05-15 10:30:01 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:30:01 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:30:01 [INFO] [BANKINDIA|5m] Received 315 candles | first=2026-05-11 03:45 | last=2026-05-15 04:55
+2026-05-15 10:30:01 [INFO] [BANKINDIA|5m] SCAN  bar=04:55  close=144.55  ATRStop=145.23  pos=SHORT  signal=NONE
+2026-05-15 10:30:01 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:30:01 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:30:01 [INFO] [PNB|15m] Received 106 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:30:01 [INFO] [PNB|15m] SCAN  bar=05:00  close=104.04  ATRStop=104.10  pos=SHORT  signal=NONE
+2026-05-15 10:30:01 [INFO] [PNB|5m] Received 316 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:30:01 [INFO] [PNB|5m] SCAN  bar=05:00  close=104.04  ATRStop=104.10  pos=SHORT  signal=NONE
+2026-05-15 10:30:01 [INFO] [RPOWER|5m] Received 316 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:30:01 [INFO] [RPOWER|5m] SCAN  bar=05:00  close=27.54  ATRStop=27.54  pos=LONG  signal=NONE
+2026-05-15 10:30:02 [INFO] [RPOWER|15m] Received 106 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:30:02 [INFO] [RPOWER|15m] SCAN  bar=05:00  close=27.54  ATRStop=27.54  pos=SHORT  signal=NONE
+2026-05-15 10:30:02 [INFO] [BANKINDIA|15m] Telegram alert sent.
+2026-05-15 10:35:01 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:35:01 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:35:01 [INFO] [IOC|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:35:01 [INFO] [IOC|5m] SCAN  bar=05:05  close=137.73  ATRStop=137.77  pos=SHORT  signal=NONE
+2026-05-15 10:35:01 [INFO] [BANKINDIA|5m] Received 316 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:35:01 [INFO] [BANKINDIA|5m] SCAN  bar=05:00  close=144.28  ATRStop=144.88  pos=SHORT  signal=NONE
+2026-05-15 10:35:02 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:35:02 [INFO] [PNB|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:35:02 [INFO] [PNB|5m] SCAN  bar=05:05  close=104.07  ATRStop=104.07  pos=SHORT  signal=NONE
+2026-05-15 10:35:02 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:35:02 [INFO] [RPOWER|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:35:02 [INFO] [RPOWER|5m] SCAN  bar=05:05  close=27.52  ATRStop=27.52  pos=LONG  signal=NONE
+2026-05-15 10:40:02 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:40:02 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:40:02 [INFO] [IOC|5m] Received 318 candles | first=2026-05-11 03:45 | last=2026-05-15 05:10
+2026-05-15 10:40:02 [INFO] [IOC|5m] SCAN  bar=05:10  close=137.75  ATRStop=137.81  pos=SHORT  signal=NONE
+2026-05-15 10:40:02 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:40:02 [INFO] [BANKINDIA|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:40:02 [INFO] [BANKINDIA|5m] SCAN  bar=05:05  close=144.20  ATRStop=144.74  pos=SHORT  signal=NONE
+2026-05-15 10:40:02 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:40:03 [INFO] [PNB|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:40:03 [INFO] [PNB|5m] SCAN  bar=05:05  close=103.90  ATRStop=104.24  pos=SHORT  signal=NONE
+2026-05-15 10:40:03 [INFO] [RPOWER|5m] Received 317 candles | first=2026-05-11 03:45 | last=2026-05-15 05:05
+2026-05-15 10:40:03 [INFO] [RPOWER|5m] SCAN  bar=05:05  close=27.40  ATRStop=27.72  pos=SHORT  signal=SELL
+2026-05-15 10:40:03 [INFO] [RPOWER|5m] Signal logged — DB: 201 total, 156 labeled
+2026-05-15 10:40:03 [WARNING] [RPOWER|5m] Order skipped — no OpenAlgo client (data_source=yfinance). Set data_source to 'openalgo' to place orders.
+2026-05-15 10:40:03 [INFO] [RPOWER|5m] SELL signal detected @ 2026-05-15 05:05:00 (close=27.40)
+2026-05-15 10:40:04 [INFO] [RPOWER|5m] Telegram alert sent.
+2026-05-15 10:45:00 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:45:00 [INFO] [RPOWER|5m] Received 318 candles | first=2026-05-11 03:45 | last=2026-05-15 05:10
+2026-05-15 10:45:00 [INFO] [RPOWER|5m] SCAN  bar=05:10  close=27.38  ATRStop=27.56  pos=SHORT  signal=NONE
+2026-05-15 10:45:02 [INFO] [IOC|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:45:02 [INFO] [IOC|15m] Received 106 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:45:02 [INFO] [IOC|15m] SCAN  bar=05:00  close=137.71  ATRStop=138.17  pos=SHORT  signal=NONE
+2026-05-15 10:45:02 [INFO] [PNB|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:45:03 [INFO] [PNB|15m] Received 106 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:45:03 [INFO] [PNB|15m] SCAN  bar=05:00  close=103.91  ATRStop=104.47  pos=SHORT  signal=NONE
+2026-05-15 10:45:03 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:45:03 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:45:03 [INFO] [RPOWER|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:45:03 [INFO] [IOC|5m] Received 319 candles | first=2026-05-11 03:45 | last=2026-05-15 05:15
+2026-05-15 10:45:03 [INFO] [IOC|5m] SCAN  bar=05:15  close=137.71  ATRStop=137.71  pos=SHORT  signal=NONE
+2026-05-15 10:45:03 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:45:03 [INFO] [BANKINDIA|5m] Received 319 candles | first=2026-05-11 03:45 | last=2026-05-15 05:15
+2026-05-15 10:45:03 [INFO] [BANKINDIA|5m] SCAN  bar=05:15  close=144.25  ATRStop=144.35  pos=SHORT  signal=NONE
+2026-05-15 10:45:03 [INFO] [BANKINDIA|15m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:15:00
+2026-05-15 10:45:03 [INFO] [RPOWER|15m] Received 106 candles | first=2026-05-11 03:45 | last=2026-05-15 05:00
+2026-05-15 10:45:03 [INFO] [RPOWER|15m] SCAN  bar=05:00  close=27.38  ATRStop=27.70  pos=SHORT  signal=NONE
+2026-05-15 10:45:04 [INFO] [PNB|5m] Received 318 candles | first=2026-05-11 03:45 | last=2026-05-15 05:10
+2026-05-15 10:45:04 [INFO] [PNB|5m] SCAN  bar=05:10  close=103.91  ATRStop=104.11  pos=SHORT  signal=NONE
+2026-05-15 10:45:04 [INFO] [BANKINDIA|15m] Received 107 candles | first=2026-05-11 03:45 | last=2026-05-15 05:15
+2026-05-15 10:45:04 [INFO] [BANKINDIA|15m] SCAN  bar=05:15  close=144.25  ATRStop=144.35  pos=SHORT  signal=NONE
+2026-05-15 10:50:01 [INFO] [RPOWER|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:50:01 [INFO] [RPOWER|5m] Received 320 candles | first=2026-05-11 03:45 | last=2026-05-15 05:20
+2026-05-15 10:50:01 [INFO] [RPOWER|5m] SCAN  bar=05:20  close=27.39  ATRStop=27.41  pos=SHORT  signal=NONE
+2026-05-15 10:50:03 [INFO] [IOC|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:50:04 [INFO] [BANKINDIA|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:50:04 [INFO] [IOC|5m] Received 319 candles | first=2026-05-11 03:45 | last=2026-05-15 05:15
+2026-05-15 10:50:04 [INFO] [IOC|5m] SCAN  bar=05:15  close=137.70  ATRStop=137.93  pos=SHORT  signal=NONE
+2026-05-15 10:50:04 [INFO] [BANKINDIA|5m] Received 319 candles | first=2026-05-11 03:45 | last=2026-05-15 05:15
+2026-05-15 10:50:04 [INFO] [BANKINDIA|5m] SCAN  bar=05:15  close=144.35  ATRStop=144.76  pos=SHORT  signal=NONE
+2026-05-15 10:50:04 [INFO] [PNB|5m] Fetching history | source=yfinance | lookback=5 days | from=2026-05-10 to=2026-05-15 | candle=0:05:00
+2026-05-15 10:50:04 [INFO] [PNB|5m] Received 320 candles | first=2026-05-11 03:45 | last=2026-05-15 05:20
+2026-05-15 10:50:04 [INFO] [PNB|5m] SCAN  bar=05:20  close=103.99  ATRStop=104.01  pos=SHORT  signal=NONE
+2026-05-15 10:52:07 [ERROR] Another bot instance (PID 28100) is already running! Kill it first or delete C:\Rahul\04_Rahul\01_Trade\Repos\Strategies\BOT-Antigravity\.utbot.lock.  Exiting.
+2026-05-15 10:52:07 [INFO] 
+Shutting down — waiting for workers to stop...
+2026-05-15 10:52:07 [INFO] [IOC|15m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [PNB|15m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [PNB|5m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [RPOWER|15m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [IOC|5m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [RPOWER|5m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [BANKINDIA|5m] Worker stopped.
+2026-05-15 10:52:07 [INFO] [BANKINDIA|15m] Worker stopped.
+2026-05-15 10:52:07 [INFO] All workers stopped. Bye!
