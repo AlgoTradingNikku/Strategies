@@ -1,4 +1,4 @@
-data_source: "yfinance"   # Can be "openalgo", "yfinance", "twelvedata", or "tvdatafeed"
+data_source: "openalgo"   # Can be "openalgo", "yfinance", "twelvedata", or "tvdatafeed"
 
 # ------------------------------------------------------------
 # Telegram Alerts
