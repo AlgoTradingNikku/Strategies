@@ -423,6 +423,7 @@ def compute_linreg_signals(
     signal_length: int = 7,
     use_sma: bool = True,
     proximity_pct: float = 0.5,
+    compare_source: str = "lr_close",
 ) -> pd.DataFrame:
     """
     Compute Linear Regression Candle signals.
@@ -430,15 +431,20 @@ def compute_linreg_signals(
     Port of the Pine Script LinReg Candle logic:
       - Applies linear regression to OHLC prices to smooth noise
       - Computes a signal line (SMA or EMA of LinReg close)
-      - Buy when close crosses above the signal line OR is above and within proximity_pct
-      - Sell when close crosses below the signal line OR is below and within proximity_pct
+      - Buy/Sell based on compare_source vs the signal line
+
+    Parameters
+    ----------
+    compare_source : str
+        "lr_close" — compare LinReg-smoothed close vs signal line (matches TradingView visually).
+        "close"    — compare raw closing price vs signal line (more sensitive / faster signals).
 
     Appends columns
     ----------------
     lr_close  : float — linear regression smoothed close
     lr_signal : float — signal line (SMA/EMA of lr_close)
-    lr_buy    : bool  — close crosses above or is above and nearby signal line
-    lr_sell   : bool  — close crosses below or is below and nearby signal line
+    lr_buy    : bool  — source crosses above or is above and nearby signal line
+    lr_sell   : bool  — source crosses below or is below and nearby signal line
     """
     df = df.copy()
 
@@ -451,14 +457,22 @@ def compute_linreg_signals(
     else:
         lr_signal = lr_close.ewm(span=signal_length, adjust=False).mean()
 
-    # ---- Signals: close vs signal line --------------------------------------
-    prox = df["close"] * proximity_pct / 100
+    # ---- Select comparison source -------------------------------------------
+    # "lr_close" matches TradingView's LinReg candle visual (smoothed close vs signal line)
+    # "close"    compares raw price vs signal line (faster, more sensitive)
+    if compare_source == "lr_close":
+        src = lr_close
+    else:
+        src = df["close"]
 
-    crossover = _crossover(df["close"], lr_signal)
-    above_near = (df["close"] > lr_signal) & ((df["close"] - lr_signal) <= prox)
+    # ---- Signals: src vs signal line ----------------------------------------
+    prox = src * proximity_pct / 100
 
-    crossunder = _crossunder(df["close"], lr_signal)
-    below_near = (df["close"] < lr_signal) & ((lr_signal - df["close"]) <= prox)
+    crossover  = _crossover(src, lr_signal)
+    above_near = (src > lr_signal) & ((src - lr_signal) <= prox)
+
+    crossunder = _crossunder(src, lr_signal)
+    below_near = (src < lr_signal) & ((lr_signal - src) <= prox)
 
     df["lr_close"] = lr_close
     df["lr_signal"] = lr_signal

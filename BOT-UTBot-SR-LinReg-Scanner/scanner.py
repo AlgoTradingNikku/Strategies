@@ -340,6 +340,7 @@ def scan_symbol(
             signal_length=int(lr_cfg.get("signal_length", 7)),
             use_sma=bool(lr_cfg.get("use_sma", True)),
             proximity_pct=float(lr_cfg.get("proximity_pct", 0.5)),
+            compare_source=str(lr_cfg.get("compare_source", "lr_close")),
         )
 
     # ---- Evaluate composite signals ----------------------------------------
