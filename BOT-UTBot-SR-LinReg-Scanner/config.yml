@@ -1,0 +1,163 @@
+# ============================================================
+# BOT-UTBot-SR-LinReg-Scanner — Configuration
+# ============================================================
+# Multi-signal scanner combining UT Bot, S/R Channels, and
+# LinReg Candle signals. Each condition can be enabled/disabled
+# independently and combined via AND or OR mode.
+
+data_source: "yfinance"   # "yfinance", "openalgo", "tvdatafeed", "twelvedata"
+
+# ------------------------------------------------------------
+# Telegram Alerts
+# ------------------------------------------------------------
+telegram:
+  mode: "direct"
+  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
+  chat_id: "939814804"
+
+# ------------------------------------------------------------
+# OpenAlgo (only needed if data_source: "openalgo")
+# ------------------------------------------------------------
+openalgo:
+  apikey: "cd6aa9453a385603f2dd158b53ea0179463be18c704bed45564e8d0ba336263b"
+  username: "rahul.tew"
+  base_url: "http://127.0.0.1:5000"
+  ws_url: "ws://127.0.0.1:8765"
+
+# ------------------------------------------------------------
+# Additional Data Sources
+# ------------------------------------------------------------
+twelvedata:
+  apikey: ""
+
+tvdatafeed:
+  username: ""
+  password: ""
+
+# ------------------------------------------------------------
+# Scan Settings
+# ------------------------------------------------------------
+exchange: "NSE"
+
+# Supported: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1W, 1M
+scan_timeframe: "15m"
+
+# Index segment to scan dynamically from NSE
+# Set to "" or comment out to use the custom 'symbols' list instead.
+segment: "NIFTY100"
+
+# UT Bot lookback: how many candles to check for UT Bot buy/sell signals
+# 3 = current candle + 2 prior candles
+signal_lookback_candles: 3
+
+# Scan interval in seconds (for continuous mode)
+scan_interval_seconds: 300
+
+# ------------------------------------------------------------
+# Signal Combination Mode
+# ------------------------------------------------------------
+# "AND" = all enabled conditions must be true simultaneously
+# "OR"  = any one enabled condition triggers the signal
+signal_mode: "AND"
+
+# ------------------------------------------------------------
+# UT Bot Strategy Parameters
+# ------------------------------------------------------------
+strategy:
+  ut_enabled: true
+  key_value: 2
+  atr_period: 1
+  use_heikin_ashi: false
+
+# ------------------------------------------------------------
+# S/R Channel Parameters
+# ------------------------------------------------------------
+sr_channels:
+  enabled: true
+  pivot_period: 10           # Bars on each side to confirm a pivot
+  source: "High/Low"        # "High/Low" or "Close/Open"
+  channel_width_pct: 5       # Max channel width as % of 300-bar range
+  min_strength: 1            # Minimum zone strength to display
+  max_num_sr: 6              # Maximum number of S/R zones
+  loopback: 290              # Bars to look back for pivot collection
+  proximity_pct: 0.5         # % proximity to count as "near" a zone
+
+# ------------------------------------------------------------
+# LinReg Candle Parameters
+# ------------------------------------------------------------
+linreg:
+  enabled: true
+  length: 11                 # Linear regression window length
+  signal_length: 7           # Signal line smoothing length
+  use_sma: true              # true = SMA signal line, false = EMA
+
+# ------------------------------------------------------------
+# Data Settings
+# ------------------------------------------------------------
+data:
+  lookback_days: 5
+
+# ------------------------------------------------------------
+# Custom/Fallback Stocks List
+# Used ONLY when 'segment' above is empty or if NSE fetch fails.
+# ------------------------------------------------------------
+symbols:
+  - ADANIENT
+  - ADANIPORTS
+  - APOLLOHOSP
+  - ASIANPAINT
+  - AXISBANK
+  - BAJAJ-AUTO
+  - BAJFINANCE
+  - BAJAJFINSV
+  - BEL
+  - BPCL
+  - BHARTIARTL
+  - BRITANNIA
+  - CIPLA
+  - COALINDIA
+  - DRREDDY
+  - EICHERMOT
+  - ETERNAL
+  - GRASIM
+  - HCLTECH
+  - HDFCBANK
+  - HDFCLIFE
+  - HEROMOTOCO
+  - HINDALCO
+  - HINDUNILVR
+  - ICICIBANK
+  - ITC
+  - INDUSINDBK
+  - INFY
+  - JSWSTEEL
+  - KOTAKBANK
+  - LT
+  - M&M
+  - MARUTI
+  - NTPC
+  - NESTLEIND
+  - ONGC
+  - POWERGRID
+  - RELIANCE
+  - SBILIFE
+  - SBIN
+  - SUNPHARMA
+  - TCS
+  - TATACONSUM
+  - TATAMTRDVT
+  - TATASTEEL
+  - TECHM
+  - TITAN
+  - TRENT
+  - ULTRACEMCO
+  - WIPRO
+
+# ------------------------------------------------------------
+# Bot Settings
+# ------------------------------------------------------------
+bot:
+  market_hours_check: false   # Set to true to only scan during market hours
+  market_open: "09:15"
+  market_close: "15:30"
+  log_level: "INFO"

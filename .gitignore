@@ -3,3 +3,11 @@ uv.lock
 options_bot\__pycache__
 PureOptionsBot\__pycache__
 Strategies.code-workspace
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Log files
+*.log
+
