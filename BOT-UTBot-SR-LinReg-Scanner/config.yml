@@ -81,7 +81,7 @@ tvdatafeed:
 # Data & General Bot Settings
 # ------------------------------------------------------------
 data:
-  lookback_days: 5
+  lookback_days: 30
 
 bot:
   market_hours_check: false           # Set to true to only scan during market hours
