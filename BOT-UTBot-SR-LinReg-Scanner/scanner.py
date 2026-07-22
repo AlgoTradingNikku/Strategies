@@ -339,6 +339,7 @@ def scan_symbol(
             length=int(lr_cfg.get("length", 11)),
             signal_length=int(lr_cfg.get("signal_length", 7)),
             use_sma=bool(lr_cfg.get("use_sma", True)),
+            proximity_pct=float(lr_cfg.get("proximity_pct", 0.5)),
         )
 
     # ---- Evaluate composite signals ----------------------------------------

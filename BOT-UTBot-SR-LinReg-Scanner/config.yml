@@ -90,6 +90,7 @@ linreg:
   length: 11                 # Linear regression window length
   signal_length: 7           # Signal line smoothing length
   use_sma: true              # true = SMA signal line, false = EMA
+  proximity_pct: 0.5         # % proximity to count as "near" the signal line
 
 # ------------------------------------------------------------
 # Data Settings
