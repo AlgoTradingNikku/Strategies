@@ -58,7 +58,8 @@ scan_interval_seconds: 300
 # ------------------------------------------------------------
 # "AND" = all enabled conditions must be true simultaneously
 # "OR"  = any one enabled condition triggers the signal
-signal_mode: "AND"
+# Or specify a custom logic formula, e.g. "(utbot and S/R Channels) OR (utbot and LinReg)"
+signal_mode: "(utbot and S/R Channels) OR (utbot and LinReg) OR (utbot and LinReg and S/R)"
 
 # ------------------------------------------------------------
 # UT Bot Strategy Parameters

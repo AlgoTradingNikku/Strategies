@@ -468,6 +468,47 @@ def compute_linreg_signals(
     return df
 
 
+def safe_eval_boolean(expr: str, variables: dict) -> bool:
+    """
+    Safely evaluate a boolean expression with allowed variables and operators.
+    E.g. "(utbot and sr) or (utbot and linreg)"
+    """
+    import re
+    normalized = expr.lower()
+
+    # Normalize variations using regex boundaries where needed
+    normalized = re.sub(r"\blinreg candles\b", "linreg", normalized)
+    normalized = re.sub(r"\blinreg\b", "linreg", normalized)
+    normalized = re.sub(r"\blinreg\b", "linreg", normalized)
+    normalized = re.sub(r"\blr\b", "linreg", normalized)
+
+    normalized = re.sub(r"\bs/r channels\b", "sr", normalized)
+    normalized = normalized.replace("s/r", "sr")  # safe since '/' is unique
+    normalized = re.sub(r"\bsr_channels\b", "sr", normalized)
+
+    normalized = re.sub(r"\but bot\b", "utbot", normalized)
+    normalized = re.sub(r"\but\b", "utbot", normalized)
+
+    # Only allow parentheses, spaces, logical operators (and, or, not, true, false), and mapped keys
+    token_pattern = re.compile(r"[a-z0-9_]+|[\(\)]")
+    tokens = token_pattern.findall(normalized)
+
+    valid_keys = {"utbot", "sr", "linreg", "and", "or", "not", "true", "false", "(", ")"}
+    for token in tokens:
+        if token not in valid_keys:
+            raise ValueError(f"Invalid token {token!r} in custom logic expression")
+
+    # Map the clean variable names to values
+    context = {
+        "utbot": bool(variables.get("utbot")),
+        "sr": bool(variables.get("sr")),
+        "linreg": bool(variables.get("linreg")),
+        "__builtins__": {}
+    }
+
+    return bool(eval(normalized, context))
+
+
 # ============================================================================
 # 4. COMPOSITE SIGNAL EVALUATOR
 # ============================================================================
@@ -573,11 +614,30 @@ def evaluate_composite_signals(
 
     # ---- Combine based on mode ---------------------------------------------
     if mode == "AND":
-        composite_buy = all(buy_conditions)
-        composite_sell = all(sell_conditions)
-    else:  # OR
-        composite_buy = any(buy_conditions)
-        composite_sell = any(sell_conditions)
+        composite_buy = all(buy_conditions) if buy_conditions else False
+        composite_sell = all(sell_conditions) if sell_conditions else False
+    elif mode == "OR":
+        composite_buy = any(buy_conditions) if buy_conditions else False
+        composite_sell = any(sell_conditions) if sell_conditions else False
+    else:
+        # Custom logic expression (e.g. "(utbot and sr) or (utbot and linreg)")
+        buy_vars = {
+            "utbot": ut_buy,
+            "sr": sr_buy,
+            "linreg": lr_buy,
+        }
+        sell_vars = {
+            "utbot": ut_sell,
+            "sr": sr_sell,
+            "linreg": lr_sell,
+        }
+        try:
+            composite_buy = safe_eval_boolean(mode, buy_vars)
+            composite_sell = safe_eval_boolean(mode, sell_vars)
+        except Exception as e:
+            log.error("Failed to evaluate custom signal_mode %r: %s", mode, e)
+            composite_buy = False
+            composite_sell = False
 
     # ---- Collect detail metadata -------------------------------------------
     details = {}
