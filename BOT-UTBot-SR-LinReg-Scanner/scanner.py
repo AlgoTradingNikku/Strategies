@@ -340,7 +340,6 @@ def scan_symbol(
             signal_length=int(lr_cfg.get("signal_length", 7)),
             use_sma=bool(lr_cfg.get("use_sma", True)),
             proximity_pct=float(lr_cfg.get("proximity_pct", 0.5)),
-            compare_source=str(lr_cfg.get("compare_source", "lr_close")),
         )
 
     # ---- Evaluate composite signals ----------------------------------------
@@ -569,45 +568,49 @@ def build_telegram_message(
     timeframe: str,
     total_stocks: int = 0,
 ) -> str:
-    """Build a consolidated Telegram message for buy and sell signals."""
+    """Build a consolidated Telegram message for buy and sell signals (HTML format)."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     total = total_stocks or (len(buy_results) + len(sell_results))
 
+    def _esc(text: str) -> str:
+        """Escape HTML special characters in symbol names (e.g. M&M -> M&amp;M)."""
+        return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
     if not buy_results and not sell_results:
         return (
-            f"📭 *{segment_label} Scanner — No Signals*\n"
+            f"\U0001f4ed <b>{_esc(segment_label)} Scanner \u2014 No Signals</b>\n"
             f"Timeframe: {timeframe}\n"
             f"Scanned at: {now}"
         )
 
     lines = [
-        f"📊 *{segment_label} — Multi-Signal Scanner*",
-        f"Timeframe: `{timeframe}` | Scanned: {now}",
+        f"\U0001f4ca <b>{_esc(segment_label)} \u2014 Multi-Signal Scanner</b>",
+        f"Timeframe: <code>{timeframe}</code> | Scanned: {now}",
         "",
     ]
 
     if buy_results:
-        lines.append("🟢 *BUY Signals*")
+        lines.append("\U0001f7e2 <b>BUY Signals</b>")
         for i, r in enumerate(buy_results, 1):
             conds = _format_conditions(r["triggered"])
             trail_str = f" | Trail: {r['ut_trail']:.2f}" if r.get("ut_trail") is not None else ""
             lines.append(
-                f"{i}. *{r['symbol']}* — ₹{r['close']:.2f} [{conds}]{trail_str}"
+                f"{i}. <b>{_esc(r['symbol'])}</b> \u2014 \u20b9{r['close']:.2f} [{conds}]{trail_str}"
             )
         lines.append("")
 
     if sell_results:
-        lines.append("🔴 *SELL Signals*")
+        lines.append("\U0001f534 <b>SELL Signals</b>")
         for i, r in enumerate(sell_results, 1):
             conds = _format_conditions(r["triggered"])
             trail_str = f" | Trail: {r['ut_trail']:.2f}" if r.get("ut_trail") is not None else ""
             lines.append(
-                f"{i}. *{r['symbol']}* — ₹{r['close']:.2f} [{conds}]{trail_str}"
+                f"{i}. <b>{_esc(r['symbol'])}</b> \u2014 \u20b9{r['close']:.2f} [{conds}]{trail_str}"
             )
         lines.append("")
 
     lines.append(
-        f"_Total: {len(buy_results)} BUY + {len(sell_results)} SELL / {total} stocks_"
+        f"<i>Total: {len(buy_results)} BUY + {len(sell_results)} SELL / {total} stocks</i>"
     )
 
     return "\n".join(lines)

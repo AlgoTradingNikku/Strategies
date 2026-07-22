@@ -69,7 +69,7 @@ def _send_direct(tg_cfg, message):
     payload = {
         "chat_id": chat_id,
         "text": message,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
     }
 
     try:
