@@ -20,8 +20,8 @@ signal_lookback_candles: 3            # How many candles to check for UT Bot buy
 # ------------------------------------------------------------
 # Signal Combination Mode
 # ------------------------------------------------------------
-# "AND" = all enabled conditions must be true simultaneously
-# "OR"  = any one enabled condition triggers the signal
+# "AND" — Combines all ENABLED strategies using AND logic (strict).
+# "OR"  — Alert triggers if any one of the enabled strategies triggers.
 # Or specify a custom logic formula, e.g. "(utbot and S/R Channels) OR (utbot and LinReg)"
 signal_mode: "AND"
 
