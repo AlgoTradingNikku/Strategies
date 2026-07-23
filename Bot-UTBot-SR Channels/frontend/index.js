@@ -280,8 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
                 <td>${item.close.toFixed(2)}</td>
-                <td>${item.details.ut_trail ? item.details.ut_trail.toFixed(2) : "N/A"}</td>
-                <td>${item.details.sr_zones.map(z => `${z[0].toFixed(1)}–${z[1].toFixed(1)}`).join(", ") || "None"}</td>
+                <td>${(item.ut_trail !== null && item.ut_trail !== undefined) ? item.ut_trail.toFixed(2) : "N/A"}</td>
+                <td>${(item.sr_zones && item.sr_zones.length > 0) ? item.sr_zones.map(z => `${z[0].toFixed(1)}–${z[1].toFixed(1)}`).join(", ") : "None"}</td>
                 <td>
                     ${item.triggered.map(cond => {
                         const styleClass = cond.includes("UT") ? "ut-badge-type" : "sr-badge-type";
