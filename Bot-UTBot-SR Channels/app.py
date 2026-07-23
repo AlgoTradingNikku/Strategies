@@ -233,6 +233,88 @@ def get_logs(lines: int = 150):
         raise HTTPException(status_code=500, detail=f"Failed to read logs: {e}")
 
 # ---------------------------------------------------------------------------
+# Background Continuous Scanner
+# ---------------------------------------------------------------------------
+import threading
+import time
+from scanner import (
+    _is_market_hours,
+    _parse_timeframe,
+    build_telegram_message,
+    print_results_table,
+    send_telegram_alert,
+)
+from nse_indices import get_index_symbols
+
+def run_background_scanner():
+    log.info("Background scanner scheduler started on server.")
+    last_scan_boundary = None
+    
+    while True:
+        try:
+            cfg = load_config()
+            timeframe = cfg.get("scan_timeframe", "15m")
+            scan_interval = int(cfg.get("scan_interval_seconds", 300))
+            
+            if _is_market_hours(cfg):
+                # Calculate current candle boundary to avoid duplicate scans
+                try:
+                    candle_secs = int(_parse_timeframe(timeframe).total_seconds())
+                    epoch_secs  = int(datetime.now().timestamp())
+                    boundary    = (epoch_secs // candle_secs) * candle_secs
+                except ValueError:
+                    boundary = None
+
+                if boundary != last_scan_boundary:
+                    last_scan_boundary = boundary
+                    
+                    buy, sell, label, tf = run_scan(cfg)
+                    
+                    # Calculate total tickers scanned
+                    segment = cfg.get("segment", "")
+                    use_symbols = cfg.get("use_symbols", False)
+                    if isinstance(segment, str):
+                        seg_list = [segment] if segment.strip() else []
+                    else:
+                        seg_list = [s for s in (segment or []) if s and s.strip()]
+                    
+                    total_syms = set()
+                    for s in seg_list:
+                        syms = get_index_symbols(s)
+                        if syms:
+                            total_syms.update(syms)
+                    if use_symbols or not seg_list:
+                        total_syms.update(cfg.get("symbols", []))
+                    total = len(total_syms) if total_syms else len(cfg.get("symbols", []))
+
+                    print_results_table(buy, sell, label, tf, total)
+                    
+                    if buy or sell:
+                        eff_mode = cfg.get("signal_mode", "UTBot+SR")
+                        msg = build_telegram_message(buy, sell, label, tf, eff_mode, total)
+                        tg_result = send_telegram_alert(msg, priority=8)
+                        if "error" in tg_result:
+                            log.warning("Telegram alert failed: %s", tg_result["error"])
+                        else:
+                            log.info("✅ Telegram alert sent successfully.")
+                    else:
+                        log.info("No signals — skipping Telegram alert.")
+                else:
+                    log.debug("Same candle boundary — waiting for next bar...")
+            else:
+                log.debug("Outside market hours — sleeping...")
+                
+            time.sleep(scan_interval)
+        except Exception as e:
+            log.error("Error in background scanner thread: %s", e)
+            time.sleep(60)
+
+@app.on_event("startup")
+def start_scanner_thread():
+    t = threading.Thread(target=run_background_scanner, daemon=True)
+    t.start()
+
+# ---------------------------------------------------------------------------
 # Serve Web Frontend (mount static files at last root)
 # ---------------------------------------------------------------------------
 frontend_dir = _bot_dir / "frontend"
