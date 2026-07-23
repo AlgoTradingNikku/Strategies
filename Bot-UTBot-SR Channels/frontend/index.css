@@ -371,7 +371,8 @@ button, input, select, textarea {
 .dashboard-tables-grid {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 16px;
+    align-items: start;
 }
 
 .table-card {
@@ -379,28 +380,32 @@ button, input, select, textarea {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     overflow: hidden;
+    width: fit-content;
+    min-width: 0;
 }
 
 .table-card-header {
-    padding: 20px 24px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     background-color: rgba(255, 255, 255, 0.01);
 }
 
 .table-card-header h3 {
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    white-space: nowrap;
 }
 
 .search-box {
     position: relative;
-    width: 220px;
+    width: 140px;
 }
 
 .search-box i {
@@ -414,11 +419,11 @@ button, input, select, textarea {
 
 .search-box input {
     width: 100%;
-    padding: 8px 12px 8px 36px;
+    padding: 5px 10px 5px 28px;
     border-radius: var(--border-radius-sm);
     border: 1px solid var(--border-color);
     background-color: var(--bg-base);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     transition: var(--transition-fast);
 }
 
@@ -429,12 +434,12 @@ button, input, select, textarea {
 }
 
 .table-container {
-    width: 100%;
+    width: fit-content;
     overflow-x: auto;
 }
 
 table {
-    width: 100%;
+    width: auto;
     border-collapse: collapse;
     text-align: left;
     font-size: 0.78rem;
