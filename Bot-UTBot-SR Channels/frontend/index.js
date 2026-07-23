@@ -319,12 +319,13 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll(".btn-analyze").forEach(btn => {
             btn.addEventListener("click", () => {
                 const sym = btn.getAttribute("data-symbol");
-                loadSymbolChart(sym);
-                // Switch tab
+                // Switch tab FIRST so the chart container is visible
                 tabButtons.forEach(b => b.classList.remove("active"));
                 tabPanels.forEach(p => p.classList.remove("active"));
                 document.querySelector('[data-tab="charting"]').classList.add("active");
                 document.getElementById("panel-charting").classList.add("active");
+                // Load chart after a small delay to let the DOM render
+                setTimeout(() => loadSymbolChart(sym), 80);
             });
         });
 
@@ -420,6 +421,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------------------------------
     function initChartWidget() {
         const container = document.getElementById("chart-element-container");
+
+        // Destroy previous chart instance to avoid stale series references
+        if (currentChart) {
+            currentChart.remove();
+            currentChart = null;
+            candlestickSeries = null;
+            trailLineSeries = null;
+            activeSRLines = [];
+        }
+
         container.innerHTML = ""; // Clear placeholder
 
         // Create core chart instance
