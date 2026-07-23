@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTBot & SR Channels Scanner Dashboard</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <span class="logo-text">ANTIGRAVITY <span class="accent-text">SCAN</span></span>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="charting">
+                    <i class="fa-solid fa-chart-candlestick"></i>
+                    <span>Interactive Chart</span>
+                </button>
+                <button class="nav-item" data-tab="config">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Settings</span>
+                </button>
+                <button class="nav-item" data-tab="logs">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span>System Logs</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator online"></div>
+                <div class="status-info">
+                    <p class="status-title">System Status</p>
+                    <p class="status-desc" id="connection-status">Connected to Localhost</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Global Header -->
+            <header class="top-header">
+                <div class="header-title-area">
+                    <h1 id="page-title">UTBot + SR Channels Dashboard</h1>
+                    <p class="subtitle" id="active-scan-info">Loading active scanner profile...</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="btn-toggle-auto-refresh">
+                        <i class="fa-solid fa-rotate"></i> Auto-refresh: <span id="auto-refresh-state">ON</span>
+                    </button>
+                    <button class="btn btn-primary" id="btn-run-scan">
+                        <i class="fa-solid fa-play"></i> Run Scanner
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab 1: Dashboard Panel -->
+            <section class="tab-panel active" id="panel-dashboard">
+                <!-- Summary Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Stocks Scanned</span>
+                            <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="stat-scanned-count">-</h2>
+                        <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">BUY Signals</span>
+                            <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+                        </div>
+                        <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
+                        <span class="stat-sub">Across all segments</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">SELL Signals</span>
+                            <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                        </div>
+                        <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
+                        <span class="stat-sub">Across all segments</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Last Scan Cycle</span>
+                            <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="stat-last-scan-time">-</h2>
+                        <span class="stat-sub">Local system time</span>
+                    </div>
+                </div>
+
+                <!-- Signal Tables -->
+                <div class="dashboard-tables-grid">
+                    <!-- BUY Signals Card -->
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <h3 class="text-buy"><i class="fa-solid fa-circle-arrow-up"></i> Dynamic BUY Signals</h3>
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="buy-search" placeholder="Search symbol...">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="buy-signals-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Close</th>
+                                        <th>UT Trail</th>
+                                        <th>SR Support Zones</th>
+                                        <th>Triggered Conditions</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SELL Signals Card -->
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <h3 class="text-sell"><i class="fa-solid fa-circle-arrow-down"></i> Dynamic SELL Signals</h3>
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="sell-search" placeholder="Search symbol...">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="sell-signals-table">
+                                <thead>
+                                    <tr>
+                                        <th>Symbol</th>
+                                        <th>Close</th>
+                                        <th>UT Trail</th>
+                                        <th>SR Resistance Zones</th>
+                                        <th>Triggered Conditions</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 2: Charting Panel -->
+            <section class="tab-panel" id="panel-charting">
+                <div class="chart-layout">
+                    <!-- Chart Control Sidebar -->
+                    <div class="chart-sidebar">
+                        <div class="sidebar-section">
+                            <label for="chart-symbol-select">Select Scanned Symbol</label>
+                            <select id="chart-symbol-select">
+                                <option value="" disabled selected>Choose a symbol...</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-section">
+                            <h4>Active Indicators</h4>
+                            <div class="indicator-toggle">
+                                <span class="indicator-badge utbot-badge">UT Trail Line</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-ut-line" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="indicator-toggle">
+                                <span class="indicator-badge sr-badge">S/R Zones</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-sr-zones" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="indicator-toggle">
+                                <span class="indicator-badge signal-badge">Buy/Sell Markers</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggle-markers" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="sidebar-section ticker-details" id="chart-ticker-details" style="display:none;">
+                            <h4>Ticker Summary</h4>
+                            <div class="ticker-detail-row">
+                                <span>Close Price:</span>
+                                <strong id="detail-close">-</strong>
+                            </div>
+                            <div class="ticker-detail-row">
+                                <span>UT Trail Value:</span>
+                                <strong id="detail-trail">-</strong>
+                            </div>
+                            <div class="ticker-detail-row">
+                                <span>S/R Zones Count:</span>
+                                <strong id="detail-zones">-</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Workspace -->
+                    <div class="chart-workspace-container">
+                        <div class="chart-header-bar">
+                            <h3 id="chart-title">TradingView Chart Viewer</h3>
+                            <div class="chart-timeframe-badge" id="chart-timeframe-display">-</div>
+                        </div>
+                        <div class="chart-container" id="chart-element-container">
+                            <div class="chart-placeholder">
+                                <i class="fa-solid fa-chart-candlestick"></i>
+                                <p>Select a stock from the sidebar or click "Analyze" in the tables to load the interactive TradingView Chart.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 3: Configuration Panel -->
+            <section class="tab-panel" id="panel-config">
+                <form id="config-form" class="config-grid">
+                    <!-- Left Column: Core Setup -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-gears"></i> Core Scanner Settings
+                        </div>
+                        <div class="config-card-body">
+                            <div class="form-group">
+                                <label for="cfg-data-source">Data Provider</label>
+                                <select id="cfg-data-source">
+                                    <option value="yfinance">yFinance (Free/Recommended)</option>
+                                    <option value="openalgo">OpenAlgo Server</option>
+                                    <option value="tvdatafeed">TvDatafeed</option>
+                                    <option value="twelvedata">TwelveData</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-exchange">Exchange</label>
+                                <input type="text" id="cfg-exchange">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-timeframe">Scan Timeframe</label>
+                                <select id="cfg-timeframe">
+                                    <option value="1m">1 minute</option>
+                                    <option value="3m">3 minutes</option>
+                                    <option value="5m">5 minutes</option>
+                                    <option value="15m">15 minutes</option>
+                                    <option value="30m">30 minutes</option>
+                                    <option value="1h">1 hour</option>
+                                    <option value="1d">1 day</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-interval">Scan Interval (Seconds)</label>
+                                <input type="number" id="cfg-interval">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-signal-mode">Signal Condition Mode</label>
+                                <select id="cfg-signal-mode">
+                                    <option value="UTBot+SR">UTBot + SR (Both Required)</option>
+                                    <option value="UTBot">UTBot Only</option>
+                                    <option value="SR">SR Channels Only</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-lookback">Signal Lookback (Candles)</label>
+                                <input type="number" id="cfg-lookback" min="1" max="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Middle Column: Strategy Parameters -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-bolt"></i> Strategy Coefficients
+                        </div>
+                        <div class="config-card-body">
+                            <!-- UTBot -->
+                            <h4 class="sub-header-line">UT Bot Parameters</h4>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-ut-key">Sensitivity (Key)</label>
+                                    <input type="number" id="cfg-ut-key" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-ut-atr">ATR Period</label>
+                                    <input type="number" id="cfg-ut-atr">
+                                </div>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-ut-ha">Use Heikin-Ashi Price</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-ut-ha">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+
+                            <!-- S/R Channels -->
+                            <h4 class="sub-header-line">S/R Zone Parameters</h4>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-sr-pivot">Pivot Period</label>
+                                    <input type="number" id="cfg-sr-pivot" min="4" max="30">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-sr-source">Pivot Price Source</label>
+                                    <select id="cfg-sr-source">
+                                        <option value="High/Low">High / Low</option>
+                                        <option value="Close/Open">Close / Open</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-sr-width">Max Channel Width (%)</label>
+                                    <input type="number" id="cfg-sr-width" step="0.5">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-sr-strength">Min Zone Strength</label>
+                                    <input type="number" id="cfg-sr-strength">
+                                </div>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-sr-max">Max Active Zones</label>
+                                    <input type="number" id="cfg-sr-max" min="1" max="10">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-sr-loopback">Zone Lookup Bars</label>
+                                    <input type="number" id="cfg-sr-loopback" min="50" max="400">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-sr-prox">Boundary Proximity Margin (%)</label>
+                                <input type="number" id="cfg-sr-prox" step="0.05" min="0.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Alerting & Symbols -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-bell"></i> Alerts & Symbols
+                        </div>
+                        <div class="config-card-body">
+                            <h4 class="sub-header-line">Telegram Alerts</h4>
+                            <div class="form-group">
+                                <label for="cfg-tg-mode">Alerting Target</label>
+                                <select id="cfg-tg-mode">
+                                    <option value="direct">Direct Telegram Bot API</option>
+                                    <option value="openalgo">Via OpenAlgo Server Gateway</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-tg-token">Bot Token</label>
+                                <input type="password" id="cfg-tg-token" class="input-pass">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-tg-chat">Chat ID</label>
+                                <input type="text" id="cfg-tg-chat">
+                            </div>
+
+                            <h4 class="sub-header-line">Indices to Scan</h4>
+                            <div class="form-group">
+                                <label for="cfg-segments">Segments (Separate with commas)</label>
+                                <input type="text" id="cfg-segments" placeholder="e.g. NIFTY50, BANKNIFTY">
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-use-symbols">Include Custom Symbols List Below</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-use-symbols">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Bar: Save Action -->
+                    <div class="config-form-actions">
+                        <button type="button" class="btn btn-secondary" id="btn-reset-config">Reset Changes</button>
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Tab 4: Logs Panel -->
+            <section class="tab-panel" id="panel-logs">
+                <div class="logs-card">
+                    <div class="logs-card-header">
+                        <h3><i class="fa-solid fa-terminal"></i> Live Python Logs</h3>
+                        <div class="logs-actions">
+                            <button class="btn btn-icon-text btn-secondary" id="btn-clear-terminal">
+                                <i class="fa-solid fa-trash-can"></i> Clear Screen
+                            </button>
+                            <button class="btn btn-icon-text btn-primary" id="btn-refresh-logs">
+                                <i class="fa-solid fa-arrows-rotate"></i> Refresh Logs
+                            </button>
+                        </div>
+                    </div>
+                    <div class="logs-terminal" id="logs-terminal-output">
+                        Loading server system logs...
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="index.js"></script>
+</body>
+</html>
