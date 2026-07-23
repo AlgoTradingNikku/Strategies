@@ -11,3 +11,5 @@ __pycache__/
 # Log files
 *.log
 
+# Auto-generated daily segment cache
+segment_cache.json

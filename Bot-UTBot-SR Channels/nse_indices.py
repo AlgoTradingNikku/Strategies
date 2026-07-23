@@ -4,17 +4,78 @@ NSE Index Constituents Fetcher
 Fetches the list of stocks in any NSE index (Nifty50, Nifty200, BankNifty, etc.)
 dynamically from the NiftyIndices CSV endpoints (highly reliable, no block/403).
 
+Caching Strategy
+----------------
+Segment symbol lists are cached to a local JSON file (segment_cache.json) with
+today's date. On the first call of the day the list is fetched from NiftyIndices;
+every subsequent call that same day (or any restart) reads from the cache file.
+This avoids repeated HTTP round-trips for the same segment on the same trading day.
+
 Usage:
     from nse_indices import get_index_symbols
     symbols = get_index_symbols("NIFTY50")
 """
 
+import json
 import logging
 import csv
 import io
+from datetime import date
+from pathlib import Path
+
 import requests
 
 log = logging.getLogger("UTBotSRChannelsScanner")
+
+# ---------------------------------------------------------------------------
+# Daily cache file — stored alongside this module
+# ---------------------------------------------------------------------------
+_CACHE_FILE = Path(__file__).resolve().parent / "segment_cache.json"
+
+# In-memory cache for the current process (avoids re-reading the file)
+_memory_cache: dict = {}   # {"date": "YYYY-MM-DD", "segments": {SEGMENT: [...]}}
+
+
+def _today() -> str:
+    return date.today().isoformat()
+
+
+def _load_cache() -> dict:
+    """Load cache from file if it exists and is dated today."""
+    global _memory_cache
+    if _memory_cache.get("date") == _today():
+        return _memory_cache
+
+    if _CACHE_FILE.exists():
+        try:
+            with open(_CACHE_FILE, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if data.get("date") == _today():
+                _memory_cache = data
+                return _memory_cache
+        except Exception as exc:
+            log.debug("Could not read segment cache file: %s", exc)
+
+    return {}
+
+
+def _save_cache(segment_key: str, symbols: list[str]) -> None:
+    """Save fetched symbols for a segment into the daily cache file."""
+    global _memory_cache
+
+    cache = _load_cache()
+    if not cache or cache.get("date") != _today():
+        cache = {"date": _today(), "segments": {}}
+
+    cache["segments"][segment_key] = symbols
+    _memory_cache = cache
+
+    try:
+        with open(_CACHE_FILE, "w", encoding="utf-8") as fh:
+            json.dump(cache, fh, indent=2)
+    except Exception as exc:
+        log.debug("Could not write segment cache file: %s", exc)
+
 
 # ---------------------------------------------------------------------------
 # Map user-friendly names to niftyindices.com CSV files
@@ -115,6 +176,10 @@ def get_index_symbols(segment: str) -> list[str]:
     """
     Return the list of NSE stock symbols for a given index segment name.
 
+    Symbols are cached per segment per calendar day in segment_cache.json.
+    The remote endpoint is only called once per segment per day, regardless of
+    how many times the scanner is run or restarted.
+
     Parameters
     ----------
     segment : str
@@ -126,16 +191,35 @@ def get_index_symbols(segment: str) -> list[str]:
         Sorted list of NSE ticker symbols, or [] on failure.
     """
     key = segment.strip().upper()
+
+    # --- 1. Check in-memory / file cache first ---
+    cache = _load_cache()
+    cached_symbols = cache.get("segments", {}).get(key)
+    if cached_symbols:
+        log.info(
+            "Using cached constituents for '%s' (%d symbols, date: %s).",
+            segment, len(cached_symbols), cache.get("date"),
+        )
+        return cached_symbols
+
+    # --- 2. Cache miss — fetch from NiftyIndices ---
     csv_file = INDEX_CSV_MAP.get(key)
+    if not csv_file:
+        log.warning("Segment '%s' is not supported.", segment)
+        return []
 
-    if csv_file:
-        log.info("Fetching constituents for '%s' from NiftyIndices CSV...", segment)
-        symbols = fetch_from_niftyindices(csv_file)
-        if symbols:
-            log.info("Successfully fetched %d symbols for %s.", len(symbols), segment)
-            return symbols
+    log.info("Fetching constituents for '%s' from NiftyIndices CSV...", segment)
+    symbols = fetch_from_niftyindices(csv_file)
 
-    log.warning("Segment '%s' not supported or fetch failed.", segment)
+    if symbols:
+        log.info(
+            "Successfully fetched %d symbols for '%s'. Caching for today (%s).",
+            len(symbols), segment, _today(),
+        )
+        _save_cache(key, symbols)
+        return symbols
+
+    log.warning("Segment '%s' fetch failed or returned empty list.", segment)
     return []
 
 
