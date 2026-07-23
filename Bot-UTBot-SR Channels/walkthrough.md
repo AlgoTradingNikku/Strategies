@@ -11,6 +11,10 @@ All files are in [`c:\Rahul\Trade\Strategies\Bot-UTBot-SR Channels\`](file:///c:
 | [signals.py](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/signals.py) | UTBot + SR Channels signal engines |
 | [telegram.py](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/telegram.py) | Telegram alerting (direct or via OpenAlgo) |
 | [scanner.py](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/scanner.py) | Main orchestrator + CLI entry point |
+| [app.py](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/app.py) | FastAPI backend web server for the dashboard |
+| [frontend/index.html](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/frontend/index.html) | Dashboard UI structure |
+| [frontend/index.css](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/frontend/index.css) | Custom styling for premium dark-theme dashboard |
+| [frontend/index.js](file:///c:/Rahul/Trade/Strategies/Bot-UTBot-SR%20Channels/frontend/index.js) | Frontend interactive logic & TV Charting |
 
 ---
 
@@ -41,7 +45,36 @@ Both engines computed correctly and the composite evaluator returned results con
 
 ---
 
-## Usage
+## Local Web Dashboard
+
+An interactive browser-based dashboard is provided to monitor signals, edit configurations, view system logs, and analyze dynamic charts.
+
+### Launching the Dashboard
+Install backend web dependencies:
+```bash
+pip install fastapi uvicorn
+```
+
+Start the local web server:
+```bash
+python app.py
+```
+
+Open your browser and navigate to:
+```
+http://127.0.0.1:8000
+```
+
+### Dashboard Features
+- **Metrics Grid**: Displays total stocks scanned, live count of BUY/SELL signals, and the timestamp of the last scan cycle.
+- **Searchable Signal Tables**: Clean filters to search through active BUY/SELL signals quickly.
+- **Interactive Charting**: Select any scanned ticker to view an interactive candle chart with S/R support/resistance zones (horizontal dotted bands), UT Trail overlays, and Buy/Sell markers powered by TradingView's Lightweight Charts library.
+- **Settings Editor**: Dynamically modify indicators coefficients (`key_value`, `atr_period`, S/R settings, alert parameters) and save directly to `config.yml`.
+- **System Logs Console**: View python server logs directly in the UI.
+
+---
+
+## Usage (CLI Mode)
 
 ```bash
 # Single scan with default config
@@ -74,4 +107,6 @@ python scanner.py --list-segments
   - `segment` in `config.yml` can now be a list of segments (e.g. `segment: ["NIFTY50", "BANKNIFTY"]`) to scan multiple segments at once.
   - Setting `use_symbols: true` in `config.yml` will combine your custom `symbols` list (at the bottom of the config) with the selected segment(s) to scan them all together.
   - If `segment` is empty (`""` or `[]`), the scanner runs exclusively on the custom `symbols` list.
+- **Daily symbol cache**: Segments symbol lists are cached to `segment_cache.json` for the day to minimize redundant index calls.
+
 
