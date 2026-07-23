@@ -9,8 +9,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- TradingView Lightweight Charts v4 (pinned - v5 has breaking API changes) -->
-    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="stylesheet" href="index.css?v=2">
 </head>
 <body>
@@ -28,10 +26,7 @@
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Dashboard</span>
                 </button>
-                <button class="nav-item" data-tab="charting">
-                    <i class="fa-solid fa-chart-candlestick"></i>
-                    <span>Interactive Chart</span>
-                </button>
+
                 <button class="nav-item" data-tab="config">
                     <i class="fa-solid fa-sliders"></i>
                     <span>Settings</span>
@@ -165,74 +160,6 @@
                                     </tr>
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Tab 2: Charting Panel -->
-            <section class="tab-panel" id="panel-charting">
-                <div class="chart-layout">
-                    <!-- Chart Control Sidebar -->
-                    <div class="chart-sidebar">
-                        <div class="sidebar-section">
-                            <label for="chart-symbol-select">Select Scanned Symbol</label>
-                            <select id="chart-symbol-select">
-                                <option value="" disabled selected>Choose a symbol...</option>
-                            </select>
-                        </div>
-                        <div class="sidebar-section">
-                            <h4>Active Indicators</h4>
-                            <div class="indicator-toggle">
-                                <span class="indicator-badge utbot-badge">UT Trail Line</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="toggle-ut-line" checked>
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="indicator-toggle">
-                                <span class="indicator-badge sr-badge">S/R Zones</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="toggle-sr-zones" checked>
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="indicator-toggle">
-                                <span class="indicator-badge signal-badge">Buy/Sell Markers</span>
-                                <label class="switch">
-                                    <input type="checkbox" id="toggle-markers" checked>
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="sidebar-section ticker-details" id="chart-ticker-details" style="display:none;">
-                            <h4>Ticker Summary</h4>
-                            <div class="ticker-detail-row">
-                                <span>Close Price:</span>
-                                <strong id="detail-close">-</strong>
-                            </div>
-                            <div class="ticker-detail-row">
-                                <span>UT Trail Value:</span>
-                                <strong id="detail-trail">-</strong>
-                            </div>
-                            <div class="ticker-detail-row">
-                                <span>S/R Zones Count:</span>
-                                <strong id="detail-zones">-</strong>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Chart Workspace -->
-                    <div class="chart-workspace-container">
-                        <div class="chart-header-bar">
-                            <h3 id="chart-title">TradingView Chart Viewer</h3>
-                            <div class="chart-timeframe-badge" id="chart-timeframe-display">-</div>
-                        </div>
-                        <div class="chart-container" id="chart-element-container">
-                            <div class="chart-placeholder">
-                                <i class="fa-solid fa-chart-candlestick"></i>
-                                <p>Select a stock from the sidebar or click "Analyze" in the tables to load the interactive TradingView Chart.</p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -426,6 +353,6 @@
             </section>
         </main>
     </div>
-    <script src="index.js?v=4"></script>
+    <script src="index.js?v=5"></script>
 </body>
 </html>

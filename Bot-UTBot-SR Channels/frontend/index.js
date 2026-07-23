@@ -6,11 +6,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // State management
     let activeConfig = null;
     let autoRefreshInterval = null;
-    let currentChart = null;
-    let candlestickSeries = null;
-    let trailLineSeries = null;
-    let activeSRLines = []; // Store references to draw S/R lines
-    let activeMarkers = [];
     let isScanning = false;
 
     // Elements cache
@@ -39,14 +34,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const configForm = document.getElementById("config-form");
     const btnResetConfig = document.getElementById("btn-reset-config");
 
-    // Chart controls
-    const chartSymbolSelect = document.getElementById("chart-symbol-select");
-    const chartTitle = document.getElementById("chart-title");
-    const chartTimeframeDisplay = document.getElementById("chart-timeframe-display");
-    const chartTickerDetails = document.getElementById("chart-ticker-details");
-    const toggleUtLine = document.getElementById("toggle-ut-line");
-    const toggleSrZones = document.getElementById("toggle-sr-zones");
-    const toggleMarkers = document.getElementById("toggle-markers");
 
     // Logs
     const btnClearTerminal = document.getElementById("btn-clear-terminal");
@@ -68,14 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
             
             btn.classList.add("active");
             document.getElementById(`panel-${targetTab}`).classList.add("active");
-            
-            // Adjust chart size if switching to charting tab
-            if (targetTab === "charting" && currentChart) {
-                setTimeout(() => {
-                    const container = document.getElementById("chart-element-container");
-                    currentChart.resize(container.clientWidth, container.clientHeight);
-                }, 100);
-            }
             
             // Auto refresh logs when loading log panel
             if (targetTab === "logs") {
@@ -315,17 +294,12 @@ document.addEventListener("DOMContentLoaded", () => {
             sellSignalsTable.innerHTML = `<tr><td colspan="6" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
         }
 
-        // Setup analyze buttons
+        // Setup analyze buttons — open TradingView chart in a new tab
         document.querySelectorAll(".btn-analyze").forEach(btn => {
             btn.addEventListener("click", () => {
                 const sym = btn.getAttribute("data-symbol");
-                // Switch tab FIRST so the chart container is visible
-                tabButtons.forEach(b => b.classList.remove("active"));
-                tabPanels.forEach(p => p.classList.remove("active"));
-                document.querySelector('[data-tab="charting"]').classList.add("active");
-                document.getElementById("panel-charting").classList.add("active");
-                // Load chart after a small delay to let the DOM render
-                setTimeout(() => loadSymbolChart(sym), 80);
+                const url = `https://www.tradingview.com/chart/?symbol=NSE%3A${encodeURIComponent(sym)}`;
+                window.open(url, "_blank", "noopener,noreferrer");
             });
         });
 
@@ -345,48 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         statScannedCount.textContent = totalCountScanned;
         statScannedDetails.textContent = `Segments: ${data.segment_label}`;
-
-        // Populate Ticker Chart Dropdown with symbols
-        populateChartDropdown(allSymbols);
-    }
-
-    function populateChartDropdown(symbolsSet) {
-        chartSymbolSelect.innerHTML = `<option value="" disabled selected>Choose a symbol...</option>`;
-        
-        // Add all active symbols first
-        if (symbolsSet.size > 0) {
-            const groupActive = document.createElement("optgroup");
-            groupActive.label = "Active Signals";
-            Array.from(symbolsSet).sort().forEach(sym => {
-                const opt = document.createElement("option");
-                opt.value = sym;
-                opt.textContent = sym;
-                groupActive.appendChild(opt);
-            });
-            chartSymbolSelect.appendChild(groupActive);
-        }
-
-        // Add backup list of standard symbols from config list
-        if (activeConfig && activeConfig.symbols) {
-            const groupAll = document.createElement("optgroup");
-            groupAll.label = "All Configured Tickers";
-            activeConfig.symbols.forEach(sym => {
-                // Avoid duplication
-                if (!symbolsSet.has(sym)) {
-                    const opt = document.createElement("option");
-                    opt.value = sym;
-                    opt.textContent = sym;
-                    groupAll.appendChild(opt);
-                }
-            });
-            chartSymbolSelect.appendChild(groupAll);
-        }
-    }
-
-    chartSymbolSelect.addEventListener("change", () => {
-        const val = chartSymbolSelect.value;
-        if (val) loadSymbolChart(val);
-    });
 
     // ---------------------------------------------------------------------------
     // Auto-Refresh Manager
@@ -416,201 +348,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 1000);
     }
 
-    // ---------------------------------------------------------------------------
-    // Interactive TradingView Chart Setup
-    // ---------------------------------------------------------------------------
-    function initChartWidget() {
-        const container = document.getElementById("chart-element-container");
-
-        // Destroy previous chart instance to avoid stale series references
-        if (currentChart) {
-            currentChart.remove();
-            currentChart = null;
-            candlestickSeries = null;
-            trailLineSeries = null;
-            activeSRLines = [];
-        }
-
-        container.innerHTML = ""; // Clear placeholder
-
-        // Create core chart instance
-        currentChart = LightweightCharts.createChart(container, {
-            layout: {
-                backgroundColor: "#0c1220",
-                textColor: "#94a3b8",
-                fontSize: 12,
-                fontFamily: "Outfit"
-            },
-            grid: {
-                vertLines: { color: "rgba(255, 255, 255, 0.03)" },
-                horzLines: { color: "rgba(255, 255, 255, 0.03)" }
-            },
-            crosshair: {
-                mode: LightweightCharts.CrosshairMode.Normal,
-                vertLine: { color: "#64748b", labelBackgroundColor: "#1e293b" },
-                horzLine: { color: "#64748b", labelBackgroundColor: "#1e293b" }
-            },
-            priceScale: {
-                borderColor: "rgba(255, 255, 255, 0.08)"
-            },
-            timeScale: {
-                borderColor: "rgba(255, 255, 255, 0.08)",
-                timeVisible: true,
-                secondsVisible: false
-            }
-        });
-
-        // Add candlestick series
-        candlestickSeries = currentChart.addCandlestickSeries({
-            upColor: "#10b981",
-            downColor: "#ef4444",
-            borderUpColor: "#10b981",
-            borderDownColor: "#ef4444",
-            wickUpColor: "#10b981",
-            wickDownColor: "#ef4444"
-        });
-
-        // Add UT Trail Line series
-        trailLineSeries = currentChart.addLineSeries({
-            color: "#3b82f6",
-            lineWidth: 2,
-            lineStyle: LightweightCharts.LineStyle.Solid,
-            title: "UT Trail Stop"
-        });
-
-        // Resize handler
-        const resizeObserver = new ResizeObserver(entries => {
-            if (entries.length === 0 || !currentChart) return;
-            const { width, height } = entries[0].contentRect;
-            currentChart.resize(width, height);
-        });
-        resizeObserver.observe(container);
-    }
-
-    async function loadSymbolChart(symbol) {
-        if (!currentChart) {
-            initChartWidget();
-        }
-
-        chartTitle.textContent = `${symbol} — Historical Candlesticks`;
-        chartTimeframeDisplay.textContent = activeConfig?.scan_timeframe || "15m";
-        chartTickerDetails.style.display = "block";
-
-        try {
-            const tf = activeConfig?.scan_timeframe || "15m";
-            const resp = await fetch(`${API_BASE}/api/history/${symbol}?timeframe=${tf}`);
-            if (!resp.ok) throw new Error(`Symbol ${symbol} history fetch failed.`);
-            const data = await resp.json();
-
-            // 1. Plot Candlesticks
-            const candles = data.history.map(bar => ({
-                time: bar.time,
-                open: bar.open,
-                high: bar.high,
-                low: bar.low,
-                close: bar.close
-            }));
-            candlestickSeries.setData(candles);
-
-            // 2. Plot UT Trail line
-            const trails = data.history
-                .filter(bar => bar.ut_trail !== null)
-                .map(bar => ({
-                    time: bar.time,
-                    value: bar.ut_trail
-                }));
-            
-            if (toggleUtLine.checked) {
-                trailLineSeries.setData(trails);
-            } else {
-                trailLineSeries.setData([]);
-            }
-
-            // 3. Draw S/R Zone Dotted Lines
-            // Remove previous lines
-            activeSRLines.forEach(line => candlestickSeries.removePriceLine(line));
-            activeSRLines = [];
-
-            if (toggleSrZones.checked && data.sr_zones) {
-                data.sr_zones.forEach((zone, index) => {
-                    // Draw lines at the top and bottom of each zone
-                    const hiLine = candlestickSeries.createPriceLine({
-                        price: zone.high,
-                        color: "rgba(16, 185, 129, 0.4)",
-                        lineWidth: 1,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: `S/R Zone ${index+1} Top`
-                    });
-                    const loLine = candlestickSeries.createPriceLine({
-                        price: zone.low,
-                        color: "rgba(239, 68, 68, 0.4)",
-                        lineWidth: 1,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: `S/R Zone ${index+1} Bottom`
-                    });
-                    activeSRLines.push(hiLine, loLine);
-                });
-            }
-
-            // 4. Draw UT Bot Signal Markers
-            if (toggleMarkers.checked) {
-                const markers = [];
-                data.history.forEach(bar => {
-                    if (bar.buy) {
-                        markers.push({
-                            time: bar.time,
-                            position: "belowBar",
-                            color: "#10b981",
-                            shape: "arrowUp",
-                            text: "UT BUY",
-                            size: 1.5
-                        });
-                    } else if (bar.sell) {
-                        markers.push({
-                            time: bar.time,
-                            position: "aboveBar",
-                            color: "#ef4444",
-                            shape: "arrowDown",
-                            text: "UT SELL",
-                            size: 1.5
-                        });
-                    }
-                });
-                candlestickSeries.setMarkers(markers);
-            } else {
-                candlestickSeries.setMarkers([]);
-            }
-
-            // Fit content
-            currentChart.timeScale().fitContent();
-
-            // Populate Sidebar details
-            const lastBar = data.history[data.history.length - 1];
-            document.getElementById("detail-close").textContent = lastBar ? lastBar.close.toFixed(2) : "-";
-            document.getElementById("detail-trail").textContent = (lastBar && lastBar.ut_trail) ? lastBar.ut_trail.toFixed(2) : "N/A";
-            document.getElementById("detail-zones").textContent = data.sr_zones ? data.sr_zones.length : "0";
-
-        } catch (err) {
-            console.error(err);
-            alert(`Error rendering chart data: ${err.message}`);
-        }
-    }
-
-    // Chart Options Toggle Listeners
-    toggleUtLine.addEventListener("change", () => {
-        const val = chartSymbolSelect.value;
-        if (val) loadSymbolChart(val);
-    });
-    toggleSrZones.addEventListener("change", () => {
-        const val = chartSymbolSelect.value;
-        if (val) loadSymbolChart(val);
-    });
-    toggleMarkers.addEventListener("change", () => {
-        const val = chartSymbolSelect.value;
-        if (val) loadSymbolChart(val);
-    });
 
     // ---------------------------------------------------------------------------
     // Filterable Lists
