@@ -319,6 +319,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         statScannedCount.textContent = totalCountScanned;
         statScannedDetails.textContent = `Segments: ${data.segment_label}`;
+    }   // ← end renderScanData()
 
     // ---------------------------------------------------------------------------
     // Auto-Refresh Manager
