@@ -55,8 +55,6 @@ linreg:
   signal_length: 7                    # Signal line smoothing length
   use_sma: true                       # true = SMA signal line, false = EMA
   proximity_pct: 0.5                  # % proximity to count as "near" the signal line
-  compare_source: "lr_close"          # "lr_close" = LinReg-smoothed close (matches TradingView visually)
-                                      # "close"    = raw closing price (more sensitive / faster signals)
 
 # ------------------------------------------------------------
 # API Credentials & Telegram Alerts
