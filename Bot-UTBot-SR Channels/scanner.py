@@ -491,7 +491,7 @@ def run_scan(
                     signals_str = ", ".join(
                         f"{r['signal']} ({'+'.join(r['triggered'])})" for r in results
                     )
-                    log.info("  [%3d/%3d] %-15s ✅ %s", i, len(symbols), sym, signals_str)
+                    log.debug("  [%3d/%3d] %-15s ✅ %s", i, len(symbols), sym, signals_str)
                     for r in results:
                         if r["signal"] == "BUY":
                             buy_results.append(r)
