@@ -53,19 +53,31 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
 # ---------------------------------------------------------------------------
 _bot_dir = Path(__file__).resolve().parent
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(
-            _bot_dir / "scanner.log",
-            encoding="utf-8",
-        ),
-    ],
+# Define formatters
+console_formatter = logging.Formatter("%(message)s")
+file_formatter = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
+
+# Create handlers
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(console_formatter)
+
+file_handler = logging.FileHandler(
+    _bot_dir / "scanner.log",
+    encoding="utf-8",
+)
+file_handler.setFormatter(file_formatter)
+
+# Configure logger
 log = logging.getLogger("UTBotSRChannelsScanner")
+log.setLevel(logging.INFO)
+# Clear default handlers to avoid duplicate output
+for handler in list(log.handlers):
+    log.removeHandler(handler)
+log.addHandler(console_handler)
+log.addHandler(file_handler)
+log.propagate = False  # Avoid propagating up to root logger
 
 # ---------------------------------------------------------------------------
 # Local modules
@@ -763,10 +775,13 @@ Examples:
 
     config = load_config()
 
-    # Apply log level from config
+    # Apply log level from config to our custom logger and console handler
     log_level_str = config.get("bot", {}).get("log_level", "INFO").upper()
     log_level     = getattr(logging, log_level_str, logging.INFO)
-    logging.getLogger().setLevel(log_level)
+    log.setLevel(log_level)
+    for h in log.handlers:
+        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            h.setLevel(log_level)
 
     timeframe     = args.tf or config.get("scan_timeframe", "15m")
     segment       = args.segment  # None → use config value
