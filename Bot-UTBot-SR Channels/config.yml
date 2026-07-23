@@ -67,12 +67,12 @@ sr_channels:
 # ------------------------------------------------------------
 telegram:
   mode: "direct"                      # "direct" (Telegram Bot API) or "openalgo" (via OpenAlgo server)
-  bot_token: ""
-  chat_id: ""
+  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
+  chat_id: "939814804"
 
 openalgo:
-  apikey: ""
-  username: ""
+  apikey: "cd6aa9453a385603f2dd158b53ea0179463be18c704bed45564e8d0ba336263b"
+  username: "rahul.tew"
   base_url: "http://127.0.0.1:5000"
   ws_url: "ws://127.0.0.1:8765"
 
