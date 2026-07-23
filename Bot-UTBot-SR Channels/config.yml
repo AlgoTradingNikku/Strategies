@@ -1,0 +1,156 @@
+# ============================================================
+# Bot-UTBot-SR Channels — Configuration
+# ============================================================
+# Two-strategy scanner combining UT Bot ATR trailing stop and
+# Support/Resistance Channel signals.
+# Each strategy can be enabled/disabled independently via
+# the signal_mode setting below.
+
+# ------------------------------------------------------------
+# General Scan Settings
+# ------------------------------------------------------------
+data_source: "yfinance"               # "yfinance", "openalgo", "tvdatafeed", "twelvedata"
+exchange: "NSE"
+scan_timeframe: "15m"                 # Supported: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1W, 1M
+
+# 'segment' accepts a single name OR a list of names.
+# All segments are merged and deduplicated before scanning.
+#
+# Examples:
+#   segment: "NIFTY50"                        ← single segment
+#   segment: ["NIFTY50", "BANKNIFTY"]         ← multiple segments
+#   segment: ["NIFTY50", "NIFTYIT", "NIFTYPHARMA"]
+#   segment: ""                               ← use custom symbols list only
+segment: "NIFTY50"
+
+# Set use_symbols: true to ALSO include your custom 'symbols' list below
+# alongside whatever segment(s) are specified above.
+# When segment is "", the custom symbols list is always used regardless.
+use_symbols: false
+
+scan_interval_seconds: 300            # Scan interval in seconds (for continuous mode)
+signal_lookback_candles: 2            # How many closed candles to check for UTBot buy/sell signals
+                                      # (2 = current candle + 1 prior closed candle)
+
+# ------------------------------------------------------------
+# Signal Combination Mode
+# ------------------------------------------------------------
+# "UTBot"    — Signals based solely on UT Bot strategy.
+# "SR"       — Signals based solely on SR Channels strategy.
+# "UTBot+SR" — Signal only when BOTH UTBot AND SR conditions are satisfied.
+signal_mode: "UTBot+SR"
+
+# ------------------------------------------------------------
+# Strategy 1: UT Bot Parameters
+# ------------------------------------------------------------
+strategy:
+  ut_enabled: true
+  key_value: 1.0                      # Key Value / Sensitivity (default: 1.0 from Pine Script)
+  atr_period: 2                       # ATR Period (default: 2 from Pine Script)
+  use_heikin_ashi: false              # Use Heikin Ashi candle close as source
+
+# ------------------------------------------------------------
+# Strategy 2: Support/Resistance (S/R) Channel Parameters
+# ------------------------------------------------------------
+sr_channels:
+  enabled: true
+  pivot_period: 10                    # Bars on each side to confirm a pivot (4–30)
+  source: "High/Low"                  # "High/Low" or "Close/Open"
+  channel_width_pct: 5                # Max channel width as % of 300-bar price range (1–8)
+  min_strength: 1                     # Minimum zone strength to include
+  max_num_sr: 6                       # Maximum number of S/R zones to track (1–10)
+  loopback: 290                       # Bars to look back for pivot collection (100–400)
+  proximity_pct: 0.0                  # % of price to count as "near" a zone boundary
+
+# ------------------------------------------------------------
+# API Credentials & Telegram Alerts
+# ------------------------------------------------------------
+telegram:
+  mode: "direct"                      # "direct" (Telegram Bot API) or "openalgo" (via OpenAlgo server)
+  bot_token: ""
+  chat_id: ""
+
+openalgo:
+  apikey: ""
+  username: ""
+  base_url: "http://127.0.0.1:5000"
+  ws_url: "ws://127.0.0.1:8765"
+
+twelvedata:
+  apikey: ""
+
+tvdatafeed:
+  username: ""
+  password: ""
+
+# ------------------------------------------------------------
+# Data & General Bot Settings
+# ------------------------------------------------------------
+data:
+  lookback_days: 30
+
+bot:
+  market_hours_check: false           # Set to true to only scan during market hours
+  market_open: "09:15"
+  market_close: "15:30"
+  log_level: "INFO"
+
+# ------------------------------------------------------------
+# Custom Stocks List
+# This list is used when:
+#   1. segment is "" or []  — runs ONLY on this list
+#   2. use_symbols: true    — merged with the segment(s) above
+#   3. NSE fetch fails      — used as fallback automatically
+# You can put any NSE symbol here (no .NS suffix needed).
+# ------------------------------------------------------------
+symbols:
+  - ADANIENT
+  - ADANIPORTS
+  - APOLLOHOSP
+  - ASIANPAINT
+  - AXISBANK
+  - BAJAJ-AUTO
+  - BAJFINANCE
+  - BAJAJFINSV
+  - BEL
+  - BPCL
+  - BHARTIARTL
+  - BRITANNIA
+  - CIPLA
+  - COALINDIA
+  - DRREDDY
+  - EICHERMOT
+  - ETERNAL
+  - GRASIM
+  - HCLTECH
+  - HDFCBANK
+  - HDFCLIFE
+  - HEROMOTOCO
+  - HINDALCO
+  - HINDUNILVR
+  - ICICIBANK
+  - ITC
+  - INDUSINDBK
+  - INFY
+  - JSWSTEEL
+  - KOTAKBANK
+  - LT
+  - M&M
+  - MARUTI
+  - NTPC
+  - NESTLEIND
+  - ONGC
+  - POWERGRID
+  - RELIANCE
+  - SBILIFE
+  - SBIN
+  - SUNPHARMA
+  - TCS
+  - TATACONSUM
+  - TATAMTRDVT
+  - TATASTEEL
+  - TECHM
+  - TITAN
+  - TRENT
+  - ULTRACEMCO
+  - WIPRO
