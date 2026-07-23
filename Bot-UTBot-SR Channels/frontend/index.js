@@ -312,7 +312,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const total = (data.buy_signals?.length || 0) + (data.sell_signals?.length || 0);
         statBuyCount.textContent = data.buy_signals?.length || 0;
         statSellCount.textContent = data.sell_signals?.length || 0;
-        statLastScanTime.textContent = data.timestamp || new Date().toLocaleTimeString();
+        // Show only the time portion of the timestamp (e.g. "20:59:15")
+        const rawTs = data.timestamp || "";
+        const timeOnly = rawTs.includes(" ") ? rawTs.split(" ")[1] : (rawTs || new Date().toLocaleTimeString());
+        statLastScanTime.textContent = timeOnly;
 
         // Calculate dynamically the scanned count
         // Default to a fallback if we don't know the exact count
