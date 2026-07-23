@@ -435,11 +435,11 @@ table {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
 }
 
 th, td {
-    padding: 14px 24px;
+    padding: 7px 12px;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -447,9 +447,10 @@ th {
     font-weight: 600;
     color: var(--text-secondary);
     background-color: rgba(0, 0, 0, 0.15);
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 tr:last-child td {
@@ -474,12 +475,27 @@ tr:hover td {
 .condition-badge {
     background-color: var(--bg-surface-elevated);
     border: 1px solid var(--border-color);
-    padding: 4px 10px;
+    padding: 2px 7px;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 500;
-    margin-right: 6px;
-    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Badge container — keeps UT Bot + S/R Support side by side */
+.badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* SR zones column — constrain width so it wraps neatly */
+.sr-zones-cell {
+    max-width: 180px;
+    word-break: break-word;
+    line-height: 1.4;
+    font-size: 0.74rem;
+    color: var(--text-secondary);
 }
 
 .condition-badge.ut-badge-type {

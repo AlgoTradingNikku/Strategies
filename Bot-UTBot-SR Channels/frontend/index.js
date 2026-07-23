@@ -256,16 +256,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const createRow = (item, type) => {
             allSymbols.add(item.symbol);
             const tr = document.createElement("tr");
+            const srText = (item.sr_zones && item.sr_zones.length > 0)
+                ? item.sr_zones.map(z => `${z[0].toFixed(1)}–${z[1].toFixed(1)}`).join(", ")
+                : "None";
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
                 <td>${item.close.toFixed(2)}</td>
                 <td>${(item.ut_trail !== null && item.ut_trail !== undefined) ? item.ut_trail.toFixed(2) : "N/A"}</td>
-                <td>${(item.sr_zones && item.sr_zones.length > 0) ? item.sr_zones.map(z => `${z[0].toFixed(1)}–${z[1].toFixed(1)}`).join(", ") : "None"}</td>
+                <td class="sr-zones-cell">${srText}</td>
                 <td>
-                    ${item.triggered.map(cond => {
-                        const styleClass = cond.includes("UT") ? "ut-badge-type" : "sr-badge-type";
-                        return `<span class="condition-badge ${styleClass}">${cond}</span>`;
-                    }).join("")}
+                    <div class="badge-group">
+                        ${item.triggered.map(cond => {
+                            const styleClass = cond.includes("UT") ? "ut-badge-type" : "sr-badge-type";
+                            return `<span class="condition-badge ${styleClass}">${cond}</span>`;
+                        }).join("")}
+                    </div>
                 </td>
                 <td>
                     <button class="btn btn-secondary btn-analyze" data-symbol="${item.symbol}" style="padding: 4px 10px; font-size: 0.75rem;">
