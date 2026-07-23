@@ -1,81 +1,71 @@
 # ============================================================
 # Bot-UTBot-SR Channels — Configuration
 # ============================================================
-# Two-strategy scanner combining UT Bot ATR trailing stop and
-# Support/Resistance Channel signals.
-# Each strategy can be enabled/disabled independently via
-# the signal_mode setting below.
 
 # ------------------------------------------------------------
-# General Scan Settings
+# 1. CORE SCANNER SETTINGS
 # ------------------------------------------------------------
-data_source: "yfinance"               # "yfinance", "openalgo", "tvdatafeed", "twelvedata"
-exchange: "NSE"
-scan_timeframe: "5m"                 # Supported: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1d, 1W, 1M
+data_source: "yfinance"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
+exchange: "NSE"                       # Target exchange
+scan_timeframe: "5m"                  # Timeframe (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_interval_seconds: 300            # Interval between scans in continuous mode
 
-# 'segment' accepts a single name OR a list of names.
-# All segments are merged and deduplicated before scanning.
-#
-# Examples:
-#   segment: "NIFTY50"                        ← single segment
-#   segment: ["NIFTY50", "BANKNIFTY"]         ← multiple segments
-#   segment: ["NIFTY50", "NIFTYIT", "NIFTYPHARMA"]
-#   segment: ""                               ← use custom symbols list only
-segment: "NIFTY50"
+# Market segments to scan dynamically (accepts single string or list)
+# Set to "" or [] to scan only the custom symbols list below
+segment: ["NIFTY50", "BANKNIFTY"]
 
-# Set use_symbols: true to ALSO include your custom 'symbols' list below
-# alongside whatever segment(s) are specified above.
-# When segment is "", the custom symbols list is always used regardless.
+# Set to true to merge the custom 'symbols' list with the active segments
 use_symbols: false
 
-scan_interval_seconds: 300            # Scan interval in seconds (for continuous mode)
-signal_lookback_candles: 2            # How many closed candles to check for UTBot buy/sell signals
-                                      # (2 = current candle + 1 prior closed candle)
-
 # ------------------------------------------------------------
-# Signal Combination Mode
+# 2. SIGNAL COMBINATION MODE
 # ------------------------------------------------------------
-# "UTBot"    — Signals based solely on UT Bot strategy.
-# "SR"       — Signals based solely on SR Channels strategy.
-# "UTBot+SR" — Signal only when BOTH UTBot AND SR conditions are satisfied.
+# "UTBot"    — Generate signals based solely on UT Bot
+# "SR"       — Generate signals based solely on SR Channels
+# "UTBot+SR" — Generate signals only when BOTH conditions are satisfied
 signal_mode: "UTBot+SR"
 
+# Number of closed candles to look back for UT Bot signals (default: 2)
+signal_lookback_candles: 2
+
 # ------------------------------------------------------------
-# Strategy 1: UT Bot Parameters
+# 3. STRATEGY PARAMETERS
 # ------------------------------------------------------------
+# UT Bot Settings
 strategy:
   ut_enabled: true
-  key_value: 1.0                      # Key Value / Sensitivity (default: 1.0 from Pine Script)
-  atr_period: 2                       # ATR Period (default: 2 from Pine Script)
-  use_heikin_ashi: false              # Use Heikin Ashi candle close as source
+  key_value: 1.0                      # Key Value / Sensitivity (default: 1.0)
+  atr_period: 2                       # ATR Period (default: 2)
+  use_heikin_ashi: false              # Use Heikin Ashi candle close as price source
 
-# ------------------------------------------------------------
-# Strategy 2: Support/Resistance (S/R) Channel Parameters
-# ------------------------------------------------------------
+# Support/Resistance Channels Settings
 sr_channels:
   enabled: true
-  pivot_period: 10                    # Bars on each side to confirm a pivot (4–30)
-  source: "High/Low"                  # "High/Low" or "Close/Open"
-  channel_width_pct: 5                # Max channel width as % of 300-bar price range (1–8)
-  min_strength: 1                     # Minimum zone strength to include
-  max_num_sr: 6                       # Maximum number of S/R zones to track (1–10)
-  loopback: 290                       # Bars to look back for pivot collection (100–400)
-  proximity_pct: 0.0                  # % of price to count as "near" a zone boundary
+  pivot_period: 10                    # Period to confirm a pivot (range: 4 to 30)
+  source: "High/Low"                  # Source prices: "High/Low" or "Close/Open"
+  channel_width_pct: 5                # Max channel width as % of 300-bar price range (1 to 8)
+  min_strength: 1                     # Minimum pivot strength to qualify a zone
+  max_num_sr: 6                       # Maximum number of active S/R zones (1 to 10)
+  loopback: 290                       # Bars to scan for pivot collection (100 to 400)
+  proximity_pct: 0.0                  # % from boundary to count as "near" (0.0 disables near)
 
 # ------------------------------------------------------------
-# API Credentials & Telegram Alerts
+# 4. EXTERNAL APIS & ALERTING
 # ------------------------------------------------------------
+# Telegram Alerts
 telegram:
-  mode: "direct"                      # "direct" (Telegram Bot API) or "openalgo" (via OpenAlgo server)
+  mode: "direct"                      # "direct" (via Bot API) or "openalgo" (via server)
   bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
   chat_id: "939814804"
 
+# OpenAlgo Credentials
 openalgo:
   apikey: "cd6aa9453a385603f2dd158b53ea0179463be18c704bed45564e8d0ba336263b"
   username: "rahul.tew"
   base_url: "http://127.0.0.1:5000"
   ws_url: "ws://127.0.0.1:8765"
 
+# Other Optional Data Feeds
 twelvedata:
   apikey: ""
 
@@ -84,24 +74,19 @@ tvdatafeed:
   password: ""
 
 # ------------------------------------------------------------
-# Data & General Bot Settings
+# 5. DATA & SYSTEM SETTINGS
 # ------------------------------------------------------------
 data:
-  lookback_days: 30
+  lookback_days: 30                   # Days of historical data to fetch
 
 bot:
-  market_hours_check: false           # Set to true to only scan during market hours
+  log_level: "INFO"                   # Console logging level (INFO, DEBUG, WARNING, etc.)
+  market_hours_check: false           # Restrict scanning to market hours only
   market_open: "09:15"
   market_close: "15:30"
-  log_level: "INFO"
 
 # ------------------------------------------------------------
-# Custom Stocks List
-# This list is used when:
-#   1. segment is "" or []  — runs ONLY on this list
-#   2. use_symbols: true    — merged with the segment(s) above
-#   3. NSE fetch fails      — used as fallback automatically
-# You can put any NSE symbol here (no .NS suffix needed).
+# 6. CUSTOM SYMBOLS LIST
 # ------------------------------------------------------------
 symbols:
   - ADANIENT
