@@ -498,7 +498,7 @@ def run_scan(
                         else:
                             sell_results.append(r)
                 else:
-                    log.info("  [%3d/%3d] %-15s —", i, len(symbols), sym)
+                    log.debug("  [%3d/%3d] %-15s —", i, len(symbols), sym)
             except Exception as exc:
                 errors += 1
                 log.error("  [%3d/%3d] %-15s ❌ Error: %s", i, len(symbols), sym, exc)
