@@ -103,15 +103,16 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("cfg-exchange").value = cfg.exchange;
             document.getElementById("cfg-timeframe").value = cfg.scan_timeframe;
             document.getElementById("cfg-interval").value = cfg.scan_interval_seconds;
-            document.getElementById("cfg-signal-mode").value = cfg.signal_mode;
             document.getElementById("cfg-lookback").value = cfg.signal_lookback_candles;
 
             // Strategy
+            document.getElementById("cfg-ut-enabled").checked = !!cfg.strategy.ut_enabled;
             document.getElementById("cfg-ut-key").value = cfg.strategy.key_value;
             document.getElementById("cfg-ut-atr").value = cfg.strategy.atr_period;
             document.getElementById("cfg-ut-ha").checked = cfg.strategy.use_heikin_ashi;
 
             // SR Channels
+            document.getElementById("cfg-sr-enabled").checked = !!cfg.sr_channels.enabled;
             document.getElementById("cfg-sr-pivot").value = cfg.sr_channels.pivot_period;
             document.getElementById("cfg-sr-source").value = cfg.sr_channels.source;
             document.getElementById("cfg-sr-width").value = cfg.sr_channels.channel_width_pct;
@@ -128,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 document.getElementById("cfg-filters-mtf").checked = !!cfg.filters.mtf_enabled;
                 document.getElementById("cfg-filters-mtf-tf").value = cfg.filters.mtf_timeframe || "1h";
+                document.getElementById("cfg-filters-mtf-align").checked = !!cfg.filters.require_mtf_alignment;
                 document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
                 document.getElementById("cfg-filters-adx-val").value = cfg.filters.adx_min_threshold !== undefined ? cfg.filters.adx_min_threshold : 20;
                 document.getElementById("cfg-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
@@ -170,16 +172,15 @@ document.addEventListener("DOMContentLoaded", () => {
             exchange: document.getElementById("cfg-exchange").value,
             scan_timeframe: document.getElementById("cfg-timeframe").value,
             scan_interval_seconds: parseInt(document.getElementById("cfg-interval").value),
-            signal_mode: document.getElementById("cfg-signal-mode").value,
             signal_lookback_candles: parseInt(document.getElementById("cfg-lookback").value),
             strategy: {
-                ut_enabled: activeConfig.strategy.ut_enabled,
+                ut_enabled: document.getElementById("cfg-ut-enabled").checked,
                 key_value: parseFloat(document.getElementById("cfg-ut-key").value),
                 atr_period: parseInt(document.getElementById("cfg-ut-atr").value),
                 use_heikin_ashi: document.getElementById("cfg-ut-ha").checked
             },
             sr_channels: {
-                enabled: activeConfig.sr_channels.enabled,
+                enabled: document.getElementById("cfg-sr-enabled").checked,
                 pivot_period: parseInt(document.getElementById("cfg-sr-pivot").value),
                 source: document.getElementById("cfg-sr-source").value,
                 channel_width_pct: parseFloat(document.getElementById("cfg-sr-width").value),
@@ -194,6 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 min_alert_score: parseInt(document.getElementById("cfg-filters-score").value || 70),
                 mtf_enabled: document.getElementById("cfg-filters-mtf").checked,
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
+                require_mtf_alignment: document.getElementById("cfg-filters-mtf-align").checked,
                 adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
                 adx_min_threshold: parseFloat(document.getElementById("cfg-filters-adx-val").value || 20),
                 risk_reward_enabled: document.getElementById("cfg-filters-rr-enabled").checked,

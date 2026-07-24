@@ -16,11 +16,6 @@ segment: ["NIFTY50", "BANKNIFTY"]
 # Set to true to merge the custom 'symbols' list with the active segments
 use_symbols: false
 
-# "UTBot"    — Generate signals based solely on UT Bot
-# "SR"       — Generate signals based solely on SR Channels
-# "UTBot+SR" — Generate signals only when BOTH conditions are satisfied
-signal_mode: "UTBot+SR"
-
 # Number of closed candles to look back for UT Bot signals. 
 #(2=current + 1 prior candle)
 signal_lookback_candles: 1
@@ -50,8 +45,10 @@ filters:
   min_alert_score: 70                 # Minimum setup score to send priority alert (0-100)
 
   # Multi-Timeframe Confirmation
-  mtf_enabled: true                   # Confirm signals against a higher timeframe
-  mtf_timeframe: "1h"                # Higher TF to check UTBot trend direction
+  mtf_enabled: true                   # Confirm sig nals against a higher timeframe
+  mtf_timeframe: "1h"                 # Higher TF to check UTBot trend direction
+  require_mtf_alignment: false        # If true, only select stock if both timeframes align 
+                                      # If false, select anyways but cut the cofidence score
 
   # ADX Trend Strength
   adx_filter_enabled: false           # Hard-reject signals when ADX < threshold

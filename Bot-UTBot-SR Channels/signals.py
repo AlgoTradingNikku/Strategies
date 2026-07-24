@@ -757,8 +757,6 @@ def evaluate_composite_signals(
 
     strat  = config.get("strategy", {})
     sr_cfg = config.get("sr_channels", {})
-    mode   = config.get("signal_mode", "UTBot+SR").upper().replace(" ", "")
-
     ut_enabled = strat.get("ut_enabled", True)
     sr_enabled = sr_cfg.get("enabled", True)
 
@@ -777,46 +775,38 @@ def evaluate_composite_signals(
         sr_buy  = bool(df["sr_buy"].iloc[-1])
         sr_sell = bool(df["sr_sell"].iloc[-1])
 
-    # ---- Combine based on mode ---------------------------------------------
+    # ---- Combine based on enabled engines ----------------------------------
     triggered_buy  = []
     triggered_sell = []
 
-    if mode == "UTBOT":
-        composite_buy  = ut_buy  if ut_enabled else False
-        composite_sell = ut_sell if ut_enabled else False
+    if ut_enabled and sr_enabled:
+        # Both must trigger (UTBot + SR)
+        composite_buy  = ut_buy and sr_buy
+        composite_sell = ut_sell and sr_sell
+        if composite_buy:
+            triggered_buy.extend(["UT Bot", "S/R Support"])
+        if composite_sell:
+            triggered_sell.extend(["UT Bot", "S/R Resistance"])
+    elif ut_enabled:
+        # UTBot only
+        composite_buy  = ut_buy
+        composite_sell = ut_sell
         if ut_buy:
             triggered_buy.append("UT Bot")
         if ut_sell:
             triggered_sell.append("UT Bot")
-
-    elif mode == "SR":
-        composite_buy  = sr_buy  if sr_enabled else False
-        composite_sell = sr_sell if sr_enabled else False
+    elif sr_enabled:
+        # SR Channels only
+        composite_buy  = sr_buy
+        composite_sell = sr_sell
         if sr_buy:
             triggered_buy.append("S/R Support")
         if sr_sell:
             triggered_sell.append("S/R Resistance")
-
     else:
-        # "UTBot+SR" — both must fire
-        ut_ok  = ut_buy  if ut_enabled else True   # if disabled, treat as passed
-        sr_ok  = sr_buy  if sr_enabled else True
-        ut_ok_s  = ut_sell if ut_enabled else True
-        sr_ok_s  = sr_sell if sr_enabled else True
-
-        composite_buy  = ut_ok  and sr_ok
-        composite_sell = ut_ok_s and sr_ok_s
-
-        if composite_buy:
-            if ut_enabled and ut_buy:
-                triggered_buy.append("UT Bot")
-            if sr_enabled and sr_buy:
-                triggered_buy.append("S/R Support")
-        if composite_sell:
-            if ut_enabled and ut_sell:
-                triggered_sell.append("UT Bot")
-            if sr_enabled and sr_sell:
-                triggered_sell.append("S/R Resistance")
+        # Neither enabled -> no signals
+        composite_buy  = False
+        composite_sell = False
 
     # ---- Apply Filters -----------------------------------------------------
     filters_cfg = config.get("filters", {})

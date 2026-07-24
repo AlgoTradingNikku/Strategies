@@ -84,6 +84,7 @@ class FiltersConfig(BaseModel):
     candle_patterns_enabled: bool
     signal_history_enabled: bool
     outcome_check_hours: int
+    require_mtf_alignment: bool
 
 class ConfigUpdateRequest(BaseModel):
     data_source: str
@@ -92,7 +93,6 @@ class ConfigUpdateRequest(BaseModel):
     scan_interval_seconds: int
     segment: list[str] | str
     use_symbols: bool
-    signal_mode: str
     signal_lookback_candles: int
     strategy: StrategyConfig
     sr_channels: SRChannelsConfig

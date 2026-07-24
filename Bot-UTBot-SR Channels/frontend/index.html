@@ -215,14 +215,6 @@
                                 <input type="number" id="cfg-interval">
                             </div>
                             <div class="form-group">
-                                <label for="cfg-signal-mode">Signal Condition Mode</label>
-                                <select id="cfg-signal-mode">
-                                    <option value="UTBot+SR">UTBot + SR (Both Required)</option>
-                                    <option value="UTBot">UTBot Only</option>
-                                    <option value="SR">SR Channels Only</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
                                 <label for="cfg-lookback">Signal Lookback (Candles)</label>
                                 <input type="number" id="cfg-lookback" min="1" max="10">
                             </div>
@@ -237,6 +229,13 @@
                         <div class="config-card-body">
                             <!-- UTBot -->
                             <h4 class="sub-header-line">UT Bot Parameters</h4>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-ut-enabled">Enable UT Bot Engine</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-ut-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                             <div class="form-group-row">
                                 <div class="form-group">
                                     <label for="cfg-ut-key">Sensitivity (Key)</label>
@@ -257,6 +256,13 @@
 
                             <!-- S/R Channels -->
                             <h4 class="sub-header-line">S/R Zone Parameters</h4>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-sr-enabled">Enable S/R Channels Engine</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-sr-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                             <div class="form-group-row">
                                 <div class="form-group">
                                     <label for="cfg-sr-pivot">Pivot Period</label>
@@ -338,6 +344,13 @@
                                     <option value="1h">1 hour</option>
                                     <option value="1d">1 day</option>
                                 </select>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-mtf-align">Require MTF Trend Alignment</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-mtf-align">
+                                    <span class="slider round"></span>
+                                </label>
                             </div>
                             <div class="form-group toggle-group">
                                 <label for="cfg-filters-adx-filt">ADX Hard Filter</label>

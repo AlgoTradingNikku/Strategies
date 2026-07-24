@@ -431,6 +431,8 @@ def scan_symbol(
                 adj_score += 15.0
                 adj_reasons.append(f"MTF confirms {trend} trend (+15.0 pts)")
             else:
+                if filters_cfg.get("require_mtf_alignment", False):
+                    return None
                 adj_score -= 10.0
                 adj_reasons.append(f"MTF counter-trend: {trend} (−10.0 pts)")
         elif mtf_result and mtf_result["trend"] == "neutral":
@@ -465,16 +467,20 @@ def scan_symbol(
         }
 
     if composite["buy"]:
-        results.append(_build_result(
+        buy_res = _build_result(
             "BUY", composite["triggered_buy"],
             composite.get("buy_score", 0.0), composite.get("buy_reasons", []),
-        ))
+        )
+        if buy_res is not None:
+            results.append(buy_res)
 
     if composite["sell"]:
-        results.append(_build_result(
+        sell_res = _build_result(
             "SELL", composite["triggered_sell"],
             composite.get("sell_score", 0.0), composite.get("sell_reasons", []),
-        ))
+        )
+        if sell_res is not None:
+            results.append(sell_res)
 
     return results
 
@@ -492,17 +498,41 @@ def run_scan(
     -------
     tuple: (buy_results, sell_results, segment_label, timeframe)
     """
-    # Apply CLI overrides into config
+    strat  = dict(config.get("strategy", {}))
+    sr_cfg = dict(config.get("sr_channels", {}))
+
+    # Apply CLI mode overrides
     if mode_override:
-        config = dict(config)
-        config["signal_mode"] = mode_override
+        mode_upper = mode_override.upper().replace(" ", "")
+        if mode_upper == "UTBOT":
+            strat["ut_enabled"] = True
+            sr_cfg["enabled"] = False
+        elif mode_upper == "SR":
+            strat["ut_enabled"] = False
+            sr_cfg["enabled"] = True
+        elif mode_upper == "UTBOT+SR":
+            strat["ut_enabled"] = True
+            sr_cfg["enabled"] = True
+
+    # Construct config copies with overridden values
+    config = dict(config)
+    config["strategy"] = strat
+    config["sr_channels"] = sr_cfg
 
     timeframe = timeframe_override or config.get("scan_timeframe", "15m")
     lookback  = int(config.get("signal_lookback_candles", 2))
-    mode      = config.get("signal_mode", "UTBot+SR").upper().replace(" ", "")
 
-    strat  = config.get("strategy", {})
-    sr_cfg = config.get("sr_channels", {})
+    ut_enabled = strat.get("ut_enabled", True)
+    sr_enabled = sr_cfg.get("enabled", True)
+
+    if ut_enabled and sr_enabled:
+        eff_mode = "UTBot+SR"
+    elif ut_enabled:
+        eff_mode = "UTBot Only"
+    elif sr_enabled:
+        eff_mode = "SR Channels Only"
+    else:
+        eff_mode = "None"
 
     # ---- Resolve symbols ---------------------------------------------------
     # segment can be a single string or a list of strings (from config or CLI).
@@ -559,9 +589,9 @@ def run_scan(
 
     # ---- Build enabled engine list for logging ----------------------------
     engines = []
-    if mode in ("UTBOT", "UTBOT+SR") and strat.get("ut_enabled", True):
+    if ut_enabled:
         engines.append("UT Bot")
-    if mode in ("SR", "UTBOT+SR") and sr_cfg.get("enabled", True):
+    if sr_enabled:
         engines.append("S/R Channels")
 
     log.info("=" * 70)
@@ -569,7 +599,7 @@ def run_scan(
     log.info("=" * 70)
     log.info("  Segment       : %s", segment_label)
     log.info("  Timeframe     : %s", timeframe)
-    log.info("  Signal Mode   : %s", mode)
+    log.info("  Signal Mode   : %s", eff_mode)
     log.info("  Lookback      : %d candles (UT Bot window)", lookback)
     log.info("  Engines       : %s", " + ".join(engines) if engines else "NONE")
     log.info("  Symbols       : %d stocks", len(symbols))
@@ -886,7 +916,19 @@ Examples:
     segment       = args.segment  # None → use config value
     mode_override = args.mode     # None → use config value
     scan_interval = int(config.get("scan_interval_seconds", 300))
-    eff_mode      = mode_override or config.get("signal_mode", "UTBot+SR")
+    if mode_override:
+        eff_mode = mode_override
+    else:
+        ut_on = config.get("strategy", {}).get("ut_enabled", True)
+        sr_on = config.get("sr_channels", {}).get("enabled", True)
+        if ut_on and sr_on:
+            eff_mode = "UTBot+SR"
+        elif ut_on:
+            eff_mode = "UTBot Only"
+        elif sr_on:
+            eff_mode = "SR Channels Only"
+        else:
+            eff_mode = "None"
 
     def _do_scan() -> tuple[list, list, str, str]:
         return run_scan(
