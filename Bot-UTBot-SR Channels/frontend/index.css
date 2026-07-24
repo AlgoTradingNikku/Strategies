@@ -856,3 +856,153 @@ input:checked + .slider:before {
     border-bottom-left-radius: var(--border-radius);
     border-bottom-right-radius: var(--border-radius);
 }
+
+/* --- Setup Score Badges & Tooltips --- */
+.score-container {
+    position: relative;
+    display: inline-block;
+}
+
+.score-badge {
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff;
+    cursor: help;
+    display: inline-block;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.score-low {
+    background-color: #ef4444; /* red */
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.score-medium {
+    background-color: #f59e0b; /* yellow/orange */
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.score-high {
+    background-color: #10b981; /* green */
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Tooltip container styling */
+.score-tooltip {
+    visibility: hidden;
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #f1f5f9;
+    padding: 10px 14px;
+    border-radius: 8px;
+    width: 250px;
+    font-size: 0.72rem;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+.score-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.score-container:hover .score-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(-2px);
+}
+
+.score-tooltip strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #60a5fa;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+}
+
+.score-tooltip ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.score-tooltip li {
+    margin-bottom: 4px;
+    position: relative;
+    padding-left: 10px;
+    line-height: 1.3;
+}
+
+.score-tooltip li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #3b82f6;
+}
+
+/* --- History and Stats Panels --- */
+.stats-container-grid {
+    animation: fadeIn var(--transition-medium);
+}
+.stats-top-row .stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.stats-top-row .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.stats-top-row .stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.stats-top-row .stat-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.stats-top-row .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+.stats-top-row .info-icon { background: rgba(59, 130, 246, 0.1); color: var(--color-accent); }
+.stats-top-row .buy-icon { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+.stats-top-row .sell-icon { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+.stats-top-row .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.stats-top-row .stat-sub {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}

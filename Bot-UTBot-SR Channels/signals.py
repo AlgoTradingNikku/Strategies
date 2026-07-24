@@ -421,7 +421,306 @@ def compute_sr_signals(
 
 
 # ============================================================================
-# 3. COMPOSITE SIGNAL EVALUATOR
+# 3. CANDLESTICK PATTERN RECOGNITION
+# ============================================================================
+
+def detect_candle_patterns(df: pd.DataFrame) -> dict:
+    """
+    Detect key reversal candlestick patterns on the last 2-3 candles.
+
+    Returns
+    -------
+    dict with keys:
+        bullish_patterns : list of str  — pattern names favouring BUY
+        bearish_patterns : list of str  — pattern names favouring SELL
+    """
+    bullish = []
+    bearish = []
+
+    if len(df) < 3:
+        return {"bullish_patterns": bullish, "bearish_patterns": bearish}
+
+    c  = df.iloc[-1]   # current candle
+    p  = df.iloc[-2]   # prior candle
+    pp = df.iloc[-3]   # 2 candles ago
+
+    c_body  = abs(c["close"] - c["open"])
+    p_body  = abs(p["close"] - p["open"])
+    pp_body = abs(pp["close"] - pp["open"])
+
+    c_bullish = c["close"] > c["open"]
+    c_bearish = c["close"] < c["open"]
+    p_bullish = p["close"] > p["open"]
+    p_bearish = p["close"] < p["open"]
+
+    c_range = c["high"] - c["low"]
+    p_range = p["high"] - p["low"]
+
+    # Guard against zero-range candles
+    if c_range == 0 or p_range == 0:
+        return {"bullish_patterns": bullish, "bearish_patterns": bearish}
+
+    # ---- Bullish Engulfing ----
+    # Current bullish body fully engulfs prior bearish body
+    if (c_bullish and p_bearish and
+            c["open"] <= p["close"] and c["close"] >= p["open"] and
+            c_body > p_body):
+        bullish.append("Engulfing")
+
+    # ---- Bearish Engulfing ----
+    if (c_bearish and p_bullish and
+            c["open"] >= p["close"] and c["close"] <= p["open"] and
+            c_body > p_body):
+        bearish.append("Engulfing")
+
+    # ---- Bullish Pin Bar / Hammer ----
+    # Long lower wick >= 2x body, small upper wick
+    lower_wick = min(c["open"], c["close"]) - c["low"]
+    upper_wick = c["high"] - max(c["open"], c["close"])
+    if c_body > 0 and lower_wick >= 2.0 * c_body and upper_wick <= c_body * 0.5:
+        bullish.append("Pin Bar")
+
+    # ---- Bearish Pin Bar / Shooting Star ----
+    if c_body > 0 and upper_wick >= 2.0 * c_body and lower_wick <= c_body * 0.5:
+        bearish.append("Pin Bar")
+
+    # ---- Morning Star (bullish 3-candle reversal) ----
+    # candle[-3] bearish, candle[-2] small body (doji/spinning top), candle[-1] bullish
+    if (pp["close"] < pp["open"] and
+            p_body < pp_body * 0.3 and
+            c_bullish and c["close"] > (pp["open"] + pp["close"]) / 2):
+        bullish.append("Morning Star")
+
+    # ---- Evening Star (bearish 3-candle reversal) ----
+    if (pp["close"] > pp["open"] and
+            p_body < pp_body * 0.3 and
+            c_bearish and c["close"] < (pp["open"] + pp["close"]) / 2):
+        bearish.append("Evening Star")
+
+    return {"bullish_patterns": bullish, "bearish_patterns": bearish}
+
+
+def _candle_pattern_pts(pattern_name: str, at_sr_zone: bool) -> float:
+    """Return score points for a candlestick pattern, boosted if at S/R zone."""
+    base_pts = {
+        "Engulfing":     8.0 if at_sr_zone else 3.0,
+        "Pin Bar":       6.0 if at_sr_zone else 3.0,
+        "Morning Star":  5.0 if at_sr_zone else 3.0,
+        "Evening Star":  5.0 if at_sr_zone else 3.0,
+    }
+    return base_pts.get(pattern_name, 3.0)
+
+
+# ============================================================================
+# 4. ADX TREND STRENGTH
+# ============================================================================
+
+def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """
+    Calculate the Average Directional Index (ADX) using Wilder's smoothing.
+
+    Returns a pandas Series of ADX values.
+    """
+    high = df["high"]
+    low  = df["low"]
+    close = df["close"]
+
+    # Directional movement
+    up_move   = high.diff()
+    down_move = -low.diff()
+
+    plus_dm  = pd.Series(0.0, index=df.index)
+    minus_dm = pd.Series(0.0, index=df.index)
+
+    plus_dm  = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+
+    # True Range
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs(),
+    ], axis=1).max(axis=1)
+
+    # Wilder's smoothing (EWM with alpha = 1/period)
+    alpha = 1.0 / period
+    atr     = tr.ewm(alpha=alpha, adjust=False).mean()
+    plus_di = 100.0 * plus_dm.ewm(alpha=alpha, adjust=False).mean() / (atr + 1e-10)
+    minus_di = 100.0 * minus_dm.ewm(alpha=alpha, adjust=False).mean() / (atr + 1e-10)
+
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di + 1e-10)
+    adx = dx.ewm(alpha=alpha, adjust=False).mean()
+
+    return adx
+
+
+# ============================================================================
+# 5. ATR-BASED RISK/REWARD CALCULATOR
+# ============================================================================
+
+def calculate_risk_reward(
+    df: pd.DataFrame,
+    signal_type: str,
+    zones: list,
+    config: dict,
+) -> dict:
+    """
+    Calculate stop-loss, target, and risk/reward ratio for a signal.
+
+    Parameters
+    ----------
+    df           : DataFrame with OHLCV + ut_trail columns
+    signal_type  : "BUY" or "SELL"
+    zones        : list of (zone_hi, zone_lo) S/R zones
+    config       : full config dict
+
+    Returns
+    -------
+    dict with keys: stop_loss, target, risk_reward (all floats or None)
+    """
+    if len(df) < 14:
+        return {"stop_loss": None, "target": None, "risk_reward": None}
+
+    filters_cfg = config.get("filters", {})
+    atr_mult    = float(filters_cfg.get("rr_atr_multiplier", 0.5))
+    default_rr  = float(filters_cfg.get("rr_default_ratio", 2.0))
+
+    last_row    = df.iloc[-1]
+    entry       = float(last_row["close"])
+
+    # ATR(14) for buffer
+    prev_close = df["close"].shift(1)
+    tr = pd.concat([
+        df["high"] - df["low"],
+        (df["high"] - prev_close).abs(),
+        (df["low"] - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    atr_14 = float(tr.rolling(14).mean().iloc[-1])
+    atr_buffer = atr_mult * atr_14
+
+    ut_trail = float(last_row["ut_trail"]) if "ut_trail" in df.columns else None
+
+    if signal_type == "BUY":
+        # Stop Loss: tighter of UT Bot trail and nearest support zone bottom
+        stop_candidates = []
+        if ut_trail is not None:
+            stop_candidates.append(ut_trail - atr_buffer)
+        for zone_hi, zone_lo in zones:
+            if zone_hi < entry:  # zone is below price = support
+                stop_candidates.append(zone_lo - atr_buffer)
+                break  # take the first (strongest) support
+        if not stop_candidates:
+            stop_candidates.append(entry - 2.0 * atr_14)  # fallback
+
+        stop_loss = max(stop_candidates)  # tighter = higher stop for BUY
+
+        # Target: next resistance zone above entry, or default R:R
+        target = None
+        for zone_hi, zone_lo in zones:
+            if zone_lo > entry:  # zone is above price = resistance
+                target = zone_hi
+                break
+        if target is None:
+            risk = entry - stop_loss
+            target = entry + default_rr * risk if risk > 0 else entry + atr_14
+
+    else:  # SELL
+        # Stop Loss: tighter of UT Bot trail and nearest resistance zone top
+        stop_candidates = []
+        if ut_trail is not None:
+            stop_candidates.append(ut_trail + atr_buffer)
+        for zone_hi, zone_lo in zones:
+            if zone_lo > entry:  # zone is above price = resistance
+                stop_candidates.append(zone_hi + atr_buffer)
+                break
+        if not stop_candidates:
+            stop_candidates.append(entry + 2.0 * atr_14)  # fallback
+
+        stop_loss = min(stop_candidates)  # tighter = lower stop for SELL
+
+        # Target: next support zone below entry, or default R:R
+        target = None
+        for zone_hi, zone_lo in zones:
+            if zone_hi < entry:  # zone is below price = support
+                target = zone_lo
+                break
+        if target is None:
+            risk = stop_loss - entry
+            target = entry - default_rr * risk if risk > 0 else entry - atr_14
+
+    # Calculate R:R
+    risk = abs(entry - stop_loss)
+    reward = abs(target - entry)
+    risk_reward = round(reward / risk, 2) if risk > 0 else 0.0
+
+    return {
+        "stop_loss":    round(stop_loss, 2),
+        "target":       round(target, 2),
+        "risk_reward":  risk_reward,
+    }
+
+
+# ============================================================================
+# 6. MULTI-TIMEFRAME CONFIRMATION
+# ============================================================================
+
+def check_mtf_confirmation(
+    htf_df: pd.DataFrame,
+    config: dict,
+) -> dict:
+    """
+    Check trend direction on a higher-timeframe DataFrame using UTBot trail.
+
+    The caller is responsible for fetching the higher-TF data and passing it in.
+    This function runs the UTBot engine on it and checks price vs trail.
+
+    Parameters
+    ----------
+    htf_df  : Higher-timeframe DataFrame with OHLCV data
+    config  : full config dict
+
+    Returns
+    -------
+    dict with keys:
+        trend      : "bullish" | "bearish" | "neutral"
+        htf_trail  : float — trailing stop value on the higher TF
+        htf_close  : float — last close on the higher TF
+    """
+    if htf_df is None or len(htf_df) < 20:
+        return {"trend": "neutral", "htf_trail": None, "htf_close": None}
+
+    strat = config.get("strategy", {})
+    htf_df = compute_utbot_signals(
+        htf_df,
+        key_value       = float(strat.get("key_value", 1.0)),
+        atr_period      = int(strat.get("atr_period", 2)),
+        use_heikin_ashi = bool(strat.get("use_heikin_ashi", False)),
+    )
+
+    last = htf_df.iloc[-1]
+    htf_close = float(last["close"])
+    htf_trail = float(last["ut_trail"])
+
+    # Determine proximity — if price is within 0.3% of trail, call it neutral
+    pct_diff = abs(htf_close - htf_trail) / htf_close * 100 if htf_close > 0 else 0
+
+    if pct_diff < 0.3:
+        trend = "neutral"
+    elif htf_close > htf_trail:
+        trend = "bullish"
+    else:
+        trend = "bearish"
+
+    return {
+        "trend":     trend,
+        "htf_trail": round(htf_trail, 2),
+        "htf_close": round(htf_close, 2),
+    }
+
+
+# ============================================================================
+# 7. COMPOSITE SIGNAL EVALUATOR
 # ============================================================================
 
 def evaluate_composite_signals(
@@ -431,22 +730,31 @@ def evaluate_composite_signals(
 ) -> dict:
     """
     Evaluate composite buy/sell signals based on signal_mode and enabled strategies.
+    Also calculates Setup Scores (0-100) and applies technical filters (EMA 200, Volume).
 
     Signal Modes
     ------------
     "UTBot"    — UTBot buy/sell only; checked across last `lookback_candles` candles.
     "SR"       — SR Channel buy/sell only; checked on the most recent (last) candle.
     "UTBot+SR" — BOTH UTBot (last N candles) AND SR (last candle) must trigger.
-
-    Returns
-    -------
-    dict with keys:
-        buy            : bool
-        sell           : bool
-        triggered_buy  : list[str] — names of conditions that triggered
-        triggered_sell : list[str]
-        details        : dict      — indicator metadata for display
     """
+    # ---- 1. Calculate technical indicators for filters and scoring ----
+    if "close" in df.columns:
+        df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+        
+        # Calculate RSI 14
+        delta = df["close"].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / (loss + 1e-10)
+        df["rsi_14"] = 100 - (100 / (1 + rs))
+
+        # Calculate ADX 14
+        df["adx_14"] = compute_adx(df, period=14)
+
+    if "volume" in df.columns and len(df) >= 20:
+        df["vol_sma"] = df["volume"].rolling(20).mean()
+
     strat  = config.get("strategy", {})
     sr_cfg = config.get("sr_channels", {})
     mode   = config.get("signal_mode", "UTBot+SR").upper().replace(" ", "")
@@ -510,6 +818,175 @@ def evaluate_composite_signals(
             if sr_enabled and sr_sell:
                 triggered_sell.append("S/R Resistance")
 
+    # ---- Apply Filters -----------------------------------------------------
+    filters_cfg = config.get("filters", {})
+    ema_filter  = filters_cfg.get("ema_filter_enabled", True)
+    vol_filter  = filters_cfg.get("volume_filter_enabled", True)
+
+    last_row = df.iloc[-1] if len(df) > 0 else None
+    
+    if last_row is not None:
+        close_price = float(last_row["close"])
+        
+        # EMA 200 Filter
+        if ema_filter and "ema_200" in df.columns and len(df) >= 200:
+            ema_200 = float(last_row["ema_200"])
+            if composite_buy and close_price <= ema_200:
+                composite_buy = False
+                log.info("Filtered out BUY: Close (%.2f) below EMA 200 (%.2f)", close_price, ema_200)
+            if composite_sell and close_price >= ema_200:
+                composite_sell = False
+                log.info("Filtered out SELL: Close (%.2f) above EMA 200 (%.2f)", close_price, ema_200)
+
+        # Volume SMA 20 Filter
+        if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
+            vol_sma = float(last_row["vol_sma"])
+            last_vol = float(last_row["volume"])
+            if vol_sma > 0:
+                if composite_buy and last_vol < 0.8 * vol_sma:
+                    composite_buy = False
+                    log.info("Filtered out BUY: Volume (%.0f) below 80%% of SMA 20 (%.0f)", last_vol, vol_sma)
+                if composite_sell and last_vol < 0.8 * vol_sma:
+                    composite_sell = False
+                    log.info("Filtered out SELL: Volume (%.0f) below 80%% of SMA 20 (%.0f)", last_vol, vol_sma)
+
+        # ADX Hard Filter (opt-in)
+        adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
+        adx_threshold   = float(filters_cfg.get("adx_min_threshold", 20))
+        if adx_hard_filter and "adx_14" in df.columns:
+            adx_val = float(last_row["adx_14"])
+            if composite_buy and adx_val < adx_threshold:
+                composite_buy = False
+                log.info("Filtered out BUY: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
+            if composite_sell and adx_val < adx_threshold:
+                composite_sell = False
+                log.info("Filtered out SELL: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
+
+    # ---- Calculate Setup Score & Reasons -----------------------------------
+    buy_score = 0.0
+    buy_reasons = []
+    sell_score = 0.0
+    sell_reasons = []
+    
+    zones = df.attrs.get("sr_zones", [])
+    
+    if last_row is not None:
+        close_price = float(last_row["close"])
+        
+        # 1. S/R Zone Strength & Proximity
+        if zones:
+            prox_cfg = config.get("sr_channels", {}).get("proximity_pct", 0.5)
+            
+            # BUY setup score from S/R Support
+            best_buy_zone_pts = 0
+            best_buy_zone_reason = ""
+            for idx, (zone_hi, zone_lo) in enumerate(zones):
+                inside = (close_price >= zone_lo) and (close_price <= zone_hi)
+                above_near = (zone_hi < close_price) and ((close_price - zone_hi) <= (close_price * prox_cfg / 100.0))
+                
+                if inside or above_near:
+                    prox_pts = 20.0 if inside else 20.0 * (1.0 - (((close_price - zone_hi) / close_price) * 100.0 / prox_cfg)) if prox_cfg > 0 else 20.0
+                    str_pts = 30.0 if idx == 0 else 25.0 if idx == 1 else 20.0 if idx == 2 else 15.0
+                    zone_pts = prox_pts + str_pts
+                    if zone_pts > best_buy_zone_pts:
+                        best_buy_zone_pts = zone_pts
+                        best_buy_zone_reason = f"Bouncing inside/near Support Zone Rank {idx+1} (+{zone_pts:.1f} pts)"
+            
+            if best_buy_zone_pts > 0:
+                buy_score += best_buy_zone_pts
+                buy_reasons.append(best_buy_zone_reason)
+                
+            # SELL setup score from S/R Resistance
+            best_sell_zone_pts = 0
+            best_sell_zone_reason = ""
+            for idx, (zone_hi, zone_lo) in enumerate(zones):
+                inside = (close_price >= zone_lo) and (close_price <= zone_hi)
+                below_near = (zone_lo > close_price) and ((zone_lo - close_price) <= (close_price * prox_cfg / 100.0))
+                
+                if inside or below_near:
+                    prox_pts = 20.0 if inside else 20.0 * (1.0 - (((zone_lo - close_price) / close_price) * 100.0 / prox_cfg)) if prox_cfg > 0 else 20.0
+                    str_pts = 30.0 if idx == 0 else 25.0 if idx == 1 else 20.0 if idx == 2 else 15.0
+                    zone_pts = prox_pts + str_pts
+                    if zone_pts > best_sell_zone_pts:
+                        best_sell_zone_pts = zone_pts
+                        best_sell_zone_reason = f"Rejecting inside/near Resistance Zone Rank {idx+1} (+{zone_pts:.1f} pts)"
+            
+            if best_sell_zone_pts > 0:
+                sell_score += best_sell_zone_pts
+                sell_reasons.append(best_sell_zone_reason)
+
+        # 2. Volume Spike Confirmation (up to 20 pts)
+        if "volume" in df.columns and "vol_sma" in df.columns:
+            vol_sma = float(last_row["vol_sma"])
+            last_vol = float(last_row["volume"])
+            if vol_sma > 0:
+                vol_ratio = last_vol / vol_sma
+                vol_pts = min(20.0, 10.0 * vol_ratio)
+                if vol_pts > 0:
+                    buy_score += vol_pts
+                    buy_reasons.append(f"Volume surge: {vol_ratio:.2f}x average (+{vol_pts:.1f} pts)")
+                    sell_score += vol_pts
+                    sell_reasons.append(f"Volume surge: {vol_ratio:.2f}x average (+{vol_pts:.1f} pts)")
+
+        # 3. EMA 200 Trend Confluence (up to 20 pts)
+        if "ema_200" in df.columns and len(df) >= 200:
+            ema_200 = float(last_row["ema_200"])
+            if close_price > ema_200:
+                buy_score += 20.0
+                buy_reasons.append("Bullish Trend Confluence: above EMA 200 (+20.0 pts)")
+            else:
+                sell_score += 20.0
+                sell_reasons.append("Bearish Trend Confluence: below EMA 200 (+20.0 pts)")
+
+        # 4. RSI Momentum Confluence (up to 10 pts)
+        if "rsi_14" in df.columns:
+            rsi = float(last_row["rsi_14"])
+            if 40 <= rsi <= 65:
+                buy_score += 10.0
+                buy_reasons.append(f"Optimal RSI: {rsi:.1f} (+10.0 pts)")
+            if 35 <= rsi <= 60:
+                sell_score += 10.0
+                sell_reasons.append(f"Optimal RSI: {rsi:.1f} (+10.0 pts)")
+
+        # 5. ADX Trend Strength (up to 10 pts)
+        if "adx_14" in df.columns:
+            adx_val = float(last_row["adx_14"])
+            if adx_val >= 25:
+                adx_pts = 10.0
+                buy_score += adx_pts
+                buy_reasons.append(f"Strong trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+                sell_score += adx_pts
+                sell_reasons.append(f"Strong trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+            elif adx_val >= 20:
+                adx_pts = 5.0
+                buy_score += adx_pts
+                buy_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+                sell_score += adx_pts
+                sell_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+
+        # 6. Candlestick Pattern Recognition (up to 8 pts)
+        candle_patterns_on = filters_cfg.get("candle_patterns_enabled", True)
+        if candle_patterns_on:
+            patterns = detect_candle_patterns(df)
+            has_sr_zones = len(zones) > 0
+
+            for pat_name in patterns.get("bullish_patterns", []):
+                pat_pts = _candle_pattern_pts(pat_name, has_sr_zones)
+                buy_score += pat_pts
+                sr_note = " at S/R" if has_sr_zones else ""
+                buy_reasons.append(f"Bullish {pat_name}{sr_note} (+{pat_pts:.1f} pts)")
+                triggered_buy.append(pat_name)
+
+            for pat_name in patterns.get("bearish_patterns", []):
+                pat_pts = _candle_pattern_pts(pat_name, has_sr_zones)
+                sell_score += pat_pts
+                sr_note = " at S/R" if has_sr_zones else ""
+                sell_reasons.append(f"Bearish {pat_name}{sr_note} (+{pat_pts:.1f} pts)")
+                triggered_sell.append(pat_name)
+
+    buy_score = min(100.0, round(buy_score, 1))
+    sell_score = min(100.0, round(sell_score, 1))
+
     # ---- Collect detail metadata for display --------------------------------
     details = {}
     if "ut_trail" in df.columns:
@@ -517,11 +994,17 @@ def evaluate_composite_signals(
         details["ut_pos"]   = int(df["ut_pos"].iloc[-1])
     if hasattr(df, "attrs") and "sr_zones" in df.attrs:
         details["sr_zones"] = df.attrs["sr_zones"][:3]  # top 3 zones
+    if "adx_14" in df.columns and len(df) > 0:
+        details["adx"] = round(float(df["adx_14"].iloc[-1]), 1)
 
     return {
         "buy":            composite_buy,
         "sell":           composite_sell,
         "triggered_buy":  triggered_buy,
         "triggered_sell": triggered_sell,
+        "buy_score":      buy_score,
+        "buy_reasons":    buy_reasons,
+        "sell_score":     sell_score,
+        "sell_reasons":   sell_reasons,
         "details":        details,
     }

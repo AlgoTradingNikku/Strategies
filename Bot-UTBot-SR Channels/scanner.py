@@ -85,10 +85,13 @@ log.propagate = False  # Avoid propagating up to root logger
 sys.path.insert(0, str(_bot_dir))
 from telegram import send_telegram_alert                       # noqa: E402
 from nse_indices import get_index_symbols, list_available_segments  # noqa: E402
+from signal_db import log_signal, check_outcomes                # noqa: E402
 from signals import (                                          # noqa: E402
     compute_utbot_signals,
     compute_sr_signals,
     evaluate_composite_signals,
+    check_mtf_confirmation,
+    calculate_risk_reward,
 )
 
 
@@ -150,7 +153,9 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
             import yfinance as yf
 
             yf_symbol = symbol
-            if exchange == "NSE":
+            if symbol.startswith("^"):
+                pass
+            elif exchange == "NSE":
                 yf_symbol = f"{symbol}.NS"
             elif exchange == "BSE":
                 yf_symbol = f"{symbol}.BO"
@@ -327,6 +332,7 @@ def scan_symbol(
     timeframe: str,
     config: dict,
     lookback_candles: int = 2,
+    nifty_df: pd.DataFrame = None,
 ) -> list[dict]:
     """
     Scan a single symbol through the enabled signal engines.
@@ -336,6 +342,7 @@ def scan_symbol(
     """
     strat  = config.get("strategy", {})
     sr_cfg = config.get("sr_channels", {})
+    filters_cfg = config.get("filters", {})
 
     df = fetch_history(symbol, timeframe, config)
     if df is None or len(df) < 20:
@@ -368,6 +375,35 @@ def scan_symbol(
     results    = []
     last_row   = df.iloc[-1]
     close_price = float(last_row["close"])
+    zones = composite["details"].get("sr_zones", [])
+
+    # ---- Multi-Timeframe Confirmation --------------------------------------
+    mtf_result = None
+    if filters_cfg.get("mtf_enabled", False):
+        mtf_tf = filters_cfg.get("mtf_timeframe", "1h")
+        try:
+            htf_df = fetch_history(symbol, mtf_tf, config)
+            mtf_result = check_mtf_confirmation(htf_df, config)
+        except Exception as e:
+            log.debug("MTF check failed for %s: %s", symbol, e)
+            mtf_result = {"trend": "neutral", "htf_trail": None, "htf_close": None}
+
+    # ---- Risk/Reward Calculation --------------------------------------------
+    rr_result = {"stop_loss": None, "target": None, "risk_reward": None}
+    if filters_cfg.get("risk_reward_enabled", True):
+        # R:R is computed per signal direction, handled below per-result
+        pass
+
+    # ---- Relative Strength vs NIFTY50 --------------------------------------
+    rs_ratio = None
+    if nifty_df is not None and len(df) >= 20 and len(nifty_df) >= 20:
+        try:
+            stock_ret = (df["close"].iloc[-1] / df["close"].iloc[-20]) - 1.0
+            nifty_ret = (nifty_df["close"].iloc[-1] / nifty_df["close"].iloc[-20]) - 1.0
+            if abs(nifty_ret) > 1e-10:
+                rs_ratio = round((1.0 + stock_ret) / (1.0 + nifty_ret), 3)
+        except Exception:
+            rs_ratio = None
 
     base_info = {
         "symbol":      symbol,
@@ -375,14 +411,70 @@ def scan_symbol(
         "signal_time": df.index[-1],
         "ut_trail":    composite["details"].get("ut_trail"),
         "ut_pos":      composite["details"].get("ut_pos"),
-        "sr_zones":    composite["details"].get("sr_zones", []),
+        "sr_zones":    zones,
+        "adx":         composite["details"].get("adx"),
+        "rs_ratio":    rs_ratio,
+        "mtf":         mtf_result,
     }
 
+    def _build_result(signal_type, triggered, score, reasons):
+        """Build a single signal result dict with MTF, R:R, RS adjustments."""
+        adj_score = score
+        adj_reasons = list(reasons)
+
+        # MTF score adjustment
+        if mtf_result and mtf_result["trend"] != "neutral":
+            trend = mtf_result["trend"]
+            confirms = (signal_type == "BUY" and trend == "bullish") or \
+                       (signal_type == "SELL" and trend == "bearish")
+            if confirms:
+                adj_score += 15.0
+                adj_reasons.append(f"MTF confirms {trend} trend (+15.0 pts)")
+            else:
+                adj_score -= 10.0
+                adj_reasons.append(f"MTF counter-trend: {trend} (−10.0 pts)")
+        elif mtf_result and mtf_result["trend"] == "neutral":
+            adj_score += 5.0
+            adj_reasons.append("MTF neutral (+5.0 pts)")
+
+        # Relative Strength score adjustment
+        if rs_ratio is not None:
+            if signal_type == "BUY" and rs_ratio > 1.1:
+                adj_score += 10.0
+                adj_reasons.append(f"Outperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
+            elif signal_type == "SELL" and rs_ratio < 0.9:
+                adj_score += 10.0
+                adj_reasons.append(f"Underperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
+
+        adj_score = min(100.0, round(max(0.0, adj_score), 1))
+
+        # Risk/Reward
+        rr = {"stop_loss": None, "target": None, "risk_reward": None}
+        if filters_cfg.get("risk_reward_enabled", True):
+            rr = calculate_risk_reward(df, signal_type, zones, config)
+
+        return {
+            **base_info,
+            "signal":        signal_type,
+            "triggered":     triggered,
+            "setup_score":   adj_score,
+            "score_reasons": adj_reasons,
+            "stop_loss":     rr.get("stop_loss"),
+            "target":        rr.get("target"),
+            "risk_reward":   rr.get("risk_reward"),
+        }
+
     if composite["buy"]:
-        results.append({**base_info, "signal": "BUY",  "triggered": composite["triggered_buy"]})
+        results.append(_build_result(
+            "BUY", composite["triggered_buy"],
+            composite.get("buy_score", 0.0), composite.get("buy_reasons", []),
+        ))
 
     if composite["sell"]:
-        results.append({**base_info, "signal": "SELL", "triggered": composite["triggered_sell"]})
+        results.append(_build_result(
+            "SELL", composite["triggered_sell"],
+            composite.get("sell_score", 0.0), composite.get("sell_reasons", []),
+        ))
 
     return results
 
@@ -485,13 +577,20 @@ def run_scan(
     log.info("  Scan Time     : %s", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     log.info("=" * 70)
 
+    # ---- Fetch NIFTY50 index data for Relative Strength --------------------
+    nifty_df = None
+    try:
+        nifty_df = fetch_history("^NSEI", timeframe, config)
+    except Exception as e:
+        log.debug("Could not fetch NIFTY50 index for RS: %s", e)
+
     buy_results  = []
     sell_results = []
     errors       = 0
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
-            executor.submit(scan_symbol, sym, timeframe, config, lookback): sym
+            executor.submit(scan_symbol, sym, timeframe, config, lookback, nifty_df): sym
             for sym in symbols
         }
 
@@ -515,8 +614,8 @@ def run_scan(
                 errors += 1
                 log.error("  [%3d/%3d] %-15s ❌ Error: %s", i, len(symbols), sym, exc)
 
-    buy_results.sort(key=lambda r: r["symbol"])
-    sell_results.sort(key=lambda r: r["symbol"])
+    buy_results.sort(key=lambda r: (-r.get("setup_score", 0.0), r["symbol"]))
+    sell_results.sort(key=lambda r: (-r.get("setup_score", 0.0), r["symbol"]))
 
     if errors:
         log.warning("  Scan completed with %d error(s).", errors)
@@ -568,55 +667,39 @@ def print_results_table(
         log.info("=" * 70)
         return
 
-    # ---- BUY table ----------------------------------------------------------
-    if buy_results:
+    def _print_signal_table(results, label, emoji):
         log.info("")
         log.info("=" * 70)
-        log.info("  🟢 %s — BUY Signals (%s)", segment_label, timeframe)
+        log.info("  %s %s — %s Signals (%s)", emoji, segment_label, label, timeframe)
         log.info("=" * 70)
         log.info(
-            "  %-4s  %-15s  %-10s  %-12s  %-20s  %-10s",
-            "#", "SYMBOL", "CLOSE", "UT TRAIL", "SR ZONES", "CONDITIONS",
+            "  %-4s  %-14s  %-9s  %-8s  %-10s  %-10s  %-5s  %-10s",
+            "#", "SYMBOL", "CLOSE", "SCORE", "SL", "TARGET", "R:R", "CONDITIONS",
         )
-        log.info("  " + "-" * 76)
+        log.info("  " + "-" * 80)
 
-        for i, r in enumerate(buy_results, 1):
-            trail = f"{r['ut_trail']:.2f}" if r.get("ut_trail") is not None else "—"
-            zones = _format_zones(r.get("sr_zones", []))
+        for i, r in enumerate(results, 1):
             conds = _format_conditions(r["triggered"])
+            score = f"{r.get('setup_score', 0.0):.1f}"
+            sl  = f"{r['stop_loss']:.2f}"  if r.get("stop_loss")  is not None else "—"
+            tgt = f"{r['target']:.2f}"     if r.get("target")     is not None else "—"
+            rr  = f"{r['risk_reward']:.1f}" if r.get("risk_reward") is not None else "—"
             log.info(
-                "  %-4d  %-15s  %-10.2f  %-12s  %-20s  %-10s",
-                i, r["symbol"], r["close"], trail, zones, conds,
+                "  %-4d  %-14s  %-9.2f  %-8s  %-10s  %-10s  %-5s  %-10s",
+                i, r["symbol"], r["close"], score, sl, tgt, rr, conds,
             )
 
-        log.info("  " + "-" * 76)
-        log.info("  Total: %d BUY signals", len(buy_results))
+        log.info("  " + "-" * 80)
+        log.info("  Total: %d %s signals", len(results), label)
         log.info("=" * 70)
+
+    # ---- BUY table ----------------------------------------------------------
+    if buy_results:
+        _print_signal_table(buy_results, "BUY", "🟢")
 
     # ---- SELL table ---------------------------------------------------------
     if sell_results:
-        log.info("")
-        log.info("=" * 70)
-        log.info("  🔴 %s — SELL Signals (%s)", segment_label, timeframe)
-        log.info("=" * 70)
-        log.info(
-            "  %-4s  %-15s  %-10s  %-12s  %-20s  %-10s",
-            "#", "SYMBOL", "CLOSE", "UT TRAIL", "SR ZONES", "CONDITIONS",
-        )
-        log.info("  " + "-" * 76)
-
-        for i, r in enumerate(sell_results, 1):
-            trail = f"{r['ut_trail']:.2f}" if r.get("ut_trail") is not None else "—"
-            zones = _format_zones(r.get("sr_zones", []))
-            conds = _format_conditions(r["triggered"])
-            log.info(
-                "  %-4d  %-15s  %-10.2f  %-12s  %-20s  %-10s",
-                i, r["symbol"], r["close"], trail, zones, conds,
-            )
-
-        log.info("  " + "-" * 76)
-        log.info("  Total: %d SELL signals", len(sell_results))
-        log.info("=" * 70)
+        _print_signal_table(sell_results, "SELL", "🔴")
 
     # ---- Summary ------------------------------------------------------------
     log.info("")
@@ -634,7 +717,7 @@ def build_telegram_message(
     mode: str,
     total_stocks: int = 0,
 ) -> str:
-    """Build a consolidated HTML Telegram message for buy and sell signals."""
+    """Build a consolidated HTML Telegram message for buy and sell signals, sorted by Setup Score."""
     now   = datetime.now().strftime("%Y-%m-%d %H:%M")
     total = total_stocks or (len(buy_results) + len(sell_results))
 
@@ -643,41 +726,57 @@ def build_telegram_message(
 
     if not buy_results and not sell_results:
         return (
-            f"\U0001f4ed <b>{_esc(segment_label)} — No Signals</b>\n"
+            f"📬 <b>{_esc(segment_label)} — No Signals</b>\n"
             f"Mode: {_esc(mode)} | Timeframe: {timeframe}\n"
             f"Scanned at: {now}"
         )
 
     lines = [
-        f"\U0001f4ca <b>{_esc(segment_label)} — UTBot+SR Channels Scanner</b>",
+        f"📊 <b>{_esc(segment_label)} — UTBot+SR Channels Scanner</b>",
         f"Mode: <code>{_esc(mode)}</code> | TF: <code>{timeframe}</code> | {now}",
         "",
     ]
 
+    def _signal_line(i, r):
+        score = r.get("setup_score", 0.0)
+        prefix = "🔥 " if score >= 70 else ""
+
+        # R:R info
+        rr_str = ""
+        if r.get("risk_reward") is not None:
+            rr_emoji = "🎯" if r["risk_reward"] >= 2.0 else ""
+            rr_str = f" | R:R {rr_emoji}{r['risk_reward']:.1f}"
+            if r.get("stop_loss") is not None and r.get("target") is not None:
+                rr_str += f" (SL: {r['stop_loss']:.0f} → TGT: {r['target']:.0f})"
+
+        # MTF trend
+        mtf_str = ""
+        mtf = r.get("mtf")
+        if mtf and mtf.get("trend"):
+            trend_emoji = {"📈": "bullish", "📉": "bearish", "➖": "neutral"}
+            for emoji, t in trend_emoji.items():
+                if mtf["trend"] == t:
+                    mtf_str = f" | HTF: {emoji}"
+                    break
+
+        reasons_list = r.get("score_reasons", [])
+        brief_reason = f"\n   └ <i>{reasons_list[0]}</i>" if reasons_list else ""
+
+        return (
+            f"{i}. {prefix}<b>{_esc(r['symbol'])}</b> — ₹{r['close']:.2f}"
+            f" (Score: <b>{score:.1f}</b>{rr_str}{mtf_str}){brief_reason}"
+        )
+
     if buy_results:
-        lines.append("\U0001f7e2 <b>BUY Signals</b>")
+        lines.append("🟢 <b>BUY Signals (Sorted by Setup Score)</b>")
         for i, r in enumerate(buy_results, 1):
-            conds     = _format_conditions(r["triggered"])
-            trail_str = f" | Trail: {r['ut_trail']:.2f}" if r.get("ut_trail") is not None else ""
-            zones     = _format_zones(r.get("sr_zones", []))
-            zone_str  = f" | Zones: {zones}" if zones != "—" else ""
-            lines.append(
-                f"{i}. <b>{_esc(r['symbol'])}</b> — \u20b9{r['close']:.2f}"
-                f" [{conds}]{trail_str}{zone_str}"
-            )
+            lines.append(_signal_line(i, r))
         lines.append("")
 
     if sell_results:
-        lines.append("\U0001f534 <b>SELL Signals</b>")
+        lines.append("🔴 <b>SELL Signals (Sorted by Setup Score)</b>")
         for i, r in enumerate(sell_results, 1):
-            conds     = _format_conditions(r["triggered"])
-            trail_str = f" | Trail: {r['ut_trail']:.2f}" if r.get("ut_trail") is not None else ""
-            zones     = _format_zones(r.get("sr_zones", []))
-            zone_str  = f" | Zones: {zones}" if zones != "—" else ""
-            lines.append(
-                f"{i}. <b>{_esc(r['symbol'])}</b> — \u20b9{r['close']:.2f}"
-                f" [{conds}]{trail_str}{zone_str}"
-            )
+            lines.append(_signal_line(i, r))
         lines.append("")
 
     lines.append(
@@ -825,11 +924,28 @@ Examples:
         print_results_table(buy_results, sell_results, seg_label, tf, total)
 
         msg       = build_telegram_message(buy_results, sell_results, seg_label, tf, eff_mode, total)
-        tg_result = send_telegram_alert(msg, priority=8)
+        
+        # Determine if any signal is priority
+        filters_cfg = config.get("filters", {})
+        min_alert_score = filters_cfg.get("min_alert_score", 70)
+        has_priority = any(r.get("setup_score", 0.0) >= min_alert_score for r in buy_results + sell_results)
+        
+        tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority)
         if "error" in tg_result:
             log.warning("Telegram alert failed: %s", tg_result["error"])
         else:
-            log.info("✅ Telegram alert sent successfully.")
+            if has_priority:
+                log.info("✅ Priority Telegram alert sent successfully (score >= %d).", min_alert_score)
+            else:
+                log.info("✅ Silent Telegram alert sent successfully (score < %d).", min_alert_score)
+
+        # Log signals to history database
+        if config.get("filters", {}).get("signal_history_enabled", True):
+            for r in buy_results + sell_results:
+                try:
+                    log_signal(r, timeframe=tf)
+                except Exception as e:
+                    log.debug("Signal history log failed: %s", e)
 
     else:
         # ── Continuous scanning mode ──────────────────────────────────────
@@ -862,19 +978,57 @@ Examples:
                             msg       = build_telegram_message(
                                 buy_results, sell_results, seg_label, tf, eff_mode, total,
                             )
-                            tg_result = send_telegram_alert(msg, priority=8)
+                            # Determine if any signal is priority
+                            filters_cfg = config.get("filters", {})
+                            min_alert_score = filters_cfg.get("min_alert_score", 70)
+                            has_priority = any(r.get("setup_score", 0.0) >= min_alert_score for r in buy_results + sell_results)
+                            
+                            tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority)
                             if "error" in tg_result:
                                 log.warning("Telegram alert failed: %s", tg_result["error"])
                             else:
-                                log.info("✅ Telegram alert sent successfully.")
+                                if has_priority:
+                                    log.info("✅ Priority Telegram alert sent successfully (score >= %d).", min_alert_score)
+                                else:
+                                    log.info("✅ Silent Telegram alert sent successfully (score < %d).", min_alert_score)
+
+                            # Log signals to history database
+                            if config.get("filters", {}).get("signal_history_enabled", True):
+                                for r in buy_results + sell_results:
+                                    try:
+                                        log_signal(r, timeframe=tf)
+                                    except Exception as e:
+                                        log.debug("Signal history log failed: %s", e)
                         else:
                             log.info("No signals — skipping Telegram alert.")
+
+                        # Periodic outcome check (every scan cycle)
+                        if config.get("filters", {}).get("signal_history_enabled", True):
+                            try:
+                                outcome_hours = config.get("filters", {}).get("outcome_check_hours", 4)
+                                check_outcomes(hours=outcome_hours, config=config)
+                            except Exception as e:
+                                log.debug("Outcome check failed: %s", e)
                     else:
                         log.debug("Same candle boundary — waiting for next bar...")
                 else:
                     log.debug("Outside market hours — sleeping...")
 
-                time.sleep(scan_interval)
+                # Dynamic sleep to align with candle boundaries
+                try:
+                    candle_secs = int(_parse_timeframe(timeframe).total_seconds())
+                    now = datetime.now()
+                    time_passed = now.timestamp() % candle_secs
+                    time_remaining = candle_secs - time_passed
+                    
+                    # Sleep until boundary + 0.5s safety buffer
+                    sleep_time = min(scan_interval, time_remaining + 0.5)
+                    if sleep_time < 2.0:  # If we are too close, sleep for the next interval or a buffer
+                        sleep_time += candle_secs
+                    log.info("Sleeping for %.2f seconds until next candle boundary...", sleep_time)
+                    time.sleep(sleep_time)
+                except Exception:
+                    time.sleep(scan_interval)
 
         except KeyboardInterrupt:
             log.info("\nScanner stopped. Goodbye!")

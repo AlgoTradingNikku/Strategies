@@ -17,7 +17,7 @@ def load_config(path=None):
         return yaml.safe_load(f)
 
 
-def send_telegram_alert(message, priority=5):
+def send_telegram_alert(message, priority=5, silent=False):
     """
     Send a Telegram alert using the configured mode.
 
@@ -30,7 +30,7 @@ def send_telegram_alert(message, priority=5):
     mode = tg_cfg.get("mode", "openalgo").lower()
 
     if mode == "direct":
-        return _send_direct(tg_cfg, message)
+        return _send_direct(tg_cfg, message, silent)
     else:
         return _send_via_openalgo(config, message, priority)
 
@@ -57,7 +57,7 @@ def _send_via_openalgo(config, message, priority):
         return {"error": f"Request failed: {e}"}
 
 
-def _send_direct(tg_cfg, message):
+def _send_direct(tg_cfg, message, silent=False):
     """Send Telegram alert directly via Telegram Bot API."""
     bot_token = tg_cfg.get("bot_token", "")
     chat_id = tg_cfg.get("chat_id", "")
@@ -70,6 +70,7 @@ def _send_direct(tg_cfg, message):
         "chat_id": chat_id,
         "text": message,
         "parse_mode": "HTML",
+        "disable_notification": silent,
     }
 
     try:

@@ -26,7 +26,14 @@
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Dashboard</span>
                 </button>
-
+                <button class="nav-item" data-tab="history">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Signal History</span>
+                </button>
+                <button class="nav-item" data-tab="stats">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Performance Stats</span>
+                </button>
                 <button class="nav-item" data-tab="config">
                     <i class="fa-solid fa-sliders"></i>
                     <span>Settings</span>
@@ -118,15 +125,17 @@
                                     <tr>
                                         <th>Symbol</th>
                                         <th>Close</th>
-                                        <th>UT Trail</th>
-                                        <th>SR Support Zones</th>
+                                        <th>Stop Loss</th>
+                                        <th>Target</th>
+                                        <th>R:R</th>
+                                        <th>Score</th>
                                         <th>Triggered Conditions</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td colspan="6" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
+                                        <td colspan="8" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -148,15 +157,17 @@
                                     <tr>
                                         <th>Symbol</th>
                                         <th>Close</th>
-                                        <th>UT Trail</th>
-                                        <th>SR Resistance Zones</th>
+                                        <th>Stop Loss</th>
+                                        <th>Target</th>
+                                        <th>R:R</th>
+                                        <th>Score</th>
                                         <th>Triggered Conditions</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td colspan="6" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
+                                        <td colspan="8" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -292,6 +303,89 @@
                             <i class="fa-solid fa-bell"></i> Alerts & Symbols
                         </div>
                         <div class="config-card-body">
+                            <h4 class="sub-header-line">Setup Filters & Priorities</h4>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-ema">EMA 200 Trend Filter</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-ema">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-volume">Volume Confirmation Filter</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-volume">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-score">Min Alert Score Cutoff (0-100)</label>
+                                <input type="number" id="cfg-filters-score" min="0" max="100">
+                            </div>
+
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-mtf">Multi-Timeframe Confirmation</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-mtf">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-mtf-tf">MTF Confirmation Timeframe</label>
+                                <select id="cfg-filters-mtf-tf">
+                                    <option value="15m">15 minutes</option>
+                                    <option value="30m">30 minutes</option>
+                                    <option value="1h">1 hour</option>
+                                    <option value="1d">1 day</option>
+                                </select>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-adx-filt">ADX Hard Filter</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-adx-filt">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-adx-val">ADX Min Threshold</label>
+                                <input type="number" id="cfg-filters-adx-val" min="5" max="50">
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-rr-enabled">ATR Risk/Reward Calculator</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-rr-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-rr-mult">ATR Stop Multiplier</label>
+                                    <input type="number" id="cfg-filters-rr-mult" step="0.1" min="0.1" max="5.0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-rr-ratio">Default target R:R Ratio</label>
+                                    <input type="number" id="cfg-filters-rr-ratio" step="0.1" min="0.5" max="10.0">
+                                </div>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-candle">Candlestick Pattern Recognition</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-candle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-history">Signal History Database</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-history">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-history-hours">Outcome Check Hours</label>
+                                <input type="number" id="cfg-filters-history-hours" min="1" max="72">
+                            </div>
+
                             <h4 class="sub-header-line">Telegram Alerts</h4>
                             <div class="form-group">
                                 <label for="cfg-tg-mode">Alerting Target</label>
@@ -348,6 +442,122 @@
                     </div>
                     <div class="logs-terminal" id="logs-terminal-output">
                         Loading server system logs...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: History Panel -->
+            <section class="tab-panel" id="panel-history">
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Signal & Trade Log History</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="btn btn-secondary" id="btn-prev-page"><i class="fa-solid fa-arrow-left"></i> Prev</button>
+                            <span id="history-page-info">Page 1</span>
+                            <button class="btn btn-secondary" id="btn-next-page">Next <i class="fa-solid fa-arrow-right"></i></button>
+                            <button class="btn btn-primary" id="btn-refresh-history"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="history-signals-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Symbol</th>
+                                    <th>TF</th>
+                                    <th>Type</th>
+                                    <th>Entry Price</th>
+                                    <th>Stop Loss</th>
+                                    <th>Target</th>
+                                    <th>R:R</th>
+                                    <th>Score</th>
+                                    <th>ADX / RS</th>
+                                    <th>HTF Trend</th>
+                                    <th>Outcome PnL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="12" class="empty-placeholder">No logged signals found. Database might be empty or history logging is disabled.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Stats Panel -->
+            <section class="tab-panel" id="panel-stats">
+                <div class="stats-container-grid">
+                    <div class="stats-top-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Total Logged Signals</span>
+                                <div class="stat-icon info-icon"><i class="fa-solid fa-database"></i></div>
+                            </div>
+                            <h2 class="stat-value" id="stats-total-signals">-</h2>
+                            <span class="stat-sub" id="stats-checked-signals">Checked: -</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Winning R:R Average</span>
+                                <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-check"></i></div>
+                            </div>
+                            <h2 class="stat-value text-buy" id="stats-avg-rr-winners">-</h2>
+                            <span class="stat-sub">Target hit trades</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Losing R:R Average</span>
+                                <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                            </div>
+                            <h2 class="stat-value text-sell" id="stats-avg-rr-losers">-</h2>
+                            <span class="stat-sub">Stop hit trades</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3><i class="fa-solid fa-star-half-stroke"></i> Win Rate By Setup Score Tier</h3>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Score Tier</th>
+                                            <th>Total Signals</th>
+                                            <th>Wins</th>
+                                            <th>Win Rate (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stats-score-tiers-body">
+                                        <tr><td colspan="4" class="empty-placeholder">No stats data.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3><i class="fa-solid fa-code-compare"></i> Win Rate By Direction & Timeframe</h3>
+                            </div>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Type / Timeframe</th>
+                                            <th>Total Signals</th>
+                                            <th>Wins</th>
+                                            <th>Win Rate (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stats-directions-timeframes-body">
+                                        <tr><td colspan="4" class="empty-placeholder">No stats data.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

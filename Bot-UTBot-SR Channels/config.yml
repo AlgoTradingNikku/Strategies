@@ -21,7 +21,8 @@ use_symbols: false
 # "UTBot+SR" — Generate signals only when BOTH conditions are satisfied
 signal_mode: "UTBot+SR"
 
-# Number of closed candles to look back for UT Bot signals. (1 = current running candle)
+# Number of closed candles to look back for UT Bot signals. 
+#(2=current + 1 prior candle)
 signal_lookback_candles: 1
 
 # UT Bot Settings
@@ -41,6 +42,32 @@ sr_channels:
   max_num_sr: 6                       # Maximum number of active S/R zones (1 to 10)
   loopback: 290                       # Bars to scan for pivot collection (100 to 400)
   proximity_pct: 0.2                  # % from boundary to count as "near" (0.0 disables near)
+
+# Setup Filters & Priorities
+filters:
+  ema_filter_enabled: true            # Filter out BUY below EMA 200 / SELL above EMA 200
+  volume_filter_enabled: true         # Filter out signals with below-average volume
+  min_alert_score: 70                 # Minimum setup score to send priority alert (0-100)
+
+  # Multi-Timeframe Confirmation
+  mtf_enabled: true                   # Confirm signals against a higher timeframe
+  mtf_timeframe: "1h"                # Higher TF to check UTBot trend direction
+
+  # ADX Trend Strength
+  adx_filter_enabled: false           # Hard-reject signals when ADX < threshold
+  adx_min_threshold: 20               # ADX below this = no trend, reject signal
+
+  # Risk/Reward Calculator
+  risk_reward_enabled: true           # Calculate SL/Target/R:R for each signal
+  rr_atr_multiplier: 0.5             # ATR buffer added beyond stop level
+  rr_default_ratio: 2.0              # Default target R:R when no S/R zone found
+
+  # Candlestick Pattern Recognition
+  candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
+
+  # Signal History & Outcome Tracking
+  signal_history_enabled: true        # Log signals to SQLite for outcome tracking
+  outcome_check_hours: 4              # Hours after signal to check outcome
 
 # Telegram Alerts
 telegram:

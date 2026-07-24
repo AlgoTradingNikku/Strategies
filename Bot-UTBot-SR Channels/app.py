@@ -21,6 +21,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 # Import scanner functions
 from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
+from signal_db import get_signal_history, get_statistics
 
 app = FastAPI(title="UTBot + SR Channels Scanner API")
 
@@ -69,6 +70,21 @@ class BotConfig(BaseModel):
     market_open: str
     market_close: str
 
+class FiltersConfig(BaseModel):
+    ema_filter_enabled: bool
+    volume_filter_enabled: bool
+    min_alert_score: int
+    mtf_enabled: bool
+    mtf_timeframe: str
+    adx_filter_enabled: bool
+    adx_min_threshold: float
+    risk_reward_enabled: bool
+    rr_atr_multiplier: float
+    rr_default_ratio: float
+    candle_patterns_enabled: bool
+    signal_history_enabled: bool
+    outcome_check_hours: int
+
 class ConfigUpdateRequest(BaseModel):
     data_source: str
     exchange: str
@@ -80,6 +96,7 @@ class ConfigUpdateRequest(BaseModel):
     signal_lookback_candles: int
     strategy: StrategyConfig
     sr_channels: SRChannelsConfig
+    filters: FiltersConfig
     telegram: TelegramConfig
     openalgo: OpenAlgoConfig
     data: dict
@@ -214,6 +231,26 @@ def get_history(symbol: str, timeframe: str | None = None):
     except Exception as e:
         log.error("Failed to generate history for %s: %s", symbol, e)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/signal-history")
+def get_history_list(limit: int = 50, offset: int = 0):
+    """Retrieve paginated list of historical signals and outcomes."""
+    try:
+        history = get_signal_history(limit=limit, offset=offset)
+        return {"status": "success", "history": history}
+    except Exception as e:
+        log.error("Failed to retrieve signal history: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve signal history: {e}")
+
+@app.get("/api/statistics")
+def get_stats(days: int = 30):
+    """Retrieve statistical performance breakdown for logged signals."""
+    try:
+        stats = get_statistics(days=days)
+        return {"status": "success", "statistics": stats}
+    except Exception as e:
+        log.error("Failed to retrieve statistics: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {e}")
 
 @app.get("/api/logs")
 def get_logs(lines: int = 150):
