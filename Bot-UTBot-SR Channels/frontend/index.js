@@ -124,14 +124,33 @@ document.addEventListener("DOMContentLoaded", () => {
             // Setup Filters
             if (cfg.filters) {
                 document.getElementById("cfg-filters-ema").checked = !!cfg.filters.ema_filter_enabled;
+                document.getElementById("cfg-filters-ema-period").value = cfg.filters.ema_period !== undefined ? cfg.filters.ema_period : 200;
                 document.getElementById("cfg-filters-volume").checked = !!cfg.filters.volume_filter_enabled;
+                document.getElementById("cfg-filters-vol-sma").value = cfg.filters.volume_sma_period !== undefined ? cfg.filters.volume_sma_period : 20;
+                document.getElementById("cfg-filters-vol-pct").value = cfg.filters.volume_min_pct !== undefined ? cfg.filters.volume_min_pct : 80;
                 document.getElementById("cfg-filters-score").value = cfg.filters.min_alert_score !== undefined ? cfg.filters.min_alert_score : 70;
                 
                 document.getElementById("cfg-filters-mtf").checked = !!cfg.filters.mtf_enabled;
                 document.getElementById("cfg-filters-mtf-tf").value = cfg.filters.mtf_timeframe || "1h";
                 document.getElementById("cfg-filters-mtf-align").checked = !!cfg.filters.require_mtf_alignment;
+                document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
+
                 document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
                 document.getElementById("cfg-filters-adx-val").value = cfg.filters.adx_min_threshold !== undefined ? cfg.filters.adx_min_threshold : 20;
+                document.getElementById("cfg-filters-adx-strong").value = cfg.filters.adx_strong_threshold !== undefined ? cfg.filters.adx_strong_threshold : 25;
+                document.getElementById("cfg-filters-adx-moderate").value = cfg.filters.adx_moderate_threshold !== undefined ? cfg.filters.adx_moderate_threshold : 20;
+
+                document.getElementById("cfg-filters-rsi-filter").checked = !!cfg.filters.rsi_filter_enabled;
+                document.getElementById("cfg-filters-rsi-period").value = cfg.filters.rsi_period !== undefined ? cfg.filters.rsi_period : 14;
+                document.getElementById("cfg-filters-rsi-buy-min").value = cfg.filters.rsi_buy_min !== undefined ? cfg.filters.rsi_buy_min : 40;
+                document.getElementById("cfg-filters-rsi-buy-max").value = cfg.filters.rsi_buy_max !== undefined ? cfg.filters.rsi_buy_max : 65;
+                document.getElementById("cfg-filters-rsi-sell-min").value = cfg.filters.rsi_sell_min !== undefined ? cfg.filters.rsi_sell_min : 35;
+                document.getElementById("cfg-filters-rsi-sell-max").value = cfg.filters.rsi_sell_max !== undefined ? cfg.filters.rsi_sell_max : 60;
+
+                document.getElementById("cfg-filters-rs-period").value = cfg.filters.rs_period !== undefined ? cfg.filters.rs_period : 20;
+                document.getElementById("cfg-filters-rs-buy").value = cfg.filters.rs_buy_threshold !== undefined ? cfg.filters.rs_buy_threshold : 1.1;
+                document.getElementById("cfg-filters-rs-sell").value = cfg.filters.rs_sell_threshold !== undefined ? cfg.filters.rs_sell_threshold : 0.9;
+
                 document.getElementById("cfg-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
                 document.getElementById("cfg-filters-rr-mult").value = cfg.filters.rr_atr_multiplier !== undefined ? cfg.filters.rr_atr_multiplier : 0.5;
                 document.getElementById("cfg-filters-rr-ratio").value = cfg.filters.rr_default_ratio !== undefined ? cfg.filters.rr_default_ratio : 2.0;
@@ -191,13 +210,28 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             filters: {
                 ema_filter_enabled: document.getElementById("cfg-filters-ema").checked,
+                ema_period: parseInt(document.getElementById("cfg-filters-ema-period").value || 200),
                 volume_filter_enabled: document.getElementById("cfg-filters-volume").checked,
+                volume_sma_period: parseInt(document.getElementById("cfg-filters-vol-sma").value || 20),
+                volume_min_pct: parseInt(document.getElementById("cfg-filters-vol-pct").value || 80),
                 min_alert_score: parseInt(document.getElementById("cfg-filters-score").value || 70),
                 mtf_enabled: document.getElementById("cfg-filters-mtf").checked,
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
                 require_mtf_alignment: document.getElementById("cfg-filters-mtf-align").checked,
+                mtf_neutral_pct: parseFloat(document.getElementById("cfg-filters-mtf-neutral").value || 0.3),
                 adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
                 adx_min_threshold: parseFloat(document.getElementById("cfg-filters-adx-val").value || 20),
+                adx_strong_threshold: parseFloat(document.getElementById("cfg-filters-adx-strong").value || 25),
+                adx_moderate_threshold: parseFloat(document.getElementById("cfg-filters-adx-moderate").value || 20),
+                rsi_filter_enabled: document.getElementById("cfg-filters-rsi-filter").checked,
+                rsi_period: parseInt(document.getElementById("cfg-filters-rsi-period").value || 14),
+                rsi_buy_min: parseFloat(document.getElementById("cfg-filters-rsi-buy-min").value || 40),
+                rsi_buy_max: parseFloat(document.getElementById("cfg-filters-rsi-buy-max").value || 65),
+                rsi_sell_min: parseFloat(document.getElementById("cfg-filters-rsi-sell-min").value || 35),
+                rsi_sell_max: parseFloat(document.getElementById("cfg-filters-rsi-sell-max").value || 60),
+                rs_period: parseInt(document.getElementById("cfg-filters-rs-period").value || 20),
+                rs_buy_threshold: parseFloat(document.getElementById("cfg-filters-rs-buy").value || 1.1),
+                rs_sell_threshold: parseFloat(document.getElementById("cfg-filters-rs-sell").value || 0.9),
                 risk_reward_enabled: document.getElementById("cfg-filters-rr-enabled").checked,
                 rr_atr_multiplier: parseFloat(document.getElementById("cfg-filters-rr-mult").value || 0.5),
                 rr_default_ratio: parseFloat(document.getElementById("cfg-filters-rr-ratio").value || 2.0),

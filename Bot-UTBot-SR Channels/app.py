@@ -72,19 +72,34 @@ class BotConfig(BaseModel):
 
 class FiltersConfig(BaseModel):
     ema_filter_enabled: bool
+    ema_period: int
     volume_filter_enabled: bool
+    volume_sma_period: int
+    volume_min_pct: int
     min_alert_score: int
     mtf_enabled: bool
     mtf_timeframe: str
+    require_mtf_alignment: bool
+    mtf_neutral_pct: float
     adx_filter_enabled: bool
     adx_min_threshold: float
+    adx_strong_threshold: float
+    adx_moderate_threshold: float
+    rsi_filter_enabled: bool
+    rsi_period: int
+    rsi_buy_min: float
+    rsi_buy_max: float
+    rsi_sell_min: float
+    rsi_sell_max: float
+    rs_period: int
+    rs_buy_threshold: float
+    rs_sell_threshold: float
     risk_reward_enabled: bool
     rr_atr_multiplier: float
     rr_default_ratio: float
     candle_patterns_enabled: bool
     signal_history_enabled: bool
     outcome_check_hours: int
-    require_mtf_alignment: bool
 
 class ConfigUpdateRequest(BaseModel):
     data_source: str

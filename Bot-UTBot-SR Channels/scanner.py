@@ -396,10 +396,11 @@ def scan_symbol(
 
     # ---- Relative Strength vs NIFTY50 --------------------------------------
     rs_ratio = None
-    if nifty_df is not None and len(df) >= 20 and len(nifty_df) >= 20:
+    rs_period = int(filters_cfg.get("rs_period", 20))
+    if nifty_df is not None and len(df) >= rs_period and len(nifty_df) >= rs_period:
         try:
-            stock_ret = (df["close"].iloc[-1] / df["close"].iloc[-20]) - 1.0
-            nifty_ret = (nifty_df["close"].iloc[-1] / nifty_df["close"].iloc[-20]) - 1.0
+            stock_ret = (df["close"].iloc[-1] / df["close"].iloc[-rs_period]) - 1.0
+            nifty_ret = (nifty_df["close"].iloc[-1] / nifty_df["close"].iloc[-rs_period]) - 1.0
             if abs(nifty_ret) > 1e-10:
                 rs_ratio = round((1.0 + stock_ret) / (1.0 + nifty_ret), 3)
         except Exception:
@@ -440,11 +441,13 @@ def scan_symbol(
             adj_reasons.append("MTF neutral (+5.0 pts)")
 
         # Relative Strength score adjustment
+        rs_buy_thresh  = float(filters_cfg.get("rs_buy_threshold", 1.1))
+        rs_sell_thresh = float(filters_cfg.get("rs_sell_threshold", 0.9))
         if rs_ratio is not None:
-            if signal_type == "BUY" and rs_ratio > 1.1:
+            if signal_type == "BUY" and rs_ratio > rs_buy_thresh:
                 adj_score += 10.0
                 adj_reasons.append(f"Outperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
-            elif signal_type == "SELL" and rs_ratio < 0.9:
+            elif signal_type == "SELL" and rs_ratio < rs_sell_thresh:
                 adj_score += 10.0
                 adj_reasons.append(f"Underperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
 

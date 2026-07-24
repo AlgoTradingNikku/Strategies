@@ -702,10 +702,11 @@ def check_mtf_confirmation(
     htf_close = float(last["close"])
     htf_trail = float(last["ut_trail"])
 
-    # Determine proximity — if price is within 0.3% of trail, call it neutral
+    # Determine proximity — if price is within N% of trail, call it neutral
+    mtf_neutral_pct = float(config.get("filters", {}).get("mtf_neutral_pct", 0.3))
     pct_diff = abs(htf_close - htf_trail) / htf_close * 100 if htf_close > 0 else 0
 
-    if pct_diff < 0.3:
+    if pct_diff < mtf_neutral_pct:
         trend = "neutral"
     elif htf_close > htf_trail:
         trend = "bullish"
@@ -739,21 +740,26 @@ def evaluate_composite_signals(
     "UTBot+SR" — BOTH UTBot (last N candles) AND SR (last candle) must trigger.
     """
     # ---- 1. Calculate technical indicators for filters and scoring ----
+    filters_cfg = config.get("filters", {})
+    ema_period = int(filters_cfg.get("ema_period", 200))
+    rsi_period = int(filters_cfg.get("rsi_period", 14))
+    vol_sma_period = int(filters_cfg.get("volume_sma_period", 20))
+
     if "close" in df.columns:
-        df["ema_200"] = df["close"].ewm(span=200, adjust=False).mean()
+        df["ema_trend"] = df["close"].ewm(span=ema_period, adjust=False).mean()
         
-        # Calculate RSI 14
+        # Calculate RSI
         delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        gain = (delta.where(delta > 0, 0)).rolling(rsi_period).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
         rs = gain / (loss + 1e-10)
-        df["rsi_14"] = 100 - (100 / (1 + rs))
+        df["rsi"] = 100 - (100 / (1 + rs))
 
         # Calculate ADX 14
         df["adx_14"] = compute_adx(df, period=14)
 
-    if "volume" in df.columns and len(df) >= 20:
-        df["vol_sma"] = df["volume"].rolling(20).mean()
+    if "volume" in df.columns and len(df) >= vol_sma_period:
+        df["vol_sma"] = df["volume"].rolling(vol_sma_period).mean()
 
     strat  = config.get("strategy", {})
     sr_cfg = config.get("sr_channels", {})
@@ -809,36 +815,36 @@ def evaluate_composite_signals(
         composite_sell = False
 
     # ---- Apply Filters -----------------------------------------------------
-    filters_cfg = config.get("filters", {})
     ema_filter  = filters_cfg.get("ema_filter_enabled", True)
     vol_filter  = filters_cfg.get("volume_filter_enabled", True)
+    vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
 
     last_row = df.iloc[-1] if len(df) > 0 else None
     
     if last_row is not None:
         close_price = float(last_row["close"])
         
-        # EMA 200 Filter
-        if ema_filter and "ema_200" in df.columns and len(df) >= 200:
-            ema_200 = float(last_row["ema_200"])
-            if composite_buy and close_price <= ema_200:
+        # EMA Trend Filter
+        if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
+            ema_val = float(last_row["ema_trend"])
+            if composite_buy and close_price <= ema_val:
                 composite_buy = False
-                log.info("Filtered out BUY: Close (%.2f) below EMA 200 (%.2f)", close_price, ema_200)
-            if composite_sell and close_price >= ema_200:
+                log.info("Filtered out BUY: Close (%.2f) below EMA %d (%.2f)", close_price, ema_period, ema_val)
+            if composite_sell and close_price >= ema_val:
                 composite_sell = False
-                log.info("Filtered out SELL: Close (%.2f) above EMA 200 (%.2f)", close_price, ema_200)
+                log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
 
-        # Volume SMA 20 Filter
+        # Volume SMA Filter
         if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma = float(last_row["vol_sma"])
             last_vol = float(last_row["volume"])
             if vol_sma > 0:
-                if composite_buy and last_vol < 0.8 * vol_sma:
+                if composite_buy and last_vol < vol_min_pct * vol_sma:
                     composite_buy = False
-                    log.info("Filtered out BUY: Volume (%.0f) below 80%% of SMA 20 (%.0f)", last_vol, vol_sma)
-                if composite_sell and last_vol < 0.8 * vol_sma:
+                    log.info("Filtered out BUY: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
+                if composite_sell and last_vol < vol_min_pct * vol_sma:
                     composite_sell = False
-                    log.info("Filtered out SELL: Volume (%.0f) below 80%% of SMA 20 (%.0f)", last_vol, vol_sma)
+                    log.info("Filtered out SELL: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
 
         # ADX Hard Filter (opt-in)
         adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
@@ -851,6 +857,21 @@ def evaluate_composite_signals(
             if composite_sell and adx_val < adx_threshold:
                 composite_sell = False
                 log.info("Filtered out SELL: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
+
+        # RSI Hard Filter (opt-in)
+        rsi_hard_filter = filters_cfg.get("rsi_filter_enabled", False)
+        if rsi_hard_filter and "rsi" in df.columns:
+            rsi_val = float(last_row["rsi"])
+            rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
+            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
+            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
+            rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
+            if composite_buy and not (rsi_buy_min <= rsi_val <= rsi_buy_max):
+                composite_buy = False
+                log.info("Filtered out BUY: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_buy_min, rsi_buy_max)
+            if composite_sell and not (rsi_sell_min <= rsi_val <= rsi_sell_max):
+                composite_sell = False
+                log.info("Filtered out SELL: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_sell_min, rsi_sell_max)
 
     # ---- Calculate Setup Score & Reasons -----------------------------------
     buy_score = 0.0
@@ -918,41 +939,47 @@ def evaluate_composite_signals(
                     sell_score += vol_pts
                     sell_reasons.append(f"Volume surge: {vol_ratio:.2f}x average (+{vol_pts:.1f} pts)")
 
-        # 3. EMA 200 Trend Confluence (up to 20 pts)
-        if "ema_200" in df.columns and len(df) >= 200:
-            ema_200 = float(last_row["ema_200"])
-            if close_price > ema_200:
+        # 3. EMA Trend Confluence (up to 20 pts)
+        if "ema_trend" in df.columns and len(df) >= ema_period:
+            ema_val = float(last_row["ema_trend"])
+            if close_price > ema_val:
                 buy_score += 20.0
-                buy_reasons.append("Bullish Trend Confluence: above EMA 200 (+20.0 pts)")
+                buy_reasons.append(f"Bullish Trend Confluence: above EMA {ema_period} (+20.0 pts)")
             else:
                 sell_score += 20.0
-                sell_reasons.append("Bearish Trend Confluence: below EMA 200 (+20.0 pts)")
+                sell_reasons.append(f"Bearish Trend Confluence: below EMA {ema_period} (+20.0 pts)")
 
         # 4. RSI Momentum Confluence (up to 10 pts)
-        if "rsi_14" in df.columns:
-            rsi = float(last_row["rsi_14"])
-            if 40 <= rsi <= 65:
+        rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
+        rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
+        rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
+        rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
+        if "rsi" in df.columns:
+            rsi = float(last_row["rsi"])
+            if rsi_buy_min <= rsi <= rsi_buy_max:
                 buy_score += 10.0
-                buy_reasons.append(f"Optimal RSI: {rsi:.1f} (+10.0 pts)")
-            if 35 <= rsi <= 60:
+                buy_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_buy_min:.0f}-{rsi_buy_max:.0f}) (+10.0 pts)")
+            if rsi_sell_min <= rsi <= rsi_sell_max:
                 sell_score += 10.0
-                sell_reasons.append(f"Optimal RSI: {rsi:.1f} (+10.0 pts)")
+                sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
 
         # 5. ADX Trend Strength (up to 10 pts)
+        adx_strong  = float(filters_cfg.get("adx_strong_threshold", 25))
+        adx_moderate = float(filters_cfg.get("adx_moderate_threshold", 20))
         if "adx_14" in df.columns:
             adx_val = float(last_row["adx_14"])
-            if adx_val >= 25:
+            if adx_val >= adx_strong:
                 adx_pts = 10.0
                 buy_score += adx_pts
-                buy_reasons.append(f"Strong trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+                buy_reasons.append(f"Strong trend ADX: {adx_val:.1f} (>={adx_strong:.0f}) (+{adx_pts:.1f} pts)")
                 sell_score += adx_pts
-                sell_reasons.append(f"Strong trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
-            elif adx_val >= 20:
+                sell_reasons.append(f"Strong trend ADX: {adx_val:.1f} (>={adx_strong:.0f}) (+{adx_pts:.1f} pts)")
+            elif adx_val >= adx_moderate:
                 adx_pts = 5.0
                 buy_score += adx_pts
-                buy_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+                buy_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (>={adx_moderate:.0f}) (+{adx_pts:.1f} pts)")
                 sell_score += adx_pts
-                sell_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (+{adx_pts:.1f} pts)")
+                sell_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (>={adx_moderate:.0f}) (+{adx_pts:.1f} pts)")
 
         # 6. Candlestick Pattern Recognition (up to 8 pts)
         candle_patterns_on = filters_cfg.get("candle_patterns_enabled", True)

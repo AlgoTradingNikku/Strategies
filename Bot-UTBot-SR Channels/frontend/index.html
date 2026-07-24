@@ -309,14 +309,22 @@
                             <i class="fa-solid fa-bell"></i> Alerts & Symbols
                         </div>
                         <div class="config-card-body">
-                            <h4 class="sub-header-line">Setup Filters & Priorities</h4>
+                            <h4 class="sub-header-line">Setup Filters &amp; Priorities</h4>
+
+                            <!-- EMA Trend Filter -->
                             <div class="form-group toggle-group">
-                                <label for="cfg-filters-ema">EMA 200 Trend Filter</label>
+                                <label for="cfg-filters-ema">EMA Trend Filter</label>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-filters-ema">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-ema-period">EMA Period</label>
+                                <input type="number" id="cfg-filters-ema-period" min="10" max="500" step="10">
+                            </div>
+
+                            <!-- Volume Filter -->
                             <div class="form-group toggle-group">
                                 <label for="cfg-filters-volume">Volume Confirmation Filter</label>
                                 <label class="switch">
@@ -324,20 +332,33 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-vol-sma">Volume SMA Period</label>
+                                    <input type="number" id="cfg-filters-vol-sma" min="5" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-vol-pct">Min Volume % of SMA</label>
+                                    <input type="number" id="cfg-filters-vol-pct" min="10" max="200">
+                                </div>
+                            </div>
+
+                            <!-- Alert Score -->
                             <div class="form-group">
                                 <label for="cfg-filters-score">Min Alert Score Cutoff (0-100)</label>
                                 <input type="number" id="cfg-filters-score" min="0" max="100">
                             </div>
 
+                            <h4 class="sub-header-line">Multi-Timeframe Confirmation</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-filters-mtf">Multi-Timeframe Confirmation</label>
+                                <label for="cfg-filters-mtf">MTF Confirmation</label>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-filters-mtf">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
                             <div class="form-group">
-                                <label for="cfg-filters-mtf-tf">MTF Confirmation Timeframe</label>
+                                <label for="cfg-filters-mtf-tf">MTF Timeframe</label>
                                 <select id="cfg-filters-mtf-tf">
                                     <option value="15m">15 minutes</option>
                                     <option value="30m">30 minutes</option>
@@ -352,6 +373,12 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-mtf-neutral">MTF Neutral Zone (%)</label>
+                                <input type="number" id="cfg-filters-mtf-neutral" step="0.1" min="0.0" max="5.0">
+                            </div>
+
+                            <h4 class="sub-header-line">ADX Trend Strength</h4>
                             <div class="form-group toggle-group">
                                 <label for="cfg-filters-adx-filt">ADX Hard Filter</label>
                                 <label class="switch">
@@ -360,9 +387,70 @@
                                 </label>
                             </div>
                             <div class="form-group">
-                                <label for="cfg-filters-adx-val">ADX Min Threshold</label>
+                                <label for="cfg-filters-adx-val">ADX Min Threshold (Hard Filter)</label>
                                 <input type="number" id="cfg-filters-adx-val" min="5" max="50">
                             </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-adx-strong">ADX Strong Threshold</label>
+                                    <input type="number" id="cfg-filters-adx-strong" min="10" max="60">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-adx-moderate">ADX Moderate Threshold</label>
+                                    <input type="number" id="cfg-filters-adx-moderate" min="5" max="50">
+                                </div>
+                            </div>
+
+                            <h4 class="sub-header-line">RSI Momentum Scoring</h4>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-filters-rsi-filter">RSI Hard Filter</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-filters-rsi-filter">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-rsi-period">RSI Period</label>
+                                <input type="number" id="cfg-filters-rsi-period" min="5" max="50">
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-rsi-buy-min">RSI BUY Min</label>
+                                    <input type="number" id="cfg-filters-rsi-buy-min" min="0" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-rsi-buy-max">RSI BUY Max</label>
+                                    <input type="number" id="cfg-filters-rsi-buy-max" min="0" max="100">
+                                </div>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-rsi-sell-min">RSI SELL Min</label>
+                                    <input type="number" id="cfg-filters-rsi-sell-min" min="0" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-rsi-sell-max">RSI SELL Max</label>
+                                    <input type="number" id="cfg-filters-rsi-sell-max" min="0" max="100">
+                                </div>
+                            </div>
+
+                            <h4 class="sub-header-line">Relative Strength vs NIFTY</h4>
+                            <div class="form-group">
+                                <label for="cfg-filters-rs-period">RS Lookback Period (bars)</label>
+                                <input type="number" id="cfg-filters-rs-period" min="5" max="100">
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-filters-rs-buy">RS BUY Threshold</label>
+                                    <input type="number" id="cfg-filters-rs-buy" step="0.05" min="0.5" max="3.0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-filters-rs-sell">RS SELL Threshold</label>
+                                    <input type="number" id="cfg-filters-rs-sell" step="0.05" min="0.1" max="1.5">
+                                </div>
+                            </div>
+
+                            <h4 class="sub-header-line">Risk / Reward &amp; Patterns</h4>
                             <div class="form-group toggle-group">
                                 <label for="cfg-filters-rr-enabled">ATR Risk/Reward Calculator</label>
                                 <label class="switch">
@@ -387,6 +475,8 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
+
+                            <h4 class="sub-header-line">Signal History &amp; Tracking</h4>
                             <div class="form-group toggle-group">
                                 <label for="cfg-filters-history">Signal History Database</label>
                                 <label class="switch">
