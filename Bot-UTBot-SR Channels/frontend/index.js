@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let isScanning = false;
     let historyPage = 0;
     const historyLimit = 15;
+    let lastScanTimestamp = null;  // epoch ms of the last completed scan
 
     // Elements cache
     const tabButtons = document.querySelectorAll(".nav-item");
@@ -31,6 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const sellSignalsTable = document.getElementById("sell-signals-table").querySelector("tbody");
     const buySearch = document.getElementById("buy-search");
     const sellSearch = document.getElementById("sell-search");
+
+    // Stale-data badge elements
+    const buyLastUpdated  = document.getElementById("buy-last-updated");
+    const sellLastUpdated = document.getElementById("sell-last-updated");
 
     // Config form
     const configForm = document.getElementById("config-form");
@@ -274,7 +279,12 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             if (!resp.ok) throw new Error("Failed to save configuration.");
             alert("✅ Configuration saved and loaded successfully!");
-            loadConfig();
+            await loadConfig();
+            // Re-initialise auto-refresh with the new interval from saved config
+            // (only if auto-refresh is currently running)
+            if (autoRefreshInterval !== null) {
+                _startAutoRefresh();
+            }
         } catch (err) {
             alert(`❌ Error saving config: ${err.message}`);
         }
@@ -316,13 +326,26 @@ document.addEventListener("DOMContentLoaded", () => {
         isScanning = true;
         btnRunScan.disabled = true;
         btnRunScan.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning...`;
-        
+
+        // Show pulsing "Refreshing…" state on table badges while scan runs
+        [buyLastUpdated, sellLastUpdated].forEach(el => {
+            if (!el) return;
+            el.textContent = "⟳ Refreshing…";
+            el.className = "last-updated-badge badge-scanning";
+        });
+
         try {
             const resp = await fetch(`${API_BASE}/api/scan`, { method: "POST" });
             if (!resp.ok) throw new Error("Trigger scan failed on backend server.");
             const data = await resp.json();
             renderScanData(data);
         } catch (err) {
+            // On error clear the scanning state from badges
+            [buyLastUpdated, sellLastUpdated].forEach(el => {
+                if (!el) return;
+                el.textContent = "Error";
+                el.className = "last-updated-badge badge-stale";
+            });
             alert(`❌ Scan Execution Error: ${err.message}`);
         } finally {
             isScanning = false;
@@ -429,21 +452,38 @@ document.addEventListener("DOMContentLoaded", () => {
         const timeOnly = rawTs.includes(" ") ? rawTs.split(" ")[1] : (rawTs || new Date().toLocaleTimeString());
         statLastScanTime.textContent = timeOnly;
 
-        // Calculate dynamically the scanned count
-        // Default to a fallback if we don't know the exact count
-        let totalCountScanned = 50; // default Nifty50 constituents
-        if (data.segment_label.includes("BANKNIFTY") && !data.segment_label.includes("NIFTY50")) {
-            totalCountScanned = 14;
-        } else if (data.segment_label.includes("BANKNIFTY") && data.segment_label.includes("NIFTY50")) {
-            totalCountScanned = 59; // deduplicated count
-        }
+        // Use the exact symbol count from the API response.
+        // Falls back to the sum of buy+sell signals for older API versions.
+        const totalCountScanned = data.total_scanned ?? total;
         statScannedCount.textContent = totalCountScanned;
         statScannedDetails.textContent = `Segments: ${data.segment_label}`;
+
+        // Stamp the "last updated" badges on the signal table headers
+        lastScanTimestamp = Date.now();
+        const timeStr = new Date().toLocaleTimeString();
+        [buyLastUpdated, sellLastUpdated].forEach(el => {
+            if (!el) return;
+            el.textContent = `Updated: ${timeStr}`;
+            el.className = "last-updated-badge badge-fresh";
+        });
     }   // ← end renderScanData()
 
     // ---------------------------------------------------------------------------
     // Auto-Refresh Manager
     // ---------------------------------------------------------------------------
+
+    /** Start (or restart) the auto-refresh interval using the current config. */
+    function _startAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+        }
+        const seconds = activeConfig?.scan_interval_seconds || 300;
+        autoRefreshInterval = setInterval(executeScan, seconds * 1000);
+        autoRefreshState.textContent = "ON";
+        btnToggleAutoRefresh.classList.replace("btn-secondary", "btn-primary");
+    }
+
     function initAutoRefresh() {
         // Toggle action
         btnToggleAutoRefresh.addEventListener("click", () => {
@@ -454,19 +494,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 autoRefreshState.textContent = "OFF";
                 btnToggleAutoRefresh.classList.replace("btn-primary", "btn-secondary");
             } else {
-                // Enable
-                const seconds = activeConfig?.scan_interval_seconds || 300;
-                autoRefreshInterval = setInterval(executeScan, seconds * 1000);
-                autoRefreshState.textContent = "ON";
-                btnToggleAutoRefresh.classList.replace("btn-secondary", "btn-primary");
+                // Enable — reads fresh interval from activeConfig
+                _startAutoRefresh();
             }
         });
 
-        // Set default to ON based on config interval
-        setTimeout(() => {
-            const seconds = activeConfig?.scan_interval_seconds || 300;
-            autoRefreshInterval = setInterval(executeScan, seconds * 1000);
-        }, 1000);
+        // Start on page load (activeConfig already loaded before this is called)
+        _startAutoRefresh();
     }
 
 
@@ -692,6 +726,21 @@ document.addEventListener("DOMContentLoaded", () => {
         initAutoRefresh();
         // Trigger first scan immediately to show active triggers
         executeScan();
+
+        // Staleness ticker — checks every 30 s whether the last scan is overdue.
+        // Turns the table badges amber when elapsed > 2× the configured interval.
+        setInterval(() => {
+            if (!lastScanTimestamp || isScanning) return;
+            const elapsed = (Date.now() - lastScanTimestamp) / 1000;
+            const threshold = 2 * (activeConfig?.scan_interval_seconds || 300);
+            if (elapsed > threshold) {
+                [buyLastUpdated, sellLastUpdated].forEach(el => {
+                    if (el && !el.classList.contains("badge-stale")) {
+                        el.classList.replace("badge-fresh", "badge-stale");
+                    }
+                });
+            }
+        }, 30_000);
     }
 
     init();

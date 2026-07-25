@@ -10,6 +10,7 @@ Database: signals.db (auto-created in the bot directory)
 import sqlite3
 import json
 import logging
+import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -115,15 +116,26 @@ def log_signal(signal_dict: dict, timeframe: str = None) -> int:
 # OUTCOME CHECKING
 # ============================================================================
 
-def check_outcomes(hours: int = 4, config: dict = None) -> int:
+def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
     """
     Check outcomes for signals older than `hours` that haven't been checked yet.
 
     For each unchecked signal, fetches the current price and determines if
     the target or stop-loss was hit.
 
+    Parameters
+    ----------
+    fetch_fn : callable, optional
+        A function with signature fetch_fn(symbol, timeframe, config) -> DataFrame.
+        When None, outcome checking is skipped (returns 0). Pass
+        scanner.fetch_history from the call site to avoid a circular import.
+
     Returns the number of signals updated.
     """
+    if fetch_fn is None:
+        log.debug("check_outcomes: no fetch_fn provided, skipping outcome check.")
+        return 0
+
     conn = _get_connection()
     try:
         cutoff = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
@@ -137,9 +149,6 @@ def check_outcomes(hours: int = 4, config: dict = None) -> int:
         if not unchecked:
             return 0
 
-        # Lazy import to avoid circular dependency at module level
-        from scanner import fetch_history
-
         updated = 0
         for row in unchecked:
             sig_id = row["id"]
@@ -151,26 +160,40 @@ def check_outcomes(hours: int = 4, config: dict = None) -> int:
             tf = row["timeframe"] or "5m"
 
             try:
-                df = fetch_history(symbol, tf, config or {})
+                df = fetch_fn(symbol, tf, config or {})
                 if df is None or len(df) == 0:
                     continue
 
+                # Current close for unrealised P&L display
                 current_price = float(df["close"].iloc[-1])
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # Determine outcome
+                # Filter to candles that closed AFTER the signal was generated.
+                # This lets us check whether the target or stop was touched on
+                # any bar's high/low intrabar — not just the latest close price.
+                sig_time = pd.to_datetime(row["timestamp"])
+                post_df = df[df.index > sig_time]
+
+                if post_df.empty:
+                    # No new candles since the signal — skip until data arrives
+                    continue
+
+                post_high = float(post_df["high"].max())
+                post_low  = float(post_df["low"].min())
+
+                # Determine outcome using OHLC extremes on post-signal candles
                 hit_target = 0
-                hit_stop = 0
+                hit_stop   = 0
                 if sig_type == "BUY":
-                    if target is not None and current_price >= target:
+                    if target is not None and post_high >= target:
                         hit_target = 1
-                    if stop_loss is not None and current_price <= stop_loss:
+                    if stop_loss is not None and post_low <= stop_loss:
                         hit_stop = 1
                     pnl_pct = ((current_price - entry_price) / entry_price) * 100
                 else:  # SELL
-                    if target is not None and current_price <= target:
+                    if target is not None and post_low <= target:
                         hit_target = 1
-                    if stop_loss is not None and current_price >= stop_loss:
+                    if stop_loss is not None and post_high >= stop_loss:
                         hit_stop = 1
                     pnl_pct = ((entry_price - current_price) / entry_price) * 100
 

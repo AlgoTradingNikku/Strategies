@@ -2,18 +2,24 @@
 
 data_source: "yfinance"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
 exchange: "NSE"                       # Target exchange
-scan_timeframe: "5m"                  # Timeframe (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_timeframe: "5m"                  # Lower Timeframe (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
 scan_interval_seconds: 60            # Interval between scans in continuous mode
 
 # Set to "" or [] to scan only the custom symbols list below
 segment: ["NIFTY50", "BANKNIFTY"]
-
 # Set to true to merge the custom 'symbols' list with the active segments
 use_symbols: false
 
 # Number of closed candles to look back for UT Bot signals. 
 #(2=current + 1 prior candle)
 signal_lookback_candles: 1
+
+ # --- Multi-Timeframe Confirmation ---
+mtf_enabled: true                   # Confirm signals against a higher timeframe
+mtf_timeframe: "1h"                 # Higher TF to check UTBot trend direction
+require_mtf_alignment: false        # If true, only select stock when both timeframes align
+                                    # If false, select anyway but cut the confidence score
+mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
 
 # UT Bot Settings
 strategy:
@@ -41,19 +47,12 @@ filters:
   ema_period: 200                     # EMA period used for trend filter (e.g. 50, 100, 200)
 
   # --- Volume Filter ---
-  volume_filter_enabled: false         # Filter out signals with below-average volume
+  volume_filter_enabled: false        # Filter out signals with below-average volume
   volume_sma_period: 20               # SMA period for volume moving average (e.g. 10, 20, 50)
   volume_min_pct: 60                  # Min volume as % of SMA to pass filter (80 = reject if vol < 80% of SMA)
 
   # --- Alert Score Cutoff ---
   min_alert_score: 70                 # Minimum setup score to send priority Telegram alert (0-100)
-
-  # --- Multi-Timeframe Confirmation ---
-  mtf_enabled: true                   # Confirm signals against a higher timeframe
-  mtf_timeframe: "1h"                 # Higher TF to check UTBot trend direction
-  require_mtf_alignment: false        # If true, only select stock when both timeframes align
-                                      # If false, select anyway but cut the confidence score
-  mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
 
   # --- ADX Trend Strength ---
   adx_filter_enabled: false           # Hard-reject signals when ADX < threshold

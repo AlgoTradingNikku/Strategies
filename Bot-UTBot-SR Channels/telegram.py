@@ -17,15 +17,23 @@ def load_config(path=None):
         return yaml.safe_load(f)
 
 
-def send_telegram_alert(message, priority=5, silent=False):
+def send_telegram_alert(message, priority=5, silent=False, config: dict = None):
     """
     Send a Telegram alert using the configured mode.
 
     Modes:
       - "openalgo" : Route through OpenAlgo server's Telegram endpoint.
       - "direct"   : Send directly via Telegram Bot API (no OpenAlgo needed).
+
+    Parameters
+    ----------
+    config : dict, optional
+        Pre-loaded configuration dict. When None, config.yml is read from disk.
+        Pass the scanner's live config dict to avoid a redundant file read on
+        every alert.
     """
-    config = load_config()
+    if config is None:
+        config = load_config()
     tg_cfg = config.get("telegram", {})
     mode = tg_cfg.get("mode", "openalgo").lower()
 

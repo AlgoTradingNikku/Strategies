@@ -1006,3 +1006,47 @@ input:checked + .slider:before {
     font-size: 0.78rem;
     color: var(--text-secondary);
 }
+
+/* ==========================================================================
+   Stale-Data Indicator Badges — Last-Updated stamps on signal table headers
+   ========================================================================== */
+
+.last-updated-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    background: var(--bg-surface);
+    white-space: nowrap;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.last-updated-badge.badge-fresh {
+    color: var(--color-buy);
+    border-color: var(--color-buy-border);
+    background: var(--color-buy-bg);
+}
+
+.last-updated-badge.badge-stale {
+    color: var(--color-warning);
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.last-updated-badge.badge-scanning {
+    color: var(--text-secondary);
+    border-color: var(--border-color-hover);
+    animation: badge-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+

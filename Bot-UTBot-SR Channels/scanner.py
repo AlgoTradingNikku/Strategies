@@ -333,12 +333,19 @@ def scan_symbol(
     config: dict,
     lookback_candles: int = 2,
     nifty_df: pd.DataFrame = None,
+    htf_df: pd.DataFrame = None,
 ) -> list[dict]:
     """
     Scan a single symbol through the enabled signal engines.
 
     Returns a list of result dicts (0, 1, or 2 — one per signal direction).
     Each dict contains signal metadata and which conditions triggered.
+
+    Parameters
+    ----------
+    htf_df : optional pre-fetched higher-timeframe DataFrame. When provided,
+             the MTF confirmation step uses it directly instead of making a
+             second fetch_history call for this symbol.
     """
     strat  = config.get("strategy", {})
     sr_cfg = config.get("sr_channels", {})
@@ -357,8 +364,9 @@ def scan_symbol(
             use_heikin_ashi = bool(strat.get("use_heikin_ashi", False)),
         )
 
+    sr_zones: list = []
     if sr_cfg.get("enabled", True):
-        df = compute_sr_signals(
+        df, sr_zones = compute_sr_signals(
             df,
             pivot_period      = int(sr_cfg.get("pivot_period", 10)),
             source            = sr_cfg.get("source", "High/Low"),
@@ -370,7 +378,7 @@ def scan_symbol(
         )
 
     # ---- Evaluate composite signals ----------------------------------------
-    composite  = evaluate_composite_signals(df, config, lookback_candles)
+    composite  = evaluate_composite_signals(df, config, lookback_candles, sr_zones=sr_zones)
 
     results    = []
     last_row   = df.iloc[-1]
@@ -378,11 +386,14 @@ def scan_symbol(
     zones = composite["details"].get("sr_zones", [])
 
     # ---- Multi-Timeframe Confirmation --------------------------------------
+    # Use pre-fetched htf_df if supplied by run_scan (avoids a second HTTP call
+    # per symbol). Falls back to an inline fetch when called standalone.
     mtf_result = None
     if filters_cfg.get("mtf_enabled", False):
         mtf_tf = filters_cfg.get("mtf_timeframe", "1h")
         try:
-            htf_df = fetch_history(symbol, mtf_tf, config)
+            if htf_df is None:
+                htf_df = fetch_history(symbol, mtf_tf, config)
             mtf_result = check_mtf_confirmation(htf_df, config)
         except Exception as e:
             log.debug("MTF check failed for %s: %s", symbol, e)
@@ -617,13 +628,36 @@ def run_scan(
     except Exception as e:
         log.debug("Could not fetch NIFTY50 index for RS: %s", e)
 
+    # ---- Pre-fetch HTF data for all symbols in parallel (MTF confirmation) --
+    # Mirrors the nifty_df pattern: one parallel batch before the main scan
+    # executor, eliminating a second sequential fetch inside each worker thread.
+    filters_cfg = config.get("filters", {})
+    htf_cache: dict = {}
+    if filters_cfg.get("mtf_enabled", False):
+        mtf_tf = filters_cfg.get("mtf_timeframe", "1h")
+        log.info("  Pre-fetching HTF (%s) data for %d symbols...", mtf_tf, len(symbols))
+        with ThreadPoolExecutor(max_workers=10) as htf_executor:
+            htf_futures = {
+                htf_executor.submit(fetch_history, sym, mtf_tf, config): sym
+                for sym in symbols
+            }
+            for f in as_completed(htf_futures):
+                sym = htf_futures[f]
+                try:
+                    htf_cache[sym] = f.result()
+                except Exception:
+                    htf_cache[sym] = None
+
     buy_results  = []
     sell_results = []
     errors       = 0
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
-            executor.submit(scan_symbol, sym, timeframe, config, lookback, nifty_df): sym
+            executor.submit(
+                scan_symbol, sym, timeframe, config, lookback,
+                nifty_df, htf_cache.get(sym),
+            ): sym
             for sym in symbols
         }
 
@@ -653,7 +687,7 @@ def run_scan(
     if errors:
         log.warning("  Scan completed with %d error(s).", errors)
 
-    return buy_results, sell_results, segment_label, timeframe
+    return buy_results, sell_results, segment_label, timeframe, len(symbols)
 
 
 # ============================================================================
@@ -933,7 +967,7 @@ Examples:
         else:
             eff_mode = "None"
 
-    def _do_scan() -> tuple[list, list, str, str]:
+    def _do_scan() -> tuple[list, list, str, str, int]:
         return run_scan(
             config,
             timeframe_override=timeframe,
@@ -963,7 +997,7 @@ Examples:
         if not _is_market_hours(config):
             log.info("Outside market hours — running scan anyway (--once mode).")
 
-        buy_results, sell_results, seg_label, tf = _do_scan()
+        buy_results, sell_results, seg_label, tf, _ = _do_scan()
         total = _get_total(seg_label)
 
         print_results_table(buy_results, sell_results, seg_label, tf, total)
@@ -975,7 +1009,7 @@ Examples:
         min_alert_score = filters_cfg.get("min_alert_score", 70)
         has_priority = any(r.get("setup_score", 0.0) >= min_alert_score for r in buy_results + sell_results)
         
-        tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority)
+        tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority, config=config)
         if "error" in tg_result:
             log.warning("Telegram alert failed: %s", tg_result["error"])
         else:
@@ -1013,7 +1047,7 @@ Examples:
                     if boundary != last_scan_boundary:
                         last_scan_boundary = boundary
 
-                        buy_results, sell_results, seg_label, tf = _do_scan()
+                        buy_results, sell_results, seg_label, tf, _ = _do_scan()
                         total = _get_total(seg_label)
 
                         print_results_table(buy_results, sell_results, seg_label, tf, total)
@@ -1028,7 +1062,7 @@ Examples:
                             min_alert_score = filters_cfg.get("min_alert_score", 70)
                             has_priority = any(r.get("setup_score", 0.0) >= min_alert_score for r in buy_results + sell_results)
                             
-                            tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority)
+                            tg_result = send_telegram_alert(msg, priority=8, silent=not has_priority, config=config)
                             if "error" in tg_result:
                                 log.warning("Telegram alert failed: %s", tg_result["error"])
                             else:
@@ -1051,7 +1085,7 @@ Examples:
                         if config.get("filters", {}).get("signal_history_enabled", True):
                             try:
                                 outcome_hours = config.get("filters", {}).get("outcome_check_hours", 4)
-                                check_outcomes(hours=outcome_hours, config=config)
+                                check_outcomes(hours=outcome_hours, config=config, fetch_fn=fetch_history)
                             except Exception as e:
                                 log.debug("Outcome check failed: %s", e)
                     else:

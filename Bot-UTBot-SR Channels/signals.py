@@ -251,17 +251,21 @@ def _cluster_sr_zones(
         raw_zones.append([numpp, hi, lo])
 
     # ---- Step 2: add touch count — bars whose high or low falls in zone -----
+    # Vectorised: slice the loopback window once, then use NumPy boolean masks
+    # per zone instead of a Python loop over every bar (O(Z) not O(Z×B)).
     start_idx = max(0, loopback_end_idx - loopback)
     end_idx   = min(loopback_end_idx + 1, len(high_arr))
+    h_slice   = high_arr[start_idx:end_idx]
+    l_slice   = low_arr[start_idx:end_idx]
 
     for z in raw_zones:
-        hi, lo = z[1], z[2]
-        touches = 0
-        for bar_i in range(start_idx, end_idx):
-            h = high_arr[bar_i]
-            l = low_arr[bar_i]
-            if (lo <= h <= hi) or (lo <= l <= hi):
-                touches += 1
+        z_hi, z_lo = z[1], z[2]
+        touches = int(
+            (
+                ((h_slice >= z_lo) & (h_slice <= z_hi)) |
+                ((l_slice >= z_lo) & (l_slice <= z_hi))
+            ).sum()
+        )
         z[0] += touches
 
     # ---- Step 3: greedy selection of top-N non-overlapping zones ------------
@@ -304,7 +308,7 @@ def compute_sr_signals(
     max_num_sr: int = 6,
     loopback: int = 290,
     proximity_pct: float = 0.5,
-) -> pd.DataFrame:
+) -> tuple:
     """
     Compute Support/Resistance channel signals.
 
@@ -328,16 +332,20 @@ def compute_sr_signals(
     sr_buy  : bool — price is inside or near a support zone
     sr_sell : bool — price is inside or near a resistance zone
 
-    Also stores zones as df.attrs["sr_zones"].
+    Returns
+    -------
+    tuple[pd.DataFrame, list]
+        DataFrame with sr_buy/sr_sell columns appended, and the list of
+        (zone_hi, zone_lo) tuples for the detected S/R zones.
     """
     df = df.copy()
     n  = len(df)
 
     if n < pivot_period * 2 + 1:
-        df["sr_buy"]      = False
-        df["sr_sell"]     = False
-        df.attrs["sr_zones"] = []
-        return df
+        df["sr_buy"]  = False
+        df["sr_sell"] = False
+        zones: list   = []
+        return df, zones
 
     # ---- Source for pivot detection -----------------------------------------
     if source == "High/Low":
@@ -373,10 +381,10 @@ def compute_sr_signals(
     cwidth      = (high_300 - low_300) * channel_width_pct / 100
 
     if cwidth <= 0 or not pivot_values:
-        df["sr_buy"]         = False
-        df["sr_sell"]        = False
-        df.attrs["sr_zones"] = []
-        return df
+        df["sr_buy"]  = False
+        df["sr_sell"] = False
+        zones: list   = []
+        return df, zones
 
     # ---- Compute zones ------------------------------------------------------
     zones = _cluster_sr_zones(
@@ -413,11 +421,10 @@ def compute_sr_signals(
         above_near = (zone_lo > close_v) & ((zone_lo - close_v) <= prox)
         sr_sell    = sr_sell | above_near
 
-    df["sr_buy"]         = sr_buy
-    df["sr_sell"]        = sr_sell
-    df.attrs["sr_zones"] = zones
+    df["sr_buy"]  = sr_buy
+    df["sr_sell"] = sr_sell
 
-    return df
+    return df, zones
 
 
 # ============================================================================
@@ -728,6 +735,7 @@ def evaluate_composite_signals(
     df: pd.DataFrame,
     config: dict,
     lookback_candles: int = 2,
+    sr_zones: list = None,
 ) -> dict:
     """
     Evaluate composite buy/sell signals based on signal_mode and enabled strategies.
@@ -738,6 +746,13 @@ def evaluate_composite_signals(
     "UTBot"    — UTBot buy/sell only; checked across last `lookback_candles` candles.
     "SR"       — SR Channel buy/sell only; checked on the most recent (last) candle.
     "UTBot+SR" — BOTH UTBot (last N candles) AND SR (last candle) must trigger.
+
+    Parameters
+    ----------
+    sr_zones : list, optional
+        Pre-computed S/R zones from compute_sr_signals(). When provided these
+        are used directly instead of reading from df.attrs (which is fragile
+        across pandas operations).
     """
     # ---- 1. Calculate technical indicators for filters and scoring ----
     filters_cfg = config.get("filters", {})
@@ -748,10 +763,10 @@ def evaluate_composite_signals(
     if "close" in df.columns:
         df["ema_trend"] = df["close"].ewm(span=ema_period, adjust=False).mean()
         
-        # Calculate RSI
+        # Calculate RSI using Wilder's smoothing (EWM alpha=1/period) — matches TradingView
         delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(rsi_period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
+        gain = (delta.where(delta > 0, 0)).ewm(alpha=1.0 / rsi_period, adjust=False).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1.0 / rsi_period, adjust=False).mean()
         rs = gain / (loss + 1e-10)
         df["rsi"] = 100 - (100 / (1 + rs))
 
@@ -878,8 +893,9 @@ def evaluate_composite_signals(
     buy_reasons = []
     sell_score = 0.0
     sell_reasons = []
-    
-    zones = df.attrs.get("sr_zones", [])
+
+    # Use explicitly passed zones; fall back to empty list if not provided.
+    zones = sr_zones if sr_zones is not None else []
     
     if last_row is not None:
         close_price = float(last_row["close"])
@@ -1009,8 +1025,8 @@ def evaluate_composite_signals(
     if "ut_trail" in df.columns:
         details["ut_trail"] = float(df["ut_trail"].iloc[-1])
         details["ut_pos"]   = int(df["ut_pos"].iloc[-1])
-    if hasattr(df, "attrs") and "sr_zones" in df.attrs:
-        details["sr_zones"] = df.attrs["sr_zones"][:3]  # top 3 zones
+    if zones:
+        details["sr_zones"] = zones[:3]  # top 3 zones
     if "adx_14" in df.columns and len(df) > 0:
         details["adx"] = round(float(df["adx_14"].iloc[-1]), 1)
 

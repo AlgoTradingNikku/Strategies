@@ -10,6 +10,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+from ruamel.yaml import YAML as _RYAML
 
 # Add project root to sys.path
 _bot_dir = Path(__file__).resolve().parent
@@ -131,28 +133,59 @@ def get_config():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load config: {e}")
 
+def _update_commented_map(cm, updates: dict) -> None:
+    """Recursively update a ruamel.yaml CommentedMap in-place from a plain dict.
+
+    Only existing keys are updated — new keys are added without comments.
+    This preserves all inline comments on unchanged keys.
+    """
+    for key, value in updates.items():
+        if isinstance(value, dict) and key in cm and hasattr(cm[key], "items"):
+            _update_commented_map(cm[key], value)
+        else:
+            cm[key] = value
+
+
 @app.post("/api/config")
 def update_config(req: ConfigUpdateRequest):
-    """Save the updated configuration file to disk."""
+    """Save the updated configuration file to disk, preserving all YAML comments."""
     try:
         config_path = _bot_dir / "config.yml"
-        # Convert request to pure python dict and dump to YAML
         config_dict = req.model_dump()
+
+        ryaml = _RYAML()
+        ryaml.preserve_quotes = True
+
+        # Load the existing file to capture its comment structure
+        with open(config_path, "r", encoding="utf-8") as fh:
+            commented_map = ryaml.load(fh)
+
+        # Merge new values into the CommentedMap without disturbing comment nodes
+        _update_commented_map(commented_map, config_dict)
+
+        # Write back — comments and key order are preserved
         with open(config_path, "w", encoding="utf-8") as fh:
-            yaml.dump(config_dict, fh, sort_keys=False, default_flow_style=False)
+            ryaml.dump(commented_map, fh)
+
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {e}")
 
 @app.post("/api/scan")
-def trigger_scan(timeframe: str | None = None, mode: str | None = None):
-    """Trigger a manual scan and return the results."""
+async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
+    """Trigger a manual scan and return the results.
+
+    The scan runs in a thread pool so the FastAPI event loop is not blocked —
+    other dashboard endpoints (/api/logs, /api/config, etc.) remain responsive
+    while a long-running scan is in progress.
+    """
     try:
         cfg = load_config()
-        buy, sell, label, tf = run_scan(
+        buy, sell, label, tf, total_symbols = await run_in_threadpool(
+            run_scan,
             cfg,
             timeframe_override=timeframe,
-            mode_override=mode
+            mode_override=mode,
         )
         return {
             "status": "success",
@@ -160,6 +193,7 @@ def trigger_scan(timeframe: str | None = None, mode: str | None = None):
             "timeframe": tf,
             "buy_signals": buy,
             "sell_signals": sell,
+            "total_scanned": total_symbols,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     except Exception as e:
@@ -188,9 +222,9 @@ def get_history(symbol: str, timeframe: str | None = None):
             atr_period=int(strat.get("atr_period", 2))
         )
         
-        # Calculate S/R Zones
+        # Calculate S/R Zones — unpack tuple returned by compute_sr_signals
         sr_cfg = cfg.get("sr_channels", {})
-        df = compute_sr_signals(
+        df, zones = compute_sr_signals(
             df,
             pivot_period=int(sr_cfg.get("pivot_period", 10)),
             source=sr_cfg.get("source", "High/Low"),
@@ -200,16 +234,6 @@ def get_history(symbol: str, timeframe: str | None = None):
             loopback=int(sr_cfg.get("loopback", 290)),
             proximity_pct=float(sr_cfg.get("proximity_pct", 0.2))
         )
-
-        # Extract S/R zones from dataframe metadata or details
-        zones = []
-        if hasattr(df, "attrs") and "sr_zones" in df.attrs:
-            zones = df.attrs["sr_zones"]
-        elif "sr_zones" in df.columns:
-            # Fallback if saved in series or metadata
-            last_zones = df["sr_zones"].iloc[-1]
-            if isinstance(last_zones, list):
-                zones = last_zones
 
         # Format zones for frontend: [ [hi, lo], [hi, lo], ... ]
         formatted_zones = [{"high": float(z[0]), "low": float(z[1])} for z in zones]
