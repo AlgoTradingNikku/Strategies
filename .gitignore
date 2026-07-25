@@ -13,3 +13,4 @@ __pycache__/
 
 # Auto-generated daily segment cache
 segment_cache.json
+signals.db
