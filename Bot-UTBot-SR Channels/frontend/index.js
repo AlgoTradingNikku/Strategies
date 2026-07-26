@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let historyPage = 0;
     const historyLimit = 15;
     let lastScanTimestamp = null;  // epoch ms of the last completed scan
+    let orderMode = "manual";      // "manual" | "auto" — synced with config & toggle
 
     // Elements cache
     const tabButtons = document.querySelectorAll(".nav-item");
@@ -19,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const autoRefreshState = document.getElementById("auto-refresh-state");
     const connectionStatus = document.getElementById("connection-status");
     const activeScanInfo = document.getElementById("active-scan-info");
+    const btnModeManual = document.getElementById("btn-mode-manual");
+    const btnModeAuto = document.getElementById("btn-mode-auto");
 
     // Stats
     const statScannedCount = document.getElementById("stat-scanned-count");
@@ -164,6 +167,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("cfg-filters-history-hours").value = cfg.filters.outcome_check_hours !== undefined ? cfg.filters.outcome_check_hours : 4;
             }
 
+            // OpenAlgo Order Settings
+            if (cfg.openalgo) {
+                const cfgMode = cfg.openalgo.order_mode || "manual";
+                document.getElementById("cfg-oa-order-mode").value = cfgMode;
+                document.getElementById("cfg-oa-product").value = cfg.openalgo.order_product || "MIS";
+                document.getElementById("cfg-oa-quantity").value = cfg.openalgo.order_quantity || 1;
+                // Sync the dashboard header toggle with saved config
+                _applyOrderMode(cfgMode);
+            }
+
             // Alerts
             document.getElementById("cfg-tg-mode").value = cfg.telegram.mode;
             document.getElementById("cfg-tg-token").value = cfg.telegram.bot_token;
@@ -249,7 +262,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 bot_token: document.getElementById("cfg-tg-token").value,
                 chat_id: document.getElementById("cfg-tg-chat").value
             },
-            openalgo: activeConfig.openalgo,
+            openalgo: {
+                ...activeConfig.openalgo,
+                order_mode: document.getElementById("cfg-oa-order-mode").value,
+                order_product: document.getElementById("cfg-oa-product").value,
+                order_quantity: parseInt(document.getElementById("cfg-oa-quantity").value || 1),
+            },
             data: activeConfig.data,
             bot: {
                 log_level: activeConfig.bot.log_level,
@@ -278,7 +296,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify(payload)
             });
             if (!resp.ok) throw new Error("Failed to save configuration.");
-            alert("✅ Configuration saved and loaded successfully!");
+            showToast("✅ Configuration saved successfully!", "success");
             await loadConfig();
             // Re-initialise auto-refresh with the new interval from saved config
             // (only if auto-refresh is currently running)
@@ -286,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 _startAutoRefresh();
             }
         } catch (err) {
-            alert(`❌ Error saving config: ${err.message}`);
+            showToast(`❌ Error saving config: ${err.message}`, "error");
         }
     });
 
@@ -357,6 +375,108 @@ document.addEventListener("DOMContentLoaded", () => {
 
     btnRunScan.addEventListener("click", executeScan);
 
+    // ---------------------------------------------------------------------------
+    // Order Placement
+    // ---------------------------------------------------------------------------
+
+    /** Apply order mode state to the toggle buttons and module variable. */
+    function _applyOrderMode(mode) {
+        orderMode = mode;
+        [btnModeManual, btnModeAuto].forEach(btn => {
+            btn.classList.toggle("active", btn.dataset.mode === mode);
+        });
+    }
+
+    // Header toggle buttons
+    if (btnModeManual) {
+        btnModeManual.addEventListener("click", () => {
+            _applyOrderMode("manual");
+            // Persist to config immediately without full form submit
+            if (activeConfig?.openalgo) {
+                activeConfig.openalgo.order_mode = "manual";
+                document.getElementById("cfg-oa-order-mode").value = "manual";
+            }
+        });
+    }
+    if (btnModeAuto) {
+        btnModeAuto.addEventListener("click", () => {
+            if (!confirm("Enable Auto mode? Orders will be placed automatically for every new scan signal without manual confirmation.")) return;
+            _applyOrderMode("auto");
+            if (activeConfig?.openalgo) {
+                activeConfig.openalgo.order_mode = "auto";
+                document.getElementById("cfg-oa-order-mode").value = "auto";
+            }
+        });
+    }
+
+    /**
+     * Place a single order via the backend /api/order endpoint.
+     * @param {string} symbol
+     * @param {string} action    "BUY" | "SELL"
+     * @param {HTMLButtonElement|null} btnEl  Optional button element to show feedback on.
+     * @param {number|null} qtyOverride  Quantity from the per-row input (overrides config default).
+     */
+    async function placeOrder(symbol, action, btnEl = null, qtyOverride = null) {
+        const oa = activeConfig?.openalgo || {};
+        const product  = oa.order_product  || "MIS";
+        const quantity = qtyOverride ?? oa.order_quantity ?? 2;
+        const exchange = activeConfig?.exchange || "NSE";
+
+        if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/order`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ symbol, action, exchange, product, quantity })
+            });
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.detail || "Order failed");
+
+            const orderId = result.order?.orderid || result.order?.order_id || "placed";
+            showToast(`✅ ${action} ${symbol} — Order ${orderId}`, "success");
+            if (btnEl) {
+                const origLabel = btnEl.dataset.action === "BUY" ? "Buy" : "Sell";
+                btnEl.innerHTML = `<i class="fa-solid fa-check"></i> Done`;
+                btnEl.classList.add("btn-order-done");
+                setTimeout(() => {
+                    btnEl.innerHTML = `<i class="fa-solid fa-cart-shopping"></i> ${origLabel}`;
+                    btnEl.classList.remove("btn-order-done");
+                    btnEl.disabled = false;
+                }, 4000);
+            }
+        } catch (err) {
+            showToast(`❌ Order failed: ${symbol} — ${err.message}`, "error");
+            if (btnEl) {
+                btnEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Retry`;
+                btnEl.disabled = false;
+            }
+        }
+    }
+
+    /** Toast notification helper */
+    function showToast(message, type = "info") {
+        let container = document.getElementById("toast-container");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "toast-container";
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement("div");
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        // Trigger animation
+        requestAnimationFrame(() => toast.classList.add("toast-visible"));
+        setTimeout(() => {
+            toast.classList.remove("toast-visible");
+            setTimeout(() => toast.remove(), 400);
+        }, 4000);
+    }
+
     function renderScanData(data) {
         // Clear tables
         buySignalsTable.innerHTML = "";
@@ -387,6 +507,7 @@ document.addEventListener("DOMContentLoaded", () => {
                    </div>`
                 : "";
 
+            const actionClass = type === "BUY" ? "btn-order-buy" : "btn-order-sell";
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
                 <td>${item.close.toFixed(2)}</td>
@@ -408,9 +529,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </td>
                 <td>
-                    <button class="btn btn-secondary btn-analyze" data-symbol="${item.symbol}" style="padding: 4px 10px; font-size: 0.75rem;">
-                        <i class="fa-solid fa-chart-line"></i> Chart
-                    </button>
+                    <div class="action-cell">
+                        <button class="btn btn-secondary btn-analyze" data-symbol="${item.symbol}">
+                            <i class="fa-solid fa-chart-line"></i> Chart
+                        </button>
+                        <div class="order-qty-wrap">
+                            <span class="order-qty-label">Qty</span>
+                            <input type="number" class="order-qty-input" value="${activeConfig?.openalgo?.order_quantity ?? 2}" min="1" step="1" title="Number of shares to buy/sell">
+                        </div>
+                        <button class="btn btn-place-order ${actionClass}" data-symbol="${item.symbol}" data-action="${type}">
+                            <i class="fa-solid fa-cart-shopping"></i> ${type === "BUY" ? "Buy" : "Sell"}
+                        </button>
+                    </div>
                 </td>
             `;
             return tr;
@@ -442,6 +572,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.open(url, "_blank", "noopener,noreferrer");
             });
         });
+
+        // Setup Place Order buttons (Manual mode)
+        document.querySelectorAll(".btn-place-order").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const sym = btn.getAttribute("data-symbol");
+                const action = btn.getAttribute("data-action");
+                // Read quantity from the sibling input in the same action-cell
+                const qtyInput = btn.closest(".action-cell")?.querySelector(".order-qty-wrap .order-qty-input");
+                const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
+                if (confirm(`Place ${action} order for ${qty} × ${sym}?`)) {
+                    placeOrder(sym, action, btn, qty);
+                }
+            });
+        });
+
+        // Auto mode: fire orders for all new signals without any button click
+        if (orderMode === "auto") {
+            const allSignals = [
+                ...(data.buy_signals || []).map(s => ({ ...s, action: "BUY" })),
+                ...(data.sell_signals || []).map(s => ({ ...s, action: "SELL" })),
+            ];
+            allSignals.forEach(sig => {
+                const oa = activeConfig?.openalgo || {};
+                placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2);
+            });
+        }
 
         // Update stats
         const total = (data.buy_signals?.length || 0) + (data.sell_signals?.length || 0);

@@ -42,26 +42,32 @@ sr_channels:
 # Setup Filters & Priorities
 filters:
 
+  candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
+
   # --- EMA Trend Filter ---
-  ema_filter_enabled: true            # Filter out BUY below EMA / SELL above EMA
-  ema_period: 200                     # EMA period used for trend filter (e.g. 50, 100, 200)
+  # Regardless of the toggle 'true' or 'false': close above EMA always adds +20 pts to BUY; below EMA adds +20 pts to SELL.
+  # Filter (when true): hard-rejects/completely rejects BUY signals where close <= EMA, and SELL signals where close >= EMA.
+  ema_filter_enabled: false            
+  ema_period: 200                     # EMA period for trend filter and scoring (e.g. 50, 100, 200)
 
   # --- Volume Filter ---
-  volume_filter_enabled: false        # Filter out signals with below-average volume
+  # Regardless of the toggle 'true' or 'false':: volume surge always contributes up to +20 pts (10 × vol/SMA, capped at 20) — regardless of this toggle true or false
+  # Filter (when true): hard-rejects any signal where current volume < volume_min_pct % of its SMA.
+  volume_filter_enabled: false        # true: Rejects the low-volume stocks | false = score only, no rejection
   volume_sma_period: 20               # SMA period for volume moving average (e.g. 10, 20, 50)
-  volume_min_pct: 60                  # Min volume as % of SMA to pass filter (80 = reject if vol < 80% of SMA)
+  volume_min_pct: 60                  # Min volume as % of SMA to pass the hard filter (e.g. 60 = reject if vol < 60% of SMA)
 
   # --- Alert Score Cutoff ---
   min_alert_score: 70                 # Minimum setup score to send priority Telegram alert (0-100)
 
   # --- ADX Trend Strength ---
-  adx_filter_enabled: false           # Hard-reject signals when ADX < threshold
+  adx_filter_enabled: false           # true: Rejects the stocks when ADX < threshold | false = score only, no rejection
   adx_min_threshold: 20               # ADX below this = no trend, reject signal (when hard filter ON)
   adx_strong_threshold: 25            # ADX >= this = strong trend (+10 pts to score)
   adx_moderate_threshold: 20          # ADX >= this = moderate trend (+5 pts to score)
 
   # --- RSI Momentum Scoring ---
-  rsi_filter_enabled: false           # Hard-reject signals when RSI is outside optimal range
+  rsi_filter_enabled: false           # true: Rejects the stocks when RSI is outside optimal range | false = score only, no rejection
   rsi_period: 14                      # RSI calculation period
   rsi_buy_min: 40                     # BUY gets +10 pts when RSI is between buy_min and buy_max
   rsi_buy_max: 65
@@ -78,8 +84,6 @@ filters:
   rr_atr_multiplier: 0.5              # ATR buffer added beyond stop level
   rr_default_ratio: 2.0               # Default target R:R when no S/R zone found
 
-  # --- Candlestick Pattern Recognition ---
-  candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
 
   # --- Signal History & Outcome Tracking ---
   signal_history_enabled: true        # Log signals to SQLite for outcome tracking
@@ -91,12 +95,15 @@ telegram:
   bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
   chat_id: "939814804"
 
-# OpenAlgo Credentials
+# OpenAlgo Credentials & Order Settings
 openalgo:
-  apikey: "cd6aa9453a385603f2dd158b53ea0179463be18c704bed45564e8d0ba336263b"
+  apikey: "ff2124a3f1830064ac973cb17a80ce977b3eca9c1a5604d6c67a3b31937860f7"
   username: "rahul.tew"
   base_url: "http://127.0.0.1:5000"
   ws_url: "ws://127.0.0.1:8765"
+  order_mode: "manual"              # "manual" = Place Order button | "auto" = place immediately on signal
+  order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
+  order_quantity: 1                 # Default quantity per order
 
 # Other Optional Data Feeds
 twelvedata:

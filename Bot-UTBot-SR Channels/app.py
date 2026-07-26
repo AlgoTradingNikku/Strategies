@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 from ruamel.yaml import YAML as _RYAML
+from openalgo import api as oa_api
 
 # Add project root to sys.path
 _bot_dir = Path(__file__).resolve().parent
@@ -49,6 +50,9 @@ class OpenAlgoConfig(BaseModel):
     username: str
     base_url: str
     ws_url: str
+    order_mode: str = "manual"
+    order_product: str = "MIS"
+    order_quantity: int = 1
 
 class StrategyConfig(BaseModel):
     ut_enabled: bool
@@ -120,6 +124,15 @@ class ConfigUpdateRequest(BaseModel):
     bot: BotConfig
     symbols: list[str]
 
+class OrderRequest(BaseModel):
+    symbol: str
+    action: str          # "BUY" or "SELL"
+    exchange: str = "NSE"
+    price_type: str = "MARKET"
+    product: str = "MIS"
+    quantity: int = 1
+    strategy: str = "UTBotScanner"
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -170,6 +183,36 @@ def update_config(req: ConfigUpdateRequest):
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {e}")
+
+@app.post("/api/order")
+async def place_order(req: OrderRequest):
+    """Place a market order via OpenAlgo for a scanner signal."""
+    try:
+        cfg = load_config()
+        oa_cfg = cfg.get("openalgo", {})
+        client = oa_api(
+            api_key=oa_cfg.get("apikey", ""),
+            host=oa_cfg.get("base_url", "http://127.0.0.1:5000"),
+        )
+        response = client.placeorder(
+            strategy=req.strategy,
+            symbol=req.symbol,
+            action=req.action,
+            exchange=req.exchange,
+            price_type=req.price_type,
+            product=req.product,
+            quantity=req.quantity,
+        )
+        # openalgo returns a dict; treat any non-error as success
+        if isinstance(response, dict) and response.get("status") == "error":
+            raise HTTPException(status_code=502, detail=f"OpenAlgo error: {response.get('message', response)}")
+        log.info("Order placed via OpenAlgo: %s %s qty=%d → %s", req.action, req.symbol, req.quantity, response)
+        return {"status": "success", "order": response}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error("Order placement failed for %s: %s", req.symbol, e)
+        raise HTTPException(status_code=500, detail=f"Order failed: {e}")
 
 @app.post("/api/scan")
 async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
