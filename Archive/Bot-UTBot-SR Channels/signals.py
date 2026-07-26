@@ -251,17 +251,21 @@ def _cluster_sr_zones(
         raw_zones.append([numpp, hi, lo])
 
     # ---- Step 2: add touch count — bars whose high or low falls in zone -----
+    # Vectorised: slice the loopback window once, then use NumPy boolean masks
+    # per zone instead of a Python loop over every bar (O(Z) not O(Z×B)).
     start_idx = max(0, loopback_end_idx - loopback)
     end_idx   = min(loopback_end_idx + 1, len(high_arr))
+    h_slice   = high_arr[start_idx:end_idx]
+    l_slice   = low_arr[start_idx:end_idx]
 
     for z in raw_zones:
-        hi, lo = z[1], z[2]
-        touches = 0
-        for bar_i in range(start_idx, end_idx):
-            h = high_arr[bar_i]
-            l = low_arr[bar_i]
-            if (lo <= h <= hi) or (lo <= l <= hi):
-                touches += 1
+        z_hi, z_lo = z[1], z[2]
+        touches = int(
+            (
+                ((h_slice >= z_lo) & (h_slice <= z_hi)) |
+                ((l_slice >= z_lo) & (l_slice <= z_hi))
+            ).sum()
+        )
         z[0] += touches
 
     # ---- Step 3: greedy selection of top-N non-overlapping zones ------------
@@ -304,7 +308,7 @@ def compute_sr_signals(
     max_num_sr: int = 6,
     loopback: int = 290,
     proximity_pct: float = 0.5,
-) -> pd.DataFrame:
+) -> tuple:
     """
     Compute Support/Resistance channel signals.
 
@@ -328,16 +332,20 @@ def compute_sr_signals(
     sr_buy  : bool — price is inside or near a support zone
     sr_sell : bool — price is inside or near a resistance zone
 
-    Also stores zones as df.attrs["sr_zones"].
+    Returns
+    -------
+    tuple[pd.DataFrame, list]
+        DataFrame with sr_buy/sr_sell columns appended, and the list of
+        (zone_hi, zone_lo) tuples for the detected S/R zones.
     """
     df = df.copy()
     n  = len(df)
 
     if n < pivot_period * 2 + 1:
-        df["sr_buy"]      = False
-        df["sr_sell"]     = False
-        df.attrs["sr_zones"] = []
-        return df
+        df["sr_buy"]  = False
+        df["sr_sell"] = False
+        zones: list   = []
+        return df, zones
 
     # ---- Source for pivot detection -----------------------------------------
     if source == "High/Low":
@@ -373,10 +381,10 @@ def compute_sr_signals(
     cwidth      = (high_300 - low_300) * channel_width_pct / 100
 
     if cwidth <= 0 or not pivot_values:
-        df["sr_buy"]         = False
-        df["sr_sell"]        = False
-        df.attrs["sr_zones"] = []
-        return df
+        df["sr_buy"]  = False
+        df["sr_sell"] = False
+        zones: list   = []
+        return df, zones
 
     # ---- Compute zones ------------------------------------------------------
     zones = _cluster_sr_zones(
@@ -413,11 +421,10 @@ def compute_sr_signals(
         above_near = (zone_lo > close_v) & ((zone_lo - close_v) <= prox)
         sr_sell    = sr_sell | above_near
 
-    df["sr_buy"]         = sr_buy
-    df["sr_sell"]        = sr_sell
-    df.attrs["sr_zones"] = zones
+    df["sr_buy"]  = sr_buy
+    df["sr_sell"] = sr_sell
 
-    return df
+    return df, zones
 
 
 # ============================================================================
@@ -728,6 +735,7 @@ def evaluate_composite_signals(
     df: pd.DataFrame,
     config: dict,
     lookback_candles: int = 2,
+    sr_zones: list = None,
 ) -> dict:
     """
     Evaluate composite buy/sell signals based on signal_mode and enabled strategies.
@@ -738,6 +746,13 @@ def evaluate_composite_signals(
     "UTBot"    — UTBot buy/sell only; checked across last `lookback_candles` candles.
     "SR"       — SR Channel buy/sell only; checked on the most recent (last) candle.
     "UTBot+SR" — BOTH UTBot (last N candles) AND SR (last candle) must trigger.
+
+    Parameters
+    ----------
+    sr_zones : list, optional
+        Pre-computed S/R zones from compute_sr_signals(). When provided these
+        are used directly instead of reading from df.attrs (which is fragile
+        across pandas operations).
     """
     # ---- 1. Calculate technical indicators for filters and scoring ----
     filters_cfg = config.get("filters", {})
@@ -748,10 +763,10 @@ def evaluate_composite_signals(
     if "close" in df.columns:
         df["ema_trend"] = df["close"].ewm(span=ema_period, adjust=False).mean()
         
-        # Calculate RSI
+        # Calculate RSI using Wilder's smoothing (EWM alpha=1/period) — matches TradingView
         delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(rsi_period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(rsi_period).mean()
+        gain = (delta.where(delta > 0, 0)).ewm(alpha=1.0 / rsi_period, adjust=False).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1.0 / rsi_period, adjust=False).mean()
         rs = gain / (loss + 1e-10)
         df["rsi"] = 100 - (100 / (1 + rs))
 
@@ -814,73 +829,20 @@ def evaluate_composite_signals(
         composite_buy  = False
         composite_sell = False
 
-    # ---- Apply Filters -----------------------------------------------------
-    ema_filter  = filters_cfg.get("ema_filter_enabled", True)
-    vol_filter  = filters_cfg.get("volume_filter_enabled", True)
-    vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
-
-    last_row = df.iloc[-1] if len(df) > 0 else None
-    
-    if last_row is not None:
-        close_price = float(last_row["close"])
-        
-        # EMA Trend Filter
-        if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
-            ema_val = float(last_row["ema_trend"])
-            if composite_buy and close_price <= ema_val:
-                composite_buy = False
-                log.info("Filtered out BUY: Close (%.2f) below EMA %d (%.2f)", close_price, ema_period, ema_val)
-            if composite_sell and close_price >= ema_val:
-                composite_sell = False
-                log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
-
-        # Volume SMA Filter
-        if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
-            vol_sma = float(last_row["vol_sma"])
-            last_vol = float(last_row["volume"])
-            if vol_sma > 0:
-                if composite_buy and last_vol < vol_min_pct * vol_sma:
-                    composite_buy = False
-                    log.info("Filtered out BUY: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
-                if composite_sell and last_vol < vol_min_pct * vol_sma:
-                    composite_sell = False
-                    log.info("Filtered out SELL: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
-
-        # ADX Hard Filter (opt-in)
-        adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
-        adx_threshold   = float(filters_cfg.get("adx_min_threshold", 20))
-        if adx_hard_filter and "adx_14" in df.columns:
-            adx_val = float(last_row["adx_14"])
-            if composite_buy and adx_val < adx_threshold:
-                composite_buy = False
-                log.info("Filtered out BUY: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
-            if composite_sell and adx_val < adx_threshold:
-                composite_sell = False
-                log.info("Filtered out SELL: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
-
-        # RSI Hard Filter (opt-in)
-        rsi_hard_filter = filters_cfg.get("rsi_filter_enabled", False)
-        if rsi_hard_filter and "rsi" in df.columns:
-            rsi_val = float(last_row["rsi"])
-            rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
-            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
-            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
-            rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
-            if composite_buy and not (rsi_buy_min <= rsi_val <= rsi_buy_max):
-                composite_buy = False
-                log.info("Filtered out BUY: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_buy_min, rsi_buy_max)
-            if composite_sell and not (rsi_sell_min <= rsi_val <= rsi_sell_max):
-                composite_sell = False
-                log.info("Filtered out SELL: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_sell_min, rsi_sell_max)
-
     # ---- Calculate Setup Score & Reasons -----------------------------------
+    # NOTE: Scoring always runs on the raw signal state — hard filters only
+    # gate whether the signal is *shown* (they run after scoring below).
+    # EMA and Volume always contribute points when conditions are met,
+    # regardless of whether their mandatory-filter toggles are enabled.
+    last_row = df.iloc[-1] if len(df) > 0 else None
     buy_score = 0.0
     buy_reasons = []
     sell_score = 0.0
     sell_reasons = []
-    
-    zones = df.attrs.get("sr_zones", [])
-    
+
+    # Use explicitly passed zones; fall back to empty list if not provided.
+    zones = sr_zones if sr_zones is not None else []
+
     if last_row is not None:
         close_price = float(last_row["close"])
         
@@ -1004,13 +966,70 @@ def evaluate_composite_signals(
     buy_score = min(100.0, round(buy_score, 1))
     sell_score = min(100.0, round(sell_score, 1))
 
+    # ---- Apply Hard Filters (gate visibility, NOT scoring) -----------------
+    # These run AFTER scoring so scores are always fully computed.
+    if last_row is not None:
+        close_price = float(last_row["close"])
+
+        # EMA Trend Filter — mandatory gate when enabled
+        ema_filter = filters_cfg.get("ema_filter_enabled", True)
+        if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
+            ema_val = float(last_row["ema_trend"])
+            if composite_buy and close_price <= ema_val:
+                composite_buy = False
+                log.info("Filtered out BUY: Close (%.2f) below EMA %d (%.2f)", close_price, ema_period, ema_val)
+            if composite_sell and close_price >= ema_val:
+                composite_sell = False
+                log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
+
+        # Volume SMA Filter — mandatory gate when enabled
+        vol_filter  = filters_cfg.get("volume_filter_enabled", True)
+        vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
+        if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
+            vol_sma  = float(last_row["vol_sma"])
+            last_vol = float(last_row["volume"])
+            if vol_sma > 0:
+                if composite_buy and last_vol < vol_min_pct * vol_sma:
+                    composite_buy = False
+                    log.info("Filtered out BUY: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
+                if composite_sell and last_vol < vol_min_pct * vol_sma:
+                    composite_sell = False
+                    log.info("Filtered out SELL: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
+
+        # ADX Hard Filter (opt-in)
+        adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
+        adx_threshold   = float(filters_cfg.get("adx_min_threshold", 20))
+        if adx_hard_filter and "adx_14" in df.columns:
+            adx_val = float(last_row["adx_14"])
+            if composite_buy and adx_val < adx_threshold:
+                composite_buy = False
+                log.info("Filtered out BUY: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
+            if composite_sell and adx_val < adx_threshold:
+                composite_sell = False
+                log.info("Filtered out SELL: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
+
+        # RSI Hard Filter (opt-in)
+        rsi_hard_filter = filters_cfg.get("rsi_filter_enabled", False)
+        if rsi_hard_filter and "rsi" in df.columns:
+            rsi_val      = float(last_row["rsi"])
+            rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
+            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
+            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
+            rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
+            if composite_buy and not (rsi_buy_min <= rsi_val <= rsi_buy_max):
+                composite_buy = False
+                log.info("Filtered out BUY: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_buy_min, rsi_buy_max)
+            if composite_sell and not (rsi_sell_min <= rsi_val <= rsi_sell_max):
+                composite_sell = False
+                log.info("Filtered out SELL: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_sell_min, rsi_sell_max)
+
     # ---- Collect detail metadata for display --------------------------------
     details = {}
     if "ut_trail" in df.columns:
         details["ut_trail"] = float(df["ut_trail"].iloc[-1])
         details["ut_pos"]   = int(df["ut_pos"].iloc[-1])
-    if hasattr(df, "attrs") and "sr_zones" in df.attrs:
-        details["sr_zones"] = df.attrs["sr_zones"][:3]  # top 3 zones
+    if zones:
+        details["sr_zones"] = zones[:3]  # top 3 zones
     if "adx_14" in df.columns and len(df) > 0:
         details["adx"] = round(float(df["adx_14"].iloc[-1]), 1)
 

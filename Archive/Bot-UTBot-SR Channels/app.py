@@ -10,6 +10,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
+from ruamel.yaml import YAML as _RYAML
+from openalgo import api as oa_api
 
 # Add project root to sys.path
 _bot_dir = Path(__file__).resolve().parent
@@ -47,6 +50,9 @@ class OpenAlgoConfig(BaseModel):
     username: str
     base_url: str
     ws_url: str
+    order_mode: str = "manual"
+    order_product: str = "MIS"
+    order_quantity: int = 1
 
 class StrategyConfig(BaseModel):
     ut_enabled: bool
@@ -118,6 +124,15 @@ class ConfigUpdateRequest(BaseModel):
     bot: BotConfig
     symbols: list[str]
 
+class OrderRequest(BaseModel):
+    symbol: str
+    action: str          # "BUY" or "SELL"
+    exchange: str = "NSE"
+    price_type: str = "MARKET"
+    product: str = "MIS"
+    quantity: int = 1
+    strategy: str = "UTBotScanner"
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -131,28 +146,89 @@ def get_config():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load config: {e}")
 
+def _update_commented_map(cm, updates: dict) -> None:
+    """Recursively update a ruamel.yaml CommentedMap in-place from a plain dict.
+
+    Only existing keys are updated — new keys are added without comments.
+    This preserves all inline comments on unchanged keys.
+    """
+    for key, value in updates.items():
+        if isinstance(value, dict) and key in cm and hasattr(cm[key], "items"):
+            _update_commented_map(cm[key], value)
+        else:
+            cm[key] = value
+
+
 @app.post("/api/config")
 def update_config(req: ConfigUpdateRequest):
-    """Save the updated configuration file to disk."""
+    """Save the updated configuration file to disk, preserving all YAML comments."""
     try:
         config_path = _bot_dir / "config.yml"
-        # Convert request to pure python dict and dump to YAML
         config_dict = req.model_dump()
+
+        ryaml = _RYAML()
+        ryaml.preserve_quotes = True
+
+        # Load the existing file to capture its comment structure
+        with open(config_path, "r", encoding="utf-8") as fh:
+            commented_map = ryaml.load(fh)
+
+        # Merge new values into the CommentedMap without disturbing comment nodes
+        _update_commented_map(commented_map, config_dict)
+
+        # Write back — comments and key order are preserved
         with open(config_path, "w", encoding="utf-8") as fh:
-            yaml.dump(config_dict, fh, sort_keys=False, default_flow_style=False)
+            ryaml.dump(commented_map, fh)
+
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {e}")
 
-@app.post("/api/scan")
-def trigger_scan(timeframe: str | None = None, mode: str | None = None):
-    """Trigger a manual scan and return the results."""
+@app.post("/api/order")
+async def place_order(req: OrderRequest):
+    """Place a market order via OpenAlgo for a scanner signal."""
     try:
         cfg = load_config()
-        buy, sell, label, tf = run_scan(
+        oa_cfg = cfg.get("openalgo", {})
+        client = oa_api(
+            api_key=oa_cfg.get("apikey", ""),
+            host=oa_cfg.get("base_url", "http://127.0.0.1:5000"),
+        )
+        response = client.placeorder(
+            strategy=req.strategy,
+            symbol=req.symbol,
+            action=req.action,
+            exchange=req.exchange,
+            price_type=req.price_type,
+            product=req.product,
+            quantity=req.quantity,
+        )
+        # openalgo returns a dict; treat any non-error as success
+        if isinstance(response, dict) and response.get("status") == "error":
+            raise HTTPException(status_code=502, detail=f"OpenAlgo error: {response.get('message', response)}")
+        log.info("Order placed via OpenAlgo: %s %s qty=%d → %s", req.action, req.symbol, req.quantity, response)
+        return {"status": "success", "order": response}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error("Order placement failed for %s: %s", req.symbol, e)
+        raise HTTPException(status_code=500, detail=f"Order failed: {e}")
+
+@app.post("/api/scan")
+async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
+    """Trigger a manual scan and return the results.
+
+    The scan runs in a thread pool so the FastAPI event loop is not blocked —
+    other dashboard endpoints (/api/logs, /api/config, etc.) remain responsive
+    while a long-running scan is in progress.
+    """
+    try:
+        cfg = load_config()
+        buy, sell, label, tf, total_symbols = await run_in_threadpool(
+            run_scan,
             cfg,
             timeframe_override=timeframe,
-            mode_override=mode
+            mode_override=mode,
         )
         return {
             "status": "success",
@@ -160,6 +236,7 @@ def trigger_scan(timeframe: str | None = None, mode: str | None = None):
             "timeframe": tf,
             "buy_signals": buy,
             "sell_signals": sell,
+            "total_scanned": total_symbols,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     except Exception as e:
@@ -188,9 +265,9 @@ def get_history(symbol: str, timeframe: str | None = None):
             atr_period=int(strat.get("atr_period", 2))
         )
         
-        # Calculate S/R Zones
+        # Calculate S/R Zones — unpack tuple returned by compute_sr_signals
         sr_cfg = cfg.get("sr_channels", {})
-        df = compute_sr_signals(
+        df, zones = compute_sr_signals(
             df,
             pivot_period=int(sr_cfg.get("pivot_period", 10)),
             source=sr_cfg.get("source", "High/Low"),
@@ -200,16 +277,6 @@ def get_history(symbol: str, timeframe: str | None = None):
             loopback=int(sr_cfg.get("loopback", 290)),
             proximity_pct=float(sr_cfg.get("proximity_pct", 0.2))
         )
-
-        # Extract S/R zones from dataframe metadata or details
-        zones = []
-        if hasattr(df, "attrs") and "sr_zones" in df.attrs:
-            zones = df.attrs["sr_zones"]
-        elif "sr_zones" in df.columns:
-            # Fallback if saved in series or metadata
-            last_zones = df["sr_zones"].iloc[-1]
-            if isinstance(last_zones, list):
-                zones = last_zones
 
         # Format zones for frontend: [ [hi, lo], [hi, lo], ... ]
         formatted_zones = [{"high": float(z[0]), "low": float(z[1])} for z in zones]
@@ -261,7 +328,8 @@ def get_history_list(limit: int = 50, offset: int = 0):
 def get_stats(days: int = 30):
     """Retrieve statistical performance breakdown for logged signals."""
     try:
-        stats = get_statistics(days=days)
+        cfg = load_config()
+        stats = get_statistics(days=days, config=cfg)
         return {"status": "success", "statistics": stats}
     except Exception as e:
         log.error("Failed to retrieve statistics: %s", e)

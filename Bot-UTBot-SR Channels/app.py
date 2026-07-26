@@ -328,7 +328,8 @@ def get_history_list(limit: int = 50, offset: int = 0):
 def get_stats(days: int = 30):
     """Retrieve statistical performance breakdown for logged signals."""
     try:
-        stats = get_statistics(days=days)
+        cfg = load_config()
+        stats = get_statistics(days=days, config=cfg)
         return {"status": "success", "statistics": stats}
     except Exception as e:
         log.error("Failed to retrieve statistics: %s", e)

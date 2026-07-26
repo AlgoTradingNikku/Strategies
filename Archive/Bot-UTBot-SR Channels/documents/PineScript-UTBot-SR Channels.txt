@@ -1,20 +1,23 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © LonesomeTheBlue + UT Bot Alerts — Merged
+
 //@version=6
-indicator('UTBot+SR Channels+LinRegCandles+Rahul', 'UTBot+SR+LinReg+Rahul', overlay = true, max_bars_back = 501)
+indicator('UTBot+SR Channels', 'UTBot+SRChannels', overlay = true, max_bars_back = 501)
 
 // ══════════════════════════════════════════════
 // GROUP 1 — SR CHANNEL SETTINGS
 // ══════════════════════════════════════════════
-prd          = input.int(10,           title = 'Pivot Period',                minval = 4,   maxval = 30,  group = 'SR Channels 🔨')
-ppsrc        = input.string('High/Low', title = 'Source', options = ['High/Low', 'Close/Open'], group = 'SR Channels 🔨')
-ChannelW     = input.int(5,            title = 'Max Channel Width %',         minval = 1,   maxval = 8,   group = 'SR Channels 🔨')
-minstrength  = input.int(1,            title = 'Minimum Strength',            minval = 1,               group = 'SR Channels 🔨')
-maxnumsr     = input.int(6,            title = 'Maximum Number of S/R',       minval = 1,   maxval = 10,  group = 'SR Channels 🔨') - 1
-loopback     = input.int(290,          title = 'Loopback Period',             minval = 100, maxval = 400, group = 'SR Channels 🔨')
-res_col      = input.color(color.new(color.red,  75), title = 'Resistance Color',            group = 'SR Colors 🎨')
-sup_col      = input.color(color.new(color.lime, 75), title = 'Support Color',               group = 'SR Colors 🎨')
-inch_col     = input.color(color.new(color.gray, 75), title = 'Color When Price in Channel', group = 'SR Colors 🎨')
-showpp       = input.bool(false, title = 'Show Pivot Points',                 group = 'SR Extras ⏶⏷')
-showsrbroken = input.bool(false, title = 'Show Broken S/R Signals',           group = 'SR Extras ⏶⏷')
+prd          = input.int(10,          title = 'Pivot Period',               minval = 4,   maxval = 30,  group = 'SR Channels 🔨')
+ppsrc        = input.string('High/Low',title = 'Source',  options = ['High/Low', 'Close/Open'], group = 'SR Channels 🔨')
+ChannelW     = input.int(5,           title = 'Max Channel Width %',        minval = 1,   maxval = 8,   group = 'SR Channels 🔨')
+minstrength  = input.int(1,           title = 'Minimum Strength',           minval = 1,               group = 'SR Channels 🔨')
+maxnumsr     = input.int(6,           title = 'Maximum Number of S/R',      minval = 1,   maxval = 10,  group = 'SR Channels 🔨') - 1
+loopback     = input.int(290,         title = 'Loopback Period',            minval = 100, maxval = 400, group = 'SR Channels 🔨')
+res_col      = input.color(color.new(color.red,  75), title = 'Resistance Color',           group = 'SR Colors 🎨')
+sup_col      = input.color(color.new(color.lime, 75), title = 'Support Color',              group = 'SR Colors 🎨')
+inch_col     = input.color(color.new(color.gray, 75), title = 'Color When Price in Channel',group = 'SR Colors 🎨')
+showpp       = input.bool(false, title = 'Show Pivot Points',               group = 'SR Extras ⏶⏷')
+showsrbroken = input.bool(false, title = 'Show Broken S/R Signals',         group = 'SR Extras ⏶⏷')
 showthema1en   = input.bool(false, title = 'MA 1', inline = 'ma1', group = 'SR Extras ⏶⏷')
 showthema1len  = input.int(50,    title = '',       inline = 'ma1', group = 'SR Extras ⏶⏷')
 showthema1type = input.string('SMA', title = '', options = ['SMA', 'EMA'], inline = 'ma1', group = 'SR Extras ⏶⏷')
@@ -25,29 +28,22 @@ showthema2type = input.string('SMA', title = '', options = ['SMA', 'EMA'], inlin
 // ══════════════════════════════════════════════
 // GROUP 2 — UT BOT SETTINGS
 // ══════════════════════════════════════════════
-ut_keySens = input.float(2.0,  title = 'Key Value (Sensitivity)',  group = 'UT Bot 🤖')
-ut_atrPer  = input.int(1,      title = 'ATR Period',               group = 'UT Bot 🤖')
-ut_useHA   = input.bool(false,  title = 'Use Heikin Ashi Candles',  group = 'UT Bot 🤖')
-ut_showBar = input.bool(true,   title = 'Color Bars on Signal',     group = 'UT Bot 🤖')
+ut_keySens  = input.float(1.0,  title = 'Key Value (Sensitivity)',   group = 'UT Bot 🤖')
+ut_atrPer   = input.int(2,     title = 'ATR Period',                group = 'UT Bot 🤖')
+ut_useHA    = input.bool(false, title = 'Use Heikin Ashi Candles',   group = 'UT Bot 🤖')
+ut_showBar  = input.bool(true,  title = 'Color Bars on Signal',      group = 'UT Bot 🤖')
 
 // ══════════════════════════════════════════════
-// GROUP 3 — LINREG CANDLES SETTINGS
-// ══════════════════════════════════════════════
-lr_show        = input.bool(true,  title = 'Show LinReg Candles',          group = 'LinReg Candles 📊')
-lr_linRegOn    = input.bool(true,  title = 'Apply Linear Regression',      group = 'LinReg Candles 📊')
-lr_length      = input.int(11,     title = 'Linear Regression Length',     minval = 1, maxval = 200, group = 'LinReg Candles 📊')
-lr_sigLen      = input.int(7,      title = 'Signal Smoothing Length',      minval = 1, maxval = 200, group = 'LinReg Candles 📊')
-lr_smaSignal   = input.bool(true,  title = 'Use SMA for Signal (else EMA)', group = 'LinReg Candles 📊')
-lr_showSignal  = input.bool(true,  title = 'Show Signal Line',             group = 'LinReg Candles 📊')
-
-// ══════════════════════════════════════════════
-// SR CHANNEL LOGIC
+// MA PLOTS (SR script)
 // ══════════════════════════════════════════════
 ma1 = showthema1en ? (showthema1type == 'SMA' ? ta.sma(close, showthema1len) : ta.ema(close, showthema1len)) : na
 ma2 = showthema2en ? (showthema2type == 'SMA' ? ta.sma(close, showthema2len) : ta.ema(close, showthema2len)) : na
 plot(ma1, color = not na(ma1) ? color.blue : na, title = 'MA 1')
 plot(ma2, color = not na(ma2) ? color.red  : na, title = 'MA 2')
 
+// ══════════════════════════════════════════════
+// SR CHANNEL LOGIC
+// ══════════════════════════════════════════════
 float src1 = ppsrc == 'High/Low' ? high : math.max(close, open)
 float src2 = ppsrc == 'High/Low' ? low  : math.min(close, open)
 float ph = ta.pivothigh(src1, prd, prd)
@@ -210,50 +206,13 @@ ut_sell = ut_src < ut_trail and ut_below
 ut_barbuy  = ut_src > ut_trail
 ut_barsell = ut_src < ut_trail
 
-plot(ut_trail, color = ut_pos == -1 ? color.red : ut_pos == 1 ? color.green : color.blue, linewidth = 1, title = 'UT Trailing Stop', display = display.none)
+plot(ut_trail, color = ut_pos == -1 ? color.red : ut_pos == 1 ? color.green : color.blue, linewidth = 1, title = 'UT Trailing Stop')
 
 plotshape(ut_buy,  title = 'UT Buy',  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
 plotshape(ut_sell, title = 'UT Sell', text = 'Sell', style = shape.labeldown, location = location.abovebar, color = color.new(color.red,   0), textcolor = color.new(color.white, 0), size = size.tiny)
 
 barcolor(ut_showBar and ut_barbuy  ? color.green : na)
 barcolor(ut_showBar and ut_barsell ? color.red   : na)
-
-// ══════════════════════════════════════════════
-// LINREG CANDLES LOGIC
-// ══════════════════════════════════════════════
-lr_o = lr_linRegOn ? ta.linreg(open,  lr_length, 0) : open
-lr_h = lr_linRegOn ? ta.linreg(high,  lr_length, 0) : high
-lr_l = lr_linRegOn ? ta.linreg(low,   lr_length, 0) : low
-lr_c = lr_linRegOn ? ta.linreg(close, lr_length, 0) : close
-
-lr_bull = lr_o < lr_c
-
-lr_signal = lr_smaSignal ? ta.sma(lr_c, lr_sigLen) : ta.ema(lr_c, lr_sigLen)
-
-// Bullish LinReg candles (green)
-plotcandle(
-     lr_show and lr_bull ? lr_o : na,
-     lr_show and lr_bull ? lr_h : na,
-     lr_show and lr_bull ? lr_l : na,
-     lr_show and lr_bull ? lr_c : na,
-     title        = 'LinReg Bull Candle',
-     color        = color.new(color.green, 20),
-     wickcolor    = color.new(color.green, 20),
-     bordercolor  = color.new(color.green, 20))
-
-// Bearish LinReg candles (red)
-plotcandle(
-     lr_show and not lr_bull ? lr_o : na,
-     lr_show and not lr_bull ? lr_h : na,
-     lr_show and not lr_bull ? lr_l : na,
-     lr_show and not lr_bull ? lr_c : na,
-     title        = 'LinReg Bear Candle',
-     color        = color.new(color.red, 20),
-     wickcolor    = color.new(color.red, 20),
-     bordercolor  = color.new(color.red, 20))
-
-// Signal line
-plot(lr_show and lr_showSignal ? lr_signal : na, color = color.white, linewidth = 1, title = 'LinReg Signal')
 
 // ══════════════════════════════════════════════
 // ALERTS — ALL COMBINED

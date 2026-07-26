@@ -10,8 +10,10 @@ Database: signals.db (auto-created in the bot directory)
 import sqlite3
 import json
 import logging
+import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
@@ -60,7 +62,7 @@ def _get_connection() -> sqlite3.Connection:
 # SIGNAL LOGGING
 # ============================================================================
 
-def log_signal(signal_dict: dict, timeframe: str = None) -> int:
+def log_signal(signal_dict: dict, timeframe: str = None, config: dict = None) -> int:
     """
     Insert a new signal into the database.
 
@@ -68,15 +70,25 @@ def log_signal(signal_dict: dict, timeframe: str = None) -> int:
     ----------
     signal_dict : dict from scanner.py's scan_symbol result
     timeframe   : scan timeframe string (e.g. "5m", "1h")
+    config      : optional configuration dict
 
     Returns
     -------
     int : row ID of the inserted signal
     """
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
     conn = _get_connection()
     try:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         # Extract MTF trend if present
         mtf = signal_dict.get("mtf")
         mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
@@ -111,22 +123,106 @@ def log_signal(signal_dict: dict, timeframe: str = None) -> int:
         conn.close()
 
 
+def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: dict = None) -> list[int]:
+    """
+    Insert a list of signals into the database in a single transaction.
+
+    Parameters
+    ----------
+    signals_list : list of dicts from scanner.py's scan_symbol result
+    timeframe    : scan timeframe string (e.g. "5m", "1h")
+    config       : optional configuration dict
+
+    Returns
+    -------
+    list[int] : list of row IDs of the inserted signals
+    """
+    if not signals_list:
+        return []
+
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = _get_connection()
+    inserted_ids = []
+    try:
+        cursor = conn.cursor()
+        for signal_dict in signals_list:
+            mtf = signal_dict.get("mtf")
+            mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
+
+            cursor.execute("""
+                INSERT INTO signals (
+                    timestamp, symbol, signal_type, close_price, setup_score,
+                    score_reasons, stop_loss, target, risk_reward,
+                    triggered_conditions, timeframe, adx, rs_ratio, mtf_trend
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                now,
+                signal_dict.get("symbol", ""),
+                signal_dict.get("signal", ""),
+                signal_dict.get("close", 0.0),
+                signal_dict.get("setup_score", 0.0),
+                json.dumps(signal_dict.get("score_reasons", [])),
+                signal_dict.get("stop_loss"),
+                signal_dict.get("target"),
+                signal_dict.get("risk_reward"),
+                json.dumps(signal_dict.get("triggered", [])),
+                timeframe,
+                signal_dict.get("adx"),
+                signal_dict.get("rs_ratio"),
+                mtf_trend,
+            ))
+            inserted_ids.append(cursor.lastrowid)
+        conn.commit()
+        log.debug("Logged %d signals to DB in batch", len(signals_list))
+        return inserted_ids
+    except Exception as e:
+        conn.rollback()
+        log.error("Batch signal logging failed: %s", e)
+        raise e
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # OUTCOME CHECKING
 # ============================================================================
 
-def check_outcomes(hours: int = 4, config: dict = None) -> int:
+def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
     """
     Check outcomes for signals older than `hours` that haven't been checked yet.
 
     For each unchecked signal, fetches the current price and determines if
     the target or stop-loss was hit.
 
+    Parameters
+    ----------
+    fetch_fn : callable, optional
+        A function with signature fetch_fn(symbol, timeframe, config) -> DataFrame.
+        When None, outcome checking is skipped (returns 0). Pass
+        scanner.fetch_history from the call site to avoid a circular import.
+
     Returns the number of signals updated.
     """
+    if fetch_fn is None:
+        log.debug("check_outcomes: no fetch_fn provided, skipping outcome check.")
+        return 0
+
+    exchange = (config or {}).get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+
     conn = _get_connection()
     try:
-        cutoff = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
         unchecked = conn.execute("""
             SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe
@@ -136,9 +232,6 @@ def check_outcomes(hours: int = 4, config: dict = None) -> int:
 
         if not unchecked:
             return 0
-
-        # Lazy import to avoid circular dependency at module level
-        from scanner import fetch_history
 
         updated = 0
         for row in unchecked:
@@ -151,26 +244,40 @@ def check_outcomes(hours: int = 4, config: dict = None) -> int:
             tf = row["timeframe"] or "5m"
 
             try:
-                df = fetch_history(symbol, tf, config or {})
+                df = fetch_fn(symbol, tf, config or {})
                 if df is None or len(df) == 0:
                     continue
 
+                # Current close for unrealised P&L display
                 current_price = float(df["close"].iloc[-1])
-                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-                # Determine outcome
+                # Filter to candles that closed AFTER the signal was generated.
+                # This lets us check whether the target or stop was touched on
+                # any bar's high/low intrabar — not just the latest close price.
+                sig_time = pd.to_datetime(row["timestamp"])
+                post_df = df[df.index > sig_time]
+
+                if post_df.empty:
+                    # No new candles since the signal — skip until data arrives
+                    continue
+
+                post_high = float(post_df["high"].max())
+                post_low  = float(post_df["low"].min())
+
+                # Determine outcome using OHLC extremes on post-signal candles
                 hit_target = 0
-                hit_stop = 0
+                hit_stop   = 0
                 if sig_type == "BUY":
-                    if target is not None and current_price >= target:
+                    if target is not None and post_high >= target:
                         hit_target = 1
-                    if stop_loss is not None and current_price <= stop_loss:
+                    if stop_loss is not None and post_low <= stop_loss:
                         hit_stop = 1
                     pnl_pct = ((current_price - entry_price) / entry_price) * 100
                 else:  # SELL
-                    if target is not None and current_price <= target:
+                    if target is not None and post_low <= target:
                         hit_target = 1
-                    if stop_loss is not None and current_price >= stop_loss:
+                    if stop_loss is not None and post_high >= stop_loss:
                         hit_stop = 1
                     pnl_pct = ((entry_price - current_price) / entry_price) * 100
 
@@ -198,7 +305,7 @@ def check_outcomes(hours: int = 4, config: dict = None) -> int:
 # STATISTICS
 # ============================================================================
 
-def get_statistics(days: int = 30) -> dict:
+def get_statistics(days: int = 30, config: dict = None) -> dict:
     """
     Compute signal statistics over the last N days.
 
@@ -213,9 +320,19 @@ def get_statistics(days: int = 30) -> dict:
         avg_rr_winners      : float — average R:R of winning trades
         avg_rr_losers       : float — average R:R of losing trades
     """
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+
     conn = _get_connection()
     try:
-        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
         rows = conn.execute("""
             SELECT * FROM signals

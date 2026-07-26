@@ -85,7 +85,7 @@ log.propagate = False  # Avoid propagating up to root logger
 sys.path.insert(0, str(_bot_dir))
 from telegram import send_telegram_alert                       # noqa: E402
 from nse_indices import get_index_symbols, list_available_segments  # noqa: E402
-from signal_db import log_signal, check_outcomes                # noqa: E402
+from signal_db import log_signal, log_signals_batch, check_outcomes                # noqa: E402
 from signals import (                                          # noqa: E402
     compute_utbot_signals,
     compute_sr_signals,
@@ -151,6 +151,10 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
         # ------------------------------------------------------------------
         if data_source == "yfinance":
             import yfinance as yf
+            import random
+
+            # Initial jitter to prevent synchronized concurrent request spikes
+            time.sleep(random.uniform(0.05, 0.4))
 
             yf_symbol = symbol
             if symbol.startswith("^"):
@@ -160,14 +164,26 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
             elif exchange == "BSE":
                 yf_symbol = f"{symbol}.BO"
 
-            df = yf.download(
-                tickers=yf_symbol,
-                start=start_dt,
-                end=end_dt,
-                interval=timeframe,
-                progress=False,
-                auto_adjust=True,
-            )
+            # Try up to 3 times with exponential backoff + jitter
+            max_retries = 3
+            df = pd.DataFrame()
+            for attempt in range(max_retries):
+                try:
+                    df = yf.download(
+                        tickers=yf_symbol,
+                        start=start_dt,
+                        end=end_dt,
+                        interval=timeframe,
+                        progress=False,
+                        auto_adjust=True,
+                    )
+                    if not df.empty:
+                        break
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        log.warning("[%s] yfinance fetch failed after %d attempts: %s", symbol, max_retries, e)
+                        return None
+                time.sleep(1.0 * (attempt + 1) + random.uniform(0.1, 0.5))
 
             if df.empty:
                 log.warning("[%s] No data from yfinance.", symbol)
@@ -618,7 +634,10 @@ def run_scan(
     log.info("  Engines       : %s", " + ".join(engines) if engines else "NONE")
     log.info("  Symbols       : %d stocks", len(symbols))
     log.info("  Data Source   : %s", config.get("data_source", "yfinance").upper())
-    log.info("  Scan Time     : %s", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("Asia/Kolkata") if config.get("exchange", "NSE").upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    scan_time_str = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+    log.info("  Scan Time     : %s", scan_time_str)
     log.info("=" * 70)
 
     # ---- Fetch NIFTY50 index data for Relative Strength --------------------
@@ -867,7 +886,10 @@ def _is_market_hours(config: dict) -> bool:
     open_str  = bot_cfg.get("market_open",  "09:15")
     close_str = bot_cfg.get("market_close", "15:30")
 
-    now = datetime.now()
+    exchange = config.get("exchange", "NSE")
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    now = datetime.now(tz).replace(tzinfo=None)
     if now.weekday() >= 5:  # Saturday=5, Sunday=6
         return False
 
@@ -1018,13 +1040,12 @@ Examples:
             else:
                 log.info("✅ Silent Telegram alert sent successfully (score < %d).", min_alert_score)
 
-        # Log signals to history database
+        # Log signals to history database in batch
         if config.get("filters", {}).get("signal_history_enabled", True):
-            for r in buy_results + sell_results:
-                try:
-                    log_signal(r, timeframe=tf)
-                except Exception as e:
-                    log.debug("Signal history log failed: %s", e)
+            try:
+                log_signals_batch(buy_results + sell_results, timeframe=tf, config=config)
+            except Exception as e:
+                log.debug("Signal history log failed: %s", e)
 
     else:
         # ── Continuous scanning mode ──────────────────────────────────────
@@ -1071,13 +1092,12 @@ Examples:
                                 else:
                                     log.info("✅ Silent Telegram alert sent successfully (score < %d).", min_alert_score)
 
-                            # Log signals to history database
+                            # Log signals to history database in batch
                             if config.get("filters", {}).get("signal_history_enabled", True):
-                                for r in buy_results + sell_results:
-                                    try:
-                                        log_signal(r, timeframe=tf)
-                                    except Exception as e:
-                                        log.debug("Signal history log failed: %s", e)
+                                try:
+                                    log_signals_batch(buy_results + sell_results, timeframe=tf, config=config)
+                                except Exception as e:
+                                    log.debug("Signal history log failed: %s", e)
                         else:
                             log.info("No signals — skipping Telegram alert.")
 

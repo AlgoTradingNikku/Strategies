@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="index.css?v=6">
+    <link rel="stylesheet" href="index.css?v=10">
 </head>
 <body>
     <div class="app-container">
@@ -61,6 +61,15 @@
                     <p class="subtitle" id="active-scan-info">Loading active scanner profile...</p>
                 </div>
                 <div class="header-actions">
+                    <div class="order-mode-toggle" id="order-mode-toggle" title="Switch between Manual and Auto order placement">
+                        <span class="order-mode-label">Order Mode:</span>
+                        <button class="order-mode-btn active" id="btn-mode-manual" data-mode="manual">
+                            <i class="fa-solid fa-hand-pointer"></i> Manual
+                        </button>
+                        <button class="order-mode-btn" id="btn-mode-auto" data-mode="auto">
+                            <i class="fa-solid fa-bolt"></i> Auto
+                        </button>
+                    </div>
                     <button class="btn btn-secondary" id="btn-toggle-auto-refresh">
                         <i class="fa-solid fa-rotate"></i> Auto-refresh: <span id="auto-refresh-state">ON</span>
                     </button>
@@ -114,6 +123,7 @@
                     <div class="table-card">
                         <div class="table-card-header">
                             <h3 class="text-buy"><i class="fa-solid fa-circle-arrow-up"></i> Dynamic BUY Signals</h3>
+                            <span class="last-updated-badge" id="buy-last-updated">—</span>
                             <div class="search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="text" id="buy-search" placeholder="Search symbol...">
@@ -146,6 +156,7 @@
                     <div class="table-card">
                         <div class="table-card-header">
                             <h3 class="text-sell"><i class="fa-solid fa-circle-arrow-down"></i> Dynamic SELL Signals</h3>
+                            <span class="last-updated-badge" id="sell-last-updated">—</span>
                             <div class="search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <input type="text" id="sell-search" placeholder="Search symbol...">
@@ -489,6 +500,29 @@
                                 <input type="number" id="cfg-filters-history-hours" min="1" max="72">
                             </div>
 
+                            <h4 class="sub-header-line">OpenAlgo Order Settings</h4>
+                            <div class="form-group">
+                                <label for="cfg-oa-order-mode">Order Placement Mode</label>
+                                <select id="cfg-oa-order-mode">
+                                    <option value="manual">Manual — show Place Order button</option>
+                                    <option value="auto">Auto — place order immediately on signal</option>
+                                </select>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-oa-product">Product Type</label>
+                                    <select id="cfg-oa-product">
+                                        <option value="MIS">MIS (Intraday)</option>
+                                        <option value="CNC">CNC (Delivery)</option>
+                                        <option value="NRML">NRML (F&amp;O)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-oa-quantity">Default Quantity</label>
+                                    <input type="number" id="cfg-oa-quantity" min="1" step="1">
+                                </div>
+                            </div>
+
                             <h4 class="sub-header-line">Telegram Alerts</h4>
                             <div class="form-group">
                                 <label for="cfg-tg-mode">Alerting Target</label>
@@ -666,6 +700,6 @@
             </section>
         </main>
     </div>
-    <script src="index.js?v=8"></script>
+    <script src="index.js?v=12"></script>
 </body>
 </html>

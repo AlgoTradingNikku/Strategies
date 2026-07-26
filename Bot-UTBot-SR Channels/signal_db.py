@@ -13,6 +13,7 @@ import logging
 import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
@@ -61,7 +62,7 @@ def _get_connection() -> sqlite3.Connection:
 # SIGNAL LOGGING
 # ============================================================================
 
-def log_signal(signal_dict: dict, timeframe: str = None) -> int:
+def log_signal(signal_dict: dict, timeframe: str = None, config: dict = None) -> int:
     """
     Insert a new signal into the database.
 
@@ -69,15 +70,25 @@ def log_signal(signal_dict: dict, timeframe: str = None) -> int:
     ----------
     signal_dict : dict from scanner.py's scan_symbol result
     timeframe   : scan timeframe string (e.g. "5m", "1h")
+    config      : optional configuration dict
 
     Returns
     -------
     int : row ID of the inserted signal
     """
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
     conn = _get_connection()
     try:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         # Extract MTF trend if present
         mtf = signal_dict.get("mtf")
         mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
@@ -112,6 +123,76 @@ def log_signal(signal_dict: dict, timeframe: str = None) -> int:
         conn.close()
 
 
+def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: dict = None) -> list[int]:
+    """
+    Insert a list of signals into the database in a single transaction.
+
+    Parameters
+    ----------
+    signals_list : list of dicts from scanner.py's scan_symbol result
+    timeframe    : scan timeframe string (e.g. "5m", "1h")
+    config       : optional configuration dict
+
+    Returns
+    -------
+    list[int] : list of row IDs of the inserted signals
+    """
+    if not signals_list:
+        return []
+
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = _get_connection()
+    inserted_ids = []
+    try:
+        cursor = conn.cursor()
+        for signal_dict in signals_list:
+            mtf = signal_dict.get("mtf")
+            mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
+
+            cursor.execute("""
+                INSERT INTO signals (
+                    timestamp, symbol, signal_type, close_price, setup_score,
+                    score_reasons, stop_loss, target, risk_reward,
+                    triggered_conditions, timeframe, adx, rs_ratio, mtf_trend
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                now,
+                signal_dict.get("symbol", ""),
+                signal_dict.get("signal", ""),
+                signal_dict.get("close", 0.0),
+                signal_dict.get("setup_score", 0.0),
+                json.dumps(signal_dict.get("score_reasons", [])),
+                signal_dict.get("stop_loss"),
+                signal_dict.get("target"),
+                signal_dict.get("risk_reward"),
+                json.dumps(signal_dict.get("triggered", [])),
+                timeframe,
+                signal_dict.get("adx"),
+                signal_dict.get("rs_ratio"),
+                mtf_trend,
+            ))
+            inserted_ids.append(cursor.lastrowid)
+        conn.commit()
+        log.debug("Logged %d signals to DB in batch", len(signals_list))
+        return inserted_ids
+    except Exception as e:
+        conn.rollback()
+        log.error("Batch signal logging failed: %s", e)
+        raise e
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # OUTCOME CHECKING
 # ============================================================================
@@ -136,9 +217,12 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
         log.debug("check_outcomes: no fetch_fn provided, skipping outcome check.")
         return 0
 
+    exchange = (config or {}).get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+
     conn = _get_connection()
     try:
-        cutoff = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
         unchecked = conn.execute("""
             SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe
@@ -166,7 +250,7 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
 
                 # Current close for unrealised P&L display
                 current_price = float(df["close"].iloc[-1])
-                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
                 # Filter to candles that closed AFTER the signal was generated.
                 # This lets us check whether the target or stop was touched on
@@ -221,7 +305,7 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
 # STATISTICS
 # ============================================================================
 
-def get_statistics(days: int = 30) -> dict:
+def get_statistics(days: int = 30, config: dict = None) -> dict:
     """
     Compute signal statistics over the last N days.
 
@@ -236,9 +320,19 @@ def get_statistics(days: int = 30) -> dict:
         avg_rr_winners      : float — average R:R of winning trades
         avg_rr_losers       : float — average R:R of losing trades
     """
+    if config is None:
+        try:
+            from scanner import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+
+    exchange = config.get("exchange", "NSE")
+    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+
     conn = _get_connection()
     try:
-        cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+        cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
         rows = conn.execute("""
             SELECT * FROM signals

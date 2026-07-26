@@ -59,8 +59,28 @@ def _load_cache() -> dict:
     return {}
 
 
+def _load_full_cache() -> dict:
+    """Load the raw cache file regardless of date — used for stale fallback access."""
+    if _CACHE_FILE.exists():
+        try:
+            with open(_CACHE_FILE, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception as exc:
+            log.debug("Could not read segment cache file for fallback: %s", exc)
+    return {}
+
+
 def _save_cache(segment_key: str, symbols: list[str]) -> None:
-    """Save fetched symbols for a segment into the daily cache file."""
+    """Save fetched symbols for a segment into the daily cache file.
+
+    Also updates the 'previous' fallback layer so the data survives the next
+    day's cache expiry.  Structure:
+        {
+            "date": "YYYY-MM-DD",
+            "segments": { "NIFTY50": [...], ... },
+            "previous": { "NIFTY50": {"date": "YYYY-MM-DD", "symbols": [...]}, ... }
+        }
+    """
     global _memory_cache
 
     cache = _load_cache()
@@ -68,6 +88,12 @@ def _save_cache(segment_key: str, symbols: list[str]) -> None:
         cache = {"date": _today(), "segments": {}}
 
     cache["segments"][segment_key] = symbols
+
+    # Always persist the freshly fetched list as a dated fallback entry
+    if "previous" not in cache:
+        cache["previous"] = {}
+    cache["previous"][segment_key] = {"date": _today(), "symbols": symbols}
+
     _memory_cache = cache
 
     try:
@@ -219,7 +245,21 @@ def get_index_symbols(segment: str) -> list[str]:
         _save_cache(key, symbols)
         return symbols
 
-    log.warning("Segment '%s' fetch failed or returned empty list.", segment)
+    # --- 3. HTTP fetch failed — try the 'previous' fallback layer ---
+    log.warning("Segment '%s' fetch failed or returned empty list. Checking stale fallback...", segment)
+    full_cache = _load_full_cache()
+    prev_entry = full_cache.get("previous", {}).get(key)
+    if prev_entry and prev_entry.get("symbols"):
+        stale_date = prev_entry.get("date", "unknown date")
+        stale_syms = prev_entry["symbols"]
+        log.warning(
+            "Using stale fallback for '%s': %d symbols last fetched on %s. "
+            "Live data unavailable — scanner will run on cached constituent list.",
+            segment, len(stale_syms), stale_date,
+        )
+        return stale_syms
+
+    log.warning("No stale fallback available for '%s'. Returning empty list.", segment)
     return []
 
 
