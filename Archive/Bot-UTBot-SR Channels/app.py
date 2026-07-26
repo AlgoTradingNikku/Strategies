@@ -41,9 +41,10 @@ app.add_middleware(
 # Pydantic Models for Configuration Updates
 # ---------------------------------------------------------------------------
 class TelegramConfig(BaseModel):
-    mode: str
-    bot_token: str
-    chat_id: str
+    enabled: bool = True
+    mode: str = "openalgo"
+    bot_token: str = ""
+    chat_id: str = ""
 
 class OpenAlgoConfig(BaseModel):
     apikey: str
@@ -75,6 +76,7 @@ class BotConfig(BaseModel):
     market_hours_check: bool
     market_open: str
     market_close: str
+    auto_refresh_enabled: bool = False
 
 class FiltersConfig(BaseModel):
     ema_filter_enabled: bool

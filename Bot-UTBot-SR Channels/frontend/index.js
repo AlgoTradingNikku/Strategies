@@ -22,6 +22,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeScanInfo = document.getElementById("active-scan-info");
     const btnModeManual = document.getElementById("btn-mode-manual");
     const btnModeAuto = document.getElementById("btn-mode-auto");
+    const btnSidebarToggle = document.getElementById("btn-sidebar-toggle");
+    const sidebar = document.querySelector(".sidebar");
 
     // Stats
     const statScannedCount = document.getElementById("stat-scanned-count");
@@ -67,6 +69,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // API Base URL
     const API_BASE = window.location.origin;
+
+    // ---------------------------------------------------------------------------
+    // Sidebar Collapse Logic
+    // ---------------------------------------------------------------------------
+    if (btnSidebarToggle && sidebar) {
+        // Read saved sidebar state from localStorage on load
+        const isCollapsed = localStorage.getItem("sidebar-collapsed") === "true";
+        if (isCollapsed) {
+            sidebar.classList.add("collapsed");
+        }
+
+        btnSidebarToggle.addEventListener("click", () => {
+            sidebar.classList.toggle("collapsed");
+            const collapsed = sidebar.classList.contains("collapsed");
+            localStorage.setItem("sidebar-collapsed", collapsed ? "true" : "false");
+        });
+    }
 
     // ---------------------------------------------------------------------------
     // Tab Switching Logic
@@ -138,9 +157,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("cfg-filters-vol-pct").value = cfg.filters.volume_min_pct !== undefined ? cfg.filters.volume_min_pct : 80;
                 document.getElementById("cfg-filters-score").value = cfg.filters.min_alert_score !== undefined ? cfg.filters.min_alert_score : 70;
                 
-                document.getElementById("cfg-filters-mtf").checked = !!cfg.filters.mtf_enabled;
+                const mtfEnabled = !!cfg.filters.mtf_enabled;
+                document.getElementById("cfg-filters-mtf").checked = mtfEnabled;
                 document.getElementById("cfg-filters-mtf-tf").value = cfg.filters.mtf_timeframe || "1h";
-                document.getElementById("cfg-filters-mtf-align").checked = !!cfg.filters.require_mtf_alignment;
+                const mtfAlignCfg = document.getElementById("cfg-filters-mtf-align");
+                if (mtfAlignCfg) {
+                    mtfAlignCfg.checked = mtfEnabled && !!cfg.filters.require_mtf_alignment;
+                    mtfAlignCfg.disabled = !mtfEnabled;
+                }
                 document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
 
                 document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
@@ -178,6 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Alerts
+            const tgEnabled = cfg.telegram.enabled !== undefined ? cfg.telegram.enabled : true;
+            document.getElementById("cfg-tg-enabled").checked = !!tgEnabled;
             document.getElementById("cfg-tg-mode").value = cfg.telegram.mode;
             document.getElementById("cfg-tg-token").value = cfg.telegram.bot_token;
             document.getElementById("cfg-tg-chat").value = cfg.telegram.chat_id;
@@ -185,6 +211,42 @@ document.addEventListener("DOMContentLoaded", () => {
             // Segments & Custom List
             document.getElementById("cfg-segments").value = Array.isArray(cfg.segment) ? cfg.segment.join(", ") : cfg.segment;
             document.getElementById("cfg-use-symbols").checked = cfg.use_symbols;
+
+            // Sync Active Engines Sidebar Badges
+            const sideUt = document.getElementById("side-badge-ut");
+            const sideSr = document.getElementById("side-badge-sr");
+            if (sideUt) sideUt.style.display = cfg.strategy.ut_enabled ? "inline-block" : "none";
+            if (sideSr) sideSr.style.display = cfg.sr_channels.enabled ? "inline-block" : "none";
+
+            // Sync Dashboard Sidebar Toggles
+            document.getElementById("dash-ut-enabled").checked = !!cfg.strategy.ut_enabled;
+            document.getElementById("dash-sr-enabled").checked = !!cfg.sr_channels.enabled;
+            if (cfg.filters) {
+                document.getElementById("dash-filters-ema").checked = !!cfg.filters.ema_filter_enabled;
+                const emaDesc = document.getElementById("dash-desc-ema");
+                if (emaDesc) emaDesc.textContent = `Filter signals by major EMA trend (${cfg.filters.ema_period || 200})`;
+
+                document.getElementById("dash-filters-volume").checked = !!cfg.filters.volume_filter_enabled;
+                
+                document.getElementById("dash-filters-mtf").checked = !!cfg.filters.mtf_enabled;
+                const mtfDesc = document.getElementById("dash-desc-mtf");
+                if (mtfDesc) mtfDesc.textContent = `Multi-timeframe trend filter (${cfg.filters.mtf_timeframe || '1h'})`;
+
+                const mtfAlignDash = document.getElementById("dash-filters-mtf-align");
+                if (mtfAlignDash) {
+                    mtfAlignDash.checked = !!cfg.filters.mtf_enabled && !!cfg.filters.require_mtf_alignment;
+                    mtfAlignDash.disabled = !cfg.filters.mtf_enabled;
+                }
+                document.getElementById("dash-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
+                document.getElementById("dash-filters-rsi-filter").checked = !!cfg.filters.rsi_filter_enabled;
+                document.getElementById("dash-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
+                document.getElementById("dash-filters-candle").checked = !!cfg.filters.candle_patterns_enabled;
+            }
+
+            // Sync dashboard default auto-refresh checkbox
+            if (cfg.bot) {
+                document.getElementById("cfg-bot-auto-refresh").checked = !!cfg.bot.auto_refresh_enabled;
+            }
             
             // Update Connection banner
             connectionStatus.textContent = "Scanner System Online";
@@ -258,6 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 outcome_check_hours: parseInt(document.getElementById("cfg-filters-history-hours").value || 4)
             },
             telegram: {
+                enabled: document.getElementById("cfg-tg-enabled").checked,
                 mode: document.getElementById("cfg-tg-mode").value,
                 bot_token: document.getElementById("cfg-tg-token").value,
                 chat_id: document.getElementById("cfg-tg-chat").value
@@ -273,7 +336,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 log_level: activeConfig.bot.log_level,
                 market_hours_check: activeConfig.bot.market_hours_check,
                 market_open: activeConfig.bot.market_open,
-                market_close: activeConfig.bot.market_close
+                market_close: activeConfig.bot.market_close,
+                auto_refresh_enabled: document.getElementById("cfg-bot-auto-refresh").checked
             },
             symbols: activeConfig.symbols,
             use_symbols: document.getElementById("cfg-use-symbols").checked
@@ -335,6 +399,86 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     btnRefreshLogs.addEventListener("click", loadLogs);
+
+    // ---------------------------------------------------------------------------
+    // Dashboard Quick Filter Controls
+    // ---------------------------------------------------------------------------
+    const dashToggles = [
+        { id: "dash-ut-enabled", configPath: ["strategy", "ut_enabled"], companionId: "cfg-ut-enabled" },
+        { id: "dash-sr-enabled", configPath: ["sr_channels", "enabled"], companionId: "cfg-sr-enabled" },
+        { id: "dash-filters-ema", configPath: ["filters", "ema_filter_enabled"], companionId: "cfg-filters-ema" },
+        { id: "dash-filters-volume", configPath: ["filters", "volume_filter_enabled"], companionId: "cfg-filters-volume" },
+        { id: "dash-filters-mtf", configPath: ["filters", "mtf_enabled"], companionId: "cfg-filters-mtf" },
+        { id: "dash-filters-mtf-align", configPath: ["filters", "require_mtf_alignment"], companionId: "cfg-filters-mtf-align" },
+        { id: "dash-filters-adx-filt", configPath: ["filters", "adx_filter_enabled"], companionId: "cfg-filters-adx-filt" },
+        { id: "dash-filters-rsi-filter", configPath: ["filters", "rsi_filter_enabled"], companionId: "cfg-filters-rsi-filter" },
+        { id: "dash-filters-rr-enabled", configPath: ["filters", "risk_reward_enabled"], companionId: "cfg-filters-rr-enabled" },
+        { id: "dash-filters-candle", configPath: ["filters", "candle_patterns_enabled"], companionId: "cfg-filters-candle" }
+    ];
+
+    dashToggles.forEach(toggleInfo => {
+        const toggleEl = document.getElementById(toggleInfo.id);
+        if (toggleEl) {
+            toggleEl.addEventListener("change", async () => {
+                if (!activeConfig) return;
+                
+                const isChecked = toggleEl.checked;
+                
+                // Update local config structure
+                const parentKey = toggleInfo.configPath[0];
+                const childKey = toggleInfo.configPath[1];
+                if (activeConfig[parentKey]) {
+                    activeConfig[parentKey][childKey] = isChecked;
+                    
+                    // Enforce MTF Alignment dependency
+                    if (childKey === "mtf_enabled") {
+                        activeConfig.filters.require_mtf_alignment = false;
+                    }
+                }
+                
+                // Keep the Settings tab form checkbox in sync
+                const companionEl = document.getElementById(toggleInfo.companionId);
+                if (companionEl) {
+                    companionEl.checked = isChecked;
+                }
+                
+                // Disable all toggles temporarily while saving and scanning
+                setTogglesDisabledState(true);
+                
+                try {
+                    const resp = await fetch(`${API_BASE}/api/config`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(activeConfig)
+                    });
+                    if (!resp.ok) throw new Error("Failed to save configuration.");
+                    
+                    const name = toggleEl.closest(".control-toggle-item")?.querySelector(".toggle-name")?.textContent || "Filter";
+                    showToast(`✅ ${name} ${isChecked ? 'enabled' : 'disabled'}!`, "success");
+                    
+                    // Reload active configuration
+                    await loadConfig();
+                    
+                    // Trigger a scan immediately with the updated filters
+                    await executeScan();
+                } catch (err) {
+                    showToast(`❌ Error: ${err.message}`, "error");
+                    // Revert UI state on error
+                    toggleEl.checked = !isChecked;
+                    if (companionEl) companionEl.checked = !isChecked;
+                } finally {
+                    setTogglesDisabledState(false);
+                }
+            });
+        }
+    });
+
+    function setTogglesDisabledState(disabled) {
+        dashToggles.forEach(toggleInfo => {
+            const el = document.getElementById(toggleInfo.id);
+            if (el) el.disabled = disabled;
+        });
+    }
 
     // ---------------------------------------------------------------------------
     // Running Scans
@@ -522,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <div class="badge-group">
-                        ${item.triggered.map(cond => {
+                        ${item.triggered.filter(cond => cond !== "UT Bot" && cond !== "S/R Support" && cond !== "S/R Resistance").map(cond => {
                             const styleClass = cond.includes("UT") ? "ut-badge-type" : "sr-badge-type";
                             return `<span class="condition-badge ${styleClass}">${cond}</span>`;
                         }).join("")}
@@ -655,8 +799,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Start on page load (activeConfig already loaded before this is called)
-        _startAutoRefresh();
+        // Start on page load only if enabled in config
+        if (activeConfig?.bot?.auto_refresh_enabled) {
+            _startAutoRefresh();
+        } else {
+            autoRefreshState.textContent = "OFF";
+            btnToggleAutoRefresh.classList.replace("btn-primary", "btn-secondary");
+        }
     }
 
 
@@ -875,6 +1024,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     makeFilterable(buySearch, buySignalsTable);
     makeFilterable(sellSearch, sellSignalsTable);
+
+    // Config Tab MTF Alignment visual rule
+    const cfgMtfToggle = document.getElementById("cfg-filters-mtf");
+    if (cfgMtfToggle) {
+        cfgMtfToggle.addEventListener("change", (e) => {
+            const alignToggle = document.getElementById("cfg-filters-mtf-align");
+            if (alignToggle) {
+                alignToggle.disabled = !e.target.checked;
+                alignToggle.checked = false;
+            }
+        });
+    }
 
     // Initialize System
     async function init() {

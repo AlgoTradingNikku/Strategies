@@ -6,20 +6,14 @@ scan_timeframe: "5m"                  # Lower Timeframe (e.g., 1m, 3m, 5m, 15m, 
 scan_interval_seconds: 60            # Interval between scans in continuous mode
 
 # Set to "" or [] to scan only the custom symbols list below
-segment: ["NIFTY50", "BANKNIFTY"]
-# Set to true to merge the custom 'symbols' list with the active segments
+segment:
+- NIFTY50
+- BANKNIFTY
 use_symbols: false
 
 # Number of closed candles to look back for UT Bot signals. 
 #(2=current + 1 prior candle)
-signal_lookback_candles: 1
-
- # --- Multi-Timeframe Confirmation ---
-mtf_enabled: true                   # Confirm signals against a higher timeframe
-mtf_timeframe: "1h"                 # Higher TF to check UTBot trend direction
-require_mtf_alignment: false        # If true, only select stock when both timeframes align
-                                    # If false, select anyway but cut the confidence score
-mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
+signal_lookback_candles: 2
 
 # UT Bot Settings
 strategy:
@@ -33,7 +27,7 @@ sr_channels:
   enabled: true
   pivot_period: 10                    # Period to confirm a pivot (range: 4 to 30)
   source: "High/Low"                  # Source prices: "High/Low" or "Close/Open"
-  channel_width_pct: 5                # Max channel width as % of 300-bar price range (1 to 8)
+  channel_width_pct: 5.0              # Max channel width as % of 300-bar price range (1 to 8)
   min_strength: 1                     # Minimum pivot strength to qualify a zone
   max_num_sr: 6                       # Maximum number of active S/R zones (1 to 10)
   loopback: 290                       # Bars to scan for pivot collection (100 to 400)
@@ -42,18 +36,25 @@ sr_channels:
 # Setup Filters & Priorities
 filters:
 
+  # --- Multi-Timeframe Confirmation ---
+  mtf_enabled: true                   # Confirm signals against a higher timeframe
+  mtf_timeframe: "15m"                 # Higher TF to check UTBot trend direction
+  require_mtf_alignment: false        # If true, only select stock when both timeframes align
+                                      # If false, select anyway but cut the confidence score
+  mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
+
   candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
 
   # --- EMA Trend Filter ---
   # Regardless of the toggle 'true' or 'false': close above EMA always adds +20 pts to BUY; below EMA adds +20 pts to SELL.
   # Filter (when true): hard-rejects/completely rejects BUY signals where close <= EMA, and SELL signals where close >= EMA.
-  ema_filter_enabled: false            
+  ema_filter_enabled: false
   ema_period: 200                     # EMA period for trend filter and scoring (e.g. 50, 100, 200)
 
   # --- Volume Filter ---
   # Regardless of the toggle 'true' or 'false':: volume surge always contributes up to +20 pts (10 × vol/SMA, capped at 20) — regardless of this toggle true or false
   # Filter (when true): hard-rejects any signal where current volume < volume_min_pct % of its SMA.
-  volume_filter_enabled: false        # true: Rejects the low-volume stocks | false = score only, no rejection
+  volume_filter_enabled: true         # true: Rejects the low-volume stocks | false = score only, no rejection
   volume_sma_period: 20               # SMA period for volume moving average (e.g. 10, 20, 50)
   volume_min_pct: 60                  # Min volume as % of SMA to pass the hard filter (e.g. 60 = reject if vol < 60% of SMA)
 
@@ -62,17 +63,17 @@ filters:
 
   # --- ADX Trend Strength ---
   adx_filter_enabled: false           # true: Rejects the stocks when ADX < threshold | false = score only, no rejection
-  adx_min_threshold: 20               # ADX below this = no trend, reject signal (when hard filter ON)
-  adx_strong_threshold: 25            # ADX >= this = strong trend (+10 pts to score)
-  adx_moderate_threshold: 20          # ADX >= this = moderate trend (+5 pts to score)
+  adx_min_threshold: 20.0             # ADX below this = no trend, reject signal (when hard filter ON)
+  adx_strong_threshold: 25.0          # ADX >= this = strong trend (+10 pts to score)
+  adx_moderate_threshold: 20.0        # ADX >= this = moderate trend (+5 pts to score)
 
   # --- RSI Momentum Scoring ---
-  rsi_filter_enabled: false           # true: Rejects the stocks when RSI is outside optimal range | false = score only, no rejection
+  rsi_filter_enabled: true            # true: Rejects the stocks when RSI is outside optimal range | false = score only, no rejection
   rsi_period: 14                      # RSI calculation period
-  rsi_buy_min: 40                     # BUY gets +10 pts when RSI is between buy_min and buy_max
-  rsi_buy_max: 65
-  rsi_sell_min: 35                    # SELL gets +10 pts when RSI is between sell_min and sell_max
-  rsi_sell_max: 60
+  rsi_buy_min: 40.0                   # BUY gets +10 pts when RSI is between buy_min and buy_max
+  rsi_buy_max: 65.0
+  rsi_sell_min: 35.0                  # SELL gets +10 pts when RSI is between sell_min and sell_max
+  rsi_sell_max: 60.0
 
   # --- Relative Strength vs NIFTY ---
   rs_period: 20                       # Lookback bars for RS ratio calculation vs NIFTY50
@@ -91,6 +92,7 @@ filters:
 
 # Telegram Alerts
 telegram:
+  enabled: true                       # Toggle Telegram alerts on/off
   mode: "direct"                      # "direct" (via Bot API) or "openalgo" (via server)
   bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
   chat_id: "939814804"
@@ -124,10 +126,11 @@ bot:
   market_hours_check: false           # Restrict scanning to market hours only
   market_open: "09:15"
   market_close: "15:30"
+  auto_refresh_enabled: false         # Toggle dashboard auto-refresh on page load
 
 # ------------------------------------------------------------
 # 6. CUSTOM SYMBOLS LIST
 # ------------------------------------------------------------
 symbols:
-  - ADANIENT
-  - ADANIPORTS
+- ADANIENT
+- ADANIPORTS

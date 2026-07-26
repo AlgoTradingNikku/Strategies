@@ -100,6 +100,17 @@ button, input, select, textarea {
     flex-direction: column;
     padding: 18px 12px;
     z-index: 10;
+    transition: width var(--transition-normal), padding var(--transition-normal), opacity var(--transition-normal), border-right var(--transition-fast);
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 0px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-right: 1px solid transparent !important;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .logo-area {
@@ -234,7 +245,37 @@ button, input, select, textarea {
     background-color: var(--bg-surface);
 }
 
-.header-title-area h1 {
+.header-title-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.header-titles {
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-toggle-btn:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.header-titles h1 {
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.3px;
@@ -294,7 +335,7 @@ button, input, select, textarea {
 .tab-panel {
     display: none;
     flex-direction: column;
-    padding: 32px;
+    padding: 16px 24px;
     flex-grow: 1;
     overflow-y: auto;
 }
@@ -308,9 +349,9 @@ button, input, select, textarea {
 /* Stats Grid */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(130px, 160px));
-    gap: 12px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(4, minmax(110px, 145px));
+    gap: 8px;
+    margin-bottom: 12px;
     justify-content: start;
 }
 
@@ -319,7 +360,7 @@ button, input, select, textarea {
     backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 12px 14px;
+    padding: 7px 10px;
     transition: var(--transition-normal);
 }
 
@@ -333,23 +374,23 @@ button, input, select, textarea {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 6px;
+    margin-bottom: 3px;
 }
 
 .stat-title {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 500;
     color: var(--text-secondary);
 }
 
 .stat-icon {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
 }
 
 .info-icon { background: rgba(59, 130, 246, 0.1); color: var(--color-accent); }
@@ -358,15 +399,15 @@ button, input, select, textarea {
 .scan-icon { background: rgba(148, 163, 184, 0.1); color: var(--text-secondary); }
 
 .stat-value {
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: -0.5px;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     line-height: 1.2;
 }
 
 .stat-sub {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
 }
 
@@ -1272,3 +1313,98 @@ input:checked + .slider:before {
     border-color: rgba(59, 130, 246, 0.35);
     color: #93c5fd;
 }
+
+/* ==========================================================================
+   Dashboard Split Column Layout & Quick Control Sidebar
+   ========================================================================== */
+
+.dashboard-content-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+    width: 100%;
+}
+
+@media (min-width: 1100px) {
+    .dashboard-content-split {
+        grid-template-columns: 1fr 310px;
+    }
+}
+
+.dashboard-tables-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0; /* Prevents overflow issues with flex container */
+}
+
+.dashboard-controls-sidebar {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 18px 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    position: sticky;
+    top: 20px;
+}
+
+.dashboard-controls-sidebar .sidebar-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-controls-sidebar .sidebar-desc-text {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 16px;
+}
+
+.control-toggles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.control-toggle-item:hover {
+    border-color: var(--border-color-hover);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-right: 10px;
+}
+
+.toggle-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.toggle-desc {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+

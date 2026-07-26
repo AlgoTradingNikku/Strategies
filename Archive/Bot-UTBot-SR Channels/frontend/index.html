@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="index.css?v=10">
 </head>
 <body>
@@ -57,8 +58,13 @@
             <!-- Global Header -->
             <header class="top-header">
                 <div class="header-title-area">
-                    <h1 id="page-title">UTBot + SR Channels Dashboard</h1>
-                    <p class="subtitle" id="active-scan-info">Loading active scanner profile...</p>
+                    <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="Toggle Navigation Sidebar">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-titles">
+                        <h1 id="page-title">UTBot + SR Channels Dashboard</h1>
+                        <p class="subtitle" id="active-scan-info">Loading active scanner profile...</p>
+                    </div>
                 </div>
                 <div class="header-actions">
                     <div class="order-mode-toggle" id="order-mode-toggle" title="Switch between Manual and Auto order placement">
@@ -119,71 +125,210 @@
 
                 <!-- Signal Tables -->
                 <div class="dashboard-tables-grid">
-                    <!-- BUY Signals Card -->
-                    <div class="table-card">
-                        <div class="table-card-header">
-                            <h3 class="text-buy"><i class="fa-solid fa-circle-arrow-up"></i> Dynamic BUY Signals</h3>
-                            <span class="last-updated-badge" id="buy-last-updated">—</span>
-                            <div class="search-box">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                                <input type="text" id="buy-search" placeholder="Search symbol...">
+                <!-- Signal Tables & Quick Controls Split Layout -->
+                <div class="dashboard-content-split">
+                    <!-- Left Column: Signal Tables -->
+                    <div class="dashboard-tables-column">
+                        <!-- BUY Signals Card -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3 class="text-buy"><i class="fa-solid fa-circle-arrow-up"></i> Dynamic BUY Signals</h3>
+                                <span class="last-updated-badge" id="buy-last-updated">—</span>
+                                <div class="search-box">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="buy-search" placeholder="Search symbol...">
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table id="buy-signals-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Close</th>
+                                            <th>Stop Loss</th>
+                                            <th>Target</th>
+                                            <th>R:R</th>
+                                            <th>Score</th>
+                                            <th>Triggers</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="8" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="table-container">
-                            <table id="buy-signals-table">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th>Close</th>
-                                        <th>Stop Loss</th>
-                                        <th>Target</th>
-                                        <th>R:R</th>
-                                        <th>Score</th>
-                                        <th>Triggered Conditions</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="8" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+
+                        <!-- SELL Signals Card -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3 class="text-sell"><i class="fa-solid fa-circle-arrow-down"></i> Dynamic SELL Signals</h3>
+                                <span class="last-updated-badge" id="sell-last-updated">—</span>
+                                <div class="search-box">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="sell-search" placeholder="Search symbol...">
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table id="sell-signals-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Close</th>
+                                            <th>Stop Loss</th>
+                                            <th>Target</th>
+                                            <th>R:R</th>
+                                            <th>Score</th>
+                                            <th>Triggers</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="8" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- SELL Signals Card -->
-                    <div class="table-card">
-                        <div class="table-card-header">
-                            <h3 class="text-sell"><i class="fa-solid fa-circle-arrow-down"></i> Dynamic SELL Signals</h3>
-                            <span class="last-updated-badge" id="sell-last-updated">—</span>
-                            <div class="search-box">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                                <input type="text" id="sell-search" placeholder="Search symbol...">
+                    <!-- Right Column: Quick Controls Sidebar -->
+                    <aside class="dashboard-controls-sidebar">
+                        <!-- Active Scanner Engines Status -->
+                        <div class="sidebar-header" style="margin-bottom: 8px;">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Active Engines</span>
+                        </div>
+                        <div class="active-engines-badges" style="display: flex; gap: 8px; margin-bottom: 20px;">
+                            <span class="condition-badge ut-badge-type" id="side-badge-ut" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; display: none;">UT Bot</span>
+                            <span class="condition-badge sr-badge-type" id="side-badge-sr" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; display: none;">S/R Channels</span>
+                        </div>
+
+                        <div class="sidebar-header">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Quick Filter Controls</span>
+                        </div>
+                        <p class="sidebar-desc-text">
+                            Toggle active scanner filters and criteria in real-time. Changes are saved dynamically and re-trigger scanning.
+                        </p>
+                        <div class="control-toggles-list">
+                            <!-- UTBot Engine -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">UT Bot Engine</span>
+                                    <span class="toggle-desc">Enable UT Bot signals</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-ut-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- SR Channels Engine -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">S/R Zones Engine</span>
+                                    <span class="toggle-desc">Enable S/R boundaries</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-sr-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- EMA Trend Filter -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">EMA Trend Filter</span>
+                                    <span class="toggle-desc" id="dash-desc-ema">Filter signals by major EMA trend</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-ema">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- Volume Filter -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Volume Filter</span>
+                                    <span class="toggle-desc">Require volume confirmation</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-volume">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- MTF Trend Filter -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">MTF Confirmation</span>
+                                    <span class="toggle-desc" id="dash-desc-mtf">Multi-timeframe trend filter</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-mtf">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- Require MTF Trend Alignment -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">MTF Alignment</span>
+                                    <span class="toggle-desc">Require strict MTF alignment</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-mtf-align">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- ADX Hard Filter -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">ADX Hard Filter</span>
+                                    <span class="toggle-desc">Restrict signals by trend strength</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-adx-filt">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- RSI Hard Filter -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">RSI Hard Filter</span>
+                                    <span class="toggle-desc">Limit momentum boundary zones</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-rsi-filter">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- Risk/Reward -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">ATR Risk/Reward</span>
+                                    <span class="toggle-desc">Calculate dynamic targets</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-rr-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <!-- Candlestick Recognition -->
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Candlestick Patterns</span>
+                                    <span class="toggle-desc">Identify patterns for scoring</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dash-filters-candle">
+                                    <span class="slider round"></span>
+                                </label>
                             </div>
                         </div>
-                        <div class="table-container">
-                            <table id="sell-signals-table">
-                                <thead>
-                                    <tr>
-                                        <th>Symbol</th>
-                                        <th>Close</th>
-                                        <th>Stop Loss</th>
-                                        <th>Target</th>
-                                        <th>R:R</th>
-                                        <th>Score</th>
-                                        <th>Triggered Conditions</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td colspan="8" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </aside>
+                </div>
                 </div>
             </section>
 
@@ -228,6 +373,13 @@
                             <div class="form-group">
                                 <label for="cfg-lookback">Signal Lookback (Candles)</label>
                                 <input type="number" id="cfg-lookback" min="1" max="10">
+                            </div>
+                            <div class="form-group toggle-group" style="margin-top: 10px;">
+                                <label for="cfg-bot-auto-refresh">Default Auto-refresh Status</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-bot-auto-refresh">
+                                    <span class="slider round"></span>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -524,6 +676,13 @@
                             </div>
 
                             <h4 class="sub-header-line">Telegram Alerts</h4>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-tg-enabled">Enable Telegram Alerts</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-tg-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                             <div class="form-group">
                                 <label for="cfg-tg-mode">Alerting Target</label>
                                 <select id="cfg-tg-mode">

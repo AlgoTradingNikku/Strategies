@@ -36,6 +36,8 @@ def send_telegram_alert(message, priority=5, silent=False, config: dict = None):
         config = load_config()
     tg_cfg = config.get("telegram", {})
     mode = tg_cfg.get("mode", "openalgo").lower()
+    if not tg_cfg.get("enabled", True):
+        return {"status": "skipped", "message": "Telegram alerts are disabled"}
 
     if mode == "direct":
         return _send_direct(tg_cfg, message, silent)
