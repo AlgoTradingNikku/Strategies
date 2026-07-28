@@ -86,9 +86,8 @@ class FiltersConfig(BaseModel):
     volume_sma_period: int
     volume_min_pct: int
     min_alert_score: int
-    mtf_enabled: bool
+    mtf_filter_enabled: bool
     mtf_timeframe: str
-    require_mtf_alignment: bool
     mtf_neutral_pct: float
     mtf_atr_period: int = 10
     adx_filter_enabled: bool
@@ -107,9 +106,14 @@ class FiltersConfig(BaseModel):
     risk_reward_enabled: bool
     rr_atr_multiplier: float
     rr_default_ratio: float
+    squeeze_filter_enabled: bool = False
+    squeeze_length: int = 20
+    squeeze_bb_mult: float = 2.0
+    squeeze_kc_mult: float = 1.5
     candle_patterns_enabled: bool
     signal_history_enabled: bool
     outcome_check_hours: int
+    win_rate_backtest_enabled: bool = False
 
 class ConfigUpdateRequest(BaseModel):
     data_source: str

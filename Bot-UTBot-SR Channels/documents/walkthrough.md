@@ -109,4 +109,20 @@ python scanner.py --list-segments
   - If `segment` is empty (`""` or `[]`), the scanner runs exclusively on the custom `symbols` list.
 - **Daily symbol cache**: Segments symbol lists are cached to `segment_cache.json` for the day to minimize redundant index calls.
 
+---
 
+## Phase 2 Upgrades (Scoring & UI)
+
+### 1. Engine Upgrades (`signals.py`)
+- **Volatility Squeeze (TTM Squeeze):** Added `compute_squeeze()` to calculate Bollinger Bands and Keltner Channels. The engine awards `+15.0 pts` if a signal fires exactly as a volatility squeeze releases. You can toggle `squeeze_filter_enabled` in `config.yml` to filter out signals that are not part of a squeeze.
+- **Volume Profile (VPVR) Hybrid Zones:** Added `compute_vpvr_poc()` to calculate the Volume Point of Control. If an S/R Zone aligns perfectly with the Volume Point of Control, its strength score is doubled, creating high-probability Hybrid Zones.
+- **RSI Divergence Detection:** Added `detect_rsi_divergence()` which scans the last 15 candles. If price makes a Lower Low but RSI makes a Higher Low at a support zone, it flags as Bullish Divergence (+15.0 pts).
+- **Dynamic Volatility Targets (ATR Trailing):** Updated `calculate_risk_reward()` so S/R targets are dynamically bounded by current market volatility (ATR). If the next S/R zone is too close or far, the target is clamped between `1.0 * ATR` and `5.0 * ATR`.
+
+### 2. Mini-Backtester (`scanner.py`)
+- Added `calculate_historical_win_rate()` which runs a fast proxy backtest (1.5 R:R) on the last 30 days of data for the specific symbol that triggered.
+- Calculates how often the UT Bot signal hit its target before stop-loss. This is exposed in the UI as the **Win Rate** column.
+
+### 3. Dashboard UI Enhancements
+- **Visual Confidence Gauge:** The raw score (e.g., 72.5) has been upgraded into a tier badge: **`A+`** (Premium), **`A`** (High), **`B`** (Medium), and **`C`** (Low).
+- **Confluence Matrix:** The text "Confluence" column has been replaced with a row of 5 indicator icons: `[Trend] [Mom] [Vol] [S/R] [Sqz]`. These light up Green for Buy signals, Red for Sell signals, and remain Grey if inactive.

@@ -87,48 +87,47 @@
 
             <!-- Tab 1: Dashboard Panel -->
             <section class="tab-panel active" id="panel-dashboard">
-                <!-- Summary Stats -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Total Stocks Scanned</span>
-                            <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
-                        </div>
-                        <h2 class="stat-value" id="stat-scanned-count">-</h2>
-                        <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">BUY Signals</span>
-                            <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
-                        </div>
-                        <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
-                        <span class="stat-sub">Across all segments</span>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">SELL Signals</span>
-                            <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
-                        </div>
-                        <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
-                        <span class="stat-sub">Across all segments</span>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-header">
-                            <span class="stat-title">Last Scan Cycle</span>
-                            <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
-                        </div>
-                        <h2 class="stat-value" id="stat-last-scan-time">-</h2>
-                        <span class="stat-sub">Local system time</span>
-                    </div>
-                </div>
-
                 <!-- Signal Tables -->
                 <div class="dashboard-tables-grid">
                 <!-- Signal Tables & Quick Controls Split Layout -->
                 <div class="dashboard-content-split">
                     <!-- Left Column: Signal Tables -->
                     <div class="dashboard-tables-column">
+                        <!-- Summary Stats -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Total Stocks Scanned</span>
+                                    <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                                </div>
+                                <h2 class="stat-value" id="stat-scanned-count">-</h2>
+                                <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">BUY Signals</span>
+                                    <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+                                </div>
+                                <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
+                                <span class="stat-sub">Across all segments</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">SELL Signals</span>
+                                    <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                                </div>
+                                <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
+                                <span class="stat-sub">Across all segments</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Last Scan Cycle</span>
+                                    <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                                </div>
+                                <h2 class="stat-value" id="stat-last-scan-time">-</h2>
+                                <span class="stat-sub">Local system time</span>
+                            </div>
+                        </div>
                         <!-- BUY Signals Card -->
                         <div class="table-card">
                             <div class="table-card-header">
@@ -148,7 +147,8 @@
                                             <th>Stop Loss</th>
                                             <th>Target</th>
                                             <th>R:R</th>
-                                            <th>Score</th>
+                                            <th>Win Rate</th>
+                                            <th>Confidence</th>
                                             <th>Confluence</th>
                                             <th>Action</th>
                                         </tr>
@@ -181,7 +181,8 @@
                                             <th>Stop Loss</th>
                                             <th>Target</th>
                                             <th>R:R</th>
-                                            <th>Score</th>
+                                            <th>Win Rate</th>
+                                            <th>Confidence</th>
                                             <th>Confluence</th>
                                             <th>Action</th>
                                         </tr>
@@ -260,25 +261,25 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- MTF Trend Filter -->
+                            <!-- MTF Hard Confirmation -->
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">MTF Confirmation</span>
-                                    <span class="toggle-desc" id="dash-desc-mtf">Multi-timeframe trend filter</span>
+                                    <span class="toggle-name">MTF Hard Confirmation</span>
+                                    <span class="toggle-desc" id="dash-desc-mtf">Filter signals by HTF trend</span>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox" id="dash-filters-mtf">
+                                    <input type="checkbox" id="dash-filters-mtf-filter">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- Require MTF Trend Alignment -->
+                            <!-- Volatility Squeeze Filter -->
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">MTF Alignment</span>
-                                    <span class="toggle-desc">Require strict MTF alignment</span>
+                                    <span class="toggle-name">Squeeze Filter</span>
+                                    <span class="toggle-desc">Require squeeze release</span>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox" id="dash-filters-mtf-align">
+                                    <input type="checkbox" id="dash-filters-squeeze">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
@@ -514,9 +515,9 @@
 
                             <h4 class="sub-header-line">Multi-Timeframe Confirmation</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-filters-mtf">MTF Confirmation</label>
+                                <label for="cfg-filters-mtf-filter">MTF Hard Confirmation</label>
                                 <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-mtf">
+                                    <input type="checkbox" id="cfg-filters-mtf-filter">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
@@ -528,13 +529,6 @@
                                     <option value="1h">1 hour</option>
                                     <option value="1d">1 day</option>
                                 </select>
-                            </div>
-                            <div class="form-group toggle-group">
-                                <label for="cfg-filters-mtf-align">Require MTF Trend Alignment</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-mtf-align">
-                                    <span class="slider round"></span>
-                                </label>
                             </div>
                             <div class="form-group">
                                 <label for="cfg-filters-mtf-neutral">MTF Neutral Zone (%)</label>

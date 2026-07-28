@@ -191,6 +191,29 @@ def _find_pivots(
     return pivot_highs, pivot_lows
 
 
+def compute_vpvr_poc(df: pd.DataFrame, bins: int = 50) -> float:
+    """Calculate the Volume Point of Control (POC) over the DataFrame."""
+    if "volume" not in df.columns or df["volume"].sum() == 0:
+        return 0.0
+    
+    typical_price = (df["high"] + df["low"] + df["close"]) / 3.0
+    min_p = typical_price.min()
+    max_p = typical_price.max()
+    if min_p == max_p:
+        return min_p
+        
+    bin_edges = np.linspace(min_p, max_p, bins + 1)
+    bin_indices = np.digitize(typical_price, bin_edges) - 1
+    bin_indices = np.clip(bin_indices, 0, bins - 1)
+    
+    vol_profile = np.zeros(bins)
+    for i in range(len(df)):
+        vol_profile[bin_indices[i]] += df["volume"].iloc[i]
+        
+    poc_bin_idx = np.argmax(vol_profile)
+    return (bin_edges[poc_bin_idx] + bin_edges[poc_bin_idx + 1]) / 2.0
+
+
 def _cluster_sr_zones(
     pivot_values: list,
     cwidth: float,
@@ -200,6 +223,7 @@ def _cluster_sr_zones(
     loopback: int,
     min_strength: int,
     max_num_sr: int,
+    poc_price: float = 0.0,
 ) -> list:
     """
     Cluster pivot values into S/R zones, score them, and return the top zones.
@@ -267,6 +291,11 @@ def _cluster_sr_zones(
             ).sum()
         )
         z[0] += touches
+
+        # VPVR Hybrid Boost: if Point of Control (POC) is within this zone, multiply its strength
+        # because a price pivot with high volume is a much stronger S/R level.
+        if poc_price > 0 and (z_lo <= poc_price <= z_hi):
+            z[0] *= 2.0  # Massive confluence multiplier
 
     # ---- Step 3: greedy selection of top-N non-overlapping zones ------------
     selected           = []
@@ -387,6 +416,12 @@ def compute_sr_signals(
         zones: list   = []
         return df, zones
 
+    # ---- Compute Volume Point of Control (VPVR) ----------------------------
+    # We only compute POC on the loopback window to keep it relevant to current zones.
+    start_idx = max(0, last_bar_idx - loopback)
+    loopback_df = df.iloc[start_idx:last_bar_idx + 1]
+    poc = compute_vpvr_poc(loopback_df, bins=50)
+
     # ---- Compute zones ------------------------------------------------------
     zones = _cluster_sr_zones(
         pivot_values     = pivot_values,
@@ -397,6 +432,7 @@ def compute_sr_signals(
         loopback         = loopback,
         min_strength     = min_strength,
         max_num_sr       = max_num_sr,
+        poc_price        = poc,
     )
 
     # ---- Evaluate support/resistance for every bar (vectorised) ------------
@@ -518,9 +554,89 @@ def _candle_pattern_pts(pattern_name: str, at_sr_zone: bool) -> float:
     }
     return base_pts.get(pattern_name, 3.0)
 
+def detect_rsi_divergence(df: pd.DataFrame, lookback: int = 15) -> dict:
+    """
+    Detect RSI divergence on the most recent candle.
+    Bullish: Price makes a Lower Low (or equal), but RSI makes a Higher Low.
+    Bearish: Price makes a Higher High (or equal), but RSI makes a Lower High.
+    """
+    if len(df) < lookback + 1 or "rsi" not in df.columns:
+        return {"bullish_div": False, "bearish_div": False}
+        
+    last_idx = len(df) - 1
+    cur_low = df["low"].iloc[last_idx]
+    cur_high = df["high"].iloc[last_idx]
+    cur_rsi = df["rsi"].iloc[last_idx]
+    
+    # Check last 'lookback' bars (excluding current)
+    window = df.iloc[last_idx - lookback : last_idx]
+    
+    # Bullish Div
+    min_idx = window["low"].idxmin()
+    min_low = window.loc[min_idx, "low"]
+    min_rsi = window.loc[min_idx, "rsi"]
+    bullish_div = bool((cur_low <= min_low) and (cur_rsi > min_rsi))
+    
+    # Bearish Div
+    max_idx = window["high"].idxmax()
+    max_high = window.loc[max_idx, "high"]
+    max_rsi = window.loc[max_idx, "rsi"]
+    bearish_div = bool((cur_high >= max_high) and (cur_rsi < max_rsi))
+    
+    return {"bullish_div": bullish_div, "bearish_div": bearish_div}
+
 
 # ============================================================================
-# 4. ADX TREND STRENGTH
+# 4. VOLATILITY SQUEEZE (TTM SQUEEZE)
+# ============================================================================
+
+def compute_squeeze(df: pd.DataFrame, length: int = 20, bb_mult: float = 2.0, kc_mult: float = 1.5) -> pd.DataFrame:
+    """
+    Detect Volatility Squeeze (Bollinger Bands inside Keltner Channels).
+    
+    Returns DataFrame with appended columns:
+      - squeeze_on : bool (BB entirely inside KC)
+      - squeeze_off : bool (BB outside KC)
+      - squeeze_release : bool (transition from ON to OFF)
+    """
+    df = df.copy()
+    close = df["close"]
+    
+    # Bollinger Bands
+    sma = close.rolling(length).mean()
+    std = close.rolling(length).std()
+    bb_upper = sma + (bb_mult * std)
+    bb_lower = sma - (bb_mult * std)
+    
+    # Keltner Channels
+    # True Range
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        df["high"] - df["low"],
+        (df["high"] - prev_close).abs(),
+        (df["low"] - prev_close).abs(),
+    ], axis=1).max(axis=1)
+    
+    # Standard Keltner uses SMA of True Range or ATR
+    atr = tr.rolling(length).mean()
+    # Or EMA, but simple SMA matches standard BB SMA nicely for KC
+    kc_upper = sma + (kc_mult * atr)
+    kc_lower = sma - (kc_mult * atr)
+    
+    # Squeeze is ON when BB is inside KC
+    squeeze_on = (bb_upper < kc_upper) & (bb_lower > kc_lower)
+    squeeze_off = (bb_upper > kc_upper) | (bb_lower < kc_lower)
+    
+    df["squeeze_on"] = squeeze_on
+    df["squeeze_off"] = squeeze_off
+    # Squeeze release is when it was ON on the previous bar, but OFF on the current bar
+    df["squeeze_release"] = squeeze_off & squeeze_on.shift(1)
+    
+    return df
+
+
+# ============================================================================
+# 5. ADX TREND STRENGTH
 # ============================================================================
 
 def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
@@ -630,9 +746,19 @@ def calculate_risk_reward(
             if zone_lo > entry:  # zone is above price = resistance
                 target = zone_hi
                 break
+                
+        risk = entry - stop_loss if entry > stop_loss else 1e-5
         if target is None:
-            risk = entry - stop_loss
-            target = entry + default_rr * risk if risk > 0 else entry + atr_14
+            target = entry + default_rr * risk
+        else:
+            # Bound S/R target dynamically using ATR
+            min_target_dist = 1.0 * atr_14
+            max_target_dist = max(default_rr * risk, 5.0 * atr_14)
+            dist = target - entry
+            if dist < min_target_dist:
+                target = entry + min_target_dist
+            elif dist > max_target_dist:
+                target = entry + max_target_dist
 
     else:  # SELL
         # Stop Loss: tighter of UT Bot trail and nearest resistance zone top
@@ -654,9 +780,19 @@ def calculate_risk_reward(
             if zone_hi < entry:  # zone is below price = support
                 target = zone_lo
                 break
+                
+        risk = stop_loss - entry if stop_loss > entry else 1e-5
         if target is None:
-            risk = stop_loss - entry
-            target = entry - default_rr * risk if risk > 0 else entry - atr_14
+            target = entry - default_rr * risk
+        else:
+            # Bound S/R target dynamically using ATR
+            min_target_dist = 1.0 * atr_14
+            max_target_dist = max(default_rr * risk, 5.0 * atr_14)
+            dist = entry - target
+            if dist < min_target_dist:
+                target = entry - min_target_dist
+            elif dist > max_target_dist:
+                target = entry - max_target_dist
 
     # Calculate R:R
     risk = abs(entry - stop_loss)
@@ -778,6 +914,16 @@ def evaluate_composite_signals(
 
         # Calculate ADX 14 — also store plus_di/minus_di for directional scoring
         df["adx_14"], df["plus_di"], df["minus_di"] = compute_adx(df, period=14)
+
+        # Calculate Volatility Squeeze (TTM Squeeze)
+        sqz_len = int(filters_cfg.get("squeeze_length", 20))
+        sqz_bb  = float(filters_cfg.get("squeeze_bb_mult", 2.0))
+        sqz_kc  = float(filters_cfg.get("squeeze_kc_mult", 1.5))
+        if len(df) >= sqz_len:
+            sqz_df = compute_squeeze(df, length=sqz_len, bb_mult=sqz_bb, kc_mult=sqz_kc)
+            df["squeeze_on"]      = sqz_df["squeeze_on"]
+            df["squeeze_off"]     = sqz_df["squeeze_off"]
+            df["squeeze_release"] = sqz_df["squeeze_release"]
 
     if "volume" in df.columns and len(df) >= vol_sma_period:
         df["vol_sma"] = df["volume"].rolling(vol_sma_period).mean()
@@ -961,6 +1107,17 @@ def evaluate_composite_signals(
                 sell_score += 10.0
                 sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
 
+        # 4.5 RSI Divergence (up to 15 pts)
+        divs = detect_rsi_divergence(df, lookback=15)
+        if divs.get("bullish_div"):
+            buy_score += 15.0
+            buy_reasons.append(f"Bullish RSI Divergence (+15.0 pts)")
+            triggered_buy.append("Bullish Divergence")
+        if divs.get("bearish_div"):
+            sell_score += 15.0
+            sell_reasons.append(f"Bearish RSI Divergence (+15.0 pts)")
+            triggered_sell.append("Bearish Divergence")
+
         # 5. ADX Trend Strength (up to 10 pts) — DIRECTIONAL via +DI / -DI
         # Uses +DI > -DI to confirm bullish momentum; -DI > +DI for bearish.
         # Prevents a strong downtrend from inflating a BUY score.
@@ -983,6 +1140,20 @@ def evaluate_composite_signals(
                 else:
                     sell_score += adx_pts
                     sell_reasons.append(f"Bearish ADX: {adx_val:.1f} (-DI>{plus_di:.1f}) (+{adx_pts:.1f} pts)")
+
+        # 5.5 Volatility Squeeze Release (up to 15 pts)
+        # Squeeze release happens when Bollinger Bands expand outside Keltner Channels.
+        if "squeeze_release" in df.columns:
+            if bool(last_row["squeeze_release"]):
+                # Squeeze released! Award 15 pts to the direction of the signal
+                if candle_bullish:
+                    buy_score += 15.0
+                    buy_reasons.append(f"Bullish Squeeze Release (+15.0 pts)")
+                    triggered_buy.append("Squeeze Release")
+                else:
+                    sell_score += 15.0
+                    sell_reasons.append(f"Bearish Squeeze Release (+15.0 pts)")
+                    triggered_sell.append("Squeeze Release")
 
         # 6. Candlestick Pattern Recognition (up to 8 pts) — BEST ONLY (no stacking)
         # Only the highest-scoring bullish/bearish pattern is counted to avoid
@@ -1043,18 +1214,23 @@ def evaluate_composite_signals(
                 log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
 
         # Volume SMA Filter — mandatory gate when enabled
-        vol_filter  = filters_cfg.get("volume_filter_enabled", True)
+        vol_filter  = filters_cfg.get("volume_filter_enabled", False)
         vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
         if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma  = float(last_row["vol_sma"])
             last_vol = float(last_row["volume"])
             if vol_sma > 0:
+                vol_ratio = last_vol / vol_sma
                 if composite_buy and last_vol < vol_min_pct * vol_sma:
                     composite_buy = False
-                    log.info("Filtered out BUY: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
+                    log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                             last_vol, vol_ratio * 100, vol_min_pct * 100)
+                elif composite_buy:
+                    log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
                 if composite_sell and last_vol < vol_min_pct * vol_sma:
                     composite_sell = False
-                    log.info("Filtered out SELL: Volume (%.0f) below %.0f%% of SMA %d (%.0f)", last_vol, vol_min_pct * 100, vol_sma_period, vol_sma)
+                    log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                             last_vol, vol_ratio * 100, vol_min_pct * 100)
 
         # ADX Hard Filter (opt-in)
         adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
@@ -1082,6 +1258,18 @@ def evaluate_composite_signals(
             if composite_sell and not (rsi_sell_min <= rsi_val <= rsi_sell_max):
                 composite_sell = False
                 log.info("Filtered out SELL: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_sell_min, rsi_sell_max)
+
+        # Volatility Squeeze Hard Filter (opt-in)
+        # Only allow signals if they occur exactly when a squeeze releases.
+        sqz_hard_filter = filters_cfg.get("squeeze_filter_enabled", False)
+        if sqz_hard_filter and "squeeze_release" in df.columns:
+            is_release = bool(last_row["squeeze_release"])
+            if composite_buy and not is_release:
+                composite_buy = False
+                log.info("Filtered out BUY: Not in a Squeeze Release")
+            if composite_sell and not is_release:
+                composite_sell = False
+                log.info("Filtered out SELL: Not in a Squeeze Release")
 
     # ---- Collect detail metadata for display --------------------------------
     details = {}
