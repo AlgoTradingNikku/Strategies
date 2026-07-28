@@ -38,10 +38,13 @@ filters:
 
   # --- Multi-Timeframe Confirmation ---
   mtf_enabled: true                   # Confirm signals against a higher timeframe
-  mtf_timeframe: "15m"                 # Higher TF to check UTBot trend direction
+  mtf_timeframe: "15m"                # Higher TF to check UTBot trend direction
   require_mtf_alignment: true         # If true, only select stock when both timeframes align
                                       # If false, select anyway but cut the confidence score
   mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
+  mtf_atr_period: 10                  # ATR period used for UTBot trail on the HTF (separate from LTF atr_period)
+                                      # For a smoother trail on the higher timeframe, use 10 or 14.
+                                      # Lower values (e.g. 2) make the HTF trail sensitive and flip-prone.
 
   candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
 
@@ -127,7 +130,7 @@ bot:
   market_hours_check: false           # Restrict scanning to market hours only
   market_open: "09:15"
   market_close: "15:30"
-  auto_refresh_enabled: false         # Toggle dashboard auto-refresh on page load
+  auto_refresh_enabled: true         # Toggle dashboard auto-refresh on page load
 
 # ------------------------------------------------------------
 # 6. CUSTOM SYMBOLS LIST

@@ -166,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     mtfAlignCfg.disabled = !mtfEnabled;
                 }
                 document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
+                document.getElementById("cfg-filters-mtf-atr-period").value = cfg.filters.mtf_atr_period !== undefined ? cfg.filters.mtf_atr_period : 10;
 
                 document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
                 document.getElementById("cfg-filters-adx-val").value = cfg.filters.adx_min_threshold !== undefined ? cfg.filters.adx_min_threshold : 20;
@@ -299,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
                 require_mtf_alignment: document.getElementById("cfg-filters-mtf-align").checked,
                 mtf_neutral_pct: parseFloat(document.getElementById("cfg-filters-mtf-neutral").value || 0.3),
+                mtf_atr_period: parseInt(document.getElementById("cfg-filters-mtf-atr-period").value || 10),
                 adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
                 adx_min_threshold: parseFloat(document.getElementById("cfg-filters-adx-val").value || 20),
                 adx_strong_threshold: parseFloat(document.getElementById("cfg-filters-adx-strong").value || 25),

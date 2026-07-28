@@ -478,6 +478,8 @@ def scan_symbol(
                 adj_score += 10.0
                 adj_reasons.append(f"Underperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
 
+        # Single final cap — applied here (Stage 2) AFTER all MTF and RS adjustments
+        # so the full bonus impact is visible in scores rather than being silently truncated.
         adj_score = min(100.0, round(max(0.0, adj_score), 1))
 
         # Risk/Reward

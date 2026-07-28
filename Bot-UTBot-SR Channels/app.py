@@ -90,6 +90,7 @@ class FiltersConfig(BaseModel):
     mtf_timeframe: str
     require_mtf_alignment: bool
     mtf_neutral_pct: float
+    mtf_atr_period: int = 10
     adx_filter_enabled: bool
     adx_min_threshold: float
     adx_strong_threshold: float

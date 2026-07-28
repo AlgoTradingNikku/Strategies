@@ -296,7 +296,8 @@ def _cluster_sr_zones(
 
     # Sort by strength descending
     selected.sort(key=lambda x: -x[2])
-    return [(hi, lo) for hi, lo, _ in selected]
+    # Return 3-tuples: (zone_hi, zone_lo, strength) so callers can use strength for scoring
+    return [(hi, lo, strength) for hi, lo, strength in selected]
 
 
 def compute_sr_signals(
@@ -403,7 +404,7 @@ def compute_sr_signals(
     sr_sell   = pd.Series(False, index=df.index)
     close_v   = df["close"]
 
-    for zone_hi, zone_lo in zones:
+    for zone_hi, zone_lo, _strength in zones:
         prox = close_v * proximity_pct / 100.0
 
         # Price is inside the zone → both S (below) and R (above) apply
@@ -559,7 +560,8 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di + 1e-10)
     adx = dx.ewm(alpha=alpha, adjust=False).mean()
 
-    return adx
+    # Return adx, plus_di, minus_di so callers can determine directional bias
+    return adx, plus_di, minus_di
 
 
 # ============================================================================
@@ -579,7 +581,7 @@ def calculate_risk_reward(
     ----------
     df           : DataFrame with OHLCV + ut_trail columns
     signal_type  : "BUY" or "SELL"
-    zones        : list of (zone_hi, zone_lo) S/R zones
+    zones        : list of (zone_hi, zone_lo, strength) S/R zones
     config       : full config dict
 
     Returns
@@ -613,7 +615,7 @@ def calculate_risk_reward(
         stop_candidates = []
         if ut_trail is not None:
             stop_candidates.append(ut_trail - atr_buffer)
-        for zone_hi, zone_lo in zones:
+        for zone_hi, zone_lo, _s in zones:
             if zone_hi < entry:  # zone is below price = support
                 stop_candidates.append(zone_lo - atr_buffer)
                 break  # take the first (strongest) support
@@ -624,7 +626,7 @@ def calculate_risk_reward(
 
         # Target: next resistance zone above entry, or default R:R
         target = None
-        for zone_hi, zone_lo in zones:
+        for zone_hi, zone_lo, _s in zones:
             if zone_lo > entry:  # zone is above price = resistance
                 target = zone_hi
                 break
@@ -637,7 +639,7 @@ def calculate_risk_reward(
         stop_candidates = []
         if ut_trail is not None:
             stop_candidates.append(ut_trail + atr_buffer)
-        for zone_hi, zone_lo in zones:
+        for zone_hi, zone_lo, _s in zones:
             if zone_lo > entry:  # zone is above price = resistance
                 stop_candidates.append(zone_hi + atr_buffer)
                 break
@@ -648,7 +650,7 @@ def calculate_risk_reward(
 
         # Target: next support zone below entry, or default R:R
         target = None
-        for zone_hi, zone_lo in zones:
+        for zone_hi, zone_lo, _s in zones:
             if zone_hi < entry:  # zone is below price = support
                 target = zone_lo
                 break
@@ -698,10 +700,14 @@ def check_mtf_confirmation(
         return {"trend": "neutral", "htf_trail": None, "htf_close": None}
 
     strat = config.get("strategy", {})
+    filters_cfg = config.get("filters", {})
+    # Use a dedicated MTF ATR period for a smoother trail on the higher timeframe.
+    # Falls back to the LTF atr_period if not explicitly set.
+    mtf_atr = int(filters_cfg.get("mtf_atr_period", strat.get("atr_period", 10)))
     htf_df = compute_utbot_signals(
         htf_df,
         key_value       = float(strat.get("key_value", 1.0)),
-        atr_period      = int(strat.get("atr_period", 2)),
+        atr_period      = mtf_atr,
         use_heikin_ashi = bool(strat.get("use_heikin_ashi", False)),
     )
 
@@ -770,8 +776,8 @@ def evaluate_composite_signals(
         rs = gain / (loss + 1e-10)
         df["rsi"] = 100 - (100 / (1 + rs))
 
-        # Calculate ADX 14
-        df["adx_14"] = compute_adx(df, period=14)
+        # Calculate ADX 14 — also store plus_di/minus_di for directional scoring
+        df["adx_14"], df["plus_di"], df["minus_di"] = compute_adx(df, period=14)
 
     if "volume" in df.columns and len(df) >= vol_sma_period:
         df["vol_sma"] = df["volume"].rolling(vol_sma_period).mean()
@@ -845,126 +851,180 @@ def evaluate_composite_signals(
 
     if last_row is not None:
         close_price = float(last_row["close"])
-        
+        candle_bullish = close_price > float(last_row["open"])   # green candle
+
         # 1. S/R Zone Strength & Proximity
+        # Points are now based on the zone's actual strength score (pivot + touch count),
+        # not its positional rank. Strength pts scale 10–30 based on relative zone quality.
         if zones:
             prox_cfg = config.get("sr_channels", {}).get("proximity_pct", 0.5)
-            
+            max_zone_strength = max(s for _, _, s in zones) if zones else 1
+
             # BUY setup score from S/R Support
-            best_buy_zone_pts = 0
+            best_buy_zone_pts = 0.0
             best_buy_zone_reason = ""
-            for idx, (zone_hi, zone_lo) in enumerate(zones):
+            for idx, (zone_hi, zone_lo, zone_strength) in enumerate(zones):
                 inside = (close_price >= zone_lo) and (close_price <= zone_hi)
                 above_near = (zone_hi < close_price) and ((close_price - zone_hi) <= (close_price * prox_cfg / 100.0))
-                
+
                 if inside or above_near:
-                    prox_pts = 20.0 if inside else 20.0 * (1.0 - (((close_price - zone_hi) / close_price) * 100.0 / prox_cfg)) if prox_cfg > 0 else 20.0
-                    str_pts = 30.0 if idx == 0 else 25.0 if idx == 1 else 20.0 if idx == 2 else 15.0
-                    zone_pts = prox_pts + str_pts
+                    # Proximity: full 15 pts if inside, linearly scaled if nearby
+                    if inside:
+                        prox_pts = 15.0
+                    elif prox_cfg > 0:
+                        dist_pct = ((close_price - zone_hi) / close_price) * 100.0
+                        prox_pts = 15.0 * max(0.0, 1.0 - dist_pct / prox_cfg)
+                    else:
+                        prox_pts = 15.0
+                    # Strength: 10–30 pts scaled proportionally to this zone's actual score
+                    str_pts = 10.0 + 20.0 * (zone_strength / max_zone_strength)
+                    zone_pts = round(prox_pts + str_pts, 1)
                     if zone_pts > best_buy_zone_pts:
                         best_buy_zone_pts = zone_pts
-                        best_buy_zone_reason = f"Bouncing inside/near Support Zone Rank {idx+1} (+{zone_pts:.1f} pts)"
-            
+                        best_buy_zone_reason = f"Bouncing inside/near Support (strength {zone_strength}) (+{zone_pts:.1f} pts)"
+
             if best_buy_zone_pts > 0:
                 buy_score += best_buy_zone_pts
                 buy_reasons.append(best_buy_zone_reason)
-                
+
             # SELL setup score from S/R Resistance
-            best_sell_zone_pts = 0
+            best_sell_zone_pts = 0.0
             best_sell_zone_reason = ""
-            for idx, (zone_hi, zone_lo) in enumerate(zones):
+            for idx, (zone_hi, zone_lo, zone_strength) in enumerate(zones):
                 inside = (close_price >= zone_lo) and (close_price <= zone_hi)
                 below_near = (zone_lo > close_price) and ((zone_lo - close_price) <= (close_price * prox_cfg / 100.0))
-                
+
                 if inside or below_near:
-                    prox_pts = 20.0 if inside else 20.0 * (1.0 - (((zone_lo - close_price) / close_price) * 100.0 / prox_cfg)) if prox_cfg > 0 else 20.0
-                    str_pts = 30.0 if idx == 0 else 25.0 if idx == 1 else 20.0 if idx == 2 else 15.0
-                    zone_pts = prox_pts + str_pts
+                    if inside:
+                        prox_pts = 15.0
+                    elif prox_cfg > 0:
+                        dist_pct = ((zone_lo - close_price) / close_price) * 100.0
+                        prox_pts = 15.0 * max(0.0, 1.0 - dist_pct / prox_cfg)
+                    else:
+                        prox_pts = 15.0
+                    str_pts = 10.0 + 20.0 * (zone_strength / max_zone_strength)
+                    zone_pts = round(prox_pts + str_pts, 1)
                     if zone_pts > best_sell_zone_pts:
                         best_sell_zone_pts = zone_pts
-                        best_sell_zone_reason = f"Rejecting inside/near Resistance Zone Rank {idx+1} (+{zone_pts:.1f} pts)"
-            
+                        best_sell_zone_reason = f"Rejecting inside/near Resistance (strength {zone_strength}) (+{zone_pts:.1f} pts)"
+
             if best_sell_zone_pts > 0:
                 sell_score += best_sell_zone_pts
                 sell_reasons.append(best_sell_zone_reason)
 
-        # 2. Volume Spike Confirmation (up to 20 pts)
+        # 2. Volume Spike Confirmation (up to 15 pts) — DIRECTIONAL
+        # Points only awarded to the direction that matches the candle colour.
+        # A bullish (green) candle volume spike favours BUY; bearish favours SELL.
         if "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma = float(last_row["vol_sma"])
             last_vol = float(last_row["volume"])
             if vol_sma > 0:
                 vol_ratio = last_vol / vol_sma
-                vol_pts = min(20.0, 10.0 * vol_ratio)
+                vol_pts = min(15.0, 10.0 * vol_ratio)
                 if vol_pts > 0:
-                    buy_score += vol_pts
-                    buy_reasons.append(f"Volume surge: {vol_ratio:.2f}x average (+{vol_pts:.1f} pts)")
-                    sell_score += vol_pts
-                    sell_reasons.append(f"Volume surge: {vol_ratio:.2f}x average (+{vol_pts:.1f} pts)")
+                    if candle_bullish:
+                        buy_score += vol_pts
+                        buy_reasons.append(f"Bullish volume surge: {vol_ratio:.2f}x avg (+{vol_pts:.1f} pts)")
+                    else:
+                        sell_score += vol_pts
+                        sell_reasons.append(f"Bearish volume surge: {vol_ratio:.2f}x avg (+{vol_pts:.1f} pts)")
 
-        # 3. EMA Trend Confluence (up to 20 pts)
+        # 3. EMA Trend Confluence (10–20 pts) — PROPORTIONAL
+        # Scoring scales with how far price is from the EMA:
+        #   within 1% of EMA → 10 pts; 2%+ away → 20 pts (linearly interpolated).
         if "ema_trend" in df.columns and len(df) >= ema_period:
             ema_val = float(last_row["ema_trend"])
-            if close_price > ema_val:
-                buy_score += 20.0
-                buy_reasons.append(f"Bullish Trend Confluence: above EMA {ema_period} (+20.0 pts)")
-            else:
-                sell_score += 20.0
-                sell_reasons.append(f"Bearish Trend Confluence: below EMA {ema_period} (+20.0 pts)")
+            if ema_val > 0:
+                pct_from_ema = abs(close_price - ema_val) / ema_val * 100.0
+                ema_pts = round(min(20.0, 10.0 + 5.0 * pct_from_ema), 1)
+                if close_price > ema_val:
+                    buy_score += ema_pts
+                    buy_reasons.append(f"Bullish: above EMA{ema_period} by {pct_from_ema:.1f}% (+{ema_pts:.1f} pts)")
+                else:
+                    sell_score += ema_pts
+                    sell_reasons.append(f"Bearish: below EMA{ema_period} by {pct_from_ema:.1f}% (+{ema_pts:.1f} pts)")
 
-        # 4. RSI Momentum Confluence (up to 10 pts)
+        # 4. RSI Momentum Confluence (up to 10 pts) — EXCLUSIVE RANGES
+        # Ranges are now enforced as exclusive so a single RSI value cannot
+        # simultaneously boost both BUY and SELL scores.
         rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
-        rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
-        rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
+        rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))   # tightened from 65
+        rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))  # tightened from 35
         rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
         if "rsi" in df.columns:
             rsi = float(last_row["rsi"])
-            if rsi_buy_min <= rsi <= rsi_buy_max:
+            # Only award RSI pts to the direction the candle is moving
+            if candle_bullish and rsi_buy_min <= rsi <= rsi_buy_max:
                 buy_score += 10.0
                 buy_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_buy_min:.0f}-{rsi_buy_max:.0f}) (+10.0 pts)")
-            if rsi_sell_min <= rsi <= rsi_sell_max:
+            elif not candle_bullish and rsi_sell_min <= rsi <= rsi_sell_max:
                 sell_score += 10.0
                 sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
 
-        # 5. ADX Trend Strength (up to 10 pts)
-        adx_strong  = float(filters_cfg.get("adx_strong_threshold", 25))
+        # 5. ADX Trend Strength (up to 10 pts) — DIRECTIONAL via +DI / -DI
+        # Uses +DI > -DI to confirm bullish momentum; -DI > +DI for bearish.
+        # Prevents a strong downtrend from inflating a BUY score.
+        adx_strong   = float(filters_cfg.get("adx_strong_threshold", 25))
         adx_moderate = float(filters_cfg.get("adx_moderate_threshold", 20))
-        if "adx_14" in df.columns:
-            adx_val = float(last_row["adx_14"])
+        if "adx_14" in df.columns and "plus_di" in df.columns and "minus_di" in df.columns:
+            adx_val  = float(last_row["adx_14"])
+            plus_di  = float(last_row["plus_di"])
+            minus_di = float(last_row["minus_di"])
             if adx_val >= adx_strong:
                 adx_pts = 10.0
-                buy_score += adx_pts
-                buy_reasons.append(f"Strong trend ADX: {adx_val:.1f} (>={adx_strong:.0f}) (+{adx_pts:.1f} pts)")
-                sell_score += adx_pts
-                sell_reasons.append(f"Strong trend ADX: {adx_val:.1f} (>={adx_strong:.0f}) (+{adx_pts:.1f} pts)")
             elif adx_val >= adx_moderate:
                 adx_pts = 5.0
-                buy_score += adx_pts
-                buy_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (>={adx_moderate:.0f}) (+{adx_pts:.1f} pts)")
-                sell_score += adx_pts
-                sell_reasons.append(f"Moderate trend ADX: {adx_val:.1f} (>={adx_moderate:.0f}) (+{adx_pts:.1f} pts)")
+            else:
+                adx_pts = 0.0
+            if adx_pts > 0:
+                if plus_di > minus_di:
+                    buy_score += adx_pts
+                    buy_reasons.append(f"Bullish ADX: {adx_val:.1f} (+DI>{minus_di:.1f}) (+{adx_pts:.1f} pts)")
+                else:
+                    sell_score += adx_pts
+                    sell_reasons.append(f"Bearish ADX: {adx_val:.1f} (-DI>{plus_di:.1f}) (+{adx_pts:.1f} pts)")
 
-        # 6. Candlestick Pattern Recognition (up to 8 pts)
+        # 6. Candlestick Pattern Recognition (up to 8 pts) — BEST ONLY (no stacking)
+        # Only the highest-scoring bullish/bearish pattern is counted to avoid
+        # inflating scores when multiple patterns coincide on the same candle.
         candle_patterns_on = filters_cfg.get("candle_patterns_enabled", True)
         if candle_patterns_on:
             patterns = detect_candle_patterns(df)
             has_sr_zones = len(zones) > 0
 
+            # Pick best bullish pattern only
+            best_bull_pts = 0.0
+            best_bull_name = ""
             for pat_name in patterns.get("bullish_patterns", []):
-                pat_pts = _candle_pattern_pts(pat_name, has_sr_zones)
-                buy_score += pat_pts
+                pts = _candle_pattern_pts(pat_name, has_sr_zones)
+                if pts > best_bull_pts:
+                    best_bull_pts = pts
+                    best_bull_name = pat_name
+            if best_bull_name:
                 sr_note = " at S/R" if has_sr_zones else ""
-                buy_reasons.append(f"Bullish {pat_name}{sr_note} (+{pat_pts:.1f} pts)")
-                triggered_buy.append(pat_name)
+                buy_score += best_bull_pts
+                buy_reasons.append(f"Bullish {best_bull_name}{sr_note} (+{best_bull_pts:.1f} pts)")
+                triggered_buy.append(best_bull_name)
 
+            # Pick best bearish pattern only
+            best_bear_pts = 0.0
+            best_bear_name = ""
             for pat_name in patterns.get("bearish_patterns", []):
-                pat_pts = _candle_pattern_pts(pat_name, has_sr_zones)
-                sell_score += pat_pts
+                pts = _candle_pattern_pts(pat_name, has_sr_zones)
+                if pts > best_bear_pts:
+                    best_bear_pts = pts
+                    best_bear_name = pat_name
+            if best_bear_name:
                 sr_note = " at S/R" if has_sr_zones else ""
-                sell_reasons.append(f"Bearish {pat_name}{sr_note} (+{pat_pts:.1f} pts)")
-                triggered_sell.append(pat_name)
+                sell_score += best_bear_pts
+                sell_reasons.append(f"Bearish {best_bear_name}{sr_note} (+{best_bear_pts:.1f} pts)")
+                triggered_sell.append(best_bear_name)
 
-    buy_score = min(100.0, round(buy_score, 1))
-    sell_score = min(100.0, round(sell_score, 1))
+    # Stage 1 scores are left uncapped here intentionally.
+    # The single final cap to 100 is applied at the end of scanner._build_result()
+    # after MTF (+15) and RS (+10) adjustments are added in Stage 2.
+    buy_score  = round(buy_score, 1)
+    sell_score = round(sell_score, 1)
 
     # ---- Apply Hard Filters (gate visibility, NOT scoring) -----------------
     # These run AFTER scoring so scores are always fully computed.
