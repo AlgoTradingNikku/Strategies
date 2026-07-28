@@ -38,7 +38,7 @@ filters:
 
   candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
   # --- Multi-Timeframe Confirmation ---
-  mtf_filter_enabled: true            # false = score only, no rejection | true: Rejects signals against HTF trend
+  mtf_filter_enabled: false           # false = score only, no rejection | true: Rejects signals against HTF trend
   mtf_timeframe: "15m"                # Higher TF to check UTBot trend direction
   mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
   mtf_atr_period: 10                  # ATR period used for UTBot trail on the HTF (separate from LTF atr_period)
@@ -48,7 +48,7 @@ filters:
   # --- EMA Trend Filter ---
   # Regardless of the toggle 'true' or 'false': close above EMA always adds +20 pts to BUY; below EMA adds +20 pts to SELL.
   # Filter (when true): hard-rejects/completely rejects BUY signals where close <= EMA, and SELL signals where close >= EMA.
-  ema_filter_enabled: false
+  ema_filter_enabled: true
   ema_period: 200                     # EMA period for trend filter and scoring (e.g. 50, 100, 200)
 
   # --- Volume Filter ---

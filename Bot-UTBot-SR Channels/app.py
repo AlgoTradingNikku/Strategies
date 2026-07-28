@@ -26,6 +26,20 @@ from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
 from signal_db import get_signal_history, get_statistics
 
+# ---------------------------------------------------------------------------
+# Module-level OpenAlgo client cache — avoids re-constructing the client on
+# every /api/order request (one client per unique apikey+host combination).
+# ---------------------------------------------------------------------------
+_oa_client_cache: dict = {}
+
+def _get_oa_client(oa_cfg: dict):
+    """Return a cached OpenAlgo API client for the given config."""
+    key = (oa_cfg.get("apikey", ""), oa_cfg.get("base_url", "http://127.0.0.1:5000"))
+    if key not in _oa_client_cache:
+        _oa_client_cache[key] = oa_api(api_key=key[0], host=key[1])
+    return _oa_client_cache[key]
+
+
 app = FastAPI(title="UTBot + SR Channels Scanner API")
 
 # Enable CORS for local development
@@ -198,12 +212,8 @@ def update_config(req: ConfigUpdateRequest):
 async def place_order(req: OrderRequest):
     """Place a market order via OpenAlgo for a scanner signal."""
     try:
-        cfg = load_config()
-        oa_cfg = cfg.get("openalgo", {})
-        client = oa_api(
-            api_key=oa_cfg.get("apikey", ""),
-            host=oa_cfg.get("base_url", "http://127.0.0.1:5000"),
-        )
+        cfg    = load_config()
+        client = _get_oa_client(cfg.get("openalgo", {}))
         response = client.placeorder(
             strategy=req.strategy,
             symbol=req.symbol,
@@ -293,28 +303,30 @@ def get_history(symbol: str, timeframe: str | None = None):
         # Format zones for frontend: [ [hi, lo], [hi, lo], ... ]
         formatted_zones = [{"high": float(z[0]), "low": float(z[1])} for z in zones]
 
-        # Prepare chart series (OHLC + UT Trail + Buy/Sell flags)
-        chart_data = []
-        for idx, row in df.iterrows():
-            timestamp = idx.timestamp() * 1000  # JS epoch timestamp in ms
-            
-            # Extract UT Trail stop
-            ut_trail = float(row["ut_trail"]) if "ut_trail" in row and not pd.isna(row["ut_trail"]) else None
-            
-            # Determine UT Bot buy/sell flags
-            buy_signal = bool(row["ut_buy"]) if "ut_buy" in row else False
-            sell_signal = bool(row["ut_sell"]) if "ut_sell" in row else False
+        # Prepare chart series (OHLC + UT Trail + Buy/Sell flags) — vectorised
+        timestamps  = (df.index.astype("int64") // 10**9).tolist()   # seconds
+        opens       = df["open"].tolist()
+        highs       = df["high"].tolist()
+        lows        = df["low"].tolist()
+        closes      = df["close"].tolist()
+        ut_trails   = df["ut_trail"].where(df["ut_trail"].notna(), other=None).tolist() \
+                      if "ut_trail" in df.columns else [None] * len(df)
+        buy_sigs    = df["ut_buy"].tolist()  if "ut_buy"  in df.columns else [False] * len(df)
+        sell_sigs   = df["ut_sell"].tolist() if "ut_sell" in df.columns else [False] * len(df)
 
-            chart_data.append({
-                "time": int(timestamp // 1000),  # TV Lightweight charts uses seconds for unix timestamp
-                "open": float(row["open"]),
-                "high": float(row["high"]),
-                "low": float(row["low"]),
-                "close": float(row["close"]),
-                "ut_trail": ut_trail,
-                "buy": buy_signal,
-                "sell": sell_signal
-            })
+        chart_data = [
+            {
+                "time":     timestamps[k],
+                "open":     opens[k],
+                "high":     highs[k],
+                "low":      lows[k],
+                "close":    closes[k],
+                "ut_trail": ut_trails[k],
+                "buy":      bool(buy_sigs[k]),
+                "sell":     bool(sell_sigs[k]),
+            }
+            for k in range(len(df))
+        ]
 
         return {
             "symbol": symbol,
@@ -351,15 +363,14 @@ def get_stats(days: int = 30):
 def get_logs(lines: int = 150):
     """Retrieve the latest log lines from scanner.log."""
     try:
+        from collections import deque
         log_path = _bot_dir / "scanner.log"
         if not log_path.exists():
             return {"logs": "No log file found."}
-        
-        # Read last N lines
+
         with open(log_path, "r", encoding="utf-8") as fh:
-            all_lines = fh.readlines()
-            
-        last_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+            last_lines = deque(fh, maxlen=lines)
+
         return {"logs": "".join(last_lines)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read logs: {e}")
