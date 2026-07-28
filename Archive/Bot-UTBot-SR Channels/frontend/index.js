@@ -166,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     mtfAlignCfg.disabled = !mtfEnabled;
                 }
                 document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
+                document.getElementById("cfg-filters-mtf-atr-period").value = cfg.filters.mtf_atr_period !== undefined ? cfg.filters.mtf_atr_period : 10;
 
                 document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
                 document.getElementById("cfg-filters-adx-val").value = cfg.filters.adx_min_threshold !== undefined ? cfg.filters.adx_min_threshold : 20;
@@ -299,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
                 require_mtf_alignment: document.getElementById("cfg-filters-mtf-align").checked,
                 mtf_neutral_pct: parseFloat(document.getElementById("cfg-filters-mtf-neutral").value || 0.3),
+                mtf_atr_period: parseInt(document.getElementById("cfg-filters-mtf-atr-period").value || 10),
                 adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
                 adx_min_threshold: parseFloat(document.getElementById("cfg-filters-adx-val").value || 20),
                 adx_strong_threshold: parseFloat(document.getElementById("cfg-filters-adx-strong").value || 25),
@@ -555,16 +557,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Place a single order via the backend /api/order endpoint.
-     * @param {string} symbol
-     * @param {string} action    "BUY" | "SELL"
+     * @param {string} symbol 
+     * @param {string} action "BUY" or "SELL"
      * @param {HTMLButtonElement|null} btnEl  Optional button element to show feedback on.
      * @param {number|null} qtyOverride  Quantity from the per-row input (overrides config default).
+     * @param {number|null} priceOverride  The limit price to use if order_type is LIMIT.
      */
-    async function placeOrder(symbol, action, btnEl = null, qtyOverride = null) {
+    async function placeOrder(symbol, action, btnEl = null, qtyOverride = null, priceOverride = null) {
         const oa = activeConfig?.openalgo || {};
         const product  = oa.order_product  || "MIS";
         const quantity = qtyOverride ?? oa.order_quantity ?? 2;
         const exchange = activeConfig?.exchange || "NSE";
+        const price_type = oa.order_type || "MARKET";
+        const price = (price_type === "LIMIT" && priceOverride) ? priceOverride : 0.0;
 
         if (btnEl) {
             btnEl.disabled = true;
@@ -575,7 +580,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const resp = await fetch(`${API_BASE}/api/order`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ symbol, action, exchange, product, quantity })
+                body: JSON.stringify({ symbol, action, exchange, product, quantity, price_type, price })
             });
             const result = await resp.json();
             if (!resp.ok) throw new Error(result.detail || "Order failed");
@@ -681,7 +686,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <span class="order-qty-label">Qty</span>
                             <input type="number" class="order-qty-input" value="${activeConfig?.openalgo?.order_quantity ?? 2}" min="1" step="1" title="Number of shares to buy/sell">
                         </div>
-                        <button class="btn btn-place-order ${actionClass}" data-symbol="${item.symbol}" data-action="${type}">
+                        <button class="btn btn-place-order ${actionClass}" data-symbol="${item.symbol}" data-action="${type}" data-price="${item.close}">
                             <i class="fa-solid fa-cart-shopping"></i> ${type === "BUY" ? "Buy" : "Sell"}
                         </button>
                     </div>
@@ -722,11 +727,13 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", () => {
                 const sym = btn.getAttribute("data-symbol");
                 const action = btn.getAttribute("data-action");
+                const priceStr = btn.getAttribute("data-price");
+                const price = priceStr ? parseFloat(priceStr) : null;
                 // Read quantity from the sibling input in the same action-cell
                 const qtyInput = btn.closest(".action-cell")?.querySelector(".order-qty-wrap .order-qty-input");
                 const qty = qtyInput ? (parseInt(qtyInput.value) || 1) : 1;
                 if (confirm(`Place ${action} order for ${qty} × ${sym}?`)) {
-                    placeOrder(sym, action, btn, qty);
+                    placeOrder(sym, action, btn, qty, price);
                 }
             });
         });
@@ -739,7 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ];
             allSignals.forEach(sig => {
                 const oa = activeConfig?.openalgo || {};
-                placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2);
+                placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2, sig.close);
             });
         }
 

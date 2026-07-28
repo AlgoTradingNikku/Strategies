@@ -54,6 +54,7 @@ class OpenAlgoConfig(BaseModel):
     order_mode: str = "manual"
     order_product: str = "MIS"
     order_quantity: int = 1
+    order_type: str = "MARKET"
 
 class StrategyConfig(BaseModel):
     ut_enabled: bool
@@ -89,6 +90,7 @@ class FiltersConfig(BaseModel):
     mtf_timeframe: str
     require_mtf_alignment: bool
     mtf_neutral_pct: float
+    mtf_atr_period: int = 10
     adx_filter_enabled: bool
     adx_min_threshold: float
     adx_strong_threshold: float
@@ -133,6 +135,8 @@ class OrderRequest(BaseModel):
     price_type: str = "MARKET"
     product: str = "MIS"
     quantity: int = 1
+    price: float = 0.0
+    trigger_price: float = 0.0
     strategy: str = "UTBotScanner"
 
 # ---------------------------------------------------------------------------
@@ -204,6 +208,8 @@ async def place_order(req: OrderRequest):
             price_type=req.price_type,
             product=req.product,
             quantity=req.quantity,
+            price=req.price,
+            trigger_price=req.trigger_price
         )
         # openalgo returns a dict; treat any non-error as success
         if isinstance(response, dict) and response.get("status") == "error":

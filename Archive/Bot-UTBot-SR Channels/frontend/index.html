@@ -149,7 +149,7 @@
                                             <th>Target</th>
                                             <th>R:R</th>
                                             <th>Score</th>
-                                            <th>Triggers</th>
+                                            <th>Confluence</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -182,7 +182,7 @@
                                             <th>Target</th>
                                             <th>R:R</th>
                                             <th>Score</th>
-                                            <th>Triggers</th>
+                                            <th>Confluence</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -539,6 +539,10 @@
                             <div class="form-group">
                                 <label for="cfg-filters-mtf-neutral">MTF Neutral Zone (%)</label>
                                 <input type="number" id="cfg-filters-mtf-neutral" step="0.1" min="0.0" max="5.0">
+                            </div>
+                            <div class="form-group">
+                                <label for="cfg-filters-mtf-atr-period">MTF ATR Period</label>
+                                <input type="number" id="cfg-filters-mtf-atr-period" step="1" min="1" max="50" title="ATR period for UTBot trail on the higher timeframe. Use 10–14 for a smoother trail (recommended). Lower values (e.g. 2) are more reactive.">
                             </div>
 
                             <h4 class="sub-header-line">ADX Trend Strength</h4>
