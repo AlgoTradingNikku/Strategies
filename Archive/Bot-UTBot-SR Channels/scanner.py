@@ -343,6 +343,78 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
 # SCANNER ENGINE
 # ============================================================================
 
+def calculate_historical_win_rate(df: pd.DataFrame, signal_type: str) -> float:
+    """
+    Run a lightweight proxy backtest on the DataFrame history for this symbol.
+    Uses historical UT Bot signals and a standard 2 ATR stop / 3 ATR target (1.5 R:R).
+    Returns win rate percentage (0-100) or None if no completed trades found.
+    """
+    if len(df) < 50:
+        return None
+        
+    wins = 0
+    losses = 0
+    
+    # Calculate ATR for the whole series
+    prev_close = df["close"].shift(1)
+    tr = pd.concat([
+        df["high"] - df["low"], 
+        (df["high"] - prev_close).abs(), 
+        (df["low"] - prev_close).abs()
+    ], axis=1).max(axis=1)
+    atr = tr.rolling(14).mean()
+    
+    col = "ut_buy" if signal_type == "BUY" else "ut_sell"
+    if col not in df.columns:
+        return None
+        
+    # Get boolean mask of signals
+    signals = df[col]
+    
+    for i in range(len(df) - 1):
+        if not signals.iloc[i]:
+            continue
+            
+        entry = float(df["close"].iloc[i])
+        curr_atr = float(atr.iloc[i])
+        if pd.isna(curr_atr) or curr_atr == 0:
+            continue
+            
+        if signal_type == "BUY":
+            sl = entry - 2.0 * curr_atr
+            tp = entry + 3.0 * curr_atr
+            
+            for j in range(i + 1, len(df)):
+                curr_high = float(df["high"].iloc[j])
+                curr_low = float(df["low"].iloc[j])
+                
+                if curr_low <= sl:
+                    losses += 1
+                    break
+                elif curr_high >= tp:
+                    wins += 1
+                    break
+        else: # SELL
+            sl = entry + 2.0 * curr_atr
+            tp = entry - 3.0 * curr_atr
+            
+            for j in range(i + 1, len(df)):
+                curr_high = float(df["high"].iloc[j])
+                curr_low = float(df["low"].iloc[j])
+                
+                if curr_high >= sl:
+                    losses += 1
+                    break
+                elif curr_low <= tp:
+                    wins += 1
+                    break
+                    
+    total = wins + losses
+    if total == 0:
+        return None
+    return round((wins / total) * 100.0, 1)
+
+
 def scan_symbol(
     symbol: str,
     timeframe: str,
@@ -405,8 +477,8 @@ def scan_symbol(
     # Use pre-fetched htf_df if supplied by run_scan (avoids a second HTTP call
     # per symbol). Falls back to an inline fetch when called standalone.
     mtf_result = None
-    if filters_cfg.get("mtf_enabled", False):
-        mtf_tf = filters_cfg.get("mtf_timeframe", "1h")
+    mtf_tf = filters_cfg.get("mtf_timeframe", "15m")
+    if mtf_tf:
         try:
             if htf_df is None:
                 htf_df = fetch_history(symbol, mtf_tf, config)
@@ -449,6 +521,11 @@ def scan_symbol(
         """Build a single signal result dict with MTF, R:R, RS adjustments."""
         adj_score = score
         adj_reasons = list(reasons)
+        
+        # Historical Win-Rate Mini-Backtest
+        hist_win_rate = None
+        if filters_cfg.get("win_rate_backtest_enabled", False):
+            hist_win_rate = calculate_historical_win_rate(df, signal_type)
 
         # MTF score adjustment
         if mtf_result and mtf_result["trend"] != "neutral":
@@ -459,7 +536,7 @@ def scan_symbol(
                 adj_score += 15.0
                 adj_reasons.append(f"MTF confirms {trend} trend (+15.0 pts)")
             else:
-                if filters_cfg.get("require_mtf_alignment", False):
+                if filters_cfg.get("mtf_filter_enabled", False):
                     return None
                 adj_score -= 10.0
                 adj_reasons.append(f"MTF counter-trend: {trend} (−10.0 pts)")
@@ -496,6 +573,7 @@ def scan_symbol(
             "stop_loss":     rr.get("stop_loss"),
             "target":        rr.get("target"),
             "risk_reward":   rr.get("risk_reward"),
+            "hist_win_rate": hist_win_rate,
         }
 
     if composite["buy"]:
@@ -654,8 +732,8 @@ def run_scan(
     # executor, eliminating a second sequential fetch inside each worker thread.
     filters_cfg = config.get("filters", {})
     htf_cache: dict = {}
-    if filters_cfg.get("mtf_enabled", False):
-        mtf_tf = filters_cfg.get("mtf_timeframe", "1h")
+    mtf_tf = filters_cfg.get("mtf_timeframe", "15m")
+    if mtf_tf:
         log.info("  Pre-fetching HTF (%s) data for %d symbols...", mtf_tf, len(symbols))
         with ThreadPoolExecutor(max_workers=10) as htf_executor:
             htf_futures = {
@@ -673,6 +751,26 @@ def run_scan(
     sell_results = []
     errors       = 0
 
+    # ---- Log active hard filters -----------------------------------------------
+    active_filters = []
+    if filters_cfg.get("ema_filter_enabled", False):
+        active_filters.append(f"EMA({filters_cfg.get('ema_period', 200)}) Hard")
+    if filters_cfg.get("volume_filter_enabled", False):
+        active_filters.append(f"Volume >{filters_cfg.get('volume_min_pct', 80)}% SMA Hard")
+    if filters_cfg.get("adx_filter_enabled", False):
+        active_filters.append(f"ADX>{filters_cfg.get('adx_min_threshold', 20)} Hard")
+    if filters_cfg.get("rsi_filter_enabled", False):
+        active_filters.append("RSI Range Hard")
+    if filters_cfg.get("mtf_filter_enabled", False):
+        active_filters.append(f"MTF Hard ({filters_cfg.get('mtf_timeframe', '15m')})")
+    if filters_cfg.get("squeeze_filter_enabled", False):
+        active_filters.append("Squeeze Hard")
+    if active_filters:
+        log.info("  Active Hard Filters: %s", " | ".join(active_filters))
+    else:
+        log.info("  Active Hard Filters: None (scoring only)")
+
+    log.info("  Scanning %d symbols on LTF (%s) ...", len(symbols), timeframe)
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = {
             executor.submit(

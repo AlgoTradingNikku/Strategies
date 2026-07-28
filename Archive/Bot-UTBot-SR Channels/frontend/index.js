@@ -157,14 +157,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("cfg-filters-vol-pct").value = cfg.filters.volume_min_pct !== undefined ? cfg.filters.volume_min_pct : 80;
                 document.getElementById("cfg-filters-score").value = cfg.filters.min_alert_score !== undefined ? cfg.filters.min_alert_score : 70;
                 
-                const mtfEnabled = !!cfg.filters.mtf_enabled;
-                document.getElementById("cfg-filters-mtf").checked = mtfEnabled;
-                document.getElementById("cfg-filters-mtf-tf").value = cfg.filters.mtf_timeframe || "1h";
-                const mtfAlignCfg = document.getElementById("cfg-filters-mtf-align");
-                if (mtfAlignCfg) {
-                    mtfAlignCfg.checked = mtfEnabled && !!cfg.filters.require_mtf_alignment;
-                    mtfAlignCfg.disabled = !mtfEnabled;
-                }
+                const mtfFilter = !!cfg.filters.mtf_filter_enabled;
+                const mtfFilterEl = document.getElementById("cfg-filters-mtf-filter");
+                if (mtfFilterEl) mtfFilterEl.checked = mtfFilter;
+                document.getElementById("cfg-filters-mtf-tf").value = cfg.filters.mtf_timeframe || "15m";
                 document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
                 document.getElementById("cfg-filters-mtf-atr-period").value = cfg.filters.mtf_atr_period !== undefined ? cfg.filters.mtf_atr_period : 10;
 
@@ -229,17 +225,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 document.getElementById("dash-filters-volume").checked = !!cfg.filters.volume_filter_enabled;
                 
-                document.getElementById("dash-filters-mtf").checked = !!cfg.filters.mtf_enabled;
+                const mtfFilterDash = document.getElementById("dash-filters-mtf-filter");
+                if (mtfFilterDash) mtfFilterDash.checked = !!cfg.filters.mtf_filter_enabled;
                 const mtfDesc = document.getElementById("dash-desc-mtf");
-                if (mtfDesc) mtfDesc.textContent = `Multi-timeframe trend filter (${cfg.filters.mtf_timeframe || '1h'})`;
-
-                const mtfAlignDash = document.getElementById("dash-filters-mtf-align");
-                if (mtfAlignDash) {
-                    mtfAlignDash.checked = !!cfg.filters.mtf_enabled && !!cfg.filters.require_mtf_alignment;
-                    mtfAlignDash.disabled = !cfg.filters.mtf_enabled;
-                }
+                if (mtfDesc) mtfDesc.textContent = `Filter signals by HTF trend (${cfg.filters.mtf_timeframe || '15m'})`;
                 document.getElementById("dash-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
                 document.getElementById("dash-filters-rsi-filter").checked = !!cfg.filters.rsi_filter_enabled;
+                
+                const sqzDash = document.getElementById("dash-filters-squeeze");
+                if (sqzDash) sqzDash.checked = !!cfg.filters.squeeze_filter_enabled;
                 document.getElementById("dash-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
                 document.getElementById("dash-filters-candle").checked = !!cfg.filters.candle_patterns_enabled;
             }
@@ -296,9 +290,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 volume_sma_period: parseInt(document.getElementById("cfg-filters-vol-sma").value || 20),
                 volume_min_pct: parseInt(document.getElementById("cfg-filters-vol-pct").value || 80),
                 min_alert_score: parseInt(document.getElementById("cfg-filters-score").value || 70),
-                mtf_enabled: document.getElementById("cfg-filters-mtf").checked,
+                mtf_filter_enabled: document.getElementById("cfg-filters-mtf-filter").checked,
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
-                require_mtf_alignment: document.getElementById("cfg-filters-mtf-align").checked,
                 mtf_neutral_pct: parseFloat(document.getElementById("cfg-filters-mtf-neutral").value || 0.3),
                 mtf_atr_period: parseInt(document.getElementById("cfg-filters-mtf-atr-period").value || 10),
                 adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
@@ -410,10 +403,10 @@ document.addEventListener("DOMContentLoaded", () => {
         { id: "dash-sr-enabled", configPath: ["sr_channels", "enabled"], companionId: "cfg-sr-enabled" },
         { id: "dash-filters-ema", configPath: ["filters", "ema_filter_enabled"], companionId: "cfg-filters-ema" },
         { id: "dash-filters-volume", configPath: ["filters", "volume_filter_enabled"], companionId: "cfg-filters-volume" },
-        { id: "dash-filters-mtf", configPath: ["filters", "mtf_enabled"], companionId: "cfg-filters-mtf" },
-        { id: "dash-filters-mtf-align", configPath: ["filters", "require_mtf_alignment"], companionId: "cfg-filters-mtf-align" },
+        { id: "dash-filters-mtf-filter", configPath: ["filters", "mtf_filter_enabled"], companionId: "cfg-filters-mtf-filter" },
         { id: "dash-filters-adx-filt", configPath: ["filters", "adx_filter_enabled"], companionId: "cfg-filters-adx-filt" },
         { id: "dash-filters-rsi-filter", configPath: ["filters", "rsi_filter_enabled"], companionId: "cfg-filters-rsi-filter" },
+        { id: "dash-filters-squeeze", configPath: ["filters", "squeeze_filter_enabled"], companionId: null },
         { id: "dash-filters-rr-enabled", configPath: ["filters", "risk_reward_enabled"], companionId: "cfg-filters-rr-enabled" },
         { id: "dash-filters-candle", configPath: ["filters", "candle_patterns_enabled"], companionId: "cfg-filters-candle" }
     ];
@@ -431,11 +424,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const childKey = toggleInfo.configPath[1];
                 if (activeConfig[parentKey]) {
                     activeConfig[parentKey][childKey] = isChecked;
-                    
-                    // Enforce MTF Alignment dependency
-                    if (childKey === "mtf_enabled") {
-                        activeConfig.filters.require_mtf_alignment = false;
-                    }
                 }
                 
                 // Keep the Settings tab form checkbox in sync
@@ -645,8 +633,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const score = item.setup_score !== undefined ? item.setup_score : 0;
             let scoreClass = "score-low";
-            if (score >= 70) scoreClass = "score-high";
-            else if (score >= 40) scoreClass = "score-medium";
+            let scoreTier = "C";
+            if (score >= 85) { scoreClass = "score-premium"; scoreTier = "A+"; }
+            else if (score >= 70) { scoreClass = "score-high"; scoreTier = "A"; }
+            else if (score >= 50) { scoreClass = "score-medium"; scoreTier = "B"; }
 
             const reasonsList = item.score_reasons || [];
             const reasonsHtml = reasonsList.length > 0
@@ -656,6 +646,37 @@ document.addEventListener("DOMContentLoaded", () => {
                    </div>`
                 : "";
 
+            // Confluence Matrix Logic
+            const reasonsText = reasonsList.join(" ");
+            const hasTrend = reasonsText.includes("ADX") || reasonsText.includes("EMA") || reasonsText.includes("MTF");
+            const hasMomentum = reasonsText.includes("RSI") || reasonsText.includes("volume"); // momentum + vol
+            const hasVolume = reasonsText.includes("volume");
+            const hasSR = reasonsText.includes("Support") || reasonsText.includes("Resistance") || reasonsText.includes("S/R");
+            const hasSqueeze = reasonsText.includes("Squeeze");
+            
+            const activeColor = type === "BUY" ? "var(--success)" : "var(--danger)";
+            const inactiveColor = "#444";
+            
+            const dot = (isActive, label, icon) => 
+                `<div style="display:flex; flex-direction:column; align-items:center; gap:2px;" title="${label}">
+                    <i class="fa-solid ${icon}" style="color: ${isActive ? activeColor : inactiveColor}; font-size: 14px;"></i>
+                    <span style="font-size: 9px; color: ${isActive ? '#ccc' : '#666'}">${label.substring(0,3)}</span>
+                 </div>`;
+
+            const trendIcon = type === "BUY" ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
+
+            const confluenceMatrixHtml = `
+                <div style="display:flex; gap: 8px; justify-content: center;">
+                    ${dot(hasTrend, 'Trend', trendIcon)}
+                    ${dot(hasMomentum, 'RSI', 'fa-bolt')}
+                    ${dot(hasVolume, 'Vol', 'fa-chart-simple')}
+                    ${dot(hasSR, 'S/R', 'fa-bars')}
+                    ${dot(hasSqueeze, 'Sqz', 'fa-compress')}
+                </div>
+            `;
+            
+            const winRateStr = item.hist_win_rate !== undefined && item.hist_win_rate !== null ? `${item.hist_win_rate}%` : "—";
+
             const actionClass = type === "BUY" ? "btn-order-buy" : "btn-order-sell";
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
@@ -663,19 +684,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${sl}</td>
                 <td>${target}</td>
                 <td><span class="rr-val" style="font-weight: 600; color: ${item.risk_reward >= 2.0 ? 'var(--success)' : 'inherit'}">${rr}</span></td>
+                <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
                     <div class="score-container">
-                        <span class="score-badge ${scoreClass}">${score.toFixed(1)}</span>
+                        <div style="display:flex; flex-direction:column; align-items:center;">
+                            <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                            <span style="font-size: 0.7rem; color: #888; margin-top: 3px;">${score.toFixed(1)}</span>
+                        </div>
                         ${reasonsHtml}
                     </div>
                 </td>
                 <td>
-                    <div class="badge-group">
-                        ${item.triggered.filter(cond => cond !== "UT Bot" && cond !== "S/R Support" && cond !== "S/R Resistance").map(cond => {
-                            const styleClass = cond.includes("UT") ? "ut-badge-type" : "sr-badge-type";
-                            return `<span class="condition-badge ${styleClass}">${cond}</span>`;
-                        }).join("")}
-                    </div>
+                    ${confluenceMatrixHtml}
                 </td>
                 <td>
                     <div class="action-cell">
@@ -1032,17 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
     makeFilterable(buySearch, buySignalsTable);
     makeFilterable(sellSearch, sellSignalsTable);
 
-    // Config Tab MTF Alignment visual rule
-    const cfgMtfToggle = document.getElementById("cfg-filters-mtf");
-    if (cfgMtfToggle) {
-        cfgMtfToggle.addEventListener("change", (e) => {
-            const alignToggle = document.getElementById("cfg-filters-mtf-align");
-            if (alignToggle) {
-                alignToggle.disabled = !e.target.checked;
-                alignToggle.checked = false;
-            }
-        });
-    }
+    // Config Tab MTF Alignment visual rule is no longer needed since it has been simplified to a single Hard Confirmation filter.
 
     // Initialize System
     async function init() {

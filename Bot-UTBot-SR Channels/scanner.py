@@ -515,6 +515,11 @@ def scan_symbol(
         "adx":         composite["details"].get("adx"),
         "rs_ratio":    rs_ratio,
         "mtf":         mtf_result,
+        "vol_ok":      composite.get("vol_ok", True),
+        "ema_above":   composite.get("ema_above"),
+        "adx_ok":      composite.get("adx_ok"),
+        "rsi_ok":      composite.get("rsi_ok"),
+        "sqz_ok":      composite.get("sqz_ok"),
     }
 
     def _build_result(signal_type, triggered, score, reasons):

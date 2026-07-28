@@ -1078,9 +1078,12 @@ def evaluate_composite_signals(
         # 3. EMA Trend Confluence (10–20 pts) — PROPORTIONAL
         # Scoring scales with how far price is from the EMA:
         #   within 1% of EMA → 10 pts; 2%+ away → 20 pts (linearly interpolated).
+        # ema_above is always captured so the frontend icon knows the EMA position.
+        ema_above = None   # None = no EMA data available
         if "ema_trend" in df.columns and len(df) >= ema_period:
             ema_val = float(last_row["ema_trend"])
             if ema_val > 0:
+                ema_above = close_price > ema_val
                 pct_from_ema = abs(close_price - ema_val) / ema_val * 100.0
                 ema_pts = round(min(20.0, 10.0 + 5.0 * pct_from_ema), 1)
                 if close_price > ema_val:
@@ -1093,17 +1096,22 @@ def evaluate_composite_signals(
         # 4. RSI Momentum Confluence (up to 10 pts) — EXCLUSIVE RANGES
         # Ranges are now enforced as exclusive so a single RSI value cannot
         # simultaneously boost both BUY and SELL scores.
+        # rsi_ok is always captured so the frontend icon knows the RSI range pass/fail.
         rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
         rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))   # tightened from 65
         rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))  # tightened from 35
         rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
+        rsi_ok = None   # None = no RSI data available
         if "rsi" in df.columns:
             rsi = float(last_row["rsi"])
+            # rsi_ok: passes the range relevant to the candle direction
+            rsi_ok = (rsi_buy_min <= rsi <= rsi_buy_max) if candle_bullish \
+                else (rsi_sell_min <= rsi <= rsi_sell_max)
             # Only award RSI pts to the direction the candle is moving
-            if candle_bullish and rsi_buy_min <= rsi <= rsi_buy_max:
+            if candle_bullish and rsi_ok:
                 buy_score += 10.0
                 buy_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_buy_min:.0f}-{rsi_buy_max:.0f}) (+10.0 pts)")
-            elif not candle_bullish and rsi_sell_min <= rsi <= rsi_sell_max:
+            elif not candle_bullish and rsi_ok:
                 sell_score += 10.0
                 sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
 
@@ -1121,12 +1129,16 @@ def evaluate_composite_signals(
         # 5. ADX Trend Strength (up to 10 pts) — DIRECTIONAL via +DI / -DI
         # Uses +DI > -DI to confirm bullish momentum; -DI > +DI for bearish.
         # Prevents a strong downtrend from inflating a BUY score.
-        adx_strong   = float(filters_cfg.get("adx_strong_threshold", 25))
-        adx_moderate = float(filters_cfg.get("adx_moderate_threshold", 20))
+        # adx_ok is always captured so the frontend icon knows the ADX threshold pass/fail.
+        adx_strong          = float(filters_cfg.get("adx_strong_threshold", 25))
+        adx_moderate        = float(filters_cfg.get("adx_moderate_threshold", 20))
+        adx_threshold_hard  = float(filters_cfg.get("adx_min_threshold", 20))
+        adx_ok = None   # None = no ADX data available
         if "adx_14" in df.columns and "plus_di" in df.columns and "minus_di" in df.columns:
             adx_val  = float(last_row["adx_14"])
             plus_di  = float(last_row["plus_di"])
             minus_di = float(last_row["minus_di"])
+            adx_ok = adx_val >= adx_threshold_hard
             if adx_val >= adx_strong:
                 adx_pts = 10.0
             elif adx_val >= adx_moderate:
@@ -1143,8 +1155,11 @@ def evaluate_composite_signals(
 
         # 5.5 Volatility Squeeze Release (up to 15 pts)
         # Squeeze release happens when Bollinger Bands expand outside Keltner Channels.
+        # sqz_ok is always captured so the frontend icon knows whether a release occurred.
+        sqz_ok = None   # None = no squeeze data available
         if "squeeze_release" in df.columns:
-            if bool(last_row["squeeze_release"]):
+            sqz_ok = bool(last_row["squeeze_release"])
+            if sqz_ok:
                 # Squeeze released! Award 15 pts to the direction of the signal
                 if candle_bullish:
                     buy_score += 15.0
@@ -1203,7 +1218,7 @@ def evaluate_composite_signals(
         close_price = float(last_row["close"])
 
         # EMA Trend Filter — mandatory gate when enabled
-        ema_filter = filters_cfg.get("ema_filter_enabled", True)
+        ema_filter = filters_cfg.get("ema_filter_enabled", False)
         if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
             ema_val = float(last_row["ema_trend"])
             if composite_buy and close_price <= ema_val:
@@ -1213,24 +1228,29 @@ def evaluate_composite_signals(
                 composite_sell = False
                 log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
 
-        # Volume SMA Filter — mandatory gate when enabled
+        # Volume SMA Filter — mandatory gate when enabled.
+        # vol_ok is always computed (regardless of filter toggle) so the frontend
+        # icon faithfully reflects whether volume cleared the configured threshold.
         vol_filter  = filters_cfg.get("volume_filter_enabled", False)
         vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
-        if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
+        vol_ok = True   # default: pass (no vol data → show icon as active)
+        if "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma  = float(last_row["vol_sma"])
             last_vol = float(last_row["volume"])
             if vol_sma > 0:
                 vol_ratio = last_vol / vol_sma
-                if composite_buy and last_vol < vol_min_pct * vol_sma:
-                    composite_buy = False
-                    log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                             last_vol, vol_ratio * 100, vol_min_pct * 100)
-                elif composite_buy:
-                    log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
-                if composite_sell and last_vol < vol_min_pct * vol_sma:
-                    composite_sell = False
-                    log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                             last_vol, vol_ratio * 100, vol_min_pct * 100)
+                vol_ok = (last_vol >= vol_min_pct * vol_sma)
+                if vol_filter:
+                    if composite_buy and not vol_ok:
+                        composite_buy = False
+                        log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
+                    elif composite_buy:
+                        log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
+                    if composite_sell and not vol_ok:
+                        composite_sell = False
+                        log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
 
         # ADX Hard Filter (opt-in)
         adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
@@ -1291,4 +1311,9 @@ def evaluate_composite_signals(
         "sell_score":     sell_score,
         "sell_reasons":   sell_reasons,
         "details":        details,
+        "vol_ok":         vol_ok,
+        "ema_above":      ema_above,
+        "adx_ok":         adx_ok,
+        "rsi_ok":         rsi_ok,
+        "sqz_ok":         sqz_ok,
     }
