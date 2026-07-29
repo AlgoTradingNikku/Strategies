@@ -113,7 +113,7 @@ openalgo:
   order_mode: "manual"              # "manual" = Place Order button | "auto" = place immediately on signal
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
   order_quantity: 1                 # Default quantity per order
-  order_type: "LIMIT"              # "MARKET" or "LIMIT"
+  order_type: "MARKET"              # "MARKET" or "LIMIT"
 
 # Other Optional Data Feeds
 twelvedata:
