@@ -552,16 +552,36 @@ document.addEventListener("DOMContentLoaded", () => {
      * @param {number|null} priceOverride  The limit price to use if order_type is LIMIT.
      */
     async function placeOrder(symbol, action, btnEl = null, qtyOverride = null, priceOverride = null) {
-        const oa = activeConfig?.openalgo || {};
-        const product  = oa.order_product  || "MIS";
-        const quantity = qtyOverride ?? oa.order_quantity ?? 2;
-        const exchange = activeConfig?.exchange || "NSE";
-        const price_type = oa.order_type || "MARKET";
-        const price = (price_type === "LIMIT" && priceOverride) ? priceOverride : 0.0;
+        // Resolve order settings from the active trading_api_source broker block.
+        // Falls back to the openalgo block for backward compatibility.
+        const source     = (activeConfig?.trading_api_source || "openalgo").toLowerCase();
+        const brokerCfg  = activeConfig?.[source] || activeConfig?.openalgo || {};
+        const product    = brokerCfg.order_product || "MIS";
+        const quantity   = qtyOverride ?? brokerCfg.order_quantity ?? 1;
+        const exchange   = activeConfig?.exchange || "NSE";
+        const price_type = brokerCfg.order_type || "MARKET";
 
         if (btnEl) {
             btnEl.disabled = true;
             btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+        }
+
+        // For LIMIT orders fetch the live LTP from OpenAlgo at click time instead
+        // of using the stale candle close price from when the scan ran.
+        let price = 0.0;
+        if (price_type === "LIMIT") {
+            try {
+                const ltpResp = await fetch(`${API_BASE}/api/ltp/${encodeURIComponent(symbol)}?exchange=${encodeURIComponent(exchange)}`);
+                const ltpData = await ltpResp.json();
+                if (!ltpResp.ok) throw new Error(ltpData.detail || "LTP fetch failed");
+                price = ltpData.ltp;
+                console.info(`[LTP] ${symbol} live price: ₹${price} (will place LIMIT @ ₹${price})`);
+            } catch (ltpErr) {
+                // LTP fetch failed — fall back to the signal's close price with a warning
+                price = priceOverride || 0.0;
+                console.warn(`[LTP] Live price fetch failed for ${symbol}: ${ltpErr.message}. Falling back to signal close price ₹${price}.`);
+                showToast(`⚠️ ${symbol} — Using signal price ₹${price} (live LTP unavailable)`, "warning");
+            }
         }
 
         try {
@@ -574,7 +594,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!resp.ok) throw new Error(result.detail || "Order failed");
 
             const orderId = result.order?.orderid || result.order?.order_id || "placed";
-            showToast(`✅ ${action} ${symbol} — Order ${orderId}`, "success");
+            const priceNote = price_type === "LIMIT" ? ` @ ₹${price}` : "";
+            showToast(`✅ ${action} ${symbol}${priceNote} — Order ${orderId}`, "success");
             if (btnEl) {
                 const origLabel = btnEl.dataset.action === "BUY" ? "Buy" : "Sell";
                 btnEl.innerHTML = `<i class="fa-solid fa-check"></i> Done`;

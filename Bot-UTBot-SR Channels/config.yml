@@ -1,6 +1,7 @@
 # Bot-UTBot-SR Channels — Configuration
 
 data_source: "yfinance"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
+trading_api_source: "openalgo"        # Options: "openalgo", "flattrade", "mstock", "shoonya", "dhan"
 exchange: "NSE"                       # Target exchange
 scan_timeframe: "5m"                  # Lower Timeframe (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
 scan_interval_seconds: 60            # Interval between scans in continuous mode
@@ -114,6 +115,46 @@ openalgo:
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
   order_quantity: 1                 # Default quantity per order
   order_type: "LIMIT"               # "MARKET" or "LIMIT"
+
+# ------------------------------------------------------------
+# Trading API Credentials (only the active trading_api_source is used)
+# ------------------------------------------------------------
+
+# Flattrade — session_token must be refreshed each trading day via your login flow
+flattrade:
+  api_key: ""
+  api_secret: ""
+  client_id: ""
+  session_token: ""                   # Obtain via Flattrade QuickAuth before market open
+  order_product: "MIS"               # MIS (intraday) or CNC (delivery)
+  order_quantity: 1
+  order_type: "MARKET"               # "MARKET" or "LIMIT"
+
+# MStock (Mirae Asset) — access_token from MStock Developer Portal
+mstock:
+  client_id: ""
+  access_token: ""                    # Long-lived Bearer token from developer.miraeassetcm.com
+  order_product: "MIS"
+  order_quantity: 1
+  order_type: "MARKET"
+
+# Shoonya (Finvasia) — session_token must be refreshed each trading day
+shoonya:
+  api_key: ""
+  api_secret: ""
+  client_id: ""
+  session_token: ""                   # Obtain via Shoonya login before market open
+  order_product: "MIS"
+  order_quantity: 1
+  order_type: "MARKET"
+
+# Dhan — access_token from Dhan HQ Developer Portal (long-lived)
+dhan:
+  client_id: ""
+  access_token: ""                    # From app.dhan.co → My Profile → API Access Token
+  order_product: "MIS"               # MIS (intraday) or CNC (delivery) or NRML (F&O)
+  order_quantity: 1
+  order_type: "MARKET"
 
 # Other Optional Data Feeds
 twelvedata:

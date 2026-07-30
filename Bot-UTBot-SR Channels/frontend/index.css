@@ -1322,6 +1322,12 @@ input:checked + .slider:before {
     color: #93c5fd;
 }
 
+.toast-warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.40);
+    color: #fcd34d;
+}
+
 /* ==========================================================================
    Dashboard Split Column Layout & Quick Control Sidebar
    ========================================================================== */
