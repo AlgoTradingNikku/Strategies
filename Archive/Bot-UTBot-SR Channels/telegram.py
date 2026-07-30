@@ -4,17 +4,6 @@ Sends alerts via Telegram Bot API (direct mode) or via OpenAlgo server.
 """
 
 import requests
-import yaml
-from pathlib import Path
-
-_CONFIG_PATH = Path(__file__).resolve().parent / "config.yml"
-
-
-def load_config(path=None):
-    if path is None:
-        path = _CONFIG_PATH
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
 
 
 def send_telegram_alert(message, priority=5, silent=False, config: dict = None):
@@ -33,7 +22,7 @@ def send_telegram_alert(message, priority=5, silent=False, config: dict = None):
         every alert.
     """
     if config is None:
-        config = load_config()
+        return {"error": "No config provided to send_telegram_alert"}
     tg_cfg = config.get("telegram", {})
     mode = tg_cfg.get("mode", "openalgo").lower()
     if not tg_cfg.get("enabled", True):

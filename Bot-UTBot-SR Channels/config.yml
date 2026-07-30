@@ -38,7 +38,7 @@ filters:
 
   candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
   # --- Multi-Timeframe Confirmation ---
-  mtf_filter_enabled: false           # false = score only, no rejection | true: Rejects signals against HTF trend
+  mtf_filter_enabled: true            # false = score only, no rejection | true: Rejects signals against HTF trend
   mtf_timeframe: "15m"                # Higher TF to check UTBot trend direction
   mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
   mtf_atr_period: 10                  # ATR period used for UTBot trail on the HTF (separate from LTF atr_period)
@@ -48,13 +48,13 @@ filters:
   # --- EMA Trend Filter ---
   # Regardless of the toggle 'true' or 'false': close above EMA always adds +20 pts to BUY; below EMA adds +20 pts to SELL.
   # Filter (when true): hard-rejects/completely rejects BUY signals where close <= EMA, and SELL signals where close >= EMA.
-  ema_filter_enabled: true
+  ema_filter_enabled: false
   ema_period: 200                     # EMA period for trend filter and scoring (e.g. 50, 100, 200)
 
   # --- Volume Filter ---
   # Regardless of the toggle 'true' or 'false':: volume surge always contributes up to +20 pts (10 × vol/SMA, capped at 20) — regardless of this toggle true or false
   # Filter (when true): hard-rejects any signal where current volume < volume_min_pct % of its SMA.
-  volume_filter_enabled: true         # false = no rejection of stocks in results, only adds points | true: Rejects the low-volume stocks in scanned results
+  volume_filter_enabled: false        # false = no rejection of stocks in results, only adds points | true: Rejects the low-volume stocks in scanned results
   volume_sma_period: 20               # SMA period for volume moving average (e.g. 10, 20, 50)
   volume_min_pct: 60                  # Min volume as % of SMA to pass the hard filter (e.g. 60 = reject if vol < 60% of SMA)
 
@@ -113,7 +113,7 @@ openalgo:
   order_mode: "manual"              # "manual" = Place Order button | "auto" = place immediately on signal
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
   order_quantity: 1                 # Default quantity per order
-  order_type: "MARKET"              # "MARKET" or "LIMIT"
+  order_type: "LIMIT"               # "MARKET" or "LIMIT"
 
 # Other Optional Data Feeds
 twelvedata:

@@ -35,11 +35,6 @@ def _crossover(s1: pd.Series, s2: pd.Series) -> pd.Series:
     return (s1 > s2) & (s1.shift(1) <= s2.shift(1))
 
 
-def _crossunder(s1: pd.Series, s2: pd.Series) -> pd.Series:
-    """True on bars where s1 crosses below s2 (was >= on the prior bar)."""
-    return (s1 < s2) & (s1.shift(1) >= s2.shift(1))
-
-
 # ============================================================================
 # 1. UT BOT ENGINE
 # ============================================================================
@@ -168,25 +163,28 @@ def _find_pivots(
     pivot_highs : list of (bar_index, value)
     pivot_lows  : list of (bar_index, value)
     """
-    n      = len(high_src)
-    h_vals = high_src.values
-    l_vals = low_src.values
+    win = 2 * prd + 1
 
-    pivot_highs = []
-    pivot_lows  = []
+    # Rolling max/min over the full symmetric window, then shift back by prd
+    # so the result at position i reflects the window [i-prd, i+prd].
+    roll_max = high_src.rolling(win, center=True).max()
+    roll_min = low_src.rolling(win,  center=True).min()
 
-    for i in range(prd, n - prd):
-        # Pivot high
-        h_val    = h_vals[i]
-        window_h = h_vals[i - prd : i + prd + 1]
-        if h_val >= window_h.max():
-            pivot_highs.append((i, float(h_val)))
+    # A bar is a pivot high/low when it equals the window extreme
+    ph_mask = high_src == roll_max
+    pl_mask = low_src  == roll_min
 
-        # Pivot low
-        l_val    = l_vals[i]
-        window_l = l_vals[i - prd : i + prd + 1]
-        if l_val <= window_l.min():
-            pivot_lows.append((i, float(l_val)))
+    # Convert to lists of (bar_index, value), excluding the edge bars with NaN windows
+    pivot_highs = [
+        (i, float(high_src.iloc[i]))
+        for i in range(prd, len(high_src) - prd)
+        if ph_mask.iloc[i]
+    ]
+    pivot_lows = [
+        (i, float(low_src.iloc[i]))
+        for i in range(prd, len(low_src) - prd)
+        if pl_mask.iloc[i]
+    ]
 
     return pivot_highs, pivot_lows
 
@@ -195,22 +193,18 @@ def compute_vpvr_poc(df: pd.DataFrame, bins: int = 50) -> float:
     """Calculate the Volume Point of Control (POC) over the DataFrame."""
     if "volume" not in df.columns or df["volume"].sum() == 0:
         return 0.0
-    
+
     typical_price = (df["high"] + df["low"] + df["close"]) / 3.0
     min_p = typical_price.min()
     max_p = typical_price.max()
     if min_p == max_p:
         return min_p
-        
-    bin_edges = np.linspace(min_p, max_p, bins + 1)
-    bin_indices = np.digitize(typical_price, bin_edges) - 1
-    bin_indices = np.clip(bin_indices, 0, bins - 1)
-    
-    vol_profile = np.zeros(bins)
-    for i in range(len(df)):
-        vol_profile[bin_indices[i]] += df["volume"].iloc[i]
-        
-    poc_bin_idx = np.argmax(vol_profile)
+
+    # Fully vectorised: np.histogram accumulates volume per bin in one pass
+    vol_profile, bin_edges = np.histogram(
+        typical_price, bins=bins, range=(min_p, max_p), weights=df["volume"].values
+    )
+    poc_bin_idx = int(np.argmax(vol_profile))
     return (bin_edges[poc_bin_idx] + bin_edges[poc_bin_idx + 1]) / 2.0
 
 
@@ -653,9 +647,6 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
     up_move   = high.diff()
     down_move = -low.diff()
 
-    plus_dm  = pd.Series(0.0, index=df.index)
-    minus_dm = pd.Series(0.0, index=df.index)
-
     plus_dm  = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
     minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
 
@@ -681,7 +672,7 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 # ============================================================================
-# 5. ATR-BASED RISK/REWARD CALCULATOR
+# 6. ATR-BASED RISK/REWARD CALCULATOR
 # ============================================================================
 
 def calculate_risk_reward(
@@ -807,7 +798,7 @@ def calculate_risk_reward(
 
 
 # ============================================================================
-# 6. MULTI-TIMEFRAME CONFIRMATION
+# 7. MULTI-TIMEFRAME CONFIRMATION
 # ============================================================================
 
 def check_mtf_confirmation(
@@ -870,7 +861,7 @@ def check_mtf_confirmation(
 
 
 # ============================================================================
-# 7. COMPOSITE SIGNAL EVALUATOR
+# 8. COMPOSITE SIGNAL EVALUATOR
 # ============================================================================
 
 def evaluate_composite_signals(
@@ -896,6 +887,7 @@ def evaluate_composite_signals(
         are used directly instead of reading from df.attrs (which is fragile
         across pandas operations).
     """
+    df = df.copy()
     # ---- 1. Calculate technical indicators for filters and scoring ----
     filters_cfg = config.get("filters", {})
     ema_period = int(filters_cfg.get("ema_period", 200))
@@ -999,22 +991,25 @@ def evaluate_composite_signals(
         close_price = float(last_row["close"])
         candle_bullish = close_price > float(last_row["open"])   # green candle
 
-        # 1. S/R Zone Strength & Proximity
-        # Points are now based on the zone's actual strength score (pivot + touch count),
-        # not its positional rank. Strength pts scale 10–30 based on relative zone quality.
+        # 1. S/R Zone Strength & Proximity — single pass over zones, updating
+        # both BUY and SELL best candidates simultaneously.
         if zones:
             prox_cfg = config.get("sr_channels", {}).get("proximity_pct", 0.5)
             max_zone_strength = max(s for _, _, s in zones) if zones else 1
 
-            # BUY setup score from S/R Support
-            best_buy_zone_pts = 0.0
+            best_buy_zone_pts    = 0.0
             best_buy_zone_reason = ""
-            for idx, (zone_hi, zone_lo, zone_strength) in enumerate(zones):
-                inside = (close_price >= zone_lo) and (close_price <= zone_hi)
-                above_near = (zone_hi < close_price) and ((close_price - zone_hi) <= (close_price * prox_cfg / 100.0))
+            best_sell_zone_pts   = 0.0
+            best_sell_zone_reason = ""
 
+            for zone_hi, zone_lo, zone_strength in zones:
+                inside     = (close_price >= zone_lo) and (close_price <= zone_hi)
+                above_near = (zone_hi < close_price) and ((close_price - zone_hi) <= (close_price * prox_cfg / 100.0))
+                below_near = (zone_lo > close_price) and ((zone_lo - close_price) <= (close_price * prox_cfg / 100.0))
+                str_pts    = 10.0 + 20.0 * (zone_strength / max_zone_strength)
+
+                # BUY side (support: price inside or just above zone)
                 if inside or above_near:
-                    # Proximity: full 15 pts if inside, linearly scaled if nearby
                     if inside:
                         prox_pts = 15.0
                     elif prox_cfg > 0:
@@ -1022,24 +1017,12 @@ def evaluate_composite_signals(
                         prox_pts = 15.0 * max(0.0, 1.0 - dist_pct / prox_cfg)
                     else:
                         prox_pts = 15.0
-                    # Strength: 10–30 pts scaled proportionally to this zone's actual score
-                    str_pts = 10.0 + 20.0 * (zone_strength / max_zone_strength)
                     zone_pts = round(prox_pts + str_pts, 1)
                     if zone_pts > best_buy_zone_pts:
-                        best_buy_zone_pts = zone_pts
+                        best_buy_zone_pts   = zone_pts
                         best_buy_zone_reason = f"Bouncing inside/near Support (strength {zone_strength}) (+{zone_pts:.1f} pts)"
 
-            if best_buy_zone_pts > 0:
-                buy_score += best_buy_zone_pts
-                buy_reasons.append(best_buy_zone_reason)
-
-            # SELL setup score from S/R Resistance
-            best_sell_zone_pts = 0.0
-            best_sell_zone_reason = ""
-            for idx, (zone_hi, zone_lo, zone_strength) in enumerate(zones):
-                inside = (close_price >= zone_lo) and (close_price <= zone_hi)
-                below_near = (zone_lo > close_price) and ((zone_lo - close_price) <= (close_price * prox_cfg / 100.0))
-
+                # SELL side (resistance: price inside or just below zone)
                 if inside or below_near:
                     if inside:
                         prox_pts = 15.0
@@ -1048,12 +1031,14 @@ def evaluate_composite_signals(
                         prox_pts = 15.0 * max(0.0, 1.0 - dist_pct / prox_cfg)
                     else:
                         prox_pts = 15.0
-                    str_pts = 10.0 + 20.0 * (zone_strength / max_zone_strength)
                     zone_pts = round(prox_pts + str_pts, 1)
                     if zone_pts > best_sell_zone_pts:
-                        best_sell_zone_pts = zone_pts
+                        best_sell_zone_pts   = zone_pts
                         best_sell_zone_reason = f"Rejecting inside/near Resistance (strength {zone_strength}) (+{zone_pts:.1f} pts)"
 
+            if best_buy_zone_pts > 0:
+                buy_score += best_buy_zone_pts
+                buy_reasons.append(best_buy_zone_reason)
             if best_sell_zone_pts > 0:
                 sell_score += best_sell_zone_pts
                 sell_reasons.append(best_sell_zone_reason)
@@ -1078,9 +1063,12 @@ def evaluate_composite_signals(
         # 3. EMA Trend Confluence (10–20 pts) — PROPORTIONAL
         # Scoring scales with how far price is from the EMA:
         #   within 1% of EMA → 10 pts; 2%+ away → 20 pts (linearly interpolated).
+        # ema_above is always captured so the frontend icon knows the EMA position.
+        ema_above = None   # None = no EMA data available
         if "ema_trend" in df.columns and len(df) >= ema_period:
             ema_val = float(last_row["ema_trend"])
             if ema_val > 0:
+                ema_above = close_price > ema_val
                 pct_from_ema = abs(close_price - ema_val) / ema_val * 100.0
                 ema_pts = round(min(20.0, 10.0 + 5.0 * pct_from_ema), 1)
                 if close_price > ema_val:
@@ -1093,17 +1081,22 @@ def evaluate_composite_signals(
         # 4. RSI Momentum Confluence (up to 10 pts) — EXCLUSIVE RANGES
         # Ranges are now enforced as exclusive so a single RSI value cannot
         # simultaneously boost both BUY and SELL scores.
+        # rsi_ok is always captured so the frontend icon knows the RSI range pass/fail.
         rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
         rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))   # tightened from 65
         rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))  # tightened from 35
         rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
+        rsi_ok = None   # None = no RSI data available
         if "rsi" in df.columns:
             rsi = float(last_row["rsi"])
+            # rsi_ok: passes the range relevant to the candle direction
+            rsi_ok = (rsi_buy_min <= rsi <= rsi_buy_max) if candle_bullish \
+                else (rsi_sell_min <= rsi <= rsi_sell_max)
             # Only award RSI pts to the direction the candle is moving
-            if candle_bullish and rsi_buy_min <= rsi <= rsi_buy_max:
+            if candle_bullish and rsi_ok:
                 buy_score += 10.0
                 buy_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_buy_min:.0f}-{rsi_buy_max:.0f}) (+10.0 pts)")
-            elif not candle_bullish and rsi_sell_min <= rsi <= rsi_sell_max:
+            elif not candle_bullish and rsi_ok:
                 sell_score += 10.0
                 sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
 
@@ -1111,22 +1104,26 @@ def evaluate_composite_signals(
         divs = detect_rsi_divergence(df, lookback=15)
         if divs.get("bullish_div"):
             buy_score += 15.0
-            buy_reasons.append(f"Bullish RSI Divergence (+15.0 pts)")
+            buy_reasons.append("Bullish RSI Divergence (+15.0 pts)")
             triggered_buy.append("Bullish Divergence")
         if divs.get("bearish_div"):
             sell_score += 15.0
-            sell_reasons.append(f"Bearish RSI Divergence (+15.0 pts)")
+            sell_reasons.append("Bearish RSI Divergence (+15.0 pts)")
             triggered_sell.append("Bearish Divergence")
 
         # 5. ADX Trend Strength (up to 10 pts) — DIRECTIONAL via +DI / -DI
         # Uses +DI > -DI to confirm bullish momentum; -DI > +DI for bearish.
         # Prevents a strong downtrend from inflating a BUY score.
-        adx_strong   = float(filters_cfg.get("adx_strong_threshold", 25))
-        adx_moderate = float(filters_cfg.get("adx_moderate_threshold", 20))
+        # adx_ok is always captured so the frontend icon knows the ADX threshold pass/fail.
+        adx_strong          = float(filters_cfg.get("adx_strong_threshold", 25))
+        adx_moderate        = float(filters_cfg.get("adx_moderate_threshold", 20))
+        adx_threshold_hard  = float(filters_cfg.get("adx_min_threshold", 20))
+        adx_ok = None   # None = no ADX data available
         if "adx_14" in df.columns and "plus_di" in df.columns and "minus_di" in df.columns:
             adx_val  = float(last_row["adx_14"])
             plus_di  = float(last_row["plus_di"])
             minus_di = float(last_row["minus_di"])
+            adx_ok = adx_val >= adx_threshold_hard
             if adx_val >= adx_strong:
                 adx_pts = 10.0
             elif adx_val >= adx_moderate:
@@ -1143,16 +1140,19 @@ def evaluate_composite_signals(
 
         # 5.5 Volatility Squeeze Release (up to 15 pts)
         # Squeeze release happens when Bollinger Bands expand outside Keltner Channels.
+        # sqz_ok is always captured so the frontend icon knows whether a release occurred.
+        sqz_ok = None   # None = no squeeze data available
         if "squeeze_release" in df.columns:
-            if bool(last_row["squeeze_release"]):
+            sqz_ok = bool(last_row["squeeze_release"])
+            if sqz_ok:
                 # Squeeze released! Award 15 pts to the direction of the signal
                 if candle_bullish:
                     buy_score += 15.0
-                    buy_reasons.append(f"Bullish Squeeze Release (+15.0 pts)")
+                    buy_reasons.append("Bullish Squeeze Release (+15.0 pts)")
                     triggered_buy.append("Squeeze Release")
                 else:
                     sell_score += 15.0
-                    sell_reasons.append(f"Bearish Squeeze Release (+15.0 pts)")
+                    sell_reasons.append("Bearish Squeeze Release (+15.0 pts)")
                     triggered_sell.append("Squeeze Release")
 
         # 6. Candlestick Pattern Recognition (up to 8 pts) — BEST ONLY (no stacking)
@@ -1203,7 +1203,7 @@ def evaluate_composite_signals(
         close_price = float(last_row["close"])
 
         # EMA Trend Filter — mandatory gate when enabled
-        ema_filter = filters_cfg.get("ema_filter_enabled", True)
+        ema_filter = filters_cfg.get("ema_filter_enabled", False)
         if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
             ema_val = float(last_row["ema_trend"])
             if composite_buy and close_price <= ema_val:
@@ -1213,24 +1213,29 @@ def evaluate_composite_signals(
                 composite_sell = False
                 log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
 
-        # Volume SMA Filter — mandatory gate when enabled
+        # Volume SMA Filter — mandatory gate when enabled.
+        # vol_ok is always computed (regardless of filter toggle) so the frontend
+        # icon faithfully reflects whether volume cleared the configured threshold.
         vol_filter  = filters_cfg.get("volume_filter_enabled", False)
         vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
-        if vol_filter and "volume" in df.columns and "vol_sma" in df.columns:
+        vol_ok = True   # default: pass (no vol data → show icon as active)
+        if "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma  = float(last_row["vol_sma"])
             last_vol = float(last_row["volume"])
             if vol_sma > 0:
                 vol_ratio = last_vol / vol_sma
-                if composite_buy and last_vol < vol_min_pct * vol_sma:
-                    composite_buy = False
-                    log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                             last_vol, vol_ratio * 100, vol_min_pct * 100)
-                elif composite_buy:
-                    log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
-                if composite_sell and last_vol < vol_min_pct * vol_sma:
-                    composite_sell = False
-                    log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                             last_vol, vol_ratio * 100, vol_min_pct * 100)
+                vol_ok = (last_vol >= vol_min_pct * vol_sma)
+                if vol_filter:
+                    if composite_buy and not vol_ok:
+                        composite_buy = False
+                        log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
+                    elif composite_buy:
+                        log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
+                    if composite_sell and not vol_ok:
+                        composite_sell = False
+                        log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
 
         # ADX Hard Filter (opt-in)
         adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
@@ -1249,8 +1254,8 @@ def evaluate_composite_signals(
         if rsi_hard_filter and "rsi" in df.columns:
             rsi_val      = float(last_row["rsi"])
             rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
-            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 65))
-            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 35))
+            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))
+            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))
             rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
             if composite_buy and not (rsi_buy_min <= rsi_val <= rsi_buy_max):
                 composite_buy = False
@@ -1291,4 +1296,9 @@ def evaluate_composite_signals(
         "sell_score":     sell_score,
         "sell_reasons":   sell_reasons,
         "details":        details,
+        "vol_ok":         vol_ok,
+        "ema_above":      ema_above,
+        "adx_ok":         adx_ok,
+        "rsi_ok":         rsi_ok,
+        "sqz_ok":         sqz_ok,
     }

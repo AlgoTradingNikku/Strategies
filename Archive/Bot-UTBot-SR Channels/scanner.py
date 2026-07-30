@@ -26,13 +26,14 @@ Stop:
 """
 
 import sys
-import os
 import argparse
+import copy
 import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -85,7 +86,7 @@ log.propagate = False  # Avoid propagating up to root logger
 sys.path.insert(0, str(_bot_dir))
 from telegram import send_telegram_alert                       # noqa: E402
 from nse_indices import get_index_symbols, list_available_segments  # noqa: E402
-from signal_db import log_signal, log_signals_batch, check_outcomes                # noqa: E402
+from signal_db import log_signals_batch, check_outcomes                            # noqa: E402
 from signals import (                                          # noqa: E402
     compute_utbot_signals,
     compute_sr_signals,
@@ -351,64 +352,67 @@ def calculate_historical_win_rate(df: pd.DataFrame, signal_type: str) -> float:
     """
     if len(df) < 50:
         return None
-        
-    wins = 0
-    losses = 0
-    
+
     # Calculate ATR for the whole series
     prev_close = df["close"].shift(1)
     tr = pd.concat([
-        df["high"] - df["low"], 
-        (df["high"] - prev_close).abs(), 
+        df["high"] - df["low"],
+        (df["high"] - prev_close).abs(),
         (df["low"] - prev_close).abs()
     ], axis=1).max(axis=1)
     atr = tr.rolling(14).mean()
-    
+
     col = "ut_buy" if signal_type == "BUY" else "ut_sell"
     if col not in df.columns:
         return None
-        
-    # Get boolean mask of signals
-    signals = df[col]
-    
-    for i in range(len(df) - 1):
-        if not signals.iloc[i]:
+
+    sig_idx = np.where(df[col].values)[0]
+    close_v = df["close"].values
+    high_v  = df["high"].values
+    low_v   = df["low"].values
+    atr_v   = atr.values
+
+    wins   = 0
+    losses = 0
+
+    for i in sig_idx:
+        if i >= len(df) - 1:
             continue
-            
-        entry = float(df["close"].iloc[i])
-        curr_atr = float(atr.iloc[i])
-        if pd.isna(curr_atr) or curr_atr == 0:
+        entry    = close_v[i]
+        curr_atr = atr_v[i]
+        if np.isnan(curr_atr) or curr_atr == 0:
             continue
-            
+
         if signal_type == "BUY":
             sl = entry - 2.0 * curr_atr
             tp = entry + 3.0 * curr_atr
-            
-            for j in range(i + 1, len(df)):
-                curr_high = float(df["high"].iloc[j])
-                curr_low = float(df["low"].iloc[j])
-                
-                if curr_low <= sl:
-                    losses += 1
-                    break
-                elif curr_high >= tp:
-                    wins += 1
-                    break
-        else: # SELL
+            # Find which event (SL or TP) happens first using vectorised argmax
+            future_high = high_v[i + 1:]
+            future_low  = low_v[i + 1:]
+            tp_hit = np.argmax(future_high >= tp)   # index of first TP touch (0 if never)
+            sl_hit = np.argmax(future_low  <= sl)
+            tp_ok  = bool(future_high[tp_hit] >= tp) if len(future_high) else False
+            sl_ok  = bool(future_low[sl_hit]  <= sl) if len(future_low)  else False
+        else:
             sl = entry + 2.0 * curr_atr
             tp = entry - 3.0 * curr_atr
-            
-            for j in range(i + 1, len(df)):
-                curr_high = float(df["high"].iloc[j])
-                curr_low = float(df["low"].iloc[j])
-                
-                if curr_high >= sl:
-                    losses += 1
-                    break
-                elif curr_low <= tp:
-                    wins += 1
-                    break
-                    
+            future_high = high_v[i + 1:]
+            future_low  = low_v[i + 1:]
+            sl_hit = np.argmax(future_high >= sl)
+            tp_hit = np.argmax(future_low  <= tp)
+            sl_ok  = bool(future_high[sl_hit] >= sl) if len(future_high) else False
+            tp_ok  = bool(future_low[tp_hit]  <= tp) if len(future_low)  else False
+
+        if tp_ok and sl_ok:
+            if tp_hit <= sl_hit:
+                wins += 1
+            else:
+                losses += 1
+        elif tp_ok:
+            wins += 1
+        elif sl_ok:
+            losses += 1
+
     total = wins + losses
     if total == 0:
         return None
@@ -515,6 +519,11 @@ def scan_symbol(
         "adx":         composite["details"].get("adx"),
         "rs_ratio":    rs_ratio,
         "mtf":         mtf_result,
+        "vol_ok":      composite.get("vol_ok", True),
+        "ema_above":   composite.get("ema_above"),
+        "adx_ok":      composite.get("adx_ok"),
+        "rsi_ok":      composite.get("rsi_ok"),
+        "sqz_ok":      composite.get("sqz_ok"),
     }
 
     def _build_result(signal_type, triggered, score, reasons):
@@ -608,8 +617,8 @@ def run_scan(
     -------
     tuple: (buy_results, sell_results, segment_label, timeframe)
     """
-    strat  = dict(config.get("strategy", {}))
-    sr_cfg = dict(config.get("sr_channels", {}))
+    strat  = copy.deepcopy(config.get("strategy", {}))
+    sr_cfg = copy.deepcopy(config.get("sr_channels", {}))
 
     # Apply CLI mode overrides
     if mode_override:
@@ -624,8 +633,8 @@ def run_scan(
             strat["ut_enabled"] = True
             sr_cfg["enabled"] = True
 
-    # Construct config copies with overridden values
-    config = dict(config)
+    # Construct a deep-copied config so mutations here don't affect the caller's dict
+    config = copy.deepcopy(config)
     config["strategy"] = strat
     config["sr_channels"] = sr_cfg
 
@@ -714,7 +723,6 @@ def run_scan(
     log.info("  Engines       : %s", " + ".join(engines) if engines else "NONE")
     log.info("  Symbols       : %d stocks", len(symbols))
     log.info("  Data Source   : %s", config.get("data_source", "yfinance").upper())
-    from zoneinfo import ZoneInfo
     tz = ZoneInfo("Asia/Kolkata") if config.get("exchange", "NSE").upper() in ("NSE", "BSE") else ZoneInfo("UTC")
     scan_time_str = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
     log.info("  Scan Time     : %s", scan_time_str)
@@ -732,8 +740,14 @@ def run_scan(
     # executor, eliminating a second sequential fetch inside each worker thread.
     filters_cfg = config.get("filters", {})
     htf_cache: dict = {}
-    mtf_tf = filters_cfg.get("mtf_timeframe", "15m")
-    if mtf_tf:
+    mtf_tf      = filters_cfg.get("mtf_timeframe", "15m")
+    mtf_active  = (
+        bool(mtf_tf) and (
+            filters_cfg.get("mtf_filter_enabled", False) or
+            filters_cfg.get("mtf_neutral_pct", 0) >= 0   # scoring always runs when mtf_tf is set
+        )
+    )
+    if mtf_active:
         log.info("  Pre-fetching HTF (%s) data for %d symbols...", mtf_tf, len(symbols))
         with ThreadPoolExecutor(max_workers=10) as htf_executor:
             htf_futures = {
@@ -831,7 +845,7 @@ def _format_zones(zones: list) -> str:
     if not zones:
         return "—"
     parts = []
-    for hi, lo in zones[:2]:
+    for hi, lo, *_ in zones[:2]:
         parts.append(f"{lo:.1f}–{hi:.1f}")
     return ", ".join(parts)
 
@@ -987,7 +1001,6 @@ def _is_market_hours(config: dict) -> bool:
     close_str = bot_cfg.get("market_close", "15:30")
 
     exchange = config.get("exchange", "NSE")
-    from zoneinfo import ZoneInfo
     tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
     now = datetime.now(tz).replace(tzinfo=None)
     if now.weekday() >= 5:  # Saturday=5, Sunday=6
@@ -1097,30 +1110,12 @@ Examples:
             mode_override=mode_override,
         )
 
-    def _get_total(seg_label: str) -> int:
-        """Return the total number of symbols that would be scanned."""
-        _seg = segment or config.get("segment", "")
-        _use = config.get("use_symbols", False)
-        if isinstance(_seg, str):
-            seg_list = [_seg] if _seg.strip() else []
-        else:
-            seg_list = [s for s in (_seg or []) if s and s.strip()]
-
-        total_syms: set = set()
-        for s in seg_list:
-            syms = get_index_symbols(s)
-            total_syms.update(syms)
-        if _use or not seg_list:
-            total_syms.update(config.get("symbols", []))
-        return len(total_syms) if total_syms else len(config.get("symbols", []))
-
     if args.once:
         # ── Single scan mode ─────────────────────────────────────────────
         if not _is_market_hours(config):
             log.info("Outside market hours — running scan anyway (--once mode).")
 
-        buy_results, sell_results, seg_label, tf, _ = _do_scan()
-        total = _get_total(seg_label)
+        buy_results, sell_results, seg_label, tf, total = _do_scan()
 
         print_results_table(buy_results, sell_results, seg_label, tf, total)
 
@@ -1168,8 +1163,7 @@ Examples:
                     if boundary != last_scan_boundary:
                         last_scan_boundary = boundary
 
-                        buy_results, sell_results, seg_label, tf, _ = _do_scan()
-                        total = _get_total(seg_label)
+                        buy_results, sell_results, seg_label, tf, total = _do_scan()
 
                         print_results_table(buy_results, sell_results, seg_label, tf, total)
 

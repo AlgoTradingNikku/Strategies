@@ -646,13 +646,34 @@ document.addEventListener("DOMContentLoaded", () => {
                    </div>`
                 : "";
 
-            // Confluence Matrix Logic
+            // Confluence Matrix — each icon reflects threshold pass/fail, not scoring.
+            // Backend sends explicit _ok fields; text heuristics are fallbacks for
+            // any cached results that predate these fields.
             const reasonsText = reasonsList.join(" ");
-            const hasTrend = reasonsText.includes("ADX") || reasonsText.includes("EMA") || reasonsText.includes("MTF");
-            const hasMomentum = reasonsText.includes("RSI") || reasonsText.includes("volume"); // momentum + vol
-            const hasVolume = reasonsText.includes("volume");
+
+            // Trend icon: active when price is on the correct side of the EMA
+            // (above for BUY, below for SELL) OR when MTF confirms the direction.
+            const mtfConfirms = reasonsText.includes("MTF confirms");
+            const emaOk = item.ema_above !== null && item.ema_above !== undefined
+                ? (type === "BUY" ? item.ema_above === true : item.ema_above === false)
+                : reasonsText.includes("EMA") || reasonsText.includes("MTF");
+            const hasTrend = emaOk || mtfConfirms;
+
+            // RSI icon: active when RSI is within the configured optimal range
+            const hasMomentum = item.rsi_ok !== null && item.rsi_ok !== undefined
+                ? item.rsi_ok
+                : reasonsText.includes("RSI");
+
+            // Vol icon: active when volume >= configured threshold %
+            const hasVolume = item.vol_ok !== undefined ? item.vol_ok : reasonsText.includes("volume");
+
+            // S/R icon: active when price is inside or near a zone (score-text driven, always accurate)
             const hasSR = reasonsText.includes("Support") || reasonsText.includes("Resistance") || reasonsText.includes("S/R");
-            const hasSqueeze = reasonsText.includes("Squeeze");
+
+            // Squeeze icon: active when a squeeze release occurred on this bar
+            const hasSqueeze = item.sqz_ok !== null && item.sqz_ok !== undefined
+                ? item.sqz_ok
+                : reasonsText.includes("Squeeze");
             
             const activeColor = type === "BUY" ? "var(--success)" : "var(--danger)";
             const inactiveColor = "#444";

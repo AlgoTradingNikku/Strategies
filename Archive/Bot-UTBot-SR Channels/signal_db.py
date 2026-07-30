@@ -17,44 +17,54 @@ from zoneinfo import ZoneInfo
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
-_DB_PATH = Path(__file__).resolve().parent / "signals.db"
+_DB_PATH         = Path(__file__).resolve().parent / "signals.db"
+_db_initialized  = False   # DDL runs only once per process
 
 
 # ============================================================================
 # DATABASE SETUP
 # ============================================================================
 
-def _get_connection() -> sqlite3.Connection:
-    """Get a connection to the SQLite database, creating tables if needed."""
+def _get_tz(config: dict) -> object:
+    """Return the ZoneInfo timezone for the configured exchange."""
+    exchange = (config or {}).get("exchange", "NSE")
+    return ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+
+
+def _get_connection(config: dict = None) -> sqlite3.Connection:
+    """Get a connection to the SQLite database, creating tables if needed (once per process)."""
+    global _db_initialized
     conn = sqlite3.connect(str(_DB_PATH), timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS signals (
-            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp          TEXT NOT NULL,
-            symbol             TEXT NOT NULL,
-            signal_type        TEXT NOT NULL,
-            close_price        REAL NOT NULL,
-            setup_score        REAL DEFAULT 0.0,
-            score_reasons      TEXT DEFAULT '[]',
-            stop_loss          REAL,
-            target             REAL,
-            risk_reward        REAL,
-            triggered_conditions TEXT DEFAULT '[]',
-            timeframe          TEXT,
-            adx                REAL,
-            rs_ratio           REAL,
-            mtf_trend          TEXT,
-            outcome_checked    INTEGER DEFAULT 0,
-            outcome_pnl_pct    REAL,
-            outcome_hit_target INTEGER DEFAULT 0,
-            outcome_hit_stop   INTEGER DEFAULT 0,
-            outcome_price      REAL,
-            outcome_time       TEXT
-        )
-    """)
-    conn.commit()
+    if not _db_initialized:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS signals (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp          TEXT NOT NULL,
+                symbol             TEXT NOT NULL,
+                signal_type        TEXT NOT NULL,
+                close_price        REAL NOT NULL,
+                setup_score        REAL DEFAULT 0.0,
+                score_reasons      TEXT DEFAULT '[]',
+                stop_loss          REAL,
+                target             REAL,
+                risk_reward        REAL,
+                triggered_conditions TEXT DEFAULT '[]',
+                timeframe          TEXT,
+                adx                REAL,
+                rs_ratio           REAL,
+                mtf_trend          TEXT,
+                outcome_checked    INTEGER DEFAULT 0,
+                outcome_pnl_pct    REAL,
+                outcome_hit_target INTEGER DEFAULT 0,
+                outcome_hit_stop   INTEGER DEFAULT 0,
+                outcome_price      REAL,
+                outcome_time       TEXT
+            )
+        """)
+        conn.commit()
+        _db_initialized = True
     return conn
 
 
@@ -62,68 +72,8 @@ def _get_connection() -> sqlite3.Connection:
 # SIGNAL LOGGING
 # ============================================================================
 
-def log_signal(signal_dict: dict, timeframe: str = None, config: dict = None) -> int:
-    """
-    Insert a new signal into the database.
 
-    Parameters
-    ----------
-    signal_dict : dict from scanner.py's scan_symbol result
-    timeframe   : scan timeframe string (e.g. "5m", "1h")
-    config      : optional configuration dict
-
-    Returns
-    -------
-    int : row ID of the inserted signal
-    """
-    if config is None:
-        try:
-            from scanner import load_config
-            config = load_config()
-        except Exception:
-            config = {}
-
-    exchange = config.get("exchange", "NSE")
-    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
-    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
-
-    conn = _get_connection()
-    try:
-        # Extract MTF trend if present
-        mtf = signal_dict.get("mtf")
-        mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
-
-        conn.execute("""
-            INSERT INTO signals (
-                timestamp, symbol, signal_type, close_price, setup_score,
-                score_reasons, stop_loss, target, risk_reward,
-                triggered_conditions, timeframe, adx, rs_ratio, mtf_trend
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            now,
-            signal_dict.get("symbol", ""),
-            signal_dict.get("signal", ""),
-            signal_dict.get("close", 0.0),
-            signal_dict.get("setup_score", 0.0),
-            json.dumps(signal_dict.get("score_reasons", [])),
-            signal_dict.get("stop_loss"),
-            signal_dict.get("target"),
-            signal_dict.get("risk_reward"),
-            json.dumps(signal_dict.get("triggered", [])),
-            timeframe,
-            signal_dict.get("adx"),
-            signal_dict.get("rs_ratio"),
-            mtf_trend,
-        ))
-        conn.commit()
-        row_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        log.debug("Signal logged to DB: %s %s (id=%d)", signal_dict.get("symbol"), signal_dict.get("signal"), row_id)
-        return row_id
-    finally:
-        conn.close()
-
-
-def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: dict = None) -> list[int]:
+def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: dict = None) -> list[int]:  # noqa: E501
     """
     Insert a list of signals into the database in a single transaction.
 
@@ -147,11 +97,10 @@ def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: d
         except Exception:
             config = {}
 
-    exchange = config.get("exchange", "NSE")
-    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
+    tz  = _get_tz(config)
     now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = _get_connection()
+    conn = _get_connection(config)
     inserted_ids = []
     try:
         cursor = conn.cursor()
@@ -217,10 +166,8 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
         log.debug("check_outcomes: no fetch_fn provided, skipping outcome check.")
         return 0
 
-    exchange = (config or {}).get("exchange", "NSE")
-    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
-
-    conn = _get_connection()
+    tz   = _get_tz(config)
+    conn = _get_connection(config)
     try:
         cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -327,10 +274,8 @@ def get_statistics(days: int = 30, config: dict = None) -> dict:
         except Exception:
             config = {}
 
-    exchange = config.get("exchange", "NSE")
-    tz = ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
-
-    conn = _get_connection()
+    tz   = _get_tz(config)
+    conn = _get_connection(config)
     try:
         cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -402,7 +347,7 @@ def get_signal_history(limit: int = 50, offset: int = 0) -> list[dict]:
 
     Returns a list of signal dicts, most recent first.
     """
-    conn = _get_connection()
+    conn = _get_connection(None)
     try:
         rows = conn.execute("""
             SELECT * FROM signals
