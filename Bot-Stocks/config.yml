@@ -183,3 +183,39 @@ bot:
 symbols:
 - ADANIENT
 - ADANIPORTS
+
+# ------------------------------------------------------------
+# 7. AUTOMATIC TRADE MANAGEMENT (POSITION MONITOR)
+# ------------------------------------------------------------
+trade_management:
+  enabled: true                  # Master switch — set true to activate auto monitoring
+  poll_interval_seconds: 5       # Fallback polling interval if WebSocket is down
+
+  stop_loss_pct: 1.0             # Fallback % SL below entry
+  target_pct: 2.0                # Fallback % target above entry
+
+  # Partial Exit rules
+  partial_exit:
+    enabled: true
+    target1_pct: 1.0             # Sell portion when price moves 1% in favour
+    exit_qty_fraction: 0.5       # Sell 50% of the position
+    move_sl_to_breakeven: true   # Set remaining position SL to entry price
+
+  # Trailing Stop Loss rules
+  trailing_sl:
+    enabled: true
+    activation_pct: 1.0          # Start trailing when profit reaches this %
+    distance_pct: 0.5            # Keep SL this % behind high-water mark
+
+  # Profit Lock rules
+  profit_lock:
+    enabled: true
+    threshold_pct: 1.5           # Lock profits when this % gain is reached
+    lock_fraction: 0.50          # Secure 50% of peak gain as new SL level
+
+  # Notifications
+  notifications:
+    on_sl_move: false            # Telegram alert when SL changes
+    on_profit_lock: true         # Telegram alert when profit is locked
+    on_exit: true                # Telegram alert on final close
+

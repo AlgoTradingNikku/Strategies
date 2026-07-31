@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Suppresses the header TF dropdown change listener when values are set
     // programmatically (e.g. during loadConfig) to prevent duplicate scans.
     let _suppressTfChange = false;
+    let positionsRefreshInterval = null;
 
     // Elements cache
     const tabButtons = document.querySelectorAll(".nav-item");
@@ -106,6 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
             // Auto refresh logs when loading log panel
             if (targetTab === "logs") {
                 loadLogs();
+            } else if (targetTab === "positions") {
+                loadPositions();
+                loadClosedPositions();
             } else if (targetTab === "history") {
                 loadHistory();
             } else if (targetTab === "stats") {
@@ -1200,12 +1204,181 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Config Tab MTF Alignment visual rule is no longer needed since it has been simplified to a single Hard Confirmation filter.
 
+    // ---------------------------------------------------------------------------
+    // Positions & Trade Management Logic
+    // ---------------------------------------------------------------------------
+    async function loadPositions() {
+        const tableBody = document.getElementById("positions-open-body");
+        if (!tableBody) return;
+        
+        try {
+            const resp = await fetch(`${API_BASE}/api/positions`);
+            if (!resp.ok) throw new Error("Failed to load positions.");
+            const data = await resp.json();
+            const openPositions = data.positions || [];
+
+            document.getElementById("positions-last-update-badge").textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+
+            if (openPositions.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="11" class="empty-placeholder">No active positions currently registered for monitoring. Placed orders will show up here.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = "";
+            openPositions.forEach(pos => {
+                const ltp = pos.high_water_mark; // Default or live
+                const pnl = pos.pnl_pct !== null ? pos.pnl_pct : (((ltp - pos.entry_price) / pos.entry_price) * 100);
+                const isBuy = pos.direction === "BUY";
+                const dirClass = isBuy ? "ut-badge-type" : "sr-badge-type";
+                
+                // Live P&L color logic
+                let pnlClass = "pnl-neutral";
+                let formattedPnl = pnl.toFixed(2) + "%";
+                if (pnl > 0) {
+                    pnlClass = "pnl-profit";
+                    formattedPnl = "+" + formattedPnl;
+                } else if (pnl < 0) {
+                    pnlClass = "pnl-loss";
+                }
+
+                // Status Badge logic
+                let statusClass = "badge-status-monitoring";
+                let statusLabel = "Monitoring";
+                if (pos.trailing_active) {
+                    statusClass = "badge-status-trailing";
+                    statusLabel = `Trailing ${isBuy ? '↑' : '↓'}`;
+                } else if (pos.profit_locked) {
+                    statusClass = "badge-status-locked";
+                    statusLabel = "Locked 🔒";
+                }
+
+                html += `
+                    <tr>
+                        <td><strong>${pos.symbol}</strong></td>
+                        <td><span class="condition-badge ${dirClass}">${pos.direction}</span></td>
+                        <td>${pos.quantity}</td>
+                        <td>₹${pos.entry_price.toFixed(2)}</td>
+                        <td class="live-ltp">₹${ltp.toFixed(2)}</td>
+                        <td>₹${pos.initial_sl.toFixed(2)}</td>
+                        <td>₹${pos.current_sl.toFixed(2)}</td>
+                        <td>₹${pos.target_price.toFixed(2)}</td>
+                        <td><span class="pnl-badge ${pnlClass}">${formattedPnl}</span></td>
+                        <td><span class="badge-status ${statusClass}">${statusLabel}</span></td>
+                        <td>
+                            <button class="btn btn-danger btn-close-pos" data-id="${pos.id}" style="padding: 3px 8px; font-size: 0.75rem;">
+                                <i class="fa-solid fa-rectangle-xmark"></i> Exit
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+
+            // Bind exit buttons
+            tableBody.querySelectorAll(".btn-close-pos").forEach(btn => {
+                btn.addEventListener("click", async () => {
+                    const posId = btn.getAttribute("data-id");
+                    if (confirm(`Are you sure you want to manually exit and close position ${posId}?`)) {
+                        await closePosition(posId);
+                    }
+                });
+            });
+
+        } catch (err) {
+            log.error("Error loading positions: %s", err);
+        }
+    }
+
+    async function loadClosedPositions() {
+        const tableBody = document.getElementById("positions-closed-body");
+        if (!tableBody) return;
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/positions/closed`);
+            if (!resp.ok) throw new Error("Failed to load closed positions.");
+            const data = await resp.json();
+            const closedPositions = data.positions || [];
+
+            if (closedPositions.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-placeholder">No closed trades history found.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = "";
+            closedPositions.forEach(pos => {
+                const isBuy = pos.direction === "BUY";
+                const dirClass = isBuy ? "ut-badge-type" : "sr-badge-type";
+                const pnl = pos.pnl_pct !== null ? pos.pnl_pct : 0;
+                
+                let pnlClass = "pnl-neutral";
+                let formattedPnl = pnl.toFixed(2) + "%";
+                if (pnl > 0) {
+                    pnlClass = "pnl-profit";
+                    formattedPnl = "+" + formattedPnl;
+                } else if (pnl < 0) {
+                    pnlClass = "pnl-loss";
+                }
+
+                html += `
+                    <tr>
+                        <td><strong>${pos.symbol}</strong></td>
+                        <td><span class="condition-badge ${dirClass}">${pos.direction}</span></td>
+                        <td>₹${pos.entry_price.toFixed(2)}</td>
+                        <td>₹${(pos.close_price || 0).toFixed(2)}</td>
+                        <td>${pos.close_time || "—"}</td>
+                        <td><span class="badge-reason">${pos.close_reason || "—"}</span></td>
+                        <td><span class="pnl-badge ${pnlClass}">${formattedPnl}</span></td>
+                    </tr>
+                `;
+            });
+            tableBody.innerHTML = html;
+        } catch (err) {
+            log.error("Error loading closed positions: %s", err);
+        }
+    }
+
+    async function closePosition(posId) {
+        try {
+            const resp = await fetch(`${API_BASE}/api/positions/${posId}/close`, { method: "POST" });
+            if (!resp.ok) throw new Error("Failed to close position.");
+            showToast(`Manual exit order placed for position ${posId}!`, "success");
+            loadPositions();
+            loadClosedPositions();
+        } catch (err) {
+            showToast(`❌ Error exiting position: ${err.message}`, "error");
+        }
+    }
+
+    const btnRefreshClosedPos = document.getElementById("btn-refresh-closed-positions");
+    if (btnRefreshClosedPos) {
+        btnRefreshClosedPos.addEventListener("click", () => {
+            loadClosedPositions();
+            showToast("Closed positions updated!", "success");
+        });
+    }
+
     // Initialize System
     async function init() {
         await loadConfig();
         initAutoRefresh();
         // Trigger first scan immediately to show active triggers
         executeScan();
+
+        // Separate interval refresh for positions (polled every 5 seconds)
+        positionsRefreshInterval = setInterval(() => {
+            const activeTab = document.querySelector(".nav-item.active");
+            if (activeTab && activeTab.getAttribute("data-tab") === "positions") {
+                loadPositions();
+            }
+        }, 5000);
 
         // Staleness ticker — checks every 30 s whether the last scan is overdue.
         // Turns the table badges amber when elapsed > 2× the configured interval.

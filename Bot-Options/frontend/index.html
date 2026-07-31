@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Trading Terminal</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- Header Bar -->
+    <header class="terminal-header">
+        <div class="header-left">
+            <span class="logo-icon"><i class="fa-solid fa-bolt"></i></span>
+            <span class="logo-text">OptionsBot</span>
+            <span class="terminal-badge">TERMINAL v1.0</span>
+        </div>
+        <div class="header-center">
+            <div class="ticker-card" id="ticker-nifty">
+                <span class="ticker-name">NIFTY 50</span>
+                <span class="ticker-price">--</span>
+                <span class="ticker-change">--</span>
+            </div>
+            <div class="ticker-card" id="ticker-banknifty">
+                <span class="ticker-name">BANKNIFTY</span>
+                <span class="ticker-price">--</span>
+                <span class="ticker-change">--</span>
+            </div>
+            <div class="ticker-chip">
+                <span class="chip-label">INDIA VIX</span>
+                <span class="chip-value" id="vix-val">13.2</span>
+            </div>
+            <div class="ticker-chip">
+                <span class="chip-label">PCR</span>
+                <span class="chip-value" id="pcr-val">0.87</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="market-status open" id="market-status-badge"><i class="fa-solid fa-circle"></i> MARKET OPEN</span>
+            <span class="clock-display" id="clock-time">09:15:00 IST</span>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="terminal-workspace">
+        
+        <!-- Left Panel: Scan Config -->
+        <section class="panel left-panel">
+            <h2 class="panel-title"><i class="fa-solid fa-sliders"></i> SCAN CONFIG</h2>
+            
+            <div class="config-section">
+                <label class="section-label">Underlying Target</label>
+                <div class="btn-group toggle-group" id="underlying-select">
+                    <button class="btn toggle-btn active" data-val="NIFTY">NIFTY</button>
+                    <button class="btn toggle-btn" data-val="BANKNIFTY">BANKNIFTY</button>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <label class="section-label" for="config-expiry">Expiry Preference</label>
+                <select id="config-expiry" class="form-select">
+                    <option value="WEEKLY">WEEKLY (Nearest)</option>
+                    <option value="MONTHLY">MONTHLY</option>
+                    <option value="NEXT_WEEKLY">NEXT WEEKLY</option>
+                    <option value="NEXT_MONTHLY">NEXT MONTHLY</option>
+                </select>
+                <span class="expiry-countdown-badge" id="expiry-countdown">--</span>
+            </div>
+
+            <div class="config-section">
+                <label class="section-label" for="config-strike-method">Strike Selection</label>
+                <select id="config-strike-method" class="form-select">
+                    <option value="ATM">ATM (At-the-Money)</option>
+                    <option value="OTM">OTM (Out-of-the-Money)</option>
+                    <option value="ITM">ITM (In-the-Money)</option>
+                    <option value="PREMIUM">PREMIUM (Range Filter)</option>
+                    <option value="LIQUIDITY">LIQUIDITY (Max OI*Vol)</option>
+                </select>
+            </div>
+
+            <div class="config-section" id="premium-range-inputs" style="display: none;">
+                <div class="flex-row gap-sm">
+                    <div>
+                        <label class="sub-label" for="config-premium-min">Min (₹)</label>
+                        <input type="number" id="config-premium-min" class="form-input text-mono" value="50">
+                    </div>
+                    <div>
+                        <label class="sub-label" for="config-premium-max">Max (₹)</label>
+                        <input type="number" id="config-premium-max" class="form-input text-mono" value="500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <label class="section-label">Stage 3 Confirmation</label>
+                <div class="toggle-control">
+                    <span>Option Premium Chart Scan</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-stage3-enabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-section border-top">
+                <h3 class="subsection-title">Technical Filters</h3>
+                
+                <div class="toggle-control">
+                    <span>Multi-Timeframe Trend (MTF)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-mtf" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-control">
+                    <span>EMA 200 Filter</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-ema">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-control">
+                    <span>IV Proxy Scoring</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-iv" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-control">
+                    <span>OI Momentum Score</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-oi" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="toggle-control">
+                    <span>Time Decay Penalty</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-decay" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-actions">
+                <button class="btn btn-primary btn-block" id="btn-scan-now">
+                    <i class="fa-solid fa-play"></i> SCAN NOW
+                </button>
+                
+                <div class="toggle-control margin-top-sm">
+                    <span>Auto-Scan Loop</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-auto-scan">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="capital-summary border-top">
+                <div class="flex-space-between">
+                    <span class="lbl">Available Capital:</span>
+                    <span class="val text-mono" id="capital-available">₹1,00,000.00</span>
+                </div>
+                <div class="margin-top-xs">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="capital-progress-fill" style="width: 12.4%"></div>
+                    </div>
+                </div>
+                <div class="flex-space-between text-muted margin-top-xs text-xs">
+                    <span>Margin Used: <span id="capital-used">₹12,450.00</span></span>
+                    <span>12.4%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Panel: Tabs Workspace -->
+        <section class="panel center-panel">
+            <nav class="tab-header">
+                <button class="tab-btn active" data-tab="tab-signals">
+                    <i class="fa-solid fa-rss"></i> SIGNALS <span class="badge" id="signals-count">0</span>
+                </button>
+                <button class="tab-btn" data-tab="tab-chain">
+                    <i class="fa-solid fa-list-ol"></i> OPTIONS CHAIN
+                </button>
+                <button class="tab-btn" data-tab="tab-analytics">
+                    <i class="fa-solid fa-chart-line"></i> ANALYTICS
+                </button>
+                <button class="tab-btn" data-tab="tab-logs">
+                    <i class="fa-solid fa-terminal"></i> LOGS
+                </button>
+            </nav>
+
+            <div class="tab-content-container">
+                <!-- Tab: Signals -->
+                <div class="tab-pane active" id="tab-signals">
+                    <div class="signals-container" id="signals-list">
+                        <!-- Dynamic signal cards insertion -->
+                        <div class="empty-state">
+                            <i class="fa-solid fa-rss-square"></i>
+                            <p>No option signals generated yet. Trigger a manual scan or turn on Auto-Scan.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Options Chain -->
+                <div class="tab-pane" id="tab-chain">
+                    <div class="chain-meta-bar">
+                        <span id="chain-spot-price">Spot LTP: --</span>
+                        <span id="chain-expiry-date">Expiry: --</span>
+                        <span id="chain-maxpain">Max Pain: --</span>
+                    </div>
+                    <div class="chain-table-container">
+                        <table class="chain-table">
+                            <thead>
+                                <tr>
+                                    <th colspan="4" class="ce-header">CALL OPTIONS (CE)</th>
+                                    <th class="strike-header">STRIKE</th>
+                                    <th colspan="4" class="pe-header">PUT OPTIONS (PE)</th>
+                                </tr>
+                                <tr class="sub-headers">
+                                    <th>OI</th>
+                                    <th>Vol</th>
+                                    <th>IV%</th>
+                                    <th>LTP</th>
+                                    <th>STRIKE</th>
+                                    <th>LTP</th>
+                                    <th>IV%</th>
+                                    <th>Vol</th>
+                                    <th>OI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="chain-body">
+                                <!-- Dynamic chain rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="chain-trade-panel" id="chain-trade-panel" style="display: none;">
+                        <div class="trade-info">
+                            <span class="badge badge-accent" id="trade-opt-type">CE</span>
+                            <span class="trade-symbol-text" id="trade-opt-symbol">NIFTY2581523450CE</span>
+                            <span class="trade-ltp-text text-mono">LTP: ₹<span id="trade-opt-ltp">108.20</span></span>
+                            <span class="trade-margin-text text-muted">Est. Margin: ₹<span id="trade-opt-margin">6,150</span></span>
+                        </div>
+                        <div class="trade-actions">
+                            <button class="btn btn-success" id="btn-chain-buy"><i class="fa-solid fa-shopping-cart"></i> BUY CE</button>
+                            <button class="btn btn-danger" id="btn-chain-sell"><i class="fa-solid fa-shopping-cart"></i> BUY PE</button>
+                            <button class="btn btn-secondary" id="btn-chain-close">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Analytics -->
+                <div class="tab-pane" id="tab-analytics">
+                    <div class="stats-grid">
+                        <div class="stats-card">
+                            <span class="stats-label">Win Rate</span>
+                            <span class="stats-value text-mono text-success" id="stat-win-rate">0.0%</span>
+                        </div>
+                        <div class="stats-card">
+                            <span class="stats-label">Total Signals</span>
+                            <span class="stats-value text-mono" id="stat-total-signals">0</span>
+                        </div>
+                        <div class="stats-card">
+                            <span class="stats-label">Executed Trades</span>
+                            <span class="stats-value text-mono" id="stat-executed">0</span>
+                        </div>
+                        <div class="stats-card">
+                            <span class="stats-label">Avg PnL Per Trade</span>
+                            <span class="stats-value text-mono" id="stat-avg-pnl">+0.0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Logs -->
+                <div class="tab-pane" id="tab-logs">
+                    <div class="log-wrapper">
+                        <pre class="terminal-logs" id="logs-console">Loading options.log...</pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Positions & Risk -->
+        <section class="panel right-panel">
+            <div class="section-container">
+                <h2 class="panel-title"><i class="fa-solid fa-chart-pie"></i> LIVE POSITIONS</h2>
+                <div class="positions-list" id="positions-list">
+                    <!-- Dynamic active positions -->
+                    <div class="empty-state">
+                        <i class="fa-solid fa-folder-open"></i>
+                        <p>No active positions. Trigger a buy from signals or the chain view.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-container border-top">
+                <h2 class="panel-title"><i class="fa-solid fa-shield-halved"></i> RISK MONITOR</h2>
+                
+                <div class="risk-widget">
+                    <div class="flex-space-between text-sm">
+                        <span>Daily Loss Limit (₹)</span>
+                        <span class="text-mono" id="risk-daily-loss">₹0 / ₹5,000</span>
+                    </div>
+                    <div class="margin-top-xs">
+                        <div class="progress-bar risk-bar">
+                            <div class="progress-fill danger" id="risk-loss-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="risk-metrics-grid">
+                    <div class="metric-box">
+                        <span class="lbl">Open Legs</span>
+                        <span class="val text-mono" id="risk-legs-count">0 / 5</span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="lbl">Trades Today</span>
+                        <span class="val text-mono" id="risk-trades-count">0 / 10</span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="lbl">Consec. Losses</span>
+                        <span class="val text-mono success-text" id="risk-consec-losses">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-container border-top">
+                <h2 class="panel-title"><i class="fa-solid fa-chart-gantt"></i> PORTFOLIO GREEKS</h2>
+                <div class="greeks-grid">
+                    <div class="greek-item">
+                        <span class="lbl">Net Delta (Δ)</span>
+                        <span class="val text-mono text-success" id="greek-delta">+0.00</span>
+                    </div>
+                    <div class="greek-item">
+                        <span class="lbl">Net Theta (Θ)</span>
+                        <span class="val text-mono text-danger" id="greek-theta">-₹0.00</span>
+                    </div>
+                    <div class="greek-item">
+                        <span class="lbl">Net Vega (V)</span>
+                        <span class="val text-mono" id="greek-vega">+0.00</span>
+                    </div>
+                    <div class="greek-item">
+                        <span class="lbl">Net Gamma (Γ)</span>
+                        <span class="val text-mono" id="greek-gamma">+0.0000</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- UI Scripts -->
+    <script src="index.js"></script>
+</body>
+</html>

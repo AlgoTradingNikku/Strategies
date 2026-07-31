@@ -26,6 +26,8 @@ from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
 from signal_db import get_signal_history, get_statistics
 from trading_adapter import place_order as adapter_place_order, get_ltp as adapter_get_ltp
+from trade_manager import PositionMonitor
+import trade_db
 
 # ---------------------------------------------------------------------------
 # Module-level OpenAlgo client cache — avoids re-constructing the client on
@@ -42,6 +44,20 @@ def _get_oa_client(oa_cfg: dict):
 
 
 app = FastAPI(title="UTBot + SR Channels Scanner API")
+
+_monitor = PositionMonitor()
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        cfg = load_config()
+        _monitor.start(cfg)
+    except Exception as e:
+        log.error("Failed to start Trade Monitor: %s", e)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    _monitor.stop()
 
 # Enable CORS for local development
 app.add_middleware(
@@ -277,12 +293,76 @@ async def place_order_endpoint(req: OrderRequest):
         result = await run_in_threadpool(adapter_place_order, cfg, req)
         if result.get("status") == "error":
             raise HTTPException(status_code=502, detail=f"{source.upper()} error: {result.get('message', result)}")
+        
+        # Register position if trade management is enabled
+        tm_cfg = cfg.get("trade_management", {})
+        if tm_cfg.get("enabled", False):
+            # Run in thread pool to avoid blocking async endpoint
+            await run_in_threadpool(_monitor.open_position, result, req, cfg)
+
         return {"status": "success", "order": result.get("raw", result), "orderid": result.get("orderid", "")}
     except HTTPException:
         raise
     except Exception as e:
         log.error("Order placement failed for %s: %s", req.symbol, e)
         raise HTTPException(status_code=500, detail=f"Order failed: {e}")
+
+# ---------------------------------------------------------------------------
+# Positions & Trade Management Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/positions")
+async def get_positions():
+    """List all currently active/open monitored positions."""
+    try:
+        # Re-fetch from database to get latest status
+        open_pos = await run_in_threadpool(trade_db.get_open_positions)
+        return {"status": "success", "positions": open_pos}
+    except Exception as e:
+        log.error("Failed to retrieve open positions: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/positions/closed")
+async def get_closed_positions_endpoint(limit: int = 50, offset: int = 0):
+    """Get paginated history of closed positions."""
+    try:
+        closed = await run_in_threadpool(trade_db.get_closed_positions, limit, offset)
+        return {"status": "success", "positions": closed}
+    except Exception as e:
+        log.error("Failed to retrieve closed positions: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/positions/{pos_id}/events")
+async def get_pos_events(pos_id: int):
+    """Get the full audit log/events for a specific position."""
+    try:
+        events = await run_in_threadpool(trade_db.get_position_events, pos_id)
+        return {"status": "success", "events": events}
+    except Exception as e:
+        log.error("Failed to retrieve position events: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/positions/{pos_id}/close")
+async def manual_close_position(pos_id: int):
+    """Manually square off and close a monitored position."""
+    # Find the position in active list
+    target_pos = None
+    with _monitor.lock:
+        target_pos = _monitor.active_positions.get(pos_id)
+    
+    if not target_pos:
+        raise HTTPException(status_code=444, detail="Active position not found or already closed.")
+
+    try:
+        cfg = load_config()
+        # Fetch current LTP for exit computation
+        ltp = await run_in_threadpool(adapter_get_ltp, cfg, target_pos["symbol"], target_pos["exchange"])
+        
+        # Execute the exit in background thread pool
+        await run_in_threadpool(_monitor._execute_exit, target_pos, ltp, "MANUAL")
+        return {"status": "success", "message": f"Manual exit triggered for position {pos_id}."}
+    except Exception as e:
+        log.error("Manual exit failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Manual exit failed: {e}")
 
 @app.post("/api/scan")
 async def trigger_scan(timeframe: str | None = None, mode: str | None = None):

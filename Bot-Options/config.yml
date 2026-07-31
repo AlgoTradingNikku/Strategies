@@ -1,0 +1,256 @@
+# =============================================================================
+#  Bot-Options — Options Trading Platform Configuration
+# =============================================================================
+#  Runs independently on port 8001.
+#  python Bot-Options/app.py → http://127.0.0.1:8001
+# =============================================================================
+
+platform: "options"
+trading_api_source: "openalgo"   # Only OpenAlgo supported for options (NFO routing)
+exchange: "NFO"                  # All option orders go to NFO
+
+# =============================================================================
+# UNDERLYING INSTRUMENTS
+# =============================================================================
+# Supported: NIFTY, BANKNIFTY
+# Each underlying is scanned independently on its own OHLCV chart (Stage 1).
+# Signal direction determines CE (BUY signal) or PE (BUY signal for SELL).
+underlyings:
+  - name: "NIFTY"
+    exchange_index: "NSE_INDEX"   # OpenAlgo exchange for option chain & orders
+    lot_size: 75                  # Current NSE lot size
+    strike_step: 50               # Strike price increment
+    enabled: true
+  - name: "BANKNIFTY"
+    exchange_index: "NSE_INDEX"
+    lot_size: 30
+    strike_step: 100
+    enabled: true
+
+# =============================================================================
+# STAGE 2: STRIKE SELECTION ENGINE
+# =============================================================================
+strike_selection:
+  expiry_preference: "WEEKLY"     # WEEKLY / MONTHLY / NEXT_WEEKLY / NEXT_MONTHLY
+  auto_roll_days: 1               # Auto-roll to next expiry when < N days remaining
+  method: "ATM"                   # ATM / OTM / ITM / PREMIUM / TREND / LIQUIDITY
+
+  # For OTM/ITM methods: number of strikes away from ATM
+  otm_strikes: 1                  # e.g. OTM1 = 1 strike OTM from ATM
+  itm_strikes: 1                  # e.g. ITM1 = 1 strike ITM from ATM
+
+  # For PREMIUM method: only shortlist strikes in this premium range
+  premium_min: 50                 # Min option premium (₹) to qualify
+  premium_max: 500                # Max option premium (₹) to qualify
+
+  # Hard filters — applied regardless of method
+  oi_min_threshold: 100000        # Min Open Interest to qualify (e.g. 1 lakh)
+  liquidity_min_volume: 5000      # Min intraday volume to qualify
+  min_days_to_expiry: 1           # Reject options expiring today or tomorrow
+  scan_both_sides: true           # Scan CE and PE simultaneously for each underlying
+
+# =============================================================================
+# STAGE 1: UNDERLYING SIGNAL GENERATION
+# (Runs UTBot + SR Lines on NIFTY/BANKNIFTY OHLCV — same engines as Bot-Stocks)
+# =============================================================================
+
+# Data sources
+# - underlying_data_source: data for index OHLCV (Stage 1)
+# - option_data_source: data for option symbol OHLCV (Stage 3) — must be openalgo
+underlying_data_source: "yfinance"  # "yfinance" | "openalgo" — for NIFTY/BANKNIFTY chart
+option_data_source: "openalgo"      # ALWAYS openalgo (yfinance has no NFO data)
+
+strategy:
+  ut_enabled: true
+  key_value: 1.0                  # UTBot sensitivity (1.0 = standard)
+  atr_period: 2                   # ATR period for trailing stop
+  use_heikin_ashi: false          # Use Heikin Ashi candle close as price source
+
+sr_channels:
+  enabled: true
+  pivot_period: 10                # Bars to confirm a pivot (4–30)
+  source: "High/Low"              # "High/Low" or "Close/Open"
+  channel_width_pct: 5.0          # Max channel width as % of 300-bar price range
+  min_strength: 1                 # Minimum pivot strength to qualify a zone
+  max_num_sr: 6                   # Maximum active S/R zones
+  loopback: 290                   # Bars to scan for pivot collection
+  proximity_pct: 0.2              # % from boundary to count as "near" zone
+
+scan_timeframe: "5m"              # Timeframe for underlying chart scan
+scan_interval_seconds: 60         # Auto-scan interval (when auto mode is ON)
+signal_lookback_candles: 2        # Check last N closed candles for signals
+min_underlying_score: 60          # Stage 1 gate: minimum score to proceed to Stage 2
+
+# =============================================================================
+# STAGE 3: OPTION CHART CONFIRMATION
+# (Runs UTBot + SR on the shortlisted option symbol's own OHLCV premium chart)
+# Only executed if Stage 1 AND Stage 2 both pass.
+# =============================================================================
+option_chart_confirmation:
+  enabled: true
+  mode: "score_only"              # "strict" = must confirm | "score_only" = bonus/penalty
+  key_value: 1.5                  # Slightly higher than underlying (noisier charts)
+  atr_period: 3                   # Slightly smoother for option premium volatility
+  require_sr_proximity: false     # Also require option premium near SR support zone
+  confirmation_bonus_pts: 15      # Added to score when option chart confirms
+  contradiction_penalty_pts: 15   # Subtracted when option chart contradicts
+
+# =============================================================================
+# FILTERS (applied in Stage 1 on the underlying chart)
+# =============================================================================
+filters:
+  # --- Multi-Timeframe Confirmation ---
+  mtf_filter_enabled: true        # false = score only | true = hard reject counter-trend
+  mtf_timeframe: "15m"            # Higher TF to check UTBot trend direction
+  mtf_neutral_pct: 0.3            # % proximity to trail → classify as "neutral"
+  mtf_atr_period: 10              # ATR period for HTF UTBot trail
+
+  # --- EMA Trend Filter ---
+  ema_filter_enabled: false       # Hard reject if price on wrong side of EMA
+  ema_period: 200
+
+  # --- Volume Filter ---
+  volume_filter_enabled: false    # Hard reject low-volume underlying candles
+  volume_sma_period: 20
+  volume_min_pct: 60
+
+  # --- ADX Trend Strength ---
+  adx_filter_enabled: false
+  adx_min_threshold: 20.0
+  adx_strong_threshold: 25.0
+  adx_moderate_threshold: 20.0
+
+  # --- RSI Momentum ---
+  rsi_filter_enabled: false
+  rsi_period: 14
+  rsi_buy_min: 40.0
+  rsi_buy_max: 65.0
+  rsi_sell_min: 35.0
+  rsi_sell_max: 60.0
+
+  # --- Minimum Score Cutoff ---
+  min_alert_score: 60             # Only show signals above this score
+
+  # --- Options-Specific Filters (Stage 2) ---
+  iv_score_enabled: true          # Score based on IV (high IV = penalize buying)
+  oi_score_enabled: true          # Score based on Open Interest
+  oi_momentum_score_enabled: true # Rising OI + rising premium = conviction bonus
+  time_decay_penalty_enabled: true
+  time_decay_threshold_days: 3   # Penalty for options with < N days to expiry
+
+  # --- Candle Patterns ---
+  candle_patterns_enabled: true   # Detect reversal candles at S/R zones
+
+  # --- Signal History ---
+  signal_history_enabled: true
+  outcome_check_hours: 4
+
+# =============================================================================
+# EXECUTION ENGINE
+# =============================================================================
+execution:
+  order_mode: "manual"            # "manual" = Execute button | "auto" = instant on signal
+  order_type: "LIMIT"             # "MARKET" | "LIMIT"
+  order_product: "MIS"            # "MIS" (intraday) | "NRML" (positional)
+  num_lots: 1                     # Number of lots per trade (quantity = lot_size × num_lots)
+  slippage_pts: 1.0               # Max acceptable slippage in premium points
+  strategy_tag: "OptionsBot"      # Strategy name sent to OpenAlgo/broker
+
+# =============================================================================
+# TRADE MANAGEMENT
+# (ALL % values are relative to ENTRY PREMIUM — not underlying price)
+# =============================================================================
+trade_management:
+  enabled: true
+  poll_interval_seconds: 5        # Fallback polling interval if WebSocket is down
+
+  # Core SL / Target (% of entry premium)
+  stop_loss_pct: 30.0             # Exit BUY if premium drops 30% from entry
+  target_pct: 50.0                # Exit BUY if premium rises 50% from entry
+
+  # Multi-level Profit Lock
+  profit_lock:
+    enabled: true
+    levels:
+      - threshold_pct: 30.0       # Lock when premium up 30%
+        lock_fraction: 0.50       # Protect 50% of peak gain as new SL floor
+      - threshold_pct: 60.0       # Lock when premium up 60%
+        lock_fraction: 0.70
+      - threshold_pct: 100.0      # Lock when premium doubles
+        lock_fraction: 0.85
+
+  # Trailing Stop Loss
+  trailing_sl:
+    enabled: true
+    activation_pct: 25.0          # Start trailing after 25% gain in premium
+    distance_pct: 15.0            # Keep SL this % behind peak premium
+
+  # Partial Exit
+  partial_exit:
+    enabled: true
+    target1_pct: 30.0             # Exit 50% of position when premium up 30%
+    exit_qty_fraction: 0.5        # Fraction of position to exit (0.5 = half lot)
+    move_sl_to_breakeven: true    # Shift remaining SL to entry premium
+
+  # Expiry Management
+  expiry_management:
+    auto_exit_on_expiry: true
+    exit_minutes_before_close: 10 # Square off this many minutes before 15:30
+
+  # Notifications
+  notifications:
+    on_signal: true               # Alert when new signal generated
+    on_execution: true            # Alert when order placed
+    on_sl_move: false             # Alert when trailing SL moves
+    on_profit_lock: true          # Alert when profit is locked
+    on_partial_exit: true         # Alert on partial exit
+    on_exit: true                 # Alert on final position close
+
+# =============================================================================
+# RISK MANAGEMENT
+# =============================================================================
+risk_management:
+  enabled: true
+  capital_allocation: 100000      # Total capital allocated to options (₹)
+  max_capital_per_trade: 50000    # Max premium outlay per individual trade (₹)
+  max_simultaneous_positions: 5   # Max open positions at any time
+  max_trades_per_day: 10          # Max new trades per trading day
+  max_daily_loss_amount: 5000     # Hard stop — pause if daily loss exceeds ₹
+  max_daily_loss_pct: 5.0         # Hard stop — pause if daily loss exceeds % of capital
+  consecutive_loss_limit: 3       # Pause after N consecutive losing trades
+  cooldown_minutes: 30            # Duration of cool-down period after limit hit
+
+# =============================================================================
+# BROKER / API (OpenAlgo)
+# =============================================================================
+openalgo:
+  apikey: "ff2124a3f1830064ac973cb17a80ce977b3eca9c1a5604d6c67a3b31937860f7"
+  username: "rahul.tew"
+  base_url: "http://127.0.0.1:5000"
+  ws_url: "ws://127.0.0.1:8765"
+
+# =============================================================================
+# NOTIFICATIONS
+# =============================================================================
+telegram:
+  enabled: true
+  mode: "direct"                  # "direct" (Bot API) | "openalgo" (via server)
+  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"
+  chat_id: "939814804"
+
+whatsapp:
+  enabled: false                  # Enable WhatsApp alerts via OpenAlgo
+  # No extra config needed — uses openalgo credentials above
+
+# =============================================================================
+# DATA & SYSTEM
+# =============================================================================
+data:
+  lookback_days: 30               # Days of OHLCV history to fetch
+
+bot:
+  log_level: "INFO"               # INFO / DEBUG / WARNING
+  market_hours_check: true        # Restrict scanning to market hours only
+  market_open: "09:15"
+  market_close: "15:30"
+  auto_refresh_enabled: true      # Dashboard auto-refresh on page load
