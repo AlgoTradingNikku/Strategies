@@ -209,12 +209,6 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("cfg-segments").value = Array.isArray(cfg.segment) ? cfg.segment.join(", ") : cfg.segment;
             document.getElementById("cfg-use-symbols").checked = cfg.use_symbols;
 
-            // Sync Active Engines Sidebar Badges
-            const sideUt = document.getElementById("side-badge-ut");
-            const sideSr = document.getElementById("side-badge-sr");
-            if (sideUt) sideUt.style.display = cfg.strategy.ut_enabled ? "inline-block" : "none";
-            if (sideSr) sideSr.style.display = cfg.sr_channels.enabled ? "inline-block" : "none";
-
             // Sync Dashboard Sidebar Toggles
             document.getElementById("dash-ut-enabled").checked = !!cfg.strategy.ut_enabled;
             document.getElementById("dash-sr-enabled").checked = !!cfg.sr_channels.enabled;
@@ -723,14 +717,16 @@ document.addEventListener("DOMContentLoaded", () => {
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
                 <td>${item.close.toFixed(2)}</td>
-                <td>${sl}</td>
-                <td>${target}</td>
-                <td><span class="rr-val" style="font-weight: 600; color: ${item.risk_reward >= 2.0 ? 'var(--success)' : 'inherit'}">${rr}</span></td>
                 <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
                     <div class="score-container">
                         <div style="display:flex; flex-direction:column; align-items:center;">
-                            <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                            <div style="display:flex; align-items:center; gap: 6px;">
+                                <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                                <button class="btn-analyze" data-symbol="${item.symbol}" style="background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.9rem; display: inline-flex; align-items: center;" title="View Chart">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </button>
+                            </div>
                             <span style="font-size: 0.7rem; color: #888; margin-top: 3px;">${score.toFixed(1)}</span>
                         </div>
                         ${reasonsHtml}
@@ -741,9 +737,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <div class="action-cell">
-                        <button class="btn btn-secondary btn-analyze" data-symbol="${item.symbol}">
-                            <i class="fa-solid fa-chart-line"></i> Chart
-                        </button>
                         <div class="order-qty-wrap">
                             <span class="order-qty-label">Qty</span>
                             <input type="number" class="order-qty-input" value="${activeConfig?.openalgo?.order_quantity ?? 2}" min="1" step="1" title="Number of shares to buy/sell">
@@ -753,6 +746,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         </button>
                     </div>
                 </td>
+                <td>${sl}</td>
+                <td>${target}</td>
+                <td><span class="rr-val" style="font-weight: 600; color: ${item.risk_reward >= 2.0 ? 'var(--success)' : 'inherit'}">${rr}</span></td>
             `;
             return tr;
         };
@@ -763,7 +759,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 buySignalsTable.appendChild(createRow(item, "BUY"));
             });
         } else {
-            buySignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
+            buySignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
         }
 
         // Render SELL Signals
@@ -772,7 +768,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sellSignalsTable.appendChild(createRow(item, "SELL"));
             });
         } else {
-            sellSignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
+            sellSignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
         }
 
         // Setup analyze buttons — open TradingView chart in a new tab

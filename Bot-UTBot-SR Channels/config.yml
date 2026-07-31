@@ -39,7 +39,7 @@ filters:
 
   candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
   # --- Multi-Timeframe Confirmation ---
-  mtf_filter_enabled: true            # false = score only, no rejection | true: Rejects signals against HTF trend
+  mtf_filter_enabled: false           # false = score only, no rejection | true: Rejects signals against HTF trend
   mtf_timeframe: "15m"                # Higher TF to check UTBot trend direction
   mtf_neutral_pct: 0.3                # % proximity to trail to classify trend as "neutral"
   mtf_atr_period: 10                  # ATR period used for UTBot trail on the HTF (separate from LTF atr_period)

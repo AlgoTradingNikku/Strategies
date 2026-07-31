@@ -89,45 +89,46 @@
             <section class="tab-panel active" id="panel-dashboard">
                 <!-- Signal Tables -->
                 <div class="dashboard-tables-grid">
-                <!-- Signal Tables & Quick Controls Split Layout -->
-                <div class="dashboard-content-split">
-                    <!-- Left Column: Signal Tables -->
-                    <div class="dashboard-tables-column">
-                        <!-- Summary Stats -->
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Total Stocks Scanned</span>
-                                    <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
-                                </div>
-                                <h2 class="stat-value" id="stat-scanned-count">-</h2>
-                                <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
+                    <!-- Summary Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Total Stocks Scanned</span>
+                                <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
                             </div>
-                            <div class="stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">BUY Signals</span>
-                                    <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
-                                </div>
-                                <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
-                                <span class="stat-sub">Across all segments</span>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">SELL Signals</span>
-                                    <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
-                                </div>
-                                <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
-                                <span class="stat-sub">Across all segments</span>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Last Scan Cycle</span>
-                                    <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
-                                </div>
-                                <h2 class="stat-value" id="stat-last-scan-time">-</h2>
-                                <span class="stat-sub">Local system time</span>
-                            </div>
+                            <h2 class="stat-value" id="stat-scanned-count">-</h2>
+                            <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
                         </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">BUY Signals</span>
+                                <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+                            </div>
+                            <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
+                            <span class="stat-sub">Across all segments</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">SELL Signals</span>
+                                <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                            </div>
+                            <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
+                            <span class="stat-sub">Across all segments</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Last Scan Cycle</span>
+                                <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                            </div>
+                            <h2 class="stat-value" id="stat-last-scan-time">-</h2>
+                            <span class="stat-sub">Local system time</span>
+                        </div>
+                    </div>
+
+                    <!-- Signal Tables & Quick Controls Split Layout -->
+                    <div class="dashboard-content-split">
+                        <!-- Left Column: Signal Tables -->
+                        <div class="dashboard-tables-column">
                         <!-- BUY Signals Card -->
                         <div class="table-card">
                             <div class="table-card-header">
@@ -144,18 +145,18 @@
                                         <tr>
                                             <th>Symbol</th>
                                             <th>Close</th>
+                                            <th>Win Rate</th>
+                                            <th></th>
+                                            <th>Confluence</th>
+                                            <th>Action</th>
                                             <th>Stop Loss</th>
                                             <th>Target</th>
                                             <th>R:R</th>
-                                            <th>Win Rate</th>
-                                            <th>Confidence</th>
-                                            <th>Confluence</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="8" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
+                                            <td colspan="9" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -178,18 +179,18 @@
                                         <tr>
                                             <th>Symbol</th>
                                             <th>Close</th>
+                                            <th>Win Rate</th>
+                                            <th></th>
+                                            <th>Confluence</th>
+                                            <th>Action</th>
                                             <th>Stop Loss</th>
                                             <th>Target</th>
                                             <th>R:R</th>
-                                            <th>Win Rate</th>
-                                            <th>Confidence</th>
-                                            <th>Confluence</th>
-                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="8" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
+                                            <td colspan="9" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -199,15 +200,6 @@
 
                     <!-- Right Column: Quick Controls Sidebar -->
                     <aside class="dashboard-controls-sidebar">
-                        <!-- Active Scanner Engines Status -->
-                        <div class="sidebar-header" style="margin-bottom: 8px;">
-                            <i class="fa-solid fa-bolt"></i>
-                            <span>Active Engines</span>
-                        </div>
-                        <div class="active-engines-badges" style="display: flex; gap: 8px; margin-bottom: 20px;">
-                            <span class="condition-badge ut-badge-type" id="side-badge-ut" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; display: none;">UT Bot</span>
-                            <span class="condition-badge sr-badge-type" id="side-badge-sr" style="font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; display: none;">S/R Channels</span>
-                        </div>
 
                         <div class="sidebar-header">
                             <i class="fa-solid fa-sliders"></i>
