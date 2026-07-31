@@ -355,7 +355,7 @@ button, input, select, textarea {
     justify-content: start;
 }
 
-.stat-card {
+.stat-card, .index-card {
     background: var(--bg-glass);
     backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
@@ -364,7 +364,7 @@ button, input, select, textarea {
     transition: var(--transition-normal);
 }
 
-.stat-card:hover {
+.stat-card:hover, .index-card:hover {
     border-color: var(--border-color-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);

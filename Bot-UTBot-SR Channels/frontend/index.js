@@ -124,6 +124,12 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update Active Config display text
             const seg = Array.isArray(cfg.segment) ? cfg.segment.join("+") : (cfg.segment || "CUSTOM");
             activeScanInfo.textContent = `Profile: ${cfg.data_source.toUpperCase()} | TF: ${cfg.scan_timeframe} | Segments: ${seg}`;
+
+            // Set header dropdown values
+            const headerSelectLtf = document.getElementById("header-select-ltf");
+            const headerSelectHtf = document.getElementById("header-select-htf");
+            if (headerSelectLtf) headerSelectLtf.value = cfg.scan_timeframe;
+            if (headerSelectHtf) headerSelectHtf.value = cfg.filters.mtf_timeframe;
             
             // Populate Config Form
             document.getElementById("cfg-data-source").value = cfg.data_source;
@@ -465,6 +471,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---------------------------------------------------------------------------
+    // Index Live Status Update
+    // ---------------------------------------------------------------------------
+    async function updateIndexStatus() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/index-status`);
+            if (!resp.ok) throw new Error("Failed to fetch index status.");
+            const res = await resp.json();
+            if (res.status === "success" && res.data) {
+                const data = res.data;
+                const mapping = {
+                    "NIFTY 50": { val: "index-val-nifty", chg: "index-chg-nifty" },
+                    "BANKNIFTY": { val: "index-val-banknifty", chg: "index-chg-banknifty" },
+                    "NIFTY IT": { val: "index-val-niftyit", chg: "index-chg-niftyit" }
+                };
+                for (const [key, ids] of Object.entries(mapping)) {
+                    const item = data[key];
+                    const valEl = document.getElementById(ids.val);
+                    const chgEl = document.getElementById(ids.chg);
+                    if (item && valEl && chgEl) {
+                        valEl.textContent = item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const sign = item.change >= 0 ? "+" : "";
+                        chgEl.textContent = `${sign}${item.change.toFixed(2)} (${sign}${item.pct.toFixed(2)}%)`;
+                        if (item.change >= 0) {
+                            chgEl.style.color = "var(--color-buy)";
+                        } else {
+                            chgEl.style.color = "var(--color-sell)";
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Index status fetch error:", err);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Running Scans
     // ---------------------------------------------------------------------------
     async function executeScan() {
@@ -481,6 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         try {
+            updateIndexStatus();
             const resp = await fetch(`${API_BASE}/api/scan`, { method: "POST" });
             if (!resp.ok) throw new Error("Trigger scan failed on backend server.");
             const data = await resp.json();
@@ -502,6 +545,53 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     btnRunScan.addEventListener("click", executeScan);
+
+    // Sync header timeframe dropdowns to config, save on backend, and re-scan
+    async function handleHeaderTimeframeChange() {
+        if (!activeConfig) return;
+        const ltfSelect = document.getElementById("header-select-ltf");
+        const htfSelect = document.getElementById("header-select-htf");
+        if (!ltfSelect || !htfSelect) return;
+        
+        const ltf = ltfSelect.value;
+        const htf = htfSelect.value;
+        
+        // Update local activeConfig state
+        activeConfig.scan_timeframe = ltf;
+        activeConfig.filters.mtf_timeframe = htf;
+        
+        // Update corresponding form elements in Config tab
+        const formLtf = document.getElementById("cfg-timeframe");
+        const formHtf = document.getElementById("cfg-filters-mtf-tf");
+        if (formLtf) formLtf.value = ltf;
+        if (formHtf) formHtf.value = htf;
+        
+        try {
+            const resp = await fetch(`${API_BASE}/api/config`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(activeConfig)
+            });
+            if (!resp.ok) throw new Error("Failed to save timeframe config changes.");
+            showToast("Timeframe saved and updated!", "success");
+            await loadConfig();
+            
+            // Re-initialize auto-refresh if currently active
+            if (autoRefreshInterval !== null) {
+                _startAutoRefresh();
+            }
+            
+            // Trigger scanner execution immediately
+            executeScan();
+        } catch (err) {
+            showToast(`❌ Error saving timeframe: ${err.message}`, "error");
+        }
+    }
+
+    const headerLtf = document.getElementById("header-select-ltf");
+    const headerHtf = document.getElementById("header-select-htf");
+    if (headerLtf) headerLtf.addEventListener("change", handleHeaderTimeframeChange);
+    if (headerHtf) headerHtf.addEventListener("change", handleHeaderTimeframeChange);
 
     // ---------------------------------------------------------------------------
     // Order Placement

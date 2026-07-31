@@ -61,9 +61,34 @@
                     <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="Toggle Navigation Sidebar">
                         <i class="fa-solid fa-bars"></i>
                     </button>
-                    <div class="header-titles">
-                        <h1 id="page-title">UTBot + SR Channels Dashboard</h1>
-                        <p class="subtitle" id="active-scan-info">Loading active scanner profile...</p>
+                    <div class="header-titles" style="display: flex; flex-direction: column; gap: 4px;">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">LTF:</span>
+                                <select id="header-select-ltf" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 2px 8px; font-size: 0.78rem; font-weight: 600; color: var(--text-primary); cursor: pointer; outline: none; transition: var(--transition-fast);">
+                                    <option value="1m">1m</option>
+                                    <option value="3m">3m</option>
+                                    <option value="5m">5m</option>
+                                    <option value="15m">15m</option>
+                                    <option value="30m">30m</option>
+                                    <option value="1h">1h</option>
+                                    <option value="1d">1d</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">HTF:</span>
+                                <select id="header-select-htf" style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 2px 8px; font-size: 0.78rem; font-weight: 600; color: var(--text-primary); cursor: pointer; outline: none; transition: var(--transition-fast);">
+                                    <option value="1m">1m</option>
+                                    <option value="3m">3m</option>
+                                    <option value="5m">5m</option>
+                                    <option value="15m">15m</option>
+                                    <option value="30m">30m</option>
+                                    <option value="1h">1h</option>
+                                    <option value="1d">1d</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="subtitle" id="active-scan-info" style="font-size: 0.74rem; color: var(--text-secondary); font-weight: 500; margin-top: 2px;">Loading active scanner profile...</p>
                     </div>
                 </div>
                 <div class="header-actions">
@@ -89,39 +114,61 @@
             <section class="tab-panel active" id="panel-dashboard">
                 <!-- Signal Tables -->
                 <div class="dashboard-tables-grid">
-                    <!-- Summary Stats -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <span class="stat-title">Total Stocks Scanned</span>
-                                <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <!-- Top Row: Summary Stats on Left, Index Live Status on Right -->
+                    <div class="dashboard-top-row" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 12px; width: 100%; margin-bottom: 4px;">
+                        <!-- Summary Stats -->
+                        <div class="stats-grid" style="margin-bottom: 0;">
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Total Stocks Scanned</span>
+                                    <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                                </div>
+                                <h2 class="stat-value" id="stat-scanned-count">-</h2>
+                                <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
                             </div>
-                            <h2 class="stat-value" id="stat-scanned-count">-</h2>
-                            <span class="stat-sub" id="stat-scanned-details">Segments: None</span>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">BUY Signals</span>
+                                    <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+                                </div>
+                                <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
+                                <span class="stat-sub">Across all segments</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">SELL Signals</span>
+                                    <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                                </div>
+                                <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
+                                <span class="stat-sub">Across all segments</span>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Last Scan Cycle</span>
+                                    <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                                </div>
+                                <h2 class="stat-value" id="stat-last-scan-time">-</h2>
+                                <span class="stat-sub">Local system time</span>
+                            </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <span class="stat-title">BUY Signals</span>
-                                <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+
+                        <!-- Index Live Status -->
+                        <div class="index-status-panel" style="width: 310px; display: flex; gap: 8px; flex-shrink: 0;">
+                            <div class="index-card" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
+                                <div style="font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nifty 50</div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin: 2px 0;" id="index-val-nifty">-</div>
+                                <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-muted);" id="index-chg-nifty">-</div>
                             </div>
-                            <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
-                            <span class="stat-sub">Across all segments</span>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <span class="stat-title">SELL Signals</span>
-                                <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                            <div class="index-card" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
+                                <div style="font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Bank Nifty</div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin: 2px 0;" id="index-val-banknifty">-</div>
+                                <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-muted);" id="index-chg-banknifty">-</div>
                             </div>
-                            <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
-                            <span class="stat-sub">Across all segments</span>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-header">
-                                <span class="stat-title">Last Scan Cycle</span>
-                                <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                            <div class="index-card" style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
+                                <div style="font-size: 0.68rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Nifty IT</div>
+                                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); margin: 2px 0;" id="index-val-niftyit">-</div>
+                                <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-muted);" id="index-chg-niftyit">-</div>
                             </div>
-                            <h2 class="stat-value" id="stat-last-scan-time">-</h2>
-                            <span class="stat-sub">Local system time</span>
                         </div>
                     </div>
 
