@@ -209,12 +209,6 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("cfg-segments").value = Array.isArray(cfg.segment) ? cfg.segment.join(", ") : cfg.segment;
             document.getElementById("cfg-use-symbols").checked = cfg.use_symbols;
 
-            // Sync Active Engines Sidebar Badges
-            const sideUt = document.getElementById("side-badge-ut");
-            const sideSr = document.getElementById("side-badge-sr");
-            if (sideUt) sideUt.style.display = cfg.strategy.ut_enabled ? "inline-block" : "none";
-            if (sideSr) sideSr.style.display = cfg.sr_channels.enabled ? "inline-block" : "none";
-
             // Sync Dashboard Sidebar Toggles
             document.getElementById("dash-ut-enabled").checked = !!cfg.strategy.ut_enabled;
             document.getElementById("dash-sr-enabled").checked = !!cfg.sr_channels.enabled;
@@ -552,16 +546,36 @@ document.addEventListener("DOMContentLoaded", () => {
      * @param {number|null} priceOverride  The limit price to use if order_type is LIMIT.
      */
     async function placeOrder(symbol, action, btnEl = null, qtyOverride = null, priceOverride = null) {
-        const oa = activeConfig?.openalgo || {};
-        const product  = oa.order_product  || "MIS";
-        const quantity = qtyOverride ?? oa.order_quantity ?? 2;
-        const exchange = activeConfig?.exchange || "NSE";
-        const price_type = oa.order_type || "MARKET";
-        const price = (price_type === "LIMIT" && priceOverride) ? priceOverride : 0.0;
+        // Resolve order settings from the active trading_api_source broker block.
+        // Falls back to the openalgo block for backward compatibility.
+        const source     = (activeConfig?.trading_api_source || "openalgo").toLowerCase();
+        const brokerCfg  = activeConfig?.[source] || activeConfig?.openalgo || {};
+        const product    = brokerCfg.order_product || "MIS";
+        const quantity   = qtyOverride ?? brokerCfg.order_quantity ?? 1;
+        const exchange   = activeConfig?.exchange || "NSE";
+        const price_type = brokerCfg.order_type || "MARKET";
 
         if (btnEl) {
             btnEl.disabled = true;
             btnEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+        }
+
+        // For LIMIT orders fetch the live LTP from OpenAlgo at click time instead
+        // of using the stale candle close price from when the scan ran.
+        let price = 0.0;
+        if (price_type === "LIMIT") {
+            try {
+                const ltpResp = await fetch(`${API_BASE}/api/ltp/${encodeURIComponent(symbol)}?exchange=${encodeURIComponent(exchange)}`);
+                const ltpData = await ltpResp.json();
+                if (!ltpResp.ok) throw new Error(ltpData.detail || "LTP fetch failed");
+                price = ltpData.ltp;
+                console.info(`[LTP] ${symbol} live price: ₹${price} (will place LIMIT @ ₹${price})`);
+            } catch (ltpErr) {
+                // LTP fetch failed — fall back to the signal's close price with a warning
+                price = priceOverride || 0.0;
+                console.warn(`[LTP] Live price fetch failed for ${symbol}: ${ltpErr.message}. Falling back to signal close price ₹${price}.`);
+                showToast(`⚠️ ${symbol} — Using signal price ₹${price} (live LTP unavailable)`, "warning");
+            }
         }
 
         try {
@@ -574,7 +588,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!resp.ok) throw new Error(result.detail || "Order failed");
 
             const orderId = result.order?.orderid || result.order?.order_id || "placed";
-            showToast(`✅ ${action} ${symbol} — Order ${orderId}`, "success");
+            const priceNote = price_type === "LIMIT" ? ` @ ₹${price}` : "";
+            showToast(`✅ ${action} ${symbol}${priceNote} — Order ${orderId}`, "success");
             if (btnEl) {
                 const origLabel = btnEl.dataset.action === "BUY" ? "Buy" : "Sell";
                 btnEl.innerHTML = `<i class="fa-solid fa-check"></i> Done`;
@@ -702,14 +717,16 @@ document.addEventListener("DOMContentLoaded", () => {
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong></td>
                 <td>${item.close.toFixed(2)}</td>
-                <td>${sl}</td>
-                <td>${target}</td>
-                <td><span class="rr-val" style="font-weight: 600; color: ${item.risk_reward >= 2.0 ? 'var(--success)' : 'inherit'}">${rr}</span></td>
                 <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
                     <div class="score-container">
                         <div style="display:flex; flex-direction:column; align-items:center;">
-                            <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                            <div style="display:flex; align-items:center; gap: 6px;">
+                                <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                                <button class="btn-analyze" data-symbol="${item.symbol}" style="background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.9rem; display: inline-flex; align-items: center;" title="View Chart">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </button>
+                            </div>
                             <span style="font-size: 0.7rem; color: #888; margin-top: 3px;">${score.toFixed(1)}</span>
                         </div>
                         ${reasonsHtml}
@@ -720,9 +737,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 </td>
                 <td>
                     <div class="action-cell">
-                        <button class="btn btn-secondary btn-analyze" data-symbol="${item.symbol}">
-                            <i class="fa-solid fa-chart-line"></i> Chart
-                        </button>
                         <div class="order-qty-wrap">
                             <span class="order-qty-label">Qty</span>
                             <input type="number" class="order-qty-input" value="${activeConfig?.openalgo?.order_quantity ?? 2}" min="1" step="1" title="Number of shares to buy/sell">
@@ -732,6 +746,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         </button>
                     </div>
                 </td>
+                <td>${sl}</td>
+                <td>${target}</td>
+                <td><span class="rr-val" style="font-weight: 600; color: ${item.risk_reward >= 2.0 ? 'var(--success)' : 'inherit'}">${rr}</span></td>
             `;
             return tr;
         };
@@ -742,7 +759,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 buySignalsTable.appendChild(createRow(item, "BUY"));
             });
         } else {
-            buySignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
+            buySignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
         }
 
         // Render SELL Signals
@@ -751,7 +768,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sellSignalsTable.appendChild(createRow(item, "SELL"));
             });
         } else {
-            sellSignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
+            sellSignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
         }
 
         // Setup analyze buttons — open TradingView chart in a new tab

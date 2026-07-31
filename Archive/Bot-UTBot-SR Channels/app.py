@@ -25,6 +25,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
 from signal_db import get_signal_history, get_statistics
+from trading_adapter import place_order as adapter_place_order, get_ltp as adapter_get_ltp
 
 # ---------------------------------------------------------------------------
 # Module-level OpenAlgo client cache — avoids re-constructing the client on
@@ -66,6 +67,38 @@ class OpenAlgoConfig(BaseModel):
     base_url: str
     ws_url: str
     order_mode: str = "manual"
+    order_product: str = "MIS"
+    order_quantity: int = 1
+    order_type: str = "MARKET"
+
+class FlattradeConfig(BaseModel):
+    api_key: str = ""
+    api_secret: str = ""
+    client_id: str = ""
+    session_token: str = ""
+    order_product: str = "MIS"
+    order_quantity: int = 1
+    order_type: str = "MARKET"
+
+class MStockConfig(BaseModel):
+    client_id: str = ""
+    access_token: str = ""
+    order_product: str = "MIS"
+    order_quantity: int = 1
+    order_type: str = "MARKET"
+
+class ShoonyaConfig(BaseModel):
+    api_key: str = ""
+    api_secret: str = ""
+    client_id: str = ""
+    session_token: str = ""
+    order_product: str = "MIS"
+    order_quantity: int = 1
+    order_type: str = "MARKET"
+
+class DhanConfig(BaseModel):
+    client_id: str = ""
+    access_token: str = ""
     order_product: str = "MIS"
     order_quantity: int = 1
     order_type: str = "MARKET"
@@ -131,6 +164,7 @@ class FiltersConfig(BaseModel):
 
 class ConfigUpdateRequest(BaseModel):
     data_source: str
+    trading_api_source: str = "openalgo"
     exchange: str
     scan_timeframe: str
     scan_interval_seconds: int
@@ -142,6 +176,10 @@ class ConfigUpdateRequest(BaseModel):
     filters: FiltersConfig
     telegram: TelegramConfig
     openalgo: OpenAlgoConfig
+    flattrade: FlattradeConfig = FlattradeConfig()
+    mstock: MStockConfig = MStockConfig()
+    shoonya: ShoonyaConfig = ShoonyaConfig()
+    dhan: DhanConfig = DhanConfig()
     data: dict
     bot: BotConfig
     symbols: list[str]
@@ -208,28 +246,38 @@ def update_config(req: ConfigUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {e}")
 
-@app.post("/api/order")
-async def place_order(req: OrderRequest):
-    """Place a market order via OpenAlgo for a scanner signal."""
+@app.get("/api/ltp/{symbol}")
+async def get_ltp_endpoint(symbol: str, exchange: str = None):
+    """
+    Fetch the live Last Traded Price via the configured trading_api_source.
+
+    Returns { "symbol": "INFY", "ltp": 1423.55, "exchange": "NSE", "source": "openalgo" }
+    Used by the dashboard to get a fresh price for LIMIT orders at click time.
+    """
     try:
         cfg    = load_config()
-        client = _get_oa_client(cfg.get("openalgo", {}))
-        response = client.placeorder(
-            strategy=req.strategy,
-            symbol=req.symbol,
-            action=req.action,
-            exchange=req.exchange,
-            price_type=req.price_type,
-            product=req.product,
-            quantity=req.quantity,
-            price=req.price,
-            trigger_price=req.trigger_price
-        )
-        # openalgo returns a dict; treat any non-error as success
-        if isinstance(response, dict) and response.get("status") == "error":
-            raise HTTPException(status_code=502, detail=f"OpenAlgo error: {response.get('message', response)}")
-        log.info("Order placed via OpenAlgo: %s %s qty=%d → %s", req.action, req.symbol, req.quantity, response)
-        return {"status": "success", "order": response}
+        exch   = exchange or cfg.get("exchange", "NSE")
+        source = cfg.get("trading_api_source", "openalgo").lower()
+        ltp    = await run_in_threadpool(adapter_get_ltp, cfg, symbol, exch)
+        log.info("LTP fetched for %s (%s) via %s: ₹%.2f", symbol, exch, source.upper(), ltp)
+        return {"symbol": symbol, "exchange": exch, "ltp": round(float(ltp), 2), "source": source}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error("LTP fetch failed for %s: %s", symbol, e)
+        raise HTTPException(status_code=502, detail=f"LTP fetch failed: {e}")
+
+
+@app.post("/api/order")
+async def place_order_endpoint(req: OrderRequest):
+    """Place an order via the configured trading_api_source."""
+    try:
+        cfg    = load_config()
+        source = cfg.get("trading_api_source", "openalgo").lower()
+        result = await run_in_threadpool(adapter_place_order, cfg, req)
+        if result.get("status") == "error":
+            raise HTTPException(status_code=502, detail=f"{source.upper()} error: {result.get('message', result)}")
+        return {"status": "success", "order": result.get("raw", result), "orderid": result.get("orderid", "")}
     except HTTPException:
         raise
     except Exception as e:
