@@ -810,14 +810,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
                     <div class="score-container">
-                        <div style="display:flex; flex-direction:column; align-items:center;">
-                            <div style="display:flex; align-items:center; gap: 6px;">
-                                <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
-                                <button class="btn-analyze" data-symbol="${item.symbol}" style="background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.9rem; display: inline-flex; align-items: center;" title="View Chart">
-                                    <i class="fa-solid fa-chart-line"></i>
-                                </button>
-                            </div>
-                            <span style="font-size: 0.7rem; color: #888; margin-top: 3px;">${score.toFixed(1)}</span>
+                        <div style="display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; justify-content: center; align-items: center; column-gap: 10px; row-gap: 3px;">
+                            <span class="score-badge ${scoreClass}" style="grid-column: 1; grid-row: 1; font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                            <button class="btn-analyze" data-symbol="${item.symbol}" style="grid-column: 2; grid-row: 1; background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.95rem; font-weight: 800; -webkit-text-stroke: 0.5px currentColor; display: inline-flex; align-items: center;" title="View Chart">
+                                <i class="fa-solid fa-chart-line" style="font-weight: 800;"></i>
+                            </button>
+                            <span style="grid-column: 1; grid-row: 2; font-size: 0.7rem; color: #888;">${score.toFixed(1)}</span>
                         </div>
                         ${reasonsHtml}
                     </div>
