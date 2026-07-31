@@ -407,6 +407,53 @@ def get_stats(days: int = 30):
         log.error("Failed to retrieve statistics: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {e}")
 
+@app.get("/api/index-status")
+async def get_index_status_endpoint():
+    """
+    Fetch live index levels for NIFTY 50, BANKNIFTY, and NIFTY IT.
+    """
+    try:
+        def fetch_task():
+            import yfinance as yf
+            tickers = {"NIFTY 50": "^NSEI", "BANKNIFTY": "^NSEBANK", "NIFTY IT": "^CNXIT"}
+            results = {}
+            try:
+                data = yf.download(tickers=list(tickers.values()), period="5d", interval="1d", progress=False)
+                if not data.empty:
+                    for label, sym in tickers.items():
+                        if isinstance(data.columns, pd.MultiIndex):
+                            col = ('Close', sym)
+                        else:
+                            col = 'Close'
+                        if col in data.columns:
+                            series = data[col].dropna()
+                            if len(series) >= 2:
+                                prev = float(series.iloc[-2])
+                                curr = float(series.iloc[-1])
+                                chg = curr - prev
+                                pct = (chg / prev) * 100
+                                results[label] = {
+                                    "ltp": round(curr, 2),
+                                    "change": round(chg, 2),
+                                    "pct": round(pct, 2)
+                                }
+                            elif len(series) == 1:
+                                curr = float(series.iloc[-1])
+                                results[label] = {
+                                    "ltp": round(curr, 2),
+                                    "change": 0.0,
+                                    "pct": 0.0
+                                }
+            except Exception as e:
+                log.error("Error in fetch_task: %s", e)
+            return results
+
+        results = await run_in_threadpool(fetch_task)
+        return {"status": "success", "data": results}
+    except Exception as e:
+        log.error("Failed to retrieve index status: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve index status: {e}")
+
 @app.get("/api/logs")
 def get_logs(lines: int = 150):
     """Retrieve the latest log lines from scanner.log."""

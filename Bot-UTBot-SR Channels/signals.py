@@ -1044,21 +1044,59 @@ def evaluate_composite_signals(
                 sell_reasons.append(best_sell_zone_reason)
 
         # 2. Volume Spike Confirmation (up to 15 pts) — DIRECTIONAL
-        # Points only awarded to the direction that matches the candle colour.
-        # A bullish (green) candle volume spike favours BUY; bearish favours SELL.
+        # Points are awarded ONLY when volume exceeds the SMA average (vol_ratio > 1.0),
+        # scaling from 0 pts at 1x average to 15 pts at 2.5x average.
+        # Below-average volume earns zero points — weak volume should not boost score.
+        #
+        # Partial-candle normalisation: when scanning intraday the last candle may be
+        # incomplete (e.g. only 2 of 5 minutes elapsed). Raw volume is projected to a
+        # full-candle equivalent before comparing against the SMA of closed candles.
+        # This prevents mid-candle scans from incorrectly penalising normal volume.
         if "volume" in df.columns and "vol_sma" in df.columns:
-            vol_sma = float(last_row["vol_sma"])
-            last_vol = float(last_row["volume"])
-            if vol_sma > 0:
-                vol_ratio = last_vol / vol_sma
-                vol_pts = min(15.0, 10.0 * vol_ratio)
+            vol_sma  = float(last_row["vol_sma"])
+            raw_vol  = float(last_row["volume"])
+            if vol_sma > 0 and raw_vol >= 0:
+                # --- Partial-candle normalisation ---
+                # Estimate the fraction of the candle that has elapsed using the
+                # gap between the last candle's open-time and now vs the candle duration.
+                # Falls back to raw volume if the index is not a DatetimeIndex.
+                norm_vol = raw_vol
+                try:
+                    import datetime as _dt
+                    candle_open_time = df.index[-1]
+                    if hasattr(candle_open_time, 'to_pydatetime'):
+                        candle_open_time = candle_open_time.to_pydatetime()
+                    tf_str   = config.get("scan_timeframe", "5m")
+                    tf_lower = tf_str.strip().lower()
+                    if tf_lower.endswith("m"):
+                        candle_secs = int(tf_lower[:-1]) * 60
+                    elif tf_lower.endswith("h"):
+                        candle_secs = int(tf_lower[:-1]) * 3600
+                    else:
+                        candle_secs = 300  # default 5 min
+                    # Only normalise for intraday timeframes (< 1 day)
+                    if candle_secs < 86400:
+                        now_naive = _dt.datetime.now()
+                        if candle_open_time.tzinfo is not None:
+                            candle_open_time = candle_open_time.replace(tzinfo=None)
+                        elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
+                        # Cap elapsed at candle duration (closed candles: elapsed ≥ candle_secs)
+                        elapsed_frac = min(1.0, elapsed_secs / candle_secs)
+                        if elapsed_frac > 0.05:  # ignore if < 5% elapsed (data timing artefact)
+                            norm_vol = raw_vol / elapsed_frac
+                except Exception:
+                    pass  # silently fall back to raw volume
+
+                vol_ratio = norm_vol / vol_sma
+                # Score only above-average volume: 0 pts at 1x, 15 pts at 2.5x, capped.
+                vol_pts = round(min(15.0, max(0.0, 10.0 * (vol_ratio - 1.0))), 1)
                 if vol_pts > 0:
                     if candle_bullish:
                         buy_score += vol_pts
-                        buy_reasons.append(f"Bullish volume surge: {vol_ratio:.2f}x avg (+{vol_pts:.1f} pts)")
+                        buy_reasons.append(f"Bullish volume surge: {vol_ratio:.2f}x avg (norm) (+{vol_pts:.1f} pts)")
                     else:
                         sell_score += vol_pts
-                        sell_reasons.append(f"Bearish volume surge: {vol_ratio:.2f}x avg (+{vol_pts:.1f} pts)")
+                        sell_reasons.append(f"Bearish volume surge: {vol_ratio:.2f}x avg (norm) (+{vol_pts:.1f} pts)")
 
         # 3. EMA Trend Confluence (10–20 pts) — PROPORTIONAL
         # Scoring scales with how far price is from the EMA:
@@ -1216,26 +1254,56 @@ def evaluate_composite_signals(
         # Volume SMA Filter — mandatory gate when enabled.
         # vol_ok is always computed (regardless of filter toggle) so the frontend
         # icon faithfully reflects whether volume cleared the configured threshold.
+        #
+        # Same partial-candle normalisation as the scoring block above: raw volume is
+        # projected to a full-candle equivalent so mid-candle scans do not incorrectly
+        # reject valid signals due to an incomplete bar's naturally lower volume.
         vol_filter  = filters_cfg.get("volume_filter_enabled", False)
         vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
         vol_ok = True   # default: pass (no vol data → show icon as active)
         if "volume" in df.columns and "vol_sma" in df.columns:
             vol_sma  = float(last_row["vol_sma"])
-            last_vol = float(last_row["volume"])
-            if vol_sma > 0:
-                vol_ratio = last_vol / vol_sma
-                vol_ok = (last_vol >= vol_min_pct * vol_sma)
+            raw_vol  = float(last_row["volume"])
+            if vol_sma > 0 and raw_vol >= 0:
+                # --- Partial-candle normalisation (same logic as scoring block) ---
+                norm_vol = raw_vol
+                try:
+                    import datetime as _dt
+                    candle_open_time = df.index[-1]
+                    if hasattr(candle_open_time, 'to_pydatetime'):
+                        candle_open_time = candle_open_time.to_pydatetime()
+                    tf_str   = config.get("scan_timeframe", "5m")
+                    tf_lower = tf_str.strip().lower()
+                    if tf_lower.endswith("m"):
+                        candle_secs = int(tf_lower[:-1]) * 60
+                    elif tf_lower.endswith("h"):
+                        candle_secs = int(tf_lower[:-1]) * 3600
+                    else:
+                        candle_secs = 300
+                    if candle_secs < 86400:
+                        now_naive = _dt.datetime.now()
+                        if candle_open_time.tzinfo is not None:
+                            candle_open_time = candle_open_time.replace(tzinfo=None)
+                        elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
+                        elapsed_frac = min(1.0, elapsed_secs / candle_secs)
+                        if elapsed_frac > 0.05:
+                            norm_vol = raw_vol / elapsed_frac
+                except Exception:
+                    pass
+
+                vol_ratio = norm_vol / vol_sma
+                vol_ok    = (norm_vol >= vol_min_pct * vol_sma)
                 if vol_filter:
                     if composite_buy and not vol_ok:
                         composite_buy = False
-                        log.info("Filtered out BUY (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
+                        log.info("Filtered out BUY (Volume): Projected vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 norm_vol, vol_ratio * 100, vol_min_pct * 100)
                     elif composite_buy:
-                        log.debug("Volume OK for BUY: Vol=%.0f is %.0f%% of SMA", last_vol, vol_ratio * 100)
+                        log.debug("Volume OK for BUY: Projected vol=%.0f is %.0f%% of SMA", norm_vol, vol_ratio * 100)
                     if composite_sell and not vol_ok:
                         composite_sell = False
-                        log.info("Filtered out SELL (Volume): Vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                                 last_vol, vol_ratio * 100, vol_min_pct * 100)
+                        log.info("Filtered out SELL (Volume): Projected vol=%.0f is %.0f%% of SMA (min %.0f%%)",
+                                 norm_vol, vol_ratio * 100, vol_min_pct * 100)
 
         # ADX Hard Filter (opt-in)
         adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)

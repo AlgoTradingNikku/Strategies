@@ -11,6 +11,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const historyLimit = 15;
     let lastScanTimestamp = null;  // epoch ms of the last completed scan
     let orderMode = "manual";      // "manual" | "auto" — synced with config & toggle
+    // Suppresses the header TF dropdown change listener when values are set
+    // programmatically (e.g. during loadConfig) to prevent duplicate scans.
+    let _suppressTfChange = false;
 
     // Elements cache
     const tabButtons = document.querySelectorAll(".nav-item");
@@ -124,6 +127,15 @@ document.addEventListener("DOMContentLoaded", () => {
             // Update Active Config display text
             const seg = Array.isArray(cfg.segment) ? cfg.segment.join("+") : (cfg.segment || "CUSTOM");
             activeScanInfo.textContent = `Profile: ${cfg.data_source.toUpperCase()} | TF: ${cfg.scan_timeframe} | Segments: ${seg}`;
+
+            // Set header dropdown values — suppress the change event so loadConfig
+            // does not accidentally trigger a second scan when updating values programmatically.
+            _suppressTfChange = true;
+            const headerSelectLtf = document.getElementById("header-select-ltf");
+            const headerSelectHtf = document.getElementById("header-select-htf");
+            if (headerSelectLtf) headerSelectLtf.value = cfg.scan_timeframe;
+            if (headerSelectHtf) headerSelectHtf.value = cfg.filters.mtf_timeframe;
+            _suppressTfChange = false;
             
             // Populate Config Form
             document.getElementById("cfg-data-source").value = cfg.data_source;
@@ -465,6 +477,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---------------------------------------------------------------------------
+    // Index Live Status Update
+    // ---------------------------------------------------------------------------
+    async function updateIndexStatus() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/index-status`);
+            if (!resp.ok) throw new Error("Failed to fetch index status.");
+            const res = await resp.json();
+            if (res.status === "success" && res.data) {
+                const data = res.data;
+                const mapping = {
+                    "NIFTY 50": { val: "index-val-nifty", chg: "index-chg-nifty" },
+                    "BANKNIFTY": { val: "index-val-banknifty", chg: "index-chg-banknifty" },
+                    "NIFTY IT": { val: "index-val-niftyit", chg: "index-chg-niftyit" }
+                };
+                for (const [key, ids] of Object.entries(mapping)) {
+                    const item = data[key];
+                    const valEl = document.getElementById(ids.val);
+                    const chgEl = document.getElementById(ids.chg);
+                    if (item && valEl && chgEl) {
+                        valEl.textContent = item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        const sign = item.change >= 0 ? "+" : "";
+                        chgEl.textContent = `${sign}${item.change.toFixed(2)} (${sign}${item.pct.toFixed(2)}%)`;
+                        if (item.change >= 0) {
+                            chgEl.style.color = "var(--color-buy)";
+                        } else {
+                            chgEl.style.color = "var(--color-sell)";
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Index status fetch error:", err);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Running Scans
     // ---------------------------------------------------------------------------
     async function executeScan() {
@@ -481,6 +529,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         try {
+            updateIndexStatus();
             const resp = await fetch(`${API_BASE}/api/scan`, { method: "POST" });
             if (!resp.ok) throw new Error("Trigger scan failed on backend server.");
             const data = await resp.json();
@@ -502,6 +551,56 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     btnRunScan.addEventListener("click", executeScan);
+
+    // Sync header timeframe dropdowns to config, save on backend, and re-scan
+    async function handleHeaderTimeframeChange() {
+        // Bail out if the value was set programmatically (e.g. by loadConfig) —
+        // only act on genuine user-driven selection changes.
+        if (_suppressTfChange) return;
+        if (!activeConfig) return;
+        const ltfSelect = document.getElementById("header-select-ltf");
+        const htfSelect = document.getElementById("header-select-htf");
+        if (!ltfSelect || !htfSelect) return;
+        
+        const ltf = ltfSelect.value;
+        const htf = htfSelect.value;
+        
+        // Update local activeConfig state
+        activeConfig.scan_timeframe = ltf;
+        activeConfig.filters.mtf_timeframe = htf;
+        
+        // Update corresponding form elements in Config tab
+        const formLtf = document.getElementById("cfg-timeframe");
+        const formHtf = document.getElementById("cfg-filters-mtf-tf");
+        if (formLtf) formLtf.value = ltf;
+        if (formHtf) formHtf.value = htf;
+        
+        try {
+            const resp = await fetch(`${API_BASE}/api/config`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(activeConfig)
+            });
+            if (!resp.ok) throw new Error("Failed to save timeframe config changes.");
+            showToast("Timeframe saved and updated!", "success");
+            await loadConfig();
+            
+            // Re-initialize auto-refresh if currently active
+            if (autoRefreshInterval !== null) {
+                _startAutoRefresh();
+            }
+            
+            // Trigger scanner execution immediately
+            executeScan();
+        } catch (err) {
+            showToast(`❌ Error saving timeframe: ${err.message}`, "error");
+        }
+    }
+
+    const headerLtf = document.getElementById("header-select-ltf");
+    const headerHtf = document.getElementById("header-select-htf");
+    if (headerLtf) headerLtf.addEventListener("change", handleHeaderTimeframeChange);
+    if (headerHtf) headerHtf.addEventListener("change", handleHeaderTimeframeChange);
 
     // ---------------------------------------------------------------------------
     // Order Placement
@@ -649,9 +748,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const score = item.setup_score !== undefined ? item.setup_score : 0;
             let scoreClass = "score-low";
             let scoreTier = "C";
-            if (score >= 85) { scoreClass = "score-premium"; scoreTier = "A+"; }
-            else if (score >= 70) { scoreClass = "score-high"; scoreTier = "A"; }
-            else if (score >= 50) { scoreClass = "score-medium"; scoreTier = "B"; }
+            if (score >= 85)      { scoreClass = "score-premium"; scoreTier = "A+"; }
+            else if (score >= 70) { scoreClass = "score-high";    scoreTier = "A";  }
+            else if (score >= 50) { scoreClass = "score-medium";  scoreTier = "B";  }
+            else if (score >= 30) { scoreClass = "score-low";     scoreTier = "C";  }
+            else                  { scoreClass = "score-weak";     scoreTier = "D";  }
 
             const reasonsList = item.score_reasons || [];
             const reasonsHtml = reasonsList.length > 0
@@ -666,13 +767,19 @@ document.addEventListener("DOMContentLoaded", () => {
             // any cached results that predate these fields.
             const reasonsText = reasonsList.join(" ");
 
-            // Trend icon: active when price is on the correct side of the EMA
-            // (above for BUY, below for SELL) OR when MTF confirms the direction.
-            const mtfConfirms = reasonsText.includes("MTF confirms");
+            // Trend icon: active when price is on the correct side of EMA 200
+            // OR when the higher timeframe (MTF) confirms the signal direction.
+            // Uses structured item.mtf.trend field for MTF — avoids brittle text scanning.
+            const mtfConfirms = item.mtf?.trend === (type === "BUY" ? "bullish" : "bearish");
             const emaOk = item.ema_above !== null && item.ema_above !== undefined
                 ? (type === "BUY" ? item.ema_above === true : item.ema_above === false)
                 : reasonsText.includes("EMA") || reasonsText.includes("MTF");
             const hasTrend = emaOk || mtfConfirms;
+            // Build a descriptive tooltip so users know which condition fired.
+            const emaStatus  = item.ema_above !== null && item.ema_above !== undefined
+                ? (emaOk ? "✅" : "❌") : "N/A";
+            const mtfStatus  = item.mtf?.trend ? item.mtf.trend : "N/A";
+            const trendTitle = `EMA 200: ${emaStatus} | HTF Trend: ${mtfStatus}`;
 
             // RSI icon: active when RSI is within the configured optimal range
             const hasMomentum = item.rsi_ok !== null && item.rsi_ok !== undefined
@@ -703,7 +810,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const confluenceMatrixHtml = `
                 <div style="display:flex; gap: 8px; justify-content: center;">
-                    ${dot(hasTrend, 'Trend', trendIcon)}
+                    ${dot(hasTrend, trendTitle, trendIcon)}
                     ${dot(hasMomentum, 'RSI', 'fa-bolt')}
                     ${dot(hasVolume, 'Vol', 'fa-chart-simple')}
                     ${dot(hasSR, 'S/R', 'fa-bars')}
@@ -720,14 +827,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
                     <div class="score-container">
-                        <div style="display:flex; flex-direction:column; align-items:center;">
-                            <div style="display:flex; align-items:center; gap: 6px;">
-                                <span class="score-badge ${scoreClass}" style="font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
-                                <button class="btn-analyze" data-symbol="${item.symbol}" style="background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.9rem; display: inline-flex; align-items: center;" title="View Chart">
-                                    <i class="fa-solid fa-chart-line"></i>
-                                </button>
-                            </div>
-                            <span style="font-size: 0.7rem; color: #888; margin-top: 3px;">${score.toFixed(1)}</span>
+                        <div style="display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; justify-content: center; align-items: center; column-gap: 10px; row-gap: 3px;">
+                            <span class="score-badge ${scoreClass}" style="grid-column: 1; grid-row: 1; font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
+                            <button class="btn-analyze" data-symbol="${item.symbol}" style="grid-column: 2; grid-row: 1; background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.95rem; font-weight: 800; -webkit-text-stroke: 0.5px currentColor; display: inline-flex; align-items: center;" title="View Chart">
+                                <i class="fa-solid fa-chart-line" style="font-weight: 800;"></i>
+                            </button>
+                            <span style="grid-column: 1; grid-row: 2; font-size: 0.7rem; color: #888;">${score.toFixed(1)}</span>
                         </div>
                         ${reasonsHtml}
                     </div>
@@ -903,8 +1008,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const score = r.setup_score !== undefined ? r.setup_score : 0;
                 let scoreClass = "score-low";
-                if (score >= 70) scoreClass = "score-high";
-                else if (score >= 40) scoreClass = "score-medium";
+                if (score >= 85)      scoreClass = "score-premium";
+                else if (score >= 70) scoreClass = "score-high";
+                else if (score >= 50) scoreClass = "score-medium";
+                else if (score >= 30) scoreClass = "score-low";
+                else                  scoreClass = "score-weak";
                 
                 const reasonsList = r.score_reasons || [];
                 const reasonsHtml = reasonsList.length > 0
