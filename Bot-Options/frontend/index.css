@@ -881,6 +881,47 @@ input:checked + .slider:before {
 }
 
 /* Logs console */
+/* Log Tab Toolbar */
+.log-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+.log-title {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+.log-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.log-autoscroll-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+.log-autoscroll-label input[type="checkbox"] {
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+}
+.btn-xs {
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+}
+
 .log-wrapper {
     height: 100%;
     background-color: #080a0f;

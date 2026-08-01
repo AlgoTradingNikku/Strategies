@@ -11,9 +11,25 @@ import sys
 import logging
 from pathlib import Path
 from datetime import datetime, date
-from typing import list, dict, Any, tuple
+from typing import List, Dict, Any, Tuple
 
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# OI Snapshot Cache — tracks previous-cycle OI per (symbol) key so that
+# calculate_oi_momentum_score() can compare current vs prior OI.
+# Structure: { symbol: (prev_oi, prev_ltp) }
+# ---------------------------------------------------------------------------
+_oi_snapshot: Dict[str, Tuple[int, float]] = {}
+
+# ---------------------------------------------------------------------------
+# Signal Deduplication Cache — suppresses repeated identical signals within
+# a configurable window to prevent duplicate Telegram alerts and duplicate
+# auto-orders on consecutive scan cycles.
+# Structure: { (symbol, direction): last_signal_timestamp }
+# ---------------------------------------------------------------------------
+_signal_dedup: Dict[Tuple[str, str], float] = {}
+_SIGNAL_DEDUP_WINDOW_SECONDS: int = 900  # 15 minutes default
 
 # Add Bot-Stocks path
 bot_stocks_dir = Path(__file__).resolve().parent / "Bot-Stocks"
@@ -27,13 +43,14 @@ from core.strike_selector import select_strike
 from core.option_filters import (
     calculate_iv_score,
     calculate_oi_momentum_score,
-    calculate_time_decay_penalty
+    calculate_time_decay_penalty,
+    calculate_candle_pattern_score
 )
 from core.option_signals import evaluate_underlying_signals, evaluate_option_chart_confirmation
 from core.option_risk import check_risk_circuit_breakers, validate_capital_allocation
 from db.option_signal_db import save_option_signal, update_signal_status
 from db.option_trade_db import get_open_positions, get_closed_positions, open_position_db
-from execution.order_engine import place_direct_options_order
+from execution.order_engine import place_direct_options_order, poll_order_fill
 from notifications.notifier import notify_new_signal
 
 def _is_market_hours(config: dict) -> bool:
@@ -60,7 +77,7 @@ def _is_market_hours(config: dict) -> bool:
         return True
 
 
-def get_daily_metrics() -> tuple[int, float, int]:
+def get_daily_metrics() -> Tuple[int, float, int]:
     """
     Calculate daily statistics for risk checks:
     - Number of trades today
@@ -102,10 +119,10 @@ def execute_options_trade(
     oa_client,
     monitor
 ) -> bool:
-    """Submit entry order to broker, create position tracker, and monitor trade."""
+    """Submit entry order to broker, wait for fill confirmation, then register position."""
     exec_cfg = config.get("execution", {})
     quantity = int(exec_cfg.get("num_lots", 1)) * int(sig.get("lot_size", 75))
-    
+
     # Place entry BUY limit/market order
     resp = place_direct_options_order(
         config=config,
@@ -115,19 +132,33 @@ def execute_options_trade(
         price=float(sig["entry_premium"]) if exec_cfg.get("order_type") == "LIMIT" else 0.0,
         oa_client=oa_client
     )
-    
+
     if resp.get("status") == "success":
         order_id = resp.get("orderid")
-        entry_premium = float(sig["entry_premium"])
-        
+
+        # --- Fill Confirmation: poll orderstatus before opening position ---
+        fill_timeout = int(exec_cfg.get("fill_timeout_seconds", 30))
+        fill_result = poll_order_fill(order_id, oa_client, max_wait_seconds=fill_timeout)
+
+        if fill_result["status"] not in ("filled",):
+            log.warning(
+                "[%s] Order %s not filled (status: %s). Position NOT registered.",
+                sig["symbol"], order_id, fill_result["status"]
+            )
+            update_signal_status(sig["id"], f"FILL_{fill_result['status'].upper()}")
+            return False
+
+        # Use actual fill price if available, else fall back to signal premium
+        entry_premium = fill_result["fill_price"] if fill_result["fill_price"] > 0 else float(sig["entry_premium"])
+
         # Calculate SL & Target prices
         tm_cfg = config.get("trade_management", {})
         sl_pct = float(tm_cfg.get("stop_loss_pct", 30.0))
         target_pct = float(tm_cfg.get("target_pct", 50.0))
-        
+
         sl_premium = entry_premium * (1.0 - sl_pct / 100.0)
         target_premium = entry_premium * (1.0 + target_pct / 100.0)
-        
+
         # Format database record
         pos_rec = {
             "order_id": order_id,
@@ -148,7 +179,7 @@ def execute_options_trade(
             "target_premium": target_premium,
             "timeframe": sig["timeframe"]
         }
-        
+
         pos_id = open_position_db(pos_rec)
         if pos_id > 0:
             pos_rec["id"] = pos_id
@@ -165,7 +196,7 @@ def run_option_scan(
     config: dict,
     oa_client,
     monitor
-) -> tuple[list[dict], list[dict], int]:
+) -> Tuple[List[Dict], List[Dict], int]:
     """
     Orchestrate full options scanner pipeline:
     Stage 1: Scan Index
@@ -248,26 +279,37 @@ def run_option_scan(
             filters_cfg = config.get("filters", {})
             
             iv_adj, iv_reason = calculate_iv_score(iv, filters_cfg)
-            oi_adj, oi_reason = calculate_oi_momentum_score(oi, oi, 0.0, filters_cfg) # prev tracking can be implemented later
+            # Retrieve previous cycle OI/LTP snapshot for real momentum calculation
+            prev_oi, prev_ltp = _oi_snapshot.get(symbol, (oi, entry_premium))
+            ltp_change_pct = ((entry_premium - prev_ltp) / prev_ltp * 100.0) if prev_ltp > 0 else 0.0
+            oi_adj, oi_reason = calculate_oi_momentum_score(oi, prev_oi, ltp_change_pct, filters_cfg)
+            # Update snapshot for next scan cycle
+            _oi_snapshot[symbol] = (oi, entry_premium)
             decay_adj, decay_reason = calculate_time_decay_penalty(days_left, filters_cfg)
+            # Candle pattern detection using the underlying OHLCV data from Stage 1
+            candle_adj, candle_reason = calculate_candle_pattern_score(
+                sig.get("_df"), option_type, sig.get("_sr_zones", []), filters_cfg
+            )
             
             # STAGE 3: Option Premium Chart Scan
             s3_res = evaluate_option_chart_confirmation(symbol, timeframe, config, oa_client)
             s3_adj = s3_res.get("score_adjustment", 0.0)
             
-            # Combined score calculation
-            final_score = underlying_score + iv_adj + oi_adj + decay_adj + s3_adj
+            # Combined score calculation (all Stage 2 adjustments + Stage 3)
+            final_score = underlying_score + iv_adj + oi_adj + decay_adj + candle_adj + s3_adj
             final_score = max(0.0, min(100.0, final_score))
-            
+
             score_reasons = sig.get("reasons", [])
-            if iv_reason: score_reasons.append(iv_reason)
-            if oi_reason: score_reasons.append(oi_reason)
-            if decay_reason: score_reasons.append(decay_reason)
+            if iv_reason:     score_reasons.append(iv_reason)
+            if oi_reason:     score_reasons.append(oi_reason)
+            if decay_reason:  score_reasons.append(decay_reason)
+            if candle_reason: score_reasons.append(candle_reason)
             score_reasons.extend(s3_res.get("reasons", []))
             
             filter_status = {
                 "iv": "pass" if iv_adj >= 0 else "warn",
                 "decay": "pass" if decay_adj >= 0 else "warn",
+                "candle": "pass" if candle_adj >= 0 else "warn",
                 "stage3": s3_res.get("status")
             }
             
@@ -301,17 +343,30 @@ def run_option_scan(
             # Gate 2: Final combined score filter
             min_score = float(filters_cfg.get("min_alert_score", 60))
             if final_score < min_score:
-                log.info("[%s] Option Signal %s rejected: Final score %.1f below Min Alert Score (%.1f)", 
+                log.info("[%s] Option Signal %s rejected: Final score %.1f below Min Alert Score (%.1f)",
                          symbol, direction, final_score, min_score)
                 continue
-                
+
+            # Gate 3: Signal deduplication — suppress repeated identical signals within the window
+            import time as _time
+            dedup_key = (symbol, direction)
+            dedup_window = int(config.get("scan_dedup_window_seconds", _SIGNAL_DEDUP_WINDOW_SECONDS))
+            last_signal_ts = _signal_dedup.get(dedup_key, 0.0)
+            now_ts = _time.time()
+            if (now_ts - last_signal_ts) < dedup_window:
+                remaining_secs = int(dedup_window - (now_ts - last_signal_ts))
+                log.debug("[%s] Signal %s suppressed (duplicate within %ds window — %ds remaining).",
+                         symbol, direction, dedup_window, remaining_secs)
+                continue
+            _signal_dedup[dedup_key] = now_ts
+
             # Save signal record
             sig_id = save_option_signal(sig_rec)
             if sig_id > 0:
                 sig_rec["id"] = sig_id
-            
+
             log.info("🎯 Options signal triggered: %s @ ₹%.2f | Score: %.1f", symbol, entry_premium, final_score)
-            
+
             # Send Notification Alert
             try:
                 notify_new_signal(sig_rec, config, oa_client)

@@ -155,7 +155,11 @@
                 <button class="btn btn-primary btn-block" id="btn-scan-now">
                     <i class="fa-solid fa-play"></i> SCAN NOW
                 </button>
-                
+
+                <button class="btn btn-secondary btn-block margin-top-sm" id="btn-view-logs">
+                    <i class="fa-solid fa-terminal"></i> VIEW LOGS
+                </button>
+
                 <div class="toggle-control margin-top-sm">
                     <span>Auto-Scan Loop</span>
                     <label class="switch">
@@ -282,6 +286,25 @@
 
                 <!-- Tab: Logs -->
                 <div class="tab-pane" id="tab-logs">
+                    <div class="log-toolbar">
+                        <span class="log-title"><i class="fa-solid fa-circle" style="color:#22c55e;font-size:8px;vertical-align:middle;margin-right:4px;"></i>options.log</span>
+                        <div class="log-toolbar-actions">
+                            <label class="log-autoscroll-label">
+                                <input type="checkbox" id="log-autoscroll" checked>
+                                <span>Auto-scroll</span>
+                            </label>
+                            <label class="log-autoscroll-label">
+                                <input type="checkbox" id="log-autorefresh" checked>
+                                <span>Live</span>
+                            </label>
+                            <button class="btn btn-xs btn-secondary" id="btn-log-refresh">
+                                <i class="fa-solid fa-rotate-right"></i> Refresh
+                            </button>
+                            <button class="btn btn-xs btn-secondary" id="btn-log-clear">
+                                <i class="fa-solid fa-trash"></i> Clear View
+                            </button>
+                        </div>
+                    </div>
                     <div class="log-wrapper">
                         <pre class="terminal-logs" id="logs-console">Loading options.log...</pre>
                     </div>

@@ -9,7 +9,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import tuple
+from typing import Tuple
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def check_risk_circuit_breakers(
     trades_today: int,
     daily_pnl: float,
     consecutive_losses: int
-) -> tuple[bool, str]:
+) -> Tuple[bool, str]:
     """
     Evaluate platform limits and daily stats to determine if trading must be paused.
 
@@ -78,7 +78,7 @@ def validate_capital_allocation(
     config: dict,
     estimated_trade_cost: float,
     current_deployed_capital: float
-) -> tuple[bool, str]:
+) -> Tuple[bool, str]:
     """
     Ensure the estimated premium outlay does not exceed capital caps.
     """

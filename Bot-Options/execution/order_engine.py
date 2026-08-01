@@ -8,7 +8,7 @@
 
 import time
 import logging
-from typing import dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 _recent_orders: dict[tuple, float] = {}
 _DEDUPLICATE_WINDOW_SEC = 30.0
 
-def _is_duplicate_order(key: tuple) -> bool:
+def _is_duplicate_order(key: Tuple) -> bool:
     """Check if order was placed recently within safety window."""
     now = time.time()
     if key in _recent_orders:
@@ -27,7 +27,7 @@ def _is_duplicate_order(key: tuple) -> bool:
     return False
 
 
-def _record_order(key: tuple):
+def _record_order(key: Tuple):
     """Record order timestamp for deduplication."""
     _recent_orders[key] = time.time()
 
@@ -154,3 +154,57 @@ def place_direct_options_order(
         delay *= 2.0
 
     return {"status": "error", "message": f"Failed to place direct option order for {symbol} after max retries."}
+
+
+def poll_order_fill(
+    order_id: str,
+    oa_client,
+    max_wait_seconds: int = 30,
+    poll_interval: float = 3.0
+) -> Dict[str, Any]:
+    """
+    Poll OpenAlgo orderstatus() until the order is filled, rejected, or the
+    timeout is reached.
+
+    Parameters
+    ----------
+    order_id        : Broker order ID returned by placeorder / optionsorder
+    oa_client       : Initialized OpenAlgo API client
+    max_wait_seconds: Total seconds to wait before declaring a timeout (default 30s)
+    poll_interval   : Seconds between each status poll (default 3s)
+
+    Returns
+    -------
+    dict with keys:
+        status   : "filled" | "cancelled" | "rejected" | "timeout" | "error"
+        fill_price: float (0.0 if not filled)
+        raw      : raw orderstatus response
+    """
+    elapsed = 0.0
+    while elapsed < max_wait_seconds:
+        try:
+            resp = oa_client.orderstatus(order_id=order_id, strategy="OptionsBot")
+            if not isinstance(resp, dict):
+                time.sleep(poll_interval)
+                elapsed += poll_interval
+                continue
+
+            order_status = str(resp.get("data", {}).get("status", "")).upper()
+            fill_price = float(resp.get("data", {}).get("price") or 0.0)
+
+            if order_status in ("COMPLETE", "FILLED"):
+                log.info("Order %s confirmed filled @ %.2f", order_id, fill_price)
+                return {"status": "filled", "fill_price": fill_price, "raw": resp}
+            elif order_status in ("CANCELLED", "REJECTED", "CANCEL"):
+                log.warning("Order %s ended with status: %s", order_id, order_status)
+                return {"status": order_status.lower(), "fill_price": 0.0, "raw": resp}
+            else:
+                log.debug("Order %s status: %s — waiting...", order_id, order_status)
+        except Exception as e:
+            log.error("Error polling order status for %s: %s", order_id, e)
+
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+
+    log.warning("Order %s fill confirmation timed out after %ds", order_id, max_wait_seconds)
+    return {"status": "timeout", "fill_price": 0.0, "raw": {}}

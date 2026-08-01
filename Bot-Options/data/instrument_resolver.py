@@ -8,7 +8,7 @@
 
 import re
 import logging
-from typing import Optional, dict, Any
+from typing import Optional, Dict, Any
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 # Group 4: Option type (CE/PE)
 OPTION_SYMBOL_PATTERN = re.compile(r"^([A-Z]+)(\d{2}[A-Z\d]{3,5}\d{2})(\d+)([CP]E)$")
 
-def parse_option_symbol(symbol: str) -> Optional[dict[str, Any]]:
+def parse_option_symbol(symbol: str) -> Optional[Dict[str, Any]]:
     """
     Parse a standard NSE option symbol string into constituent parts.
     Example: 'NIFTY28OCT2526150PE' -> {

@@ -88,11 +88,16 @@ document.addEventListener("DOMContentLoaded", () => {
             activeTab = tab.dataset.tab;
             document.getElementById(activeTab).classList.add("active");
             
-            if (activeTab === "tab-chain") {
+            if (activeTab === "tab-signals") {
+                stopLogsRefresh();
+                loadSignals();
+            } else if (activeTab === "tab-chain") {
+                stopLogsRefresh();
                 loadOptionChain();
             } else if (activeTab === "tab-logs") {
-                loadLogs();
+                startLogsRefresh();
             } else if (activeTab === "tab-analytics") {
+                stopLogsRefresh();
                 loadStats();
             }
         });
@@ -324,24 +329,40 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------------------------------
     // Signals Scan
     // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // Load Signals from DB  (called on page load AND after every scan)
+    // ---------------------------------------------------------------------------
+    async function loadSignals() {
+        try {
+            const res = await fetch("/api/signals?limit=50");
+            const data = await res.json();
+            if (data.status === "success") {
+                renderSignals(data.signals || []);
+            }
+        } catch (e) {
+            console.error("Signals load error: ", e);
+        }
+    }
+
     async function triggerScan() {
         el.btnScanNow.disabled = true;
         el.btnScanNow.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> SCANNING...`;
-        
+
         try {
             const res = await fetch("/api/scan", { method: "POST" });
             const payload = await res.json();
-            
+
             if (payload.status !== "success") {
                 console.error("Scan failed: ", payload.detail);
+                // Still reload signals — may have existing ones in DB
+                await loadSignals();
                 return;
             }
 
-            const buySigs = payload.buy_signals || [];
-            const sellSigs = payload.sell_signals || [];
-            const allSigs = [...buySigs, ...sellSigs];
+            // Always reload from DB after scan so the list reflects the
+            // full history (not just signals from this single scan cycle).
+            await loadSignals();
 
-            renderSignals(allSigs);
         } catch (e) {
             console.error("Scan dispatch error: ", e);
         } finally {
@@ -357,20 +378,32 @@ document.addEventListener("DOMContentLoaded", () => {
             el.signalsList.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-rss-square"></i>
-                    <p>No option signals generated in this cycle. Try modifying settings.</p>
+                    <p>No option signals yet. Trigger a scan or turn on Auto-Scan.</p>
                 </div>`;
             return;
         }
 
         el.signalsList.innerHTML = "";
         signals.forEach(sig => {
+            // score_reasons and filter_status arrive as JSON strings from the DB endpoint
+            // — parse them defensively so a bad value never crashes the whole render loop.
+            const reasons = Array.isArray(sig.score_reasons)
+                ? sig.score_reasons
+                : (() => { try { return JSON.parse(sig.score_reasons || "[]"); } catch(e) { return []; } })();
+
+            const filterStatus = (sig.filter_status && typeof sig.filter_status === "object")
+                ? sig.filter_status
+                : (() => { try { return JSON.parse(sig.filter_status || "{}"); } catch(e) { return {}; } })();
+
+            const stage3Status = filterStatus.stage3 || "unknown";
+            const stage3Color  = stage3Status === "confirmed" ? "var(--success-green)" : "var(--danger-red)";
+
+            const reasonsHtml = reasons.length
+                ? reasons.map(r => `<span>• ${r}</span>`).join("")
+                : `<span class="text-muted">No scoring details available.</span>`;
+
             const card = document.createElement("div");
             card.className = `signal-card ${sig.direction.toLowerCase()}`;
-            
-            let reasonsHtml = "";
-            sig.score_reasons.forEach(r => {
-                reasonsHtml += `<span>• ${r}</span>`;
-            });
 
             card.innerHTML = `
                 <div class="card-top">
@@ -382,31 +415,31 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="badge-direction ${sig.direction.toLowerCase()}">${sig.direction}</span>
                 </div>
                 <div class="card-middle">
-                    <span class="strat-tag">UTBot+SR · Stage 3: <b style="color:${sig.filter_status.stage3 === 'confirmed' ? 'var(--success-green)' : 'var(--danger-red)'}">${sig.filter_status.stage3}</b></span>
+                    <span class="strat-tag">${sig.strategy_name || "UTBot+SR"} · Stage 3: <b style="color:${stage3Color}">${stage3Status}</b></span>
                     <div class="score-arc-widget">
-                        <span class="score-text">${sig.confidence_score.toFixed(0)}/100</span>
+                        <span class="score-text">${parseFloat(sig.confidence_score || 0).toFixed(0)}/100</span>
                     </div>
                 </div>
                 <div class="card-data-row">
                     <div class="data-cell">
                         <span class="lbl">Premium</span>
-                        <span class="val">₹${sig.entry_premium.toFixed(2)}</span>
+                        <span class="val">₹${parseFloat(sig.entry_premium || 0).toFixed(2)}</span>
                     </div>
                     <div class="data-cell">
                         <span class="lbl">Spot</span>
-                        <span class="val">₹${sig.underlying_price.toFixed(2)}</span>
+                        <span class="val">₹${parseFloat(sig.underlying_price || 0).toFixed(2)}</span>
                     </div>
                     <div class="data-cell">
                         <span class="lbl">IV</span>
-                        <span class="val">${sig.iv_proxy ? sig.iv_proxy.toFixed(1) + "%" : "-"}</span>
+                        <span class="val">${sig.iv_proxy ? parseFloat(sig.iv_proxy).toFixed(1) + "%" : "-"}</span>
                     </div>
                     <div class="data-cell">
                         <span class="lbl">OI</span>
                         <span class="val">${sig.oi_at_signal ? formatNumber(sig.oi_at_signal) : "-"}</span>
                     </div>
                     <div class="data-cell">
-                        <span class="lbl">Delta</span>
-                        <span class="val">+0.48</span>
+                        <span class="lbl">Status</span>
+                        <span class="val">${sig.status || "SIGNAL"}</span>
                     </div>
                 </div>
                 <div class="card-reasons">
@@ -582,19 +615,63 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ---------------------------------------------------------------------------
-    // Logs Tab Content
+    // Logs Tab — live tail with auto-refresh and controls
     // ---------------------------------------------------------------------------
+    let logsRefreshIntervalId = null;
+
     async function loadLogs() {
         try {
-            const res = await fetch("/api/logs");
+            const res = await fetch("/api/logs?lines=200");
             const data = await res.json();
             el.logsConsole.textContent = data.logs || "No logs available.";
-            // Scroll to bottom
-            el.logsConsole.scrollTop = el.logsConsole.scrollHeight;
+            const autoScroll = document.getElementById("log-autoscroll");
+            if (!autoScroll || autoScroll.checked) {
+                el.logsConsole.scrollTop = el.logsConsole.scrollHeight;
+            }
         } catch (e) {
             el.logsConsole.textContent = "Failed to load log feed.";
         }
     }
+
+    function startLogsRefresh() {
+        if (logsRefreshIntervalId) return;
+        loadLogs();
+        logsRefreshIntervalId = setInterval(() => {
+            const autoRefresh = document.getElementById("log-autorefresh");
+            if (autoRefresh && autoRefresh.checked) loadLogs();
+        }, 3000);
+    }
+
+    function stopLogsRefresh() {
+        if (logsRefreshIntervalId) {
+            clearInterval(logsRefreshIntervalId);
+            logsRefreshIntervalId = null;
+        }
+    }
+
+    // VIEW LOGS button in left panel — switch tab and start live feed
+    const btnViewLogs = document.getElementById("btn-view-logs");
+    if (btnViewLogs) {
+        btnViewLogs.addEventListener("click", () => {
+            el.tabs.forEach(t => t.classList.remove("active"));
+            el.panes.forEach(p => p.classList.remove("active"));
+            const logsTab = document.querySelector('[data-tab="tab-logs"]');
+            if (logsTab) logsTab.classList.add("active");
+            document.getElementById("tab-logs").classList.add("active");
+            activeTab = "tab-logs";
+            startLogsRefresh();
+        });
+    }
+
+    // Manual Refresh button inside Logs tab
+    const btnLogRefresh = document.getElementById("btn-log-refresh");
+    if (btnLogRefresh) btnLogRefresh.addEventListener("click", loadLogs);
+
+    // Clear View button — clears the visible pre without touching the file
+    const btnLogClear = document.getElementById("btn-log-clear");
+    if (btnLogClear) btnLogClear.addEventListener("click", () => {
+        el.logsConsole.textContent = "— view cleared (file unchanged) —";
+    });
 
     // ---------------------------------------------------------------------------
     // Stats Tab Content
@@ -621,15 +698,30 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------------------------------
     // Auto Scan Loop Manager
     // ---------------------------------------------------------------------------
+    let autoScanRunning = false;   // guard: never fire a new scan while one is in flight
+
+    async function autoScanTick() {
+        if (autoScanRunning) return;   // previous scan still running — skip this tick
+        autoScanRunning = true;
+        try {
+            await triggerScan();
+        } finally {
+            autoScanRunning = false;
+        }
+    }
+
     el.autoScanToggle.addEventListener("change", () => {
         if (el.autoScanToggle.checked) {
-            const scanInterval = (configData.scan_interval_seconds || 60) * 1000;
-            autoScanIntervalId = setInterval(triggerScan, scanInterval);
-            log.info(`Auto scan loop enabled on ${scanInterval/1000}s interval.`);
+            const scanIntervalSec = configData.scan_interval_seconds || 60;
+            // Enforce a minimum of 30 seconds to avoid hammering broker APIs
+            const intervalMs = Math.max(scanIntervalSec, 30) * 1000;
+            autoScanIntervalId = setInterval(autoScanTick, intervalMs);
+            console.info(`Auto scan loop enabled — interval: ${intervalMs / 1000}s`);
         } else {
             if (autoScanIntervalId) {
                 clearInterval(autoScanIntervalId);
                 autoScanIntervalId = null;
+                console.info("Auto scan loop disabled.");
             }
         }
     });
@@ -648,6 +740,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Startup Initialization
     loadConfig();
+    loadSignals();
     loadPositions();
     loadIndexTicks();
     

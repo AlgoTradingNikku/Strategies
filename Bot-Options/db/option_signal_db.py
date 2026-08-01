@@ -12,11 +12,11 @@ import sqlite3
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import list, dict, Any, Optional
+from typing import List, Dict, Any, Optional
 
 log = logging.getLogger(__name__)
 
-DB_PATH = Path("c:/Rahul/Trade/Strategies/Bot-Options/option_signals.db")
+DB_PATH = Path(__file__).resolve().parents[1] / "option_signals.db"
 
 def get_db_connection() -> sqlite3.Connection:
     """Get connection to SQLite options signal database."""
@@ -66,7 +66,7 @@ def init_db():
         conn.close()
 
 
-def save_option_signal(sig: dict[str, Any]) -> int:
+def save_option_signal(sig: Dict[str, Any]) -> int:
     """Save an options signal to the database."""
     conn = get_db_connection()
     try:
@@ -115,7 +115,7 @@ def save_option_signal(sig: dict[str, Any]) -> int:
         conn.close()
 
 
-def get_option_signals(limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
+def get_option_signals(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
     """Retrieve paginated signals from the database."""
     conn = get_db_connection()
     try:

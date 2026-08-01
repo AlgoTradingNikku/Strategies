@@ -11,7 +11,7 @@ import sys
 import logging
 import pandas as pd
 from pathlib import Path
-from typing import Optional, dict, Any, list
+from typing import Optional, Dict, Any, List
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def evaluate_underlying_signals(
     underlying: str,
     timeframe: str,
     config: dict
-) -> list[dict[str, Any]]:
+) -> List[Dict[str, Any]]:
     """
     Stage 1: Scan underlying index chart using UTBot and SR.
     Returns a list of signal dicts containing underlying signal information.
@@ -102,14 +102,18 @@ def evaluate_underlying_signals(
     results = []
     last_row = df.iloc[-1]
     close_price = float(last_row["close"])
-    
+
     # We construct a base result structure
+    # _df and _sr_zones are passed through so downstream filters (e.g. candle patterns)
+    # can use the underlying chart data without re-fetching it.
     base_info = {
         "underlying": underlying,
         "underlying_close": close_price,
         "signal_time": df.index[-1].strftime("%Y-%m-%d %H:%M:%S") if hasattr(df.index[-1], "strftime") else str(df.index[-1]),
         "underlying_score": 0.0,
-        "triggered_engines": []
+        "triggered_engines": [],
+        "_df": df,
+        "_sr_zones": sr_zones,
     }
 
     # Underlying BUY signal -> Bullish, target calls (CE)

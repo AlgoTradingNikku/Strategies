@@ -9,11 +9,11 @@ import sqlite3
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import list, dict, Any, Optional
+from typing import List, Dict, Any, Optional
 
 log = logging.getLogger(__name__)
 
-DB_PATH = Path("c:/Rahul/Trade/Strategies/Bot-Options/option_trades.db")
+DB_PATH = Path(__file__).resolve().parents[1] / "option_trades.db"
 
 def get_db_connection() -> sqlite3.Connection:
     """Get connection to SQLite options trades database."""
@@ -187,7 +187,7 @@ def log_event(pos_id: int, event_type: str, old_val: Optional[float], new_val: O
         conn.close()
 
 
-def get_open_positions() -> list[dict[str, Any]]:
+def get_open_positions() -> List[Dict[str, Any]]:
     """Retrieve all open options positions."""
     conn = get_db_connection()
     try:
@@ -222,7 +222,7 @@ def get_closed_positions(limit: int = 50, offset: int = 0) -> list[dict[str, Any
         conn.close()
 
 
-def get_position_events(pos_id: int) -> list[dict[str, Any]]:
+def get_position_events(pos_id: int) -> List[Dict[str, Any]]:
     """Retrieve full audit log for a specific position."""
     conn = get_db_connection()
     try:

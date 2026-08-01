@@ -1,6 +1,8 @@
 .venv
 uv.lock
 options_bot\__pycache__
+options_bot\option_signals.db
+options_bot\option_trades.db
 PureOptionsBot\__pycache__
 Strategies.code-workspace
 

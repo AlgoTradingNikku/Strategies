@@ -7,7 +7,7 @@
 """
 
 import logging
-from typing import Optional, dict, list, Any
+from typing import Optional, Dict, List, Any
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ def fetch_option_chain(
     expiry_date: str,  # format '28OCT25'
     oa_client,
     strike_count: Optional[int] = None,
-) -> Optional[dict[str, Any]]:
+) -> Optional[Dict[str, Any]]:
     """
     Fetch live option chain from OpenAlgo for the specified underlying and expiry.
 
@@ -63,7 +63,7 @@ def get_atm_strike(chain_data: dict[str, Any]) -> Optional[float]:
 def get_option_symbols_for_strike(
     chain_data: dict[str, Any],
     strike: float,
-) -> Optional[tuple[str, str]]:
+) -> Optional[Tuple[str, str]]:
     """
     Retrieve CE and PE symbols for a given strike from fetched chain data.
     Returns (ce_symbol, pe_symbol) or None if strike not found.

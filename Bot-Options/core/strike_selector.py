@@ -8,7 +8,7 @@
 """
 
 import logging
-from typing import Optional, dict, list, Any
+from typing import Optional, Dict, List, Any
 
 log = logging.getLogger(__name__)
 
@@ -116,11 +116,11 @@ def select_strike(
         # This prevents trading illiquid contracts
         best_idx = atm_idx
         best_score = -1.0
-        
+
         # Consider a window around ATM to keep the trade relevant
         window_start = max(0, atm_idx - 5)
         window_end = min(len(strikes) - 1, atm_idx + 5)
-        
+
         for i in range(window_start, window_end + 1):
             item = chain_list[i]
             opt_data = item.get(option_type.lower(), {})
@@ -130,6 +130,39 @@ def select_strike(
             if score > best_score:
                 best_score = score
                 best_idx = i
+        target_idx = best_idx
+
+    elif method == "TREND":
+        # Bias strike selection based on signal direction:
+        # Bullish CE → slightly ITM (higher delta, more responsive to underlying move)
+        # Bearish PE → slightly ITM (same rationale)
+        # This gives a better risk/reward than ATM for trend-following trades.
+        trend_offset = int(selection_cfg.get("trend_itm_offset", 1))
+        if option_type == "CE":
+            target_idx = max(0, atm_idx - trend_offset)
+        else:
+            target_idx = min(len(strikes) - 1, atm_idx + trend_offset)
+
+    elif method == "DELTA":
+        # Select the strike whose option delta is closest to a configured target.
+        # Requires the chain to carry a 'delta' field (populated by optiongreeks or
+        # included in optionchain response). Falls back to ATM if delta is unavailable.
+        target_delta = float(selection_cfg.get("target_delta", 0.40))
+        best_idx = atm_idx
+        best_diff = float("inf")
+
+        for i, item in enumerate(chain_list):
+            opt_data = item.get(option_type.lower(), {})
+            delta = opt_data.get("delta")
+            if delta is None:
+                continue
+            diff = abs(float(delta) - target_delta)
+            if diff < best_diff:
+                best_diff = diff
+                best_idx = i
+
+        if best_diff == float("inf"):
+            log.warning("DELTA method: no delta values in chain data. Defaulting to ATM.")
         target_idx = best_idx
 
     else:
