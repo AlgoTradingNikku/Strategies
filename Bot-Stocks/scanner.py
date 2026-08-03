@@ -143,6 +143,18 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
     exchange     = config.get("exchange", "NSE")
     lookback_days = int(config.get("data", {}).get("lookback_days", 30))
 
+    # yfinance hard limits for intraday intervals — silently cap to avoid empty results.
+    # Limits: 1m=7d, 2m/5m/15m/30m/60m/90m practical safe cap is 7d (API often fails >7d).
+    _YF_MAX_DAYS = {"1m": 7, "2m": 7, "5m": 7, "15m": 7, "30m": 7, "60m": 7, "90m": 7}
+    if data_source == "yfinance" and timeframe in _YF_MAX_DAYS:
+        max_allowed = _YF_MAX_DAYS[timeframe]
+        if lookback_days > max_allowed:
+            log.debug(
+                "[%s] lookback_days=%d exceeds yfinance %s limit (%d days); capping to %d.",
+                symbol, lookback_days, timeframe, max_allowed, max_allowed,
+            )
+            lookback_days = max_allowed
+
     end_dt   = datetime.now()
     start_dt = end_dt - timedelta(days=lookback_days)
     start_str = start_dt.strftime("%Y-%m-%d")

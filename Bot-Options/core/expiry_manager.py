@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import time
 import logging
 from datetime import datetime, date, timedelta
 from typing import Optional
@@ -19,6 +20,14 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _EXPIRY_WEEKDAY = 3          # Thursday (Monday=0, Thursday=3)
 _MONTHLY_MAP    = {1,2,3,4,5,6,7,8,9,10,11,12}  # all months
+
+# ---------------------------------------------------------------------------
+# TTL cache for expiry selection — keyed by (underlying, preference).
+# Expiry dates change at most once a week; 10-minute cache eliminates
+# repeated oa_client.expiry() calls on every scan tick.
+# ---------------------------------------------------------------------------
+_expiry_cache: dict = {}          # key → (result_tuple, mono_timestamp)
+_EXPIRY_CACHE_TTL = 600           # seconds (10 minutes)
 
 
 def _parse_nse_date(s: str) -> date:
@@ -69,6 +78,9 @@ def select_expiry(
 ) -> Optional[tuple[date, str]]:
     """
     Select the target expiry based on preference and auto-roll logic.
+    Result is cached for _EXPIRY_CACHE_TTL seconds — the underlying's expiry
+    date list changes at most once a week so repeated broker API calls are
+    unnecessary.
 
     Parameters
     ----------
@@ -80,6 +92,12 @@ def select_expiry(
     Tuple of (date, oa_format_string) e.g. (date(2025,8,7), '07AUG25')
     or None if no expiry available.
     """
+    cache_key = (underlying, preference, auto_roll_days)
+    now_mono  = time.monotonic()
+    cached    = _expiry_cache.get(cache_key)
+    if cached and (now_mono - cached[1]) < _EXPIRY_CACHE_TTL:
+        return cached[0]   # return cached result — no broker call
+
     all_expiries = get_expiry_dates(underlying, oa_client)
     if not all_expiries:
         log.warning("[%s] No expiry dates available from OpenAlgo.", underlying)
@@ -149,7 +167,9 @@ def select_expiry(
 
     days_left = (chosen - today).days
     log.info("[%s] Selected expiry: %s (%d days left) [%s]", underlying, chosen, days_left, pref)
-    return chosen, _to_oa_expiry(chosen)
+    result = (chosen, _to_oa_expiry(chosen))
+    _expiry_cache[cache_key] = (result, now_mono)   # store in cache
+    return result
 
 
 def days_to_expiry(expiry: date) -> int:

@@ -220,6 +220,10 @@ class OptionPositionMonitor:
         target_premium = float(pos["target_premium"])
         peak_premium = float(pos.get("peak_premium", entry_premium))
 
+        # Always persist current LTP so the dashboard shows live P&L.
+        update_position_db(pos_id, current_premium=ltp)
+        pos["current_premium"] = ltp
+
         # Update peak premium if price hits new high
         if ltp > peak_premium:
             peak_premium = ltp

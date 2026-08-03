@@ -59,6 +59,11 @@ def init_db():
                 outcome_checked INTEGER DEFAULT 0
             )
         """)
+        # Performance indexes — safe to run on existing DB (IF NOT EXISTS guard)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp  ON option_signals(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_status     ON option_signals(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_symbol     ON option_signals(symbol)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_underlying ON option_signals(underlying)")
         conn.commit()
     except Exception as e:
         log.error("Failed to initialize option_signals database: %s", e)

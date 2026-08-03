@@ -45,7 +45,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 # Imports
-from option_scanner import run_option_scan, execute_options_trade
+from option_scanner import run_option_scan, execute_options_trade, get_daily_metrics
 from execution.position_monitor import OptionPositionMonitor
 from data.option_chain import fetch_option_chain
 from core.expiry_manager import select_expiry
@@ -70,11 +70,31 @@ def _get_oa_client(oa_cfg: dict):
     return _oa_client_cache[key]
 
 
+# ---------------------------------------------------------------------------
+# Config cache — avoid re-reading config.yml on every API request.
+# Invalidated after _CONFIG_CACHE_TTL seconds. The POST /api/config endpoint
+# invalidates it immediately on save so changes are always reflected.
+# ---------------------------------------------------------------------------
+_config_cache: dict = {"data": None, "ts": 0.0}
+_CONFIG_CACHE_TTL = 30   # seconds
+
 def load_config() -> dict:
-    """Load config.yml safely."""
+    """Load config.yml with a 30-second in-process cache."""
+    import time as _t
+    now = _t.monotonic()
+    if _config_cache["data"] is not None and (now - _config_cache["ts"]) < _CONFIG_CACHE_TTL:
+        return _config_cache["data"]
     path = _bot_dir / "config.yml"
     with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+    _config_cache["data"] = data
+    _config_cache["ts"]   = now
+    return data
+
+def _invalidate_config_cache():
+    """Call after writing config.yml so the next request gets fresh data."""
+    _config_cache["data"] = None
+    _config_cache["ts"]   = 0.0
 
 # Initialize monitor
 _monitor = OptionPositionMonitor()
@@ -269,6 +289,18 @@ class FiltersConfig(BaseModel):
     candle_patterns_enabled: bool
     signal_history_enabled: bool
     outcome_check_hours: int
+    # ADX filter thresholds (drawer-configurable)
+    adx_filter_enabled: bool = False
+    adx_min_threshold: float = 20.0
+    adx_strong_threshold: float = 25.0
+    adx_moderate_threshold: float = 20.0
+    # RSI filter thresholds (drawer-configurable)
+    rsi_filter_enabled: bool = False
+    rsi_period: int = 14
+    rsi_buy_min: float = 40.0
+    rsi_buy_max: float = 65.0
+    rsi_sell_min: float = 35.0
+    rsi_sell_max: float = 60.0
 
 class ExecutionConfig(BaseModel):
     order_mode: str
@@ -277,6 +309,7 @@ class ExecutionConfig(BaseModel):
     num_lots: int
     slippage_pts: float
     strategy_tag: str
+    fill_timeout_seconds: int = 30
 
 class ProfitLockLevel(BaseModel):
     threshold_pct: float
@@ -355,6 +388,7 @@ class BotSettingsConfig(BaseModel):
     market_open: str
     market_close: str
     auto_refresh_enabled: bool
+    auto_scan_enabled: bool = False
 
 class ConfigUpdateRequest(BaseModel):
     platform: str
@@ -366,6 +400,11 @@ class ConfigUpdateRequest(BaseModel):
     option_data_source: str
     strategy: StrategyConfig
     sr_channels: SRChannelsConfig
+    scan_timeframe: str = "5m"
+    scan_interval_seconds: int = 60
+    signal_lookback_candles: int = 2
+    min_underlying_score: float = 60.0
+    scan_dedup_window_seconds: int = 900
     option_chart_confirmation: OptionChartConfConfig
     filters: FiltersConfig
     execution: ExecutionConfig
@@ -426,6 +465,7 @@ def update_config(req: ConfigUpdateRequest):
         with open(config_path, "w", encoding="utf-8") as fh:
             ryaml.dump(commented_map, fh)
 
+        _invalidate_config_cache()   # next request reads fresh file immediately
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:
         log.error("Failed to save config: %s", e)
@@ -593,6 +633,59 @@ async def manual_order_placement(req: ManualOrderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ---------------------------------------------------------------------------
+# Risk Status — exposes live circuit breaker state for the dashboard
+# ---------------------------------------------------------------------------
+@app.get("/api/risk-status")
+def get_risk_status():
+    """
+    Return the live risk dashboard state: daily P&L, trades today,
+    consecutive losses, cooldown status, and capital utilisation.
+    """
+    try:
+        cfg = load_config()
+        risk_cfg = cfg.get("risk_management", {})
+        trades_today, daily_pnl, consec_losses = get_daily_metrics()
+        open_positions = get_open_positions()
+
+        # Cooldown state
+        from core.option_risk import _cooldown_until
+        from datetime import datetime as _dt
+        cooldown_active = False
+        cooldown_remaining_min = 0
+        if _cooldown_until and _dt.now() < _cooldown_until:
+            cooldown_active = True
+            cooldown_remaining_min = max(0, int((_cooldown_until - _dt.now()).total_seconds() / 60))
+
+        # Capital utilisation
+        capital_total = float(risk_cfg.get("capital_allocation", 100000.0))
+        capital_used = sum(
+            float(p.get("entry_premium", 0)) * int(p.get("quantity", 1))
+            for p in open_positions
+        )
+        capital_pct = round((capital_used / capital_total * 100), 1) if capital_total > 0 else 0.0
+
+        return {
+            "status": "success",
+            "trades_today": trades_today,
+            "max_trades_per_day": int(risk_cfg.get("max_trades_per_day", 10)),
+            "daily_pnl": round(daily_pnl, 2),
+            "max_daily_loss": float(risk_cfg.get("max_daily_loss_amount", 5000.0)),
+            "consecutive_losses": consec_losses,
+            "consecutive_loss_limit": int(risk_cfg.get("consecutive_loss_limit", 3)),
+            "open_legs": len(open_positions),
+            "max_legs": int(risk_cfg.get("max_simultaneous_positions", 5)),
+            "cooldown_active": cooldown_active,
+            "cooldown_remaining_min": cooldown_remaining_min,
+            "capital_total": capital_total,
+            "capital_used": round(capital_used, 2),
+            "capital_pct": capital_pct,
+        }
+    except Exception as e:
+        log.error("Risk status fetch failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/statistics")
 def get_statistics_endpoint(days: int = 30):
     """Get Win/Loss stats."""
@@ -690,64 +783,90 @@ def get_portfolio_greeks():
 
 # ---------------------------------------------------------------------------
 # Item 9: Live market pulse — VIX, PCR, spot prices
+#
+# Design: spot LTP is fetched fresh every call (fast, 1 quotes call per index).
+# VIX and PCR require an option-chain fetch which is slow (~1-2 s per underlying).
+# They are cached server-side for _PULSE_SLOW_TTL seconds so repeated dashboard
+# polls never block on the broker API.
 # ---------------------------------------------------------------------------
+import time as _time
+
+_pulse_slow_cache: dict = {}          # symbol → {pcr, vix, ts}
+_PULSE_SLOW_TTL = 60                  # seconds between PCR / VIX refreshes
+
 @app.get("/api/market-pulse")
 def get_market_pulse():
     """
-    Returns live NIFTY / BANKNIFTY spot, India VIX, and Put-Call Ratio (PCR).
-    PCR is computed from the option chain's total CE vs PE open interest for the
-    nearest weekly expiry — the only statistically meaningful PCR definition.
+    Returns live NIFTY / BANKNIFTY spot, India VIX, and PCR.
+    Spot LTP: always fresh.
+    VIX + PCR: served from a 60-second server-side cache to avoid hammering
+    the option-chain endpoint on every 5-second dashboard poll.
     """
     try:
         cfg = load_config()
         oa_client = _get_oa_client(cfg.get("openalgo", {}))
+        now = _time.monotonic()
 
         pulse: dict = {"status": "success", "underlyings": [], "vix": None, "pcr": {}}
 
-        # 1. Spot prices for each enabled underlying
+        # ── 1. Spot LTP (fast: 1 quotes call per index) ───────────────────
         for und in cfg.get("underlyings", []):
             if not und.get("enabled", True):
                 continue
             name = und["name"]
             try:
                 q = oa_client.quotes(symbol=name, exchange="NSE_INDEX")
-                ltp = float(q.get("data", {}).get("ltp") or q.get("ltp", 0))
+                ltp        = float(q.get("data", {}).get("ltp") or q.get("ltp", 0))
                 change_pct = float(q.get("data", {}).get("change_percent", 0) or 0)
                 pulse["underlyings"].append({"symbol": name, "ltp": ltp, "change_pct": round(change_pct, 2)})
             except Exception:
                 pulse["underlyings"].append({"symbol": name, "ltp": 0.0, "change_pct": 0.0})
 
-        # 2. India VIX
-        try:
-            vix_q = oa_client.quotes(symbol="INDIA VIX", exchange="NSE_INDEX")
-            vix_ltp = float(vix_q.get("data", {}).get("ltp") or vix_q.get("ltp", 0))
-            pulse["vix"] = round(vix_ltp, 2)
-        except Exception:
-            pulse["vix"] = None
+        # ── 2. VIX + PCR — serve from cache; refresh only when TTL expires ─
+        cache_stale = (now - _pulse_slow_cache.get("_ts", 0)) > _PULSE_SLOW_TTL
 
-        # 3. PCR per underlying (total PE OI / total CE OI from nearest weekly expiry chain)
-        for und in cfg.get("underlyings", []):
-            if not und.get("enabled", True):
-                continue
-            name = und["name"]
+        if cache_stale:
+            # VIX
             try:
-                pref    = cfg.get("strike_selection", {}).get("expiry_preference", "WEEKLY")
-                roll_d  = int(cfg.get("strike_selection", {}).get("auto_roll_days", 1))
-                expiry_res = select_expiry(name, oa_client, pref, roll_d)
-                if not expiry_res:
-                    continue
-                _, expiry_str = expiry_res
-                chain = oa_client.optionchain(underlying=name, exchange="NSE_INDEX", expiry_date=expiry_str)
-                if not isinstance(chain, dict) or chain.get("status") != "success":
-                    continue
-                total_ce_oi = sum(float(row.get("ce", {}).get("oi", 0)) for row in chain.get("chain", []))
-                total_pe_oi = sum(float(row.get("pe", {}).get("oi", 0)) for row in chain.get("chain", []))
-                pcr = round(total_pe_oi / total_ce_oi, 3) if total_ce_oi > 0 else 0.0
-                pulse["pcr"][name] = {"total_ce_oi": int(total_ce_oi), "total_pe_oi": int(total_pe_oi), "pcr": pcr}
-            except Exception as pcr_ex:
-                log.debug("PCR calc failed for %s: %s", name, pcr_ex)
+                vix_q   = oa_client.quotes(symbol="INDIA VIX", exchange="NSE_INDEX")
+                vix_ltp = float(vix_q.get("data", {}).get("ltp") or vix_q.get("ltp", 0))
+                _pulse_slow_cache["vix"] = round(vix_ltp, 2)
+            except Exception:
+                _pulse_slow_cache.setdefault("vix", None)
 
+            # PCR per underlying
+            _pulse_slow_cache["pcr"] = {}
+            for und in cfg.get("underlyings", []):
+                if not und.get("enabled", True):
+                    continue
+                name = und["name"]
+                try:
+                    pref   = cfg.get("strike_selection", {}).get("expiry_preference", "WEEKLY")
+                    roll_d = int(cfg.get("strike_selection", {}).get("auto_roll_days", 1))
+                    expiry_res = select_expiry(name, oa_client, pref, roll_d)
+                    if not expiry_res:
+                        continue
+                    _, expiry_str = expiry_res
+                    chain = oa_client.optionchain(underlying=name, exchange="NSE_INDEX", expiry_date=expiry_str)
+                    if not isinstance(chain, dict) or chain.get("status") != "success":
+                        continue
+                    total_ce_oi = sum(float(row.get("ce", {}).get("oi", 0)) for row in chain.get("chain", []))
+                    total_pe_oi = sum(float(row.get("pe", {}).get("oi", 0)) for row in chain.get("chain", []))
+                    pcr = round(total_pe_oi / total_ce_oi, 3) if total_ce_oi > 0 else 0.0
+                    _pulse_slow_cache["pcr"][name] = {
+                        "total_ce_oi": int(total_ce_oi),
+                        "total_pe_oi": int(total_pe_oi),
+                        "pcr": pcr,
+                    }
+                except Exception as pcr_ex:
+                    log.debug("PCR calc failed for %s: %s", name, pcr_ex)
+
+            _pulse_slow_cache["_ts"] = now
+
+        pulse["vix"] = _pulse_slow_cache.get("vix")
+        pulse["pcr"] = _pulse_slow_cache.get("pcr", {})
         return pulse
+
     except Exception as e:
         log.error("Market pulse fetch failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))

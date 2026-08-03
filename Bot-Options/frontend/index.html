@@ -43,6 +43,9 @@
         <div class="header-right">
             <span class="market-status open" id="market-status-badge"><i class="fa-solid fa-circle"></i> MARKET OPEN</span>
             <span class="clock-display" id="clock-time">09:15:00 IST</span>
+            <button class="btn-gear" id="btn-settings-open" title="Advanced Settings">
+                <i class="fa-solid fa-gear"></i>
+            </button>
         </div>
     </header>
 
@@ -55,9 +58,23 @@
             
             <div class="config-section">
                 <label class="section-label">Underlying Target</label>
-                <div class="btn-group toggle-group" id="underlying-select">
-                    <button class="btn toggle-btn active" data-val="NIFTY">NIFTY</button>
-                    <button class="btn toggle-btn" data-val="BANKNIFTY">BANKNIFTY</button>
+                <div class="underlying-row">
+                    <div class="btn-group toggle-group" id="underlying-select">
+                        <button class="btn toggle-btn active" data-val="NIFTY">NIFTY</button>
+                        <button class="btn toggle-btn" data-val="BANKNIFTY">BANKNIFTY</button>
+                    </div>
+                    <a id="tv-underlying-link"
+                       href="https://www.tradingview.com/chart/H8qWRNcF/?symbol=NIFTY"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="tv-underlying-btn"
+                       title="Open NIFTY chart on TradingView">
+                        <svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" class="tv-underlying-icon">
+                            <rect width="28" height="28" rx="6" fill="#131722"/>
+                            <polyline points="4,20 9,13 13,16 18,9 24,9" fill="none" stroke="#2962FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="24" cy="9" r="2" fill="#2962FF"/>
+                        </svg>
+                    </a>
                 </div>
             </div>
 
@@ -96,20 +113,35 @@
                 </div>
             </div>
 
-            <div class="config-section">
-                <label class="section-label">Stage 3 Confirmation</label>
-                <div class="toggle-control">
-                    <span>Option Premium Chart Scan</span>
-                    <label class="switch">
-                        <input type="checkbox" id="config-stage3-enabled" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
+            <!-- ── STAGE 1: Index chart engines + filters ─────────────── -->
             <div class="config-section border-top">
-                <h3 class="subsection-title">Technical Filters</h3>
-                
+                <div class="stage-band stage-band-1">
+                    <i class="fa-solid fa-chart-candlestick"></i> STAGE 1 — INDEX CHART
+                </div>
+
+                <!-- Signal engines (UTBot + SR) -->
+                <div class="engine-row">
+                    <div class="engine-toggle-block">
+                        <div class="toggle-control">
+                            <span class="engine-label"><i class="fa-solid fa-bolt"></i> UTBot</span>
+                            <label class="switch">
+                                <input type="checkbox" id="config-ut-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-control">
+                            <span class="engine-label"><i class="fa-solid fa-layer-group"></i> SR Lines</span>
+                            <label class="switch">
+                                <input type="checkbox" id="config-sr-enabled" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Index chart filters -->
+                <div class="filter-sub-label">Filters on index chart</div>
+
                 <div class="toggle-control">
                     <span>Multi-Timeframe Trend (MTF)</span>
                     <label class="switch">
@@ -124,6 +156,21 @@
                         <input type="checkbox" id="config-filter-ema">
                         <span class="slider"></span>
                     </label>
+                </div>
+
+                <div class="toggle-control">
+                    <span>Candle Patterns at S/R</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-filter-candle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- ── STAGE 2: Option contract scoring ───────────────────── -->
+            <div class="config-section border-top">
+                <div class="stage-band stage-band-2">
+                    <i class="fa-solid fa-file-contract"></i> STAGE 2 — OPTION CONTRACT
                 </div>
 
                 <div class="toggle-control">
@@ -151,15 +198,22 @@
                 </div>
             </div>
 
+            <!-- ── STAGE 3: Option premium chart confirmation ─────────── -->
+            <div class="config-section border-top">
+                <div class="stage-band stage-band-3">
+                    <i class="fa-solid fa-chart-line"></i> STAGE 3 — PREMIUM CHART
+                </div>
+
+                <div class="toggle-control">
+                    <span>Option Premium Chart Scan</span>
+                    <label class="switch">
+                        <input type="checkbox" id="config-stage3-enabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <div class="config-actions">
-                <button class="btn btn-primary btn-block" id="btn-scan-now">
-                    <i class="fa-solid fa-play"></i> SCAN NOW
-                </button>
-
-                <button class="btn btn-secondary btn-block margin-top-sm" id="btn-view-logs">
-                    <i class="fa-solid fa-terminal"></i> VIEW LOGS
-                </button>
-
                 <div class="toggle-control margin-top-sm">
                     <span>Auto-Scan Loop</span>
                     <label class="switch">
@@ -192,8 +246,13 @@
                 <button class="tab-btn active" data-tab="tab-signals">
                     <i class="fa-solid fa-rss"></i> SIGNALS <span class="badge" id="signals-count">0</span>
                 </button>
+                <!-- Options Chain tab temporarily hidden
                 <button class="tab-btn" data-tab="tab-chain">
                     <i class="fa-solid fa-list-ol"></i> OPTIONS CHAIN
+                </button>
+                -->
+                <button class="tab-btn tab-btn-scan" id="btn-scan-now" title="Trigger a full 3-stage scan now">
+                    <i class="fa-solid fa-play"></i> SCAN NOW
                 </button>
                 <button class="tab-btn" data-tab="tab-analytics">
                     <i class="fa-solid fa-chart-line"></i> ANALYTICS
@@ -206,6 +265,24 @@
             <div class="tab-content-container">
                 <!-- Tab: Signals -->
                 <div class="tab-pane active" id="tab-signals">
+                    <!-- Filter / Sort toolbar -->
+                    <div class="signals-toolbar">
+                        <div class="sig-filter-group">
+                            <button class="sig-filter-btn active" data-filter="all">ALL</button>
+                            <button class="sig-filter-btn" data-filter="BUY">BUY</button>
+                            <button class="sig-filter-btn" data-filter="SELL">SELL</button>
+                            <button class="sig-filter-btn" data-filter="NIFTY">NIFTY</button>
+                            <button class="sig-filter-btn" data-filter="BANKNIFTY">BNKN</button>
+                        </div>
+                        <div class="sig-sort-group">
+                            <span class="sig-sort-label">Sort:</span>
+                            <select id="sig-sort-select" class="sig-sort-select">
+                                <option value="newest">Newest</option>
+                                <option value="score">Score ↓</option>
+                                <option value="premium">Premium ↓</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="signals-container" id="signals-list">
                         <!-- Dynamic signal cards insertion -->
                         <div class="empty-state">
@@ -281,6 +358,33 @@
                             <span class="stats-label">Avg PnL Per Trade</span>
                             <span class="stats-value text-mono" id="stat-avg-pnl">+0.0%</span>
                         </div>
+                    </div>
+
+                    <!-- Trade History Table -->
+                    <div class="analytics-section-header">
+                        <span><i class="fa-solid fa-clock-rotate-left"></i> CLOSED TRADE HISTORY</span>
+                        <button class="btn btn-xs btn-secondary" id="btn-history-refresh">
+                            <i class="fa-solid fa-rotate-right"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="history-table-wrap">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Type</th>
+                                    <th>Entry ₹</th>
+                                    <th>Exit ₹</th>
+                                    <th>PnL ₹</th>
+                                    <th>PnL %</th>
+                                    <th>Exit Reason</th>
+                                    <th>Closed At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-tbody">
+                                <tr><td colspan="8" class="empty-row">No closed trades yet.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -383,5 +487,406 @@
 
     <!-- UI Scripts -->
     <script src="index.js"></script>
+
+    <!-- ================================================================
+         SETTINGS DRAWER — slides in from right, overlays right panel.
+         Organised into 6 accordion sections so all parameters are visible
+         at a glance without overwhelming the primary workspace.
+         ================================================================ -->
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+    <aside class="settings-drawer" id="settings-drawer">
+
+        <!-- Drawer Header -->
+        <div class="drawer-header">
+            <span class="drawer-title"><i class="fa-solid fa-gear"></i> ADVANCED SETTINGS</span>
+            <button class="drawer-close" id="btn-settings-close" title="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="drawer-body">
+
+            <!-- ── SECTION 1: SIGNAL ENGINE ──────────────────────── -->
+            <div class="acc-section" id="acc-signal-engine">
+                <button class="acc-header" data-target="acc-body-signal">
+                    <span><i class="fa-solid fa-waveform-lines"></i> SIGNAL ENGINE</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow"></i>
+                </button>
+                <div class="acc-body" id="acc-body-signal">
+
+                    <p class="acc-hint">UTBot detects momentum reversals. SR Channels identify key support/resistance zones. Both feed into the composite score.</p>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">UTBot Sensitivity (key_value)</label>
+                        <div class="drawer-input-row">
+                            <input type="range" id="cfg-ut-keyval" min="0.5" max="3.0" step="0.1" value="1.0" class="range-slider">
+                            <span class="range-readout" id="cfg-ut-keyval-lbl">1.0</span>
+                        </div>
+                        <p class="field-hint">Lower = more signals (noisier). Higher = fewer signals (more selective).</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">ATR Period</label>
+                        <input type="number" id="cfg-ut-atr" min="1" max="20" value="2" class="drawer-input">
+                        <p class="field-hint">ATR window for UTBot trailing stop calculation.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Heikin Ashi Candles</label>
+                        <div class="toggle-control">
+                            <span class="field-hint" style="margin:0">Smooth out noise — reduces signal frequency.</span>
+                            <label class="switch"><input type="checkbox" id="cfg-ut-ha"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="drawer-divider"></div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">SR Pivot Period</label>
+                        <input type="number" id="cfg-sr-pivot" min="4" max="30" value="10" class="drawer-input">
+                        <p class="field-hint">Bars on each side required to confirm a pivot high/low.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">SR Channel Width (%)</label>
+                        <input type="number" id="cfg-sr-width" min="1" max="20" step="0.5" value="5.0" class="drawer-input">
+                        <p class="field-hint">Max zone width as % of 300-bar price range. Wider = more zones qualify.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Proximity to Zone (%)</label>
+                        <input type="number" id="cfg-sr-proximity" min="0.05" max="2.0" step="0.05" value="0.2" class="drawer-input">
+                        <p class="field-hint">How close to an S/R boundary to count as "near zone".</p>
+                    </div>
+
+                    <div class="drawer-divider"></div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Gate 1 — Min Index Score</label>
+                        <div class="score-slider-wrap">
+                            <input type="range" id="cfg-gate1" min="0" max="100" step="5" value="60" class="range-slider score-range">
+                            <div class="score-slider-labels">
+                                <span class="score-lbl-lo">0 — Lenient</span>
+                                <span class="score-lbl-val" id="cfg-gate1-lbl">60</span>
+                                <span class="score-lbl-hi">100 — Strict</span>
+                            </div>
+                        </div>
+                        <p class="field-hint">Minimum UTBot+SR composite score on the <em>index chart</em> to proceed to Stage 2.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Gate 2 — Min Final Score</label>
+                        <div class="score-slider-wrap">
+                            <input type="range" id="cfg-gate2" min="0" max="100" step="5" value="60" class="range-slider score-range">
+                            <div class="score-slider-labels">
+                                <span class="score-lbl-lo">0 — Lenient</span>
+                                <span class="score-lbl-val" id="cfg-gate2-lbl">60</span>
+                                <span class="score-lbl-hi">100 — Strict</span>
+                            </div>
+                        </div>
+                        <p class="field-hint">Minimum combined score (after all Stage 2 filter adjustments + Stage 3 bonus/penalty) to emit a signal.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Signal Lookback Candles</label>
+                        <input type="number" id="cfg-lookback" min="1" max="5" value="2" class="drawer-input">
+                        <p class="field-hint">How many of the most recent closed candles to check for a signal.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Scan Timeframe</label>
+                        <select id="cfg-timeframe" class="drawer-select">
+                            <option value="1m">1 min</option>
+                            <option value="3m">3 min</option>
+                            <option value="5m" selected>5 min</option>
+                            <option value="10m">10 min</option>
+                            <option value="15m">15 min</option>
+                        </select>
+                        <p class="field-hint">Candle timeframe used for the underlying index signal scan.</p>
+                    </div>
+
+                </div><!-- /acc-body-signal -->
+            </div>
+
+            <!-- ── SECTION 2: FILTERS ─────────────────────────────── -->
+            <div class="acc-section" id="acc-filters">
+                <button class="acc-header" data-target="acc-body-filters">
+                    <span><i class="fa-solid fa-filter"></i> FILTERS &amp; SCORING</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow"></i>
+                </button>
+                <div class="acc-body" id="acc-body-filters">
+
+                    <p class="acc-hint">Filters gate or penalise signals. Toggles on the left panel control on/off; these settings control the numeric thresholds.</p>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">MTF Higher Timeframe</label>
+                        <select id="cfg-mtf-tf" class="drawer-select">
+                            <option value="5m">5 min</option>
+                            <option value="10m">10 min</option>
+                            <option value="15m" selected>15 min</option>
+                            <option value="30m">30 min</option>
+                            <option value="1h">1 hour</option>
+                        </select>
+                        <p class="field-hint">UTBot trend direction on this higher timeframe must align with the signal.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">EMA Period</label>
+                        <input type="number" id="cfg-ema-period" min="20" max="500" value="200" class="drawer-input">
+                        <p class="field-hint">Price must be above (CE) or below (PE) this EMA to qualify.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">ADX Minimum Threshold</label>
+                        <input type="number" id="cfg-adx-min" min="10" max="50" step="1" value="20" class="drawer-input">
+                        <p class="field-hint">Only active when ADX filter is enabled. Rejects weak-trend signals.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Time Decay Threshold (days)</label>
+                        <input type="number" id="cfg-decay-days" min="1" max="10" value="3" class="drawer-input">
+                        <p class="field-hint">Options expiring in fewer than this many days receive a theta-decay penalty.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Signal Dedup Window (min)</label>
+                        <input type="number" id="cfg-dedup-mins" min="5" max="120" step="5" value="15" class="drawer-input">
+                        <p class="field-hint">Suppress identical symbol+direction signal within this window. Prevents Telegram spam and duplicate auto-orders.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Candle Patterns</label>
+                        <div class="toggle-control">
+                            <span class="field-hint" style="margin:0">Hammer, Engulfing, Shooting Star near S/R zones.</span>
+                            <label class="switch"><input type="checkbox" id="cfg-candle-patterns" checked><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                </div><!-- /acc-body-filters -->
+            </div>
+
+            <!-- ── SECTION 3: EXECUTION ───────────────────────────── -->
+            <div class="acc-section" id="acc-execution">
+                <button class="acc-header acc-header--open" data-target="acc-body-execution">
+                    <span><i class="fa-solid fa-bolt"></i> EXECUTION</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow acc-arrow--open"></i>
+                </button>
+                <div class="acc-body acc-body--open" id="acc-body-execution">
+
+                    <p class="acc-hint">Core execution parameters. Switch to AUTO only when you are confident in the signal quality.</p>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Order Mode</label>
+                        <div class="order-mode-toggle" id="order-mode-toggle">
+                            <button class="mode-btn active" data-mode="manual">
+                                <i class="fa-solid fa-hand-pointer"></i> MANUAL
+                            </button>
+                            <button class="mode-btn" data-mode="auto">
+                                <i class="fa-solid fa-robot"></i> AUTO
+                            </button>
+                        </div>
+                        <p class="field-hint">MANUAL = signals shown, you click Execute. AUTO = orders placed instantly on signal.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Number of Lots</label>
+                        <input type="number" id="cfg-num-lots" min="1" max="50" value="1" class="drawer-input">
+                        <p class="field-hint">Lots per trade. Quantity = lots × underlying lot size (NIFTY 75 / BANKNIFTY 30).</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Order Type</label>
+                        <select id="cfg-order-type" class="drawer-select">
+                            <option value="LIMIT">LIMIT</option>
+                            <option value="MARKET">MARKET</option>
+                        </select>
+                        <p class="field-hint">LIMIT uses signal premium as the price. MARKET fills immediately at best available.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Product</label>
+                        <select id="cfg-order-product" class="drawer-select">
+                            <option value="MIS">MIS (Intraday)</option>
+                            <option value="NRML">NRML (Positional)</option>
+                        </select>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Fill Timeout (seconds)</label>
+                        <input type="number" id="cfg-fill-timeout" min="5" max="120" value="30" class="drawer-input">
+                        <p class="field-hint">If LIMIT order not filled within this time, position is NOT opened.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Strategy Tag</label>
+                        <input type="text" id="cfg-strategy-tag" maxlength="30" value="OptionsBot" class="drawer-input">
+                        <p class="field-hint">Label sent to OpenAlgo / broker for order tracking.</p>
+                    </div>
+
+                </div><!-- /acc-body-execution -->
+            </div>
+
+            <!-- ── SECTION 4: TRADE MANAGEMENT ───────────────────── -->
+            <div class="acc-section" id="acc-trade-mgmt">
+                <button class="acc-header" data-target="acc-body-trade">
+                    <span><i class="fa-solid fa-chart-line"></i> TRADE MANAGEMENT</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow"></i>
+                </button>
+                <div class="acc-body" id="acc-body-trade">
+
+                    <p class="acc-hint">All percentages are relative to the option's <strong>entry premium</strong> — not the underlying price.</p>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Stop Loss (%)</label>
+                        <div class="drawer-input-row">
+                            <input type="range" id="cfg-sl-pct" min="5" max="80" step="5" value="30" class="range-slider">
+                            <span class="range-readout" id="cfg-sl-pct-lbl">30%</span>
+                        </div>
+                        <p class="field-hint">Exit if premium falls this % below entry. E.g. 30% → SL at ₹70 on a ₹100 entry.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Target (%)</label>
+                        <div class="drawer-input-row">
+                            <input type="range" id="cfg-tgt-pct" min="10" max="200" step="5" value="50" class="range-slider">
+                            <span class="range-readout" id="cfg-tgt-pct-lbl">50%</span>
+                        </div>
+                        <p class="field-hint">Exit if premium rises this % above entry. E.g. 50% → Target ₹150 on a ₹100 entry.</p>
+                    </div>
+
+                    <div class="drawer-divider"></div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Trailing SL Activation (%)</label>
+                        <input type="number" id="cfg-trail-act" min="5" max="100" step="5" value="25" class="drawer-input">
+                        <p class="field-hint">Start trailing only after premium gains this % from entry.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Trailing SL Distance (%)</label>
+                        <input type="number" id="cfg-trail-dist" min="5" max="50" step="5" value="15" class="drawer-input">
+                        <p class="field-hint">Keep SL this % below the peak premium reached.</p>
+                    </div>
+
+                    <div class="drawer-divider"></div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Partial Exit Target (%)</label>
+                        <input type="number" id="cfg-partial-tgt" min="10" max="100" step="5" value="30" class="drawer-input">
+                        <p class="field-hint">Exit 50% of position when premium gains this %. SL moves to break-even.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Expiry Auto-Exit (min before close)</label>
+                        <input type="number" id="cfg-expiry-mins" min="5" max="60" step="5" value="10" class="drawer-input">
+                        <p class="field-hint">Square off all open positions this many minutes before 15:30 on expiry day.</p>
+                    </div>
+
+                </div><!-- /acc-body-trade -->
+            </div>
+
+            <!-- ── SECTION 5: RISK MANAGEMENT ────────────────────── -->
+            <div class="acc-section" id="acc-risk">
+                <button class="acc-header" data-target="acc-body-risk">
+                    <span><i class="fa-solid fa-shield-halved"></i> RISK MANAGEMENT</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow"></i>
+                </button>
+                <div class="acc-body" id="acc-body-risk">
+
+                    <p class="acc-hint">These are circuit breakers. When any limit is hit, the scanner pauses and no new orders are placed.</p>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Max Simultaneous Positions</label>
+                        <input type="number" id="cfg-max-pos" min="1" max="20" value="5" class="drawer-input">
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Max Trades Per Day</label>
+                        <input type="number" id="cfg-max-trades" min="1" max="50" value="10" class="drawer-input">
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Max Daily Loss (₹)</label>
+                        <input type="number" id="cfg-max-loss-amt" min="500" max="200000" step="500" value="5000" class="drawer-input">
+                        <p class="field-hint">Hard stop — no new trades if daily loss exceeds this amount.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Consecutive Loss Limit</label>
+                        <input type="number" id="cfg-consec-loss" min="1" max="10" value="3" class="drawer-input">
+                        <p class="field-hint">Trigger cooldown after this many back-to-back losing trades.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Cooldown Period (minutes)</label>
+                        <input type="number" id="cfg-cooldown-mins" min="5" max="120" step="5" value="30" class="drawer-input">
+                        <p class="field-hint">Pause trading for this long after consecutive loss limit is hit.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Capital Allocated (₹)</label>
+                        <input type="number" id="cfg-capital" min="10000" max="10000000" step="10000" value="100000" class="drawer-input">
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Max Capital Per Trade (₹)</label>
+                        <input type="number" id="cfg-capital-per-trade" min="5000" max="500000" step="5000" value="50000" class="drawer-input">
+                        <p class="field-hint">Maximum premium outlay for a single trade entry.</p>
+                    </div>
+
+                </div><!-- /acc-body-risk -->
+            </div>
+
+            <!-- ── SECTION 6: SCAN SCHEDULE ───────────────────────── -->
+            <div class="acc-section" id="acc-schedule">
+                <button class="acc-header" data-target="acc-body-schedule">
+                    <span><i class="fa-solid fa-clock"></i> SCAN SCHEDULE</span>
+                    <i class="fa-solid fa-chevron-down acc-arrow"></i>
+                </button>
+                <div class="acc-body" id="acc-body-schedule">
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Auto-Scan Interval (seconds)</label>
+                        <input type="number" id="cfg-scan-interval" min="30" max="600" step="10" value="60" class="drawer-input">
+                        <p class="field-hint">Minimum 30s enforced to avoid hammering broker APIs.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Market Hours Check</label>
+                        <div class="toggle-control">
+                            <span class="field-hint" style="margin:0">Block scans outside 09:15–15:30 on weekdays.</span>
+                            <label class="switch"><input type="checkbox" id="cfg-mkt-hours"><span class="slider"></span></label>
+                        </div>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Data Lookback (days)</label>
+                        <input type="number" id="cfg-lookback-days" min="5" max="90" value="30" class="drawer-input">
+                        <p class="field-hint">Days of OHLCV history fetched per scan cycle.</p>
+                    </div>
+
+                    <div class="drawer-row">
+                        <label class="drawer-label">Log Level</label>
+                        <select id="cfg-log-level" class="drawer-select">
+                            <option value="INFO" selected>INFO</option>
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="WARNING">WARNING</option>
+                        </select>
+                        <p class="field-hint">DEBUG floods the log with per-scan details — useful for tuning.</p>
+                    </div>
+
+                </div><!-- /acc-body-schedule -->
+            </div>
+
+        </div><!-- /drawer-body -->
+
+        <!-- Drawer Footer -->
+        <div class="drawer-footer">
+            <button class="btn btn-primary drawer-save-btn" id="btn-settings-save">
+                <i class="fa-solid fa-floppy-disk"></i> SAVE SETTINGS
+            </button>
+            <span class="drawer-save-status" id="drawer-save-status"></span>
+        </div>
+
+    </aside><!-- /settings-drawer -->
+
 </body>
 </html>

@@ -132,7 +132,7 @@ flattrade:
 
 # MStock (Mirae Asset) — access_token from MStock Developer Portal
 mstock:
-  client_id: ""
+  client_id: "MA19673"
   access_token: ""                    # Long-lived Bearer token from developer.miraeassetcm.com
   order_product: "MIS"
   order_quantity: 1
@@ -168,7 +168,7 @@ tvdatafeed:
 # 5. DATA & SYSTEM SETTINGS
 # ------------------------------------------------------------
 data:
-  lookback_days: 30                   # Days of historical data to fetch
+  lookback_days: 5                   # Days of historical data to fetch
 
 bot:
   log_level: "INFO"                   # Console logging level (INFO, DEBUG, WARNING, etc.)

@@ -80,7 +80,14 @@ def init_db():
                 FOREIGN KEY(position_id) REFERENCES option_positions(id)
             )
         """)
-        
+
+        # Performance indexes — safe on existing DBs (IF NOT EXISTS guard)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pos_status     ON option_positions(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pos_symbol     ON option_positions(symbol)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pos_underlying ON option_positions(underlying)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pos_entry_time ON option_positions(entry_time)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_pos_events_pid ON option_position_events(position_id)")
+
         conn.commit()
     except Exception as e:
         log.error("Failed to initialize option_trades database: %s", e)

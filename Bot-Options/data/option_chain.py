@@ -6,10 +6,26 @@
 ===============================================================================
 """
 
+import time
 import logging
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FuturesTimeout
 from typing import Optional, Dict, List, Any
 
+# Executor shared across calls — avoids spawning a new thread per fetch.
+_chain_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="chain_fetch")
+_CHAIN_FETCH_TIMEOUT = 15   # seconds — fail fast rather than block the scan thread
+
 log = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# TTL cache for option chain data.
+# Keyed by (underlying, expiry_date). During a scan cycle the same chain is
+# requested multiple times (once per CE signal + once per PE signal).
+# Cache for 55 s so a single cycle always hits the same data, but the next
+# scan cycle (60 s later) always gets a fresh chain.
+# ---------------------------------------------------------------------------
+_chain_cache: dict = {}
+_CHAIN_CACHE_TTL = 55   # seconds
 
 def fetch_option_chain(
     underlying: str,
@@ -19,6 +35,8 @@ def fetch_option_chain(
 ) -> Optional[Dict[str, Any]]:
     """
     Fetch live option chain from OpenAlgo for the specified underlying and expiry.
+    Results are cached for _CHAIN_CACHE_TTL seconds so a scan cycle that
+    evaluates both CE and PE signals only makes one broker API call.
 
     Parameters
     ----------
@@ -31,23 +49,38 @@ def fetch_option_chain(
     -------
     Dictionary containing option chain, underlying LTP, ATM strike, or None on error.
     """
-    try:
-        # OpenAlgo option chain API call
-        params = {
-            "underlying": underlying,
-            "exchange": "NSE_INDEX",
-            "expiry_date": expiry_date,
-        }
-        if strike_count is not None:
-            params["strike_count"] = strike_count
+    cache_key = (underlying, expiry_date, strike_count)
+    now_mono  = time.monotonic()
+    cached    = _chain_cache.get(cache_key)
+    if cached and (now_mono - cached[1]) < _CHAIN_CACHE_TTL:
+        return cached[0]
 
-        chain_data = oa_client.optionchain(**params)
+    params = {
+        "underlying": underlying,
+        "exchange": "NSE_INDEX",
+        "expiry_date": expiry_date,
+    }
+    if strike_count is not None:
+        params["strike_count"] = strike_count
+
+    def _do_fetch():
+        return oa_client.optionchain(**params)
+
+    try:
+        future    = _chain_executor.submit(_do_fetch)
+        chain_data = future.result(timeout=_CHAIN_FETCH_TIMEOUT)
 
         if not isinstance(chain_data, dict) or chain_data.get("status") != "success":
             log.error("[%s] Failed to fetch option chain: %s", underlying, chain_data)
             return None
 
+        _chain_cache[cache_key] = (chain_data, now_mono)
         return chain_data
+
+    except _FuturesTimeout:
+        log.error("[%s] Option chain fetch timed out after %ds — OpenAlgo may be slow.",
+                  underlying, _CHAIN_FETCH_TIMEOUT)
+        return None
     except Exception as e:
         log.error("[%s] Error fetching option chain for expiry %s: %s", underlying, expiry_date, e)
         return None

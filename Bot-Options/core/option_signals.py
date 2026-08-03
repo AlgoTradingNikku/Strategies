@@ -47,13 +47,23 @@ def fetch_underlying_ohlcv(
     """Fetch history for the underlying index."""
     source = config.get("underlying_data_source", "yfinance")
     symbol = get_mapped_underlying_symbol(underlying, source)
-    
+    lookback = config.get("data", {}).get("lookback_days", 5)
+
     # Construct a temp config block for stocks_fetch_history to override data_source and exchange
     temp_cfg = config.copy()
     temp_cfg["data_source"] = source
     temp_cfg["exchange"] = "NSE" if source.lower() == "yfinance" else "NSE_INDEX"
-    
-    return stocks_fetch_history(symbol, timeframe, temp_cfg)
+
+    log.debug("[%s] Fetching OHLCV via %s | tf=%s | lookback=%dd | symbol=%s",
+              underlying, source, timeframe, lookback, symbol)
+    df = stocks_fetch_history(symbol, timeframe, temp_cfg)
+    if df is None or df.empty:
+        log.warning("[%s] Data fetch returned None/empty — source=%s tf=%s symbol=%s lookback=%dd",
+                    underlying, source, timeframe, symbol, lookback)
+        return None
+    log.debug("[%s] Fetched %d candles (%s → %s)",
+              underlying, len(df), df.index[0], df.index[-1])
+    return df
 
 
 def evaluate_underlying_signals(
@@ -67,7 +77,8 @@ def evaluate_underlying_signals(
     """
     df = fetch_underlying_ohlcv(underlying, timeframe, config)
     if df is None or len(df) < 20:
-        log.warning("[%s] Insufficient underlying data to scan.", underlying)
+        log.warning("[%s] Insufficient underlying data to scan (got %d candles, need ≥20).",
+                    underlying, len(df) if df is not None else 0)
         return []
 
     strat = config.get("strategy", {})

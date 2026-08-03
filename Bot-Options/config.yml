@@ -1,9 +1,3 @@
-# =============================================================================
-#  Bot-Options — Options Trading Platform Configuration
-# =============================================================================
-#  Runs independently on port 8001.
-#  python Bot-Options/app.py → http://127.0.0.1:8001
-# =============================================================================
 
 platform: "options"
 trading_api_source: "openalgo"   # Only OpenAlgo supported for options (NFO routing)
@@ -27,7 +21,7 @@ underlyings:
   strike_step: 100.0
   enabled: true
 strike_selection:
-  expiry_preference: "WEEKLY"     # WEEKLY / MONTHLY / NEXT_WEEKLY / NEXT_MONTHLY
+  expiry_preference: "WEEKLY" # WEEKLY / MONTHLY / NEXT_WEEKLY / NEXT_MONTHLY
   auto_roll_days: 1               # Auto-roll to next expiry when < N days remaining
   method: "ATM"                   # ATM / OTM / ITM / PREMIUM / TREND / LIQUIDITY
 
@@ -64,12 +58,12 @@ option_data_source: "openalgo"      # ALWAYS openalgo (yfinance has no NFO data)
 
 strategy:
   ut_enabled: true
-  key_value: 1.0                  # UTBot sensitivity (1.0 = standard)
-  atr_period: 2                   # ATR period for trailing stop
+  key_value: 1.0                  # UTBot sensitivity — matches TradingView default (1 2 in indicator title)
+  atr_period: 2                   # ATR period for trailing stop — matches TradingView (1 2)
   use_heikin_ashi: false          # Use Heikin Ashi candle close as price source
 
 sr_channels:
-  enabled: true
+  enabled: false
   pivot_period: 10                # Bars to confirm a pivot (4–30)
   source: "High/Low"              # "High/Low" or "Close/Open"
   channel_width_pct: 5.0          # Max channel width as % of 300-bar price range
@@ -80,8 +74,9 @@ sr_channels:
 
 scan_timeframe: "5m"              # Timeframe for underlying chart scan
 scan_interval_seconds: 60         # Auto-scan interval (when auto mode is ON)
-signal_lookback_candles: 2        # Check last N closed candles for signals
-min_underlying_score: 60          # Stage 1 gate: minimum score to proceed to Stage 2
+auto_scan_enabled: false          # Persist auto-scan ON/OFF state across page reloads
+signal_lookback_candles: 3        # Check last N closed candles for signals
+min_underlying_score: 0.0        # Stage 1 gate: minimum score to proceed to Stage 2
 scan_dedup_window_seconds: 900    # Suppress duplicate signals for same contract within N seconds (15 min)
 
 # =============================================================================
@@ -90,7 +85,7 @@ scan_dedup_window_seconds: 900    # Suppress duplicate signals for same contract
 # Only executed if Stage 1 AND Stage 2 both pass.
 # =============================================================================
 option_chart_confirmation:
-  enabled: true
+  enabled: false
   mode: "score_only"              # "strict" = must confirm | "score_only" = bonus/penalty
   key_value: 1.5                  # Slightly higher than underlying (noisier charts)
   atr_period: 3                   # Slightly smoother for option premium volatility
@@ -103,13 +98,13 @@ option_chart_confirmation:
 # =============================================================================
 filters:
   # --- Multi-Timeframe Confirmation ---
-  mtf_filter_enabled: true        # false = score only | true = hard reject counter-trend
+  mtf_filter_enabled: false       # false = score only | true = hard reject counter-trend
   mtf_timeframe: "15m"            # Higher TF to check UTBot trend direction
   mtf_neutral_pct: 0.3            # % proximity to trail → classify as "neutral"
   mtf_atr_period: 10              # ATR period for HTF UTBot trail
 
   # --- EMA Trend Filter ---
-  ema_filter_enabled: true        # Hard reject if price on wrong side of EMA
+  ema_filter_enabled: false       # Hard reject if price on wrong side of EMA
   ema_period: 200
 
   # --- Volume Filter ---
@@ -132,17 +127,17 @@ filters:
   rsi_sell_max: 60.0
 
   # --- Minimum Score Cutoff ---
-  min_alert_score: 60             # Only show signals above this score
+  min_alert_score: 0             # Only show signals above this score
 
   # --- Options-Specific Filters (Stage 2) ---
-  iv_score_enabled: true          # Score based on IV (high IV = penalize buying)
+  iv_score_enabled: false         # Score based on IV (high IV = penalize buying)
   oi_score_enabled: true          # Score based on Open Interest
-  oi_momentum_score_enabled: true  # Rising OI + rising premium = conviction bonus
-  time_decay_penalty_enabled: true
+  oi_momentum_score_enabled: false # Rising OI + rising premium = conviction bonus
+  time_decay_penalty_enabled: false
   time_decay_threshold_days: 3   # Penalty for options with < N days to expiry
 
   # --- Candle Patterns ---
-  candle_patterns_enabled: true   # Detect reversal candles at S/R zones
+  candle_patterns_enabled: false  # Detect reversal candles at S/R zones
 
   # --- Signal History ---
   signal_history_enabled: true
@@ -248,7 +243,7 @@ whatsapp:
 # DATA & SYSTEM
 # =============================================================================
 data:
-  lookback_days: 30               # Days of OHLCV history to fetch
+  lookback_days: 5                # Days of OHLCV history to fetch (yfinance 5m hard-limit is 7 days; keep ≤5)
 
 bot:
   log_level: "INFO"               # INFO / DEBUG / WARNING

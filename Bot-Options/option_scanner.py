@@ -226,42 +226,43 @@ def run_option_scan(
         total_scanned += 1
         
         log.info("[%s] Starting scan cycle...", underlying_name)
-        
+
+        # ── Resolve expiry and chain ONCE per underlying per cycle ──────────
+        # Both are now TTL-cached at their respective layers (expiry: 10 min,
+        # chain: 55 s), so this is at most 1 broker API call per underlying.
+        sel_cfg    = config.get("strike_selection", {})
+        pref       = sel_cfg.get("expiry_preference", "WEEKLY")
+        roll_days  = int(sel_cfg.get("auto_roll_days", 1))
+        min_gate1  = float(config.get("min_underlying_score", 60))
+
+        expiry_res = select_expiry(underlying_name, oa_client, pref, roll_days)
+        if not expiry_res:
+            log.warning("[%s] Expiry selector failed to resolve a date.", underlying_name)
+            continue
+        expiry_date_obj, expiry_str = expiry_res
+        days_left = days_to_expiry(expiry_date_obj)
+
+        chain = fetch_option_chain(underlying_name, expiry_str, oa_client)
+        if not chain:
+            log.warning("[%s] Option chain unavailable — skipping cycle.", underlying_name)
+            continue
+
         # STAGE 1: Scan underlying index
         index_signals = evaluate_underlying_signals(underlying_name, timeframe, config)
         if not index_signals:
             log.info("[%s] No underlying trend signals generated.", underlying_name)
             continue
-            
+
         # For each signal (direction maps to CE/PE option contract)
         for sig in index_signals:
             option_type = sig["option_type"]
             direction = sig["direction"]
             underlying_score = sig["underlying_score"]
-            
+
             # Skip if score is below Gate 1 threshold
-            min_gate1 = float(config.get("min_underlying_score", 60))
             if underlying_score < min_gate1:
-                log.info("[%s] Signal %s skipped: Score %.1f below Gate 1 (%.1f)", 
+                log.info("[%s] Signal %s skipped: Score %.1f below Gate 1 (%.1f)",
                          underlying_name, direction, underlying_score, min_gate1)
-                continue
-                
-            # Expiry selection
-            sel_cfg = config.get("strike_selection", {})
-            pref = sel_cfg.get("expiry_preference", "WEEKLY")
-            roll_days = int(sel_cfg.get("auto_roll_days", 1))
-            
-            expiry_res = select_expiry(underlying_name, oa_client, pref, roll_days)
-            if not expiry_res:
-                log.warning("[%s] Expiry selector failed to resolve a date.", underlying_name)
-                continue
-                
-            expiry_date_obj, expiry_str = expiry_res
-            days_left = days_to_expiry(expiry_date_obj)
-            
-            # Fetch option chain
-            chain = fetch_option_chain(underlying_name, expiry_str, oa_client)
-            if not chain:
                 continue
                 
             # STAGE 2: Strike Selection
