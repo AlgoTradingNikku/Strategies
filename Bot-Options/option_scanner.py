@@ -227,14 +227,21 @@ def run_option_scan(
         
         log.info("[%s] Starting scan cycle...", underlying_name)
 
-        # ── Resolve expiry and chain ONCE per underlying per cycle ──────────
-        # Both are now TTL-cached at their respective layers (expiry: 10 min,
-        # chain: 55 s), so this is at most 1 broker API call per underlying.
-        sel_cfg    = config.get("strike_selection", {})
-        pref       = sel_cfg.get("expiry_preference", "WEEKLY")
-        roll_days  = int(sel_cfg.get("auto_roll_days", 1))
-        min_gate1  = float(config.get("min_underlying_score", 60))
+        sel_cfg   = config.get("strike_selection", {})
+        pref      = sel_cfg.get("expiry_preference", "WEEKLY")
+        roll_days = int(sel_cfg.get("auto_roll_days", 1))
+        min_gate1 = float(config.get("min_underlying_score", 60))
 
+        # ── STAGE 1: Scan underlying index chart (yfinance — no broker call) ─
+        # Do this FIRST. Option chain is only fetched if a signal exists here.
+        index_signals = evaluate_underlying_signals(underlying_name, timeframe, config)
+        if not index_signals:
+            log.info("[%s] No underlying trend signals generated.", underlying_name)
+            continue
+
+        # ── Resolve expiry + chain AFTER Stage 1 confirms a signal ──────────
+        # Both TTL-cached (expiry: 10 min, chain: 55 s) so repeated calls
+        # within a window cost nothing. Chain fetch has a 15 s hard timeout.
         expiry_res = select_expiry(underlying_name, oa_client, pref, roll_days)
         if not expiry_res:
             log.warning("[%s] Expiry selector failed to resolve a date.", underlying_name)
@@ -245,12 +252,6 @@ def run_option_scan(
         chain = fetch_option_chain(underlying_name, expiry_str, oa_client)
         if not chain:
             log.warning("[%s] Option chain unavailable — skipping cycle.", underlying_name)
-            continue
-
-        # STAGE 1: Scan underlying index
-        index_signals = evaluate_underlying_signals(underlying_name, timeframe, config)
-        if not index_signals:
-            log.info("[%s] No underlying trend signals generated.", underlying_name)
             continue
 
         # For each signal (direction maps to CE/PE option contract)
@@ -264,7 +265,7 @@ def run_option_scan(
                 log.info("[%s] Signal %s skipped: Score %.1f below Gate 1 (%.1f)",
                          underlying_name, direction, underlying_score, min_gate1)
                 continue
-                
+
             # STAGE 2: Strike Selection
             contract = select_strike(chain, option_type, sel_cfg, strike_step)
             if not contract:

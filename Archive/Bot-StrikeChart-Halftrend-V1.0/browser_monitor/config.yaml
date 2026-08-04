@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════════════════
+# TradingView Browser Monitor - Configuration
+# ═══════════════════════════════════════════════════════════════
+
+# TradingView Chart URL
+# 1. Open TradingView and add the HalfTrend Strategy to your chart
+# 2. Copy the full URL from the browser address bar
+# 3. Paste it below
+tradingview:
+  chart_url: "https://in.tradingview.com/chart/H8qWRNcF/?symbol=NSE%3ANIFTY"
+
+  # How often to check for new signals (in seconds)
+  poll_interval_seconds: 1
+
+# ═══════════════════════════════════════════════════════════════
+# OpenAlgo Order Placement (Phase 2 - enable when ready)
+# ═══════════════════════════════════════════════════════════════
+openalgo:
+  enabled: false
+  host: "http://127.0.0.1:5000"
+  api_key: "YOUR_OPENALGO_API_KEY"
+
+  # Default order settings (same as your bot's config)
+  order_defaults:
+    exchange: "NFO"
+    symbol: "NIFTY"
+    quantity: 65               # 1 lot = 65 for Nifty
+    product: "MIS"
+    pricetype: "MARKET"
+    strategy: "TVBrowserMonitor"
+
+# ═══════════════════════════════════════════════════════════════
+# Logging
+# ═══════════════════════════════════════════════════════════════
+logging:
+  level: "INFO"
+  log_file: "browser_monitor.log"

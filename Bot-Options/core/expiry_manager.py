@@ -100,7 +100,12 @@ def select_expiry(
 
     all_expiries = get_expiry_dates(underlying, oa_client)
     if not all_expiries:
-        log.warning("[%s] No expiry dates available from OpenAlgo.", underlying)
+        # After market close OpenAlgo may return empty expiry list.
+        # Fall back to the stale cache rather than failing every cycle.
+        if cached:
+            log.debug("[%s] Expiry API returned empty — using stale cache.", underlying)
+            return cached[0]
+        log.warning("[%s] No expiry dates available from OpenAlgo and no cache.", underlying)
         return None
 
     today = date.today()

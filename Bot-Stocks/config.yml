@@ -133,6 +133,7 @@ flattrade:
 # MStock (Mirae Asset) — access_token from MStock Developer Portal
 mstock:
   client_id: "MA19673"
+  api_secret: "K+6WAwPthK7r4Tb/t2pM5g=="
   access_token: ""                    # Long-lived Bearer token from developer.miraeassetcm.com
   order_product: "MIS"
   order_quantity: 1
