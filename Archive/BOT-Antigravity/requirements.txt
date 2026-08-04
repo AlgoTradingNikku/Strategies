@@ -1,0 +1,27 @@
+# BOT-Antigravity — Python dependencies
+# Run with:  uv run uvicorn server:app --port 8002
+# Or:        pip install -r requirements.txt && uvicorn server:app --port 8002
+
+# Core bot deps
+openalgo>=1.0.45
+pandas
+numpy
+pyyaml
+requests
+
+# Optional data sources
+yfinance
+# tvDatafeed    # uncomment if using TradingView data
+# twelvedata    # uncomment if using TwelveData
+
+# Optional ML filter
+xgboost
+scikit-learn
+matplotlib
+
+# Dashboard backend
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+aiofiles>=23.0
+ruamel.yaml
+psutil

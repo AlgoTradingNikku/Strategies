@@ -1,13 +1,19 @@
-backtrader
-pandas
-openalgo==1.0.45
-PyYAML
+# Root-level requirements — workspace-wide shared packages
+# Each bot also has its own requirements.txt in its folder.
+# Run individual bots from their own folder using uv:
+#
+#   cd BOT-Antigravity && uv run python app.py
+#   cd Bot-Stocks       && uv run python app.py
 
+pandas
 numpy
+pyyaml
 requests
-schedule
-python-dotenv
-flask
-flask-socketio
+openalgo>=1.0.45
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+aiofiles>=23.0
 xgboost
 scikit-learn
+yfinance
+ruamel.yaml

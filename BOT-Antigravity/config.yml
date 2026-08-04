@@ -1,13 +1,5 @@
 data_source: "openalgo"   # Can be "openalgo", "yfinance", "twelvedata", or "tvdatafeed"
 
-# ------------------------------------------------------------
-# Telegram Alerts
-# ------------------------------------------------------------
-telegram:
-  mode: "direct"            # "openalgo" (via OpenAlgo server) or "direct" (via Telegram Bot API)
-  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"    # Required when mode is "direct" — get from @BotFather
-  chat_id: "939814804"      # Rahul's Telegram ID for @openalgo_rahul_bot
-
 openalgo:
   #Termial
   apikey: "ff2124a3f1830064ac973cb17a80ce977b3eca9c1a5604d6c67a3b31937860f7"
@@ -38,17 +30,20 @@ symbols:
   - RPOWER
   #- TSLA
 
-timeframes:
-  - "5m"
-  - "15m"
-  #- "30m"
+# ------------------------------------------------------------
+# Multi-Timeframe (MTF) Setup
+# ------------------------------------------------------------
+# htf (Higher Time Frame) — trend filter only; no orders or alerts fired from it
+# ltf (Lower Time Frame)  — signals generated here; htf acts as gate when enabled
+htf: "15m"
+ltf: "5m"
 
 # index/option
 index_exchange: "NSE_INDEX"    # Exchange for index data
 index_symbols:
   #- NIFTY19MAY2623300PE
   #- NIFTY19MAY2623300PE
-  
+
 index_timeframes:
   - "5m"
 
@@ -62,6 +57,13 @@ strategy:
 
 data:
   lookback_days: 5
+
+# ------------------------------------------------------------
+# MTF Trend Filter
+# ------------------------------------------------------------
+mtf_filter:
+  enabled: true             # true  → HTF worker runs as trend filter; LTF only fires when HTF trend agrees
+                            # false → HTF worker NOT started; only LTF runs and fires signals freely
 
 bot:
   signal_check_interval: 5
@@ -86,7 +88,7 @@ trading:
 
   equity:
     enabled: true
-    quantity: 1
+    quantity: 100
     product: "CNC"
     price_type: "LIMIT"
 
@@ -95,3 +97,11 @@ trading:
     quantity: 65
     product: "NRML"
     price_type: "LIMIT"
+
+# ------------------------------------------------------------
+# Telegram Alerts
+# ------------------------------------------------------------
+telegram:
+  mode: "direct"            # "openalgo" (via OpenAlgo server) or "direct" (via Telegram Bot API)
+  bot_token: "8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI"    # Required when mode is "direct" — get from @BotFather
+  chat_id: "939814804"      # Rahul's Telegram ID for @openalgo_rahul_bot

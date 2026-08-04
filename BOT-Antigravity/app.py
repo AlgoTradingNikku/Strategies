@@ -255,6 +255,8 @@ class TimeframeWorker:
         config: dict,
         stop_event: threading.Event,
         ltp_map: dict | None = None,
+        htf_store: "HtfTrendStore | None" = None,
+        role: str = "ltf",          # "htf" → trend-only, "ltf" → signal + order
     ):
         self.symbol = symbol
         self.timeframe = timeframe
@@ -262,6 +264,12 @@ class TimeframeWorker:
         self.config = config
         self.stop_event = stop_event
         self._ltp_map = ltp_map if ltp_map is not None else {}
+        self._htf_store = htf_store
+        self._role = role           # "htf" or "ltf"
+
+        # MTF filter toggle (only relevant for ltf workers)
+        mtf_cfg = config.get("mtf_filter", {})
+        self._mtf_filter_enabled = bool(mtf_cfg.get("enabled", False))
 
         strat = config.get("strategy", {})
         self.key_value = float(strat.get("key_value", 2))
@@ -581,6 +589,16 @@ class TimeframeWorker:
             sig_label,
         )
 
+        # ── HTF role: update trend store and stop here ────────────────────────
+        if self._role == "htf":
+            if self._htf_store is not None:
+                self._htf_store.update(self.symbol, pos_val)
+                log.debug(
+                    "[%s|%s] HTF trend updated → %s",
+                    self.symbol, self.timeframe, pos_label,
+                )
+            return   # HTF workers never send alerts or place orders
+
         if not buy_signal and not sell_signal:
             return
 
@@ -590,6 +608,29 @@ class TimeframeWorker:
         # Deduplicate: only fire if this bar / signal type is new
         if signal_ts == self._last_signal_ts and signal_type == self._last_signal_type:
             return
+
+        # ── MTF trend filter gate ─────────────────────────────────────────────
+        if self._mtf_filter_enabled and self._htf_store is not None:
+            htf_pos = self._htf_store.get(self.symbol)
+            if htf_pos is None:
+                log.info(
+                    "[%s|%s] %s signal HELD — HTF trend not yet available.",
+                    self.symbol, self.timeframe, signal_type,
+                )
+                return
+            htf_label = "LONG" if htf_pos == 1 else ("SHORT" if htf_pos == -1 else "FLAT")
+            aligned = (signal_type == "BUY" and htf_pos == 1) or \
+                      (signal_type == "SELL" and htf_pos == -1)
+            if not aligned:
+                log.info(
+                    "[%s|%s] %s signal BLOCKED by MTF filter — HTF trend is %s",
+                    self.symbol, self.timeframe, signal_type, htf_label,
+                )
+                return
+            log.info(
+                "[%s|%s] %s signal PASSED MTF filter — HTF trend is %s",
+                self.symbol, self.timeframe, signal_type, htf_label,
+            )
 
         self._last_signal_ts   = signal_ts
         self._last_signal_type = signal_type
@@ -810,6 +851,37 @@ class TimeframeWorker:
 
 
 # ============================================================================
+# HTF TREND STORE — shared state written by HTF workers, read by LTF workers
+# ============================================================================
+
+class HtfTrendStore:
+    """
+    Thread-safe container for the latest HTF position per symbol.
+
+    HTF workers call ``update(symbol, pos)`` after every scan.
+    LTF workers call ``get(symbol)`` to read the current trend before firing.
+
+    pos values:
+        +1  →  HTF is LONG  (allow BUY signals on LTF)
+        -1  →  HTF is SHORT (allow SELL signals on LTF)
+         0  →  HTF is FLAT  (block all LTF signals)
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._data: dict[str, int] = {}   # symbol → pos
+
+    def update(self, symbol: str, pos: int) -> None:
+        with self._lock:
+            self._data[symbol] = pos
+
+    def get(self, symbol: str) -> int | None:
+        """Return the latest HTF pos, or None if the HTF worker hasn't run yet."""
+        with self._lock:
+            return self._data.get(symbol)
+
+
+# ============================================================================
 # LIVE PRICE MONITOR (WebSocket)
 # ============================================================================
 
@@ -926,7 +998,9 @@ def _is_market_hours(config: dict) -> bool:
 def _print_banner(config: dict):
     symbols = config.get("symbols", [])
     index_symbols = config.get("index_symbols", [])
-    timeframes = config.get("timeframes", [])
+    htf = config.get("htf", "—")
+    ltf = config.get("ltf", "—")
+    mtf_enabled = config.get("mtf_filter", {}).get("enabled", False)
     strat = config.get("strategy", {})
 
     width = 62
@@ -938,9 +1012,11 @@ def _print_banner(config: dict):
     if index_symbols:
         log.info("  Index Symbols : %s", ", ".join(index_symbols))
         log.info("  Index Exchange: %s (history via NFO)", config.get("index_exchange", "NSE_INDEX"))
-        idx_tfs = config.get("index_timeframes", timeframes)
+        idx_tfs = config.get("index_timeframes", [ltf])
         log.info("  Index TFs     : %s", ", ".join(idx_tfs))
-    log.info("  Timeframes    : %s", ", ".join(timeframes))
+    log.info("  HTF (trend)   : %s", htf)
+    log.info("  LTF (signal)  : %s", ltf)
+    log.info("  MTF Filter    : %s", "ENABLED" if mtf_enabled else "DISABLED")
     log.info("  Exchange      : %s", config.get("exchange", "NSE"))
     log.info("  Data Source   : %s", config.get("data_source", "openalgo").upper())
     log.info("  Key Value     : %s  |  ATR Period: %s  |  HA: %s",
@@ -1002,10 +1078,12 @@ def main():
 
     symbols: list[str] = config.get("symbols") or []
     index_symbols: list[str] = config.get("index_symbols") or []
-    timeframes: list[str] = config.get("timeframes") or ["5m"]
-    index_timeframes: list[str] = config.get("index_timeframes") or timeframes
+    htf: str = config.get("htf", "15m")
+    ltf: str = config.get("ltf", "5m")
+    index_timeframes: list[str] = config.get("index_timeframes") or [ltf]
     exchange: str = config.get("exchange", "NSE")
     index_exchange: str = config.get("index_exchange", "NSE_INDEX")
+    mtf_enabled: bool = config.get("mtf_filter", {}).get("enabled", False)
 
     # Option contracts trade on NFO — use NFO for history & LTP
     option_exchange = "NFO"
@@ -1021,6 +1099,9 @@ def main():
 
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
+
+    # ---- Shared HTF trend store (written by HTF workers, read by LTF workers) -
+    htf_store = HtfTrendStore()
 
     # ---- OpenAlgo API client (only needed for openalgo data source) ---------
     if data_source == "openalgo":
@@ -1053,27 +1134,52 @@ def main():
         shared_ltp_map = {}
         log.info("Data source is %s — skipping OpenAlgo client & WebSocket.", data_source.upper())
 
-    # ---- One worker thread per (equity symbol, timeframe) pair ---------------
-    for symbol in symbols:
-        for tf in timeframes:
+    # ---- HTF workers (trend-only) — only spawned when MTF filter is enabled --
+    if mtf_enabled:
+        for symbol in symbols:
             worker = TimeframeWorker(
                 symbol=symbol,
-                timeframe=tf,
+                timeframe=htf,
                 client=client,
                 config=config,
                 stop_event=stop_event,
                 ltp_map=shared_ltp_map,
+                htf_store=htf_store,
+                role="htf",
             )
             t = threading.Thread(
                 target=worker.run,
-                name=f"Worker-{symbol}-{tf}",
+                name=f"Worker-{symbol}-{htf}-HTF",
                 daemon=True,
             )
             threads.append(t)
             t.start()
-            log.info("Started worker: %s @ %s [%s]", symbol, tf, exchange)
+            log.info("Started HTF (trend) worker: %s @ %s [%s]", symbol, htf, exchange)
+    else:
+        log.info("MTF filter DISABLED — HTF workers not started.")
 
-    # ---- One worker thread per (option/index symbol, timeframe) pair ---------
+    # ---- LTF workers (signal + order, one per equity symbol) -----------------
+    for symbol in symbols:
+        worker = TimeframeWorker(
+            symbol=symbol,
+            timeframe=ltf,
+            client=client,
+            config=config,
+            stop_event=stop_event,
+            ltp_map=shared_ltp_map,
+            htf_store=htf_store if mtf_enabled else None,
+            role="ltf",
+        )
+        t = threading.Thread(
+            target=worker.run,
+            name=f"Worker-{symbol}-{ltf}-LTF",
+            daemon=True,
+        )
+        threads.append(t)
+        t.start()
+        log.info("Started LTF (signal) worker: %s @ %s [%s]", symbol, ltf, exchange)
+
+    # ---- One worker thread per (option/index symbol, index timeframe) --------
     for idx_sym in index_symbols:
         # Override exchange to NFO for option contract history & LTP
         idx_config = dict(config)
