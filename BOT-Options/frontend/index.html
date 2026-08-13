@@ -72,8 +72,8 @@
                     <div class="order-mode-toggle" style="background: var(--color-buy-bg); color: var(--color-buy); border: 1px solid var(--color-buy-border); padding: 4px 10px; border-radius: var(--border-radius-sm); font-size: 0.75rem; font-weight: 700; display: flex; align-items: center;" id="market-status-badge">
                         MARKET CLOSED
                     </div>
-                    <button class="btn btn-secondary" id="btn-restart-bot">
-                        <i class="fa-solid fa-rotate"></i> Restart Bot
+                    <button class="btn btn-primary" id="btn-restart-bot">
+                        <i class="fa-solid fa-play"></i> Run Scanner
                     </button>
                 </div>
             </header>
@@ -158,17 +158,19 @@
                                     <table id="live-feed-table">
                                         <thead>
                                             <tr>
-                                                <th>Time</th>
                                                 <th>Symbol</th>
-                                                <th>Type</th>
                                                 <th>Close</th>
-                                                <th>ATR Stop</th>
-                                                <th>RSI</th>
-                                                <th>ML Conf</th>
+                                                <th>Win Rate</th>
+                                                <th></th> <!-- Score / Analyze -->
+                                                <th>Confluence</th>
+                                                <th>Action</th>
+                                                <th>Stop Loss</th>
+                                                <th>Target</th>
+                                                <th>R:R</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr><td colspan="7" class="empty-placeholder">Waiting for signals...</td></tr>
+                                            <tr><td colspan="9" class="empty-placeholder">Waiting for signals...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -193,6 +195,50 @@
                                     </div>
                                     <label class="switch">
                                         <input type="checkbox" id="dash-ut-enabled" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <!-- Auto Scan -->
+                                <div class="control-toggle-item" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 4px; flex-wrap: wrap; gap: 8px;">
+                                    <div class="toggle-info">
+                                        <span class="toggle-name" style="color: var(--color-accent);">⚡ Auto Scan</span>
+                                        <span class="toggle-desc" id="auto-scan-desc">Scan every 5m (independent of chart timeframe)</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <select id="dash-auto-scan-interval" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.78rem; height: 28px;">
+                                            <option value="1">Every 1m</option>
+                                            <option value="3">Every 3m</option>
+                                            <option value="5" selected>Every 5m</option>
+                                            <option value="10">Every 10m</option>
+                                            <option value="15">Every 15m</option>
+                                            <option value="20">Every 20m</option>
+                                            <option value="30">Every 30m</option>
+                                        </select>
+                                        <label class="switch">
+                                            <input type="checkbox" id="dash-auto-scan" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- UTBot Engine -->
+                                <div class="control-toggle-item">
+                                    <div class="toggle-info">
+                                        <span class="toggle-name">UT Bot Engine</span>
+                                        <span class="toggle-desc">ATR trailing stop signal engine</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="dash-ut-enabled" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <!-- S/R Zones Engine -->
+                                <div class="control-toggle-item">
+                                    <div class="toggle-info">
+                                        <span class="toggle-name">S/R Zones Engine</span>
+                                        <span class="toggle-desc">Enable Support/Resistance zones</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="dash-sr-enabled">
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
@@ -241,6 +287,7 @@
                             <button class="btn btn-primary" id="btn-apply-hist-filter" style="padding: 4px 12px; font-size: 0.8rem;">Filter</button>
                             <button class="btn btn-secondary" id="btn-export-history" style="padding: 4px 12px; font-size: 0.8rem;"><i class="fa-solid fa-download"></i> Export</button>
                             <button class="btn btn-primary" id="btn-label-signals" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-warning);"><i class="fa-solid fa-tags"></i> Labeler</button>
+                            <button class="btn btn-secondary" id="btn-clear-signals" style="padding: 4px 12px; font-size: 0.8rem; background: var(--color-sell-bg); color: var(--color-sell); border: 1px solid var(--color-sell-border);"><i class="fa-solid fa-trash"></i> Clear DB</button>
                         </div>
                     </div>
                     <div class="table-container" style="flex: 1; overflow-y: auto;">
@@ -392,6 +439,43 @@
                                 <input type="number" id="cfg-atr-period">
                             </div>
                             
+                            <h4 class="sub-header-line" style="margin-top: 20px;">S/R Zone Parameters</h4>
+                            <div class="form-group toggle-group">
+                                <label>Enable S/R Channels Engine</label>
+                                <label class="switch"><input type="checkbox" id="cfg-sr-enabled"><span class="slider round"></span></label>
+                            </div>
+                            <div class="form-group">
+                                <label>Pivot Period</label>
+                                <input type="number" id="cfg-sr-pivot" min="4" max="30">
+                            </div>
+                            <div class="form-group">
+                                <label>Pivot Price Source</label>
+                                <select id="cfg-sr-source">
+                                    <option value="High/Low">High / Low</option>
+                                    <option value="Close/Open">Close / Open</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Max Channel Width (%)</label>
+                                <input type="number" id="cfg-sr-width" step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label>Min Zone Strength</label>
+                                <input type="number" id="cfg-sr-strength">
+                            </div>
+                            <div class="form-group">
+                                <label>Max Active Zones</label>
+                                <input type="number" id="cfg-sr-max" min="1" max="10">
+                            </div>
+                            <div class="form-group">
+                                <label>Zone Lookup Bars (Loopback)</label>
+                                <input type="number" id="cfg-sr-loopback" min="50" max="400">
+                            </div>
+                            <div class="form-group">
+                                <label>Proximity Margin (%)</label>
+                                <input type="number" id="cfg-sr-prox" step="0.05" min="0.0">
+                            </div>
+
                             <h4 class="sub-header-line" style="margin-top: 20px;">ML Filter</h4>
                             <div class="form-group toggle-group">
                                 <label>ML Filter Active</label>

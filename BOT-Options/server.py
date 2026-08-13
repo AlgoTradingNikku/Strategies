@@ -174,15 +174,15 @@ class BotEngine:
     def _spawn_workers(self, config: dict):
         from openalgo import api as oa_api
 
-        symbols: list[str]        = config.get("symbols") or []
-        index_symbols: list[str]  = config.get("index_symbols") or []
-        htf: str                   = config.get("htf", "15m")
-        ltf: str                   = config.get("ltf", "5m")
-        index_timeframes: list[str] = config.get("index_timeframes") or [ltf]
-        exchange: str              = config.get("exchange", "NSE")
-        mtf_enabled: bool          = config.get("mtf_filter", {}).get("enabled", False)
-        data_source: str           = config.get("data_source", "openalgo").lower()
-        option_exchange            = "NFO"
+        symbols: list[str]          = config.get("symbols") or []
+        index_symbols: list[str]    = config.get("index_symbols") or []
+        trend_timeframe: str        = config.get("trend_timeframe", "15m")
+        equity_timeframe: str       = config.get("equity_timeframe", "5m")
+        option_timeframes: list[str] = config.get("option_timeframes") or [equity_timeframe]
+        exchange: str               = config.get("exchange", "NSE")
+        mtf_enabled: bool           = config.get("mtf_filter", {}).get("enabled", False)
+        data_source: str            = config.get("data_source", "openalgo").lower()
+        option_exchange             = "NFO"
 
         if data_source == "openalgo":
             oa_cfg = config.get("openalgo", {})
@@ -207,38 +207,38 @@ class BotEngine:
             client = None
             self.ltp_map = {}
 
-        # HTF workers (trend-only)
+        # Trend workers (trend-only)
         if mtf_enabled:
             for symbol in symbols:
                 worker = TimeframeWorker(
-                    symbol=symbol, timeframe=htf, client=client,
+                    symbol=symbol, timeframe=trend_timeframe, client=client,
                     config=config, stop_event=self.stop_event,
                     ltp_map=self.ltp_map, htf_store=self.htf_store, role="htf",
                 )
-                t = threading.Thread(target=worker.run, name=f"Worker-{symbol}-{htf}-HTF", daemon=True)
+                t = threading.Thread(target=worker.run, name=f"Worker-{symbol}-{trend_timeframe}-TREND", daemon=True)
                 self.threads.append(t)
-                self.worker_names.append(f"{symbol}@{htf} [HTF]")
+                self.worker_names.append(f"{symbol}@{trend_timeframe} [TREND]")
                 t.start()
 
-        # LTF workers (signal + order)
+        # Equity workers (signal + order)
         for symbol in symbols:
             worker = TimeframeWorker(
-                symbol=symbol, timeframe=ltf, client=client,
+                symbol=symbol, timeframe=equity_timeframe, client=client,
                 config=config, stop_event=self.stop_event,
                 ltp_map=self.ltp_map,
                 htf_store=self.htf_store if mtf_enabled else None,
                 role="ltf",
             )
-            t = threading.Thread(target=worker.run, name=f"Worker-{symbol}-{ltf}-LTF", daemon=True)
+            t = threading.Thread(target=worker.run, name=f"Worker-{symbol}-{equity_timeframe}-EQUITY", daemon=True)
             self.threads.append(t)
-            self.worker_names.append(f"{symbol}@{ltf} [LTF]")
+            self.worker_names.append(f"{symbol}@{equity_timeframe} [EQUITY]")
             t.start()
 
         # Option/index workers
         for idx_sym in index_symbols:
             idx_config = dict(config)
             idx_config["exchange"] = option_exchange
-            for tf in index_timeframes:
+            for tf in option_timeframes:
                 worker = TimeframeWorker(
                     symbol=idx_sym, timeframe=tf, client=client,
                     config=idx_config, stop_event=self.stop_event,
@@ -432,9 +432,12 @@ def get_status():
         "exchange": config.get("exchange", "NSE"),
         "symbols": config.get("symbols") or [],
         "index_symbols": config.get("index_symbols") or [],
-        "htf": config.get("htf", "15m"),
-        "ltf": config.get("ltf", "5m"),
+        "htf": config.get("trend_timeframe", "15m"),
+        "ltf": config.get("equity_timeframe", "5m"),
         "mtf_enabled": config.get("mtf_filter", {}).get("enabled", False),
+        "sr_enabled": config.get("sr_channels", {}).get("enabled", False),
+        "auto_scan_enabled": config.get("bot", {}).get("auto_scan_enabled", True),
+        "auto_scan_interval_minutes": config.get("bot", {}).get("auto_scan_interval_minutes", 5),
         "uptime_seconds": uptime_seconds,
         "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -665,6 +668,19 @@ async def stream_logs():
     )
 
 
+@app.post("/api/signals/clear")
+def clear_signals():
+    """Truncate the signals table in SQLite signals.db."""
+    try:
+        conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+        conn.execute("DELETE FROM signals")
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": "All logged signals deleted."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @app.post("/api/bot/restart")
 def restart_bot(req: BotRestartRequest):
     """Restart all bot workers (hot-reload config too)."""
@@ -676,6 +692,38 @@ def restart_bot(req: BotRestartRequest):
             name="BotRestart",
         ).start()
         return {"status": "success", "message": f"Bot restart triggered. Reason: {req.reason}"}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+class ManualOrderRequest(BaseModel):
+    symbol: str
+    action: str
+    quantity: int
+    price: float
+
+
+@app.post("/api/order")
+def manual_order(req: ManualOrderRequest):
+    """Place a manual order using OpenAlgo API credentials from config."""
+    try:
+        from openalgo import api as oa_api
+        config = load_config()
+        oa_cfg = config.get("openalgo", {})
+        api_key = oa_cfg.get("apikey", "")
+        base_url = oa_cfg.get("base_url", "http://127.0.0.1:5000")
+        
+        client = oa_api(api_key=api_key, host=base_url)
+        res = client.placeorder(
+            symbol=req.symbol,
+            action=req.action,
+            exchange=config.get("exchange", "NSE"),
+            quantity=str(req.quantity),
+            product="CNC",
+            price_type="LIMIT",
+            price=str(req.price)
+        )
+        return {"status": "success", "orderid": res.get("orderid", "")}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

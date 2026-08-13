@@ -96,7 +96,7 @@ filters:
   # --- Signal History & Outcome Tracking ---
   signal_history_enabled: true        # Log signals to SQLite for outcome tracking
   outcome_check_hours: 4              # Hours after signal to check outcome
-  win_rate_backtest_enabled: true    # Run mini-backtest on triggered symbols to compute historical win rate
+  win_rate_backtest_enabled: false   # Run mini-backtest on triggered symbols to compute historical win rate
 
 # Telegram Alerts
 telegram:
@@ -132,7 +132,7 @@ flattrade:
 
 # MStock (Mirae Asset) — access_token from MStock Developer Portal
 mstock:
-  client_id: "MA19673"
+  client_id: ""
   api_secret: "K+6WAwPthK7r4Tb/t2pM5g=="
   access_token: ""                    # Long-lived Bearer token from developer.miraeassetcm.com
   order_product: "MIS"
@@ -184,39 +184,93 @@ bot:
 symbols:
 - ADANIENT
 - ADANIPORTS
-
-# ------------------------------------------------------------
-# 7. AUTOMATIC TRADE MANAGEMENT (POSITION MONITOR)
-# ------------------------------------------------------------
 trade_management:
   enabled: true                  # Master switch — set true to activate auto monitoring
-  poll_interval_seconds: 5       # Fallback polling interval if WebSocket is down
+  poll_interval_seconds: 5       # Fallback polling interval when WebSocket is unavailable
 
-  stop_loss_pct: 1.0             # Fallback % SL below entry
-  target_pct: 2.0                # Fallback % target above entry
+  # Initial SL and Target (percentage-based, anchored to entry price)
+  # Works correctly for ₹50 stocks and ₹5000 stocks alike.
+  stop_loss_pct: 1.0             # % below/above entry price for initial SL
+  target_pct: 2.0                # % above/below entry price for target
 
-  # Partial Exit rules
+  # ------------------------------------------------------------------
+  # Partial Exit — scale out of the position in configurable tranches
+  # ------------------------------------------------------------------
   partial_exit:
     enabled: true
-    target1_pct: 1.0             # Sell portion when price moves 1% in favour
-    exit_qty_fraction: 0.5       # Sell 50% of the position
-    move_sl_to_breakeven: true   # Set remaining position SL to entry price
 
-  # Trailing Stop Loss rules
+    # TIERED mode (takes precedence when `tiers` key is present)
+    # Each tier fires once when gain_pct >= trigger_pct.
+    # exit_qty_fraction applies to the *remaining* quantity at that point.
+    # move_sl_to_be: move stop-loss to breakeven (entry price) after this tier fires.
+    tiers:
+    - trigger_pct: 1.0            # Fire Tier 1 when profit reaches 1%
+      exit_qty_fraction: 0.33     # Exit 33% of position
+      move_sl_to_be: true         # Move SL to breakeven
+
+    - trigger_pct: 2.0            # Fire Tier 2 when profit reaches 2%
+      exit_qty_fraction: 0.50     # Exit 50% of remaining position
+      move_sl_to_be: false
+
+    # LEGACY flat keys (used only when `tiers` list is absent above)
+    # target1_pct: 1.0
+    # exit_qty_fraction: 0.5
+    # move_sl_to_breakeven: true
+
+  # ------------------------------------------------------------------
+  # Trailing Stop Loss — dynamically moves SL behind the high-water mark
+  # ------------------------------------------------------------------
   trailing_sl:
     enabled: true
-    activation_pct: 1.0          # Start trailing when profit reaches this %
-    distance_pct: 0.5            # Keep SL this % behind high-water mark
+    activation_pct: 1.0          # Minimum profit % before trailing activates
 
-  # Profit Lock rules
+    # TIERED mode — tighten the trail as profit grows.
+    # The highest tier whose min_gain_pct <= current_gain_pct is applied.
+    tiers:
+    - min_gain_pct: 1.0
+      distance_pct: 0.8          # Keep SL 0.8% behind HWM when profit is 1–2%
+
+    - min_gain_pct: 2.0
+      distance_pct: 0.5          # Tighten to 0.5% trail when profit exceeds 2%
+
+    - min_gain_pct: 3.5
+      distance_pct: 0.3          # Tighten further to 0.3% when profit exceeds 3.5%
+
+    # LEGACY flat key (used only when `tiers` list is absent above)
+    # distance_pct: 0.5
+
+  # ------------------------------------------------------------------
+  # Profit Lock — ratchet SL up to lock a fraction of unrealised gain
+  # ------------------------------------------------------------------
   profit_lock:
     enabled: true
-    threshold_pct: 1.5           # Lock profits when this % gain is reached
-    lock_fraction: 0.50          # Secure 50% of peak gain as new SL level
 
-  # Notifications
+    # TIERED mode — lock progressively more profit as gains grow.
+    # Each tier fires once; SL can only move in the favourable direction.
+    # lock_fraction is applied to the absolute gain from entry to HWM.
+    # Example: entry=100, HWM=104, lock_fraction=0.5 → new SL = 100 + (4×0.5) = 102
+    tiers:
+    - threshold_pct: 1.5          # Activate when profit ≥ 1.5%
+      lock_fraction: 0.30         # Lock 30% of peak gain as new SL
+
+    - threshold_pct: 2.5          # Activate when profit ≥ 2.5%
+      lock_fraction: 0.50         # Lock 50% of peak gain
+
+    - threshold_pct: 4.0          # Activate when profit ≥ 4.0%
+      lock_fraction: 0.75         # Lock 75% of peak gain
+
+    # LEGACY flat keys (used only when `tiers` list is absent above)
+    # threshold_pct: 1.5
+    # lock_fraction: 0.50
+
+  # ------------------------------------------------------------------
+  # Notifications (Telegram alerts)
+  # ------------------------------------------------------------------
   notifications:
-    on_sl_move: false            # Telegram alert when SL changes
-    on_profit_lock: true         # Telegram alert when profit is locked
-    on_exit: true                # Telegram alert on final close
+    on_open: true                # Alert when a new position is registered
+    on_exit: true                # Alert on full position close (target / SL / manual)
+    on_partial_exit: true        # Alert on each partial (scaled-out) exit
+    on_profit_lock: true         # Alert when profit-lock SL is ratcheted up
+    on_sl_move: false            # Alert on every trailing SL adjustment (verbose)
+
 

@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from openalgo import api
+from sr_engine import compute_sr_signals
 
 # ---------------------------------------------------------------------------
 # ML components (optional — bot works without a trained model)
@@ -271,6 +272,17 @@ class TimeframeWorker:
         mtf_cfg = config.get("mtf_filter", {})
         self._mtf_filter_enabled = bool(mtf_cfg.get("enabled", False))
 
+        # S/R Zones Engine config
+        sr_cfg = config.get("sr_channels", {})
+        self._sr_enabled = bool(sr_cfg.get("enabled", False))
+        self._sr_pivot_period = int(sr_cfg.get("pivot_period", 10))
+        self._sr_source = sr_cfg.get("source", "High/Low")
+        self._sr_channel_width_pct = float(sr_cfg.get("channel_width_pct", 5.0))
+        self._sr_min_strength = int(sr_cfg.get("min_strength", 1))
+        self._sr_max_num_sr = int(sr_cfg.get("max_num_sr", 6))
+        self._sr_loopback = int(sr_cfg.get("loopback", 290))
+        self._sr_proximity_pct = float(sr_cfg.get("proximity_pct", 0.5))
+
         strat = config.get("strategy", {})
         self.key_value = float(strat.get("key_value", 2))
         self.atr_period = int(strat.get("atr_period", 1))
@@ -281,6 +293,9 @@ class TimeframeWorker:
 
         bot_cfg = config.get("bot", {})
         self.check_interval = int(bot_cfg.get("signal_check_interval", 5))
+        interval_min = float(bot_cfg.get("auto_scan_interval_minutes", 5))
+        self._auto_scan_interval_secs = interval_min * 60   # convert to seconds
+        self._last_scan_time: float = 0.0                   # epoch of last scan
 
         # Track last signal to avoid duplicate alerts
         self._last_signal_ts = None
@@ -544,6 +559,19 @@ class TimeframeWorker:
             use_heikin_ashi=self.use_heikin_ashi,
         )
 
+        sr_zones = []
+        if self._sr_enabled:
+            df, sr_zones = compute_sr_signals(
+                df,
+                pivot_period=self._sr_pivot_period,
+                source=self._sr_source,
+                channel_width_pct=self._sr_channel_width_pct,
+                min_strength=self._sr_min_strength,
+                max_num_sr=self._sr_max_num_sr,
+                loopback=self._sr_loopback,
+                proximity_pct=self._sr_proximity_pct,
+            )
+
         # ── Dynamically find the last CLOSED candle ───────────────────────────
         # The broker API sometimes doesn't include the currently-forming bar,
         # so we can't assume iloc[-1] is always the live candle.
@@ -574,6 +602,10 @@ class TimeframeWorker:
 
         buy_signal  = bool(last_closed["buy"])
         sell_signal = bool(last_closed["sell"])
+
+        if self._sr_enabled:
+            buy_signal = buy_signal and bool(last_closed.get("sr_buy", False))
+            sell_signal = sell_signal and bool(last_closed.get("sr_sell", False))
 
         # ── Scan summary — always logged so you can confirm the bot is running ──
         pos_val   = int(last_closed["pos"])
@@ -838,8 +870,23 @@ class TimeframeWorker:
 
         while not self.stop_event.is_set():
             try:
-                if _is_market_hours(self.config):
-                    self._check_and_alert()
+                bot_cfg = self.config.get("bot", {})
+                auto_scan = bot_cfg.get("auto_scan_enabled", True)
+
+                if not auto_scan:
+                    log.debug("[%s|%s] Auto-scan disabled — idling.", self.symbol, self.timeframe)
+                elif _is_market_hours(self.config):
+                    # Use auto_scan_interval_minutes as the scan trigger (independent of chart TF)
+                    interval_min = float(bot_cfg.get("auto_scan_interval_minutes", 5))
+                    interval_secs = interval_min * 60
+                    now = time.time()
+                    if now - self._last_scan_time >= interval_secs:
+                        self._last_scan_time = now
+                        log.debug(
+                            "[%s|%s] Auto-scan triggered (every %.0fm).",
+                            self.symbol, self.timeframe, interval_min,
+                        )
+                        self._check_and_alert()
                 else:
                     log.debug("[%s|%s] Outside market hours, skipping.", self.symbol, self.timeframe)
             except Exception as exc:
@@ -996,26 +1043,26 @@ def _is_market_hours(config: dict) -> bool:
 
 
 def _print_banner(config: dict):
-    symbols = config.get("symbols", [])
-    index_symbols = config.get("index_symbols", [])
-    htf = config.get("htf", "—")
-    ltf = config.get("ltf", "—")
+    symbols = config.get("symbols") or []
+    index_symbols = config.get("index_symbols") or []
+    trend_tf = config.get("trend_timeframe", "—")
+    equity_tf = config.get("equity_timeframe", "—")
     mtf_enabled = config.get("mtf_filter", {}).get("enabled", False)
-    strat = config.get("strategy", {})
+    strat = config.get("strategy") or {}
 
     width = 62
     sep = "=" * width
     log.info(sep)
     log.info("  UT BOT ANTIGRAVITY — Signal Monitor")
     log.info(sep)
-    log.info("  Symbols       : %s", ", ".join(symbols))
+    log.info("  Symbols          : %s", ", ".join(symbols))
     if index_symbols:
-        log.info("  Index Symbols : %s", ", ".join(index_symbols))
-        log.info("  Index Exchange: %s (history via NFO)", config.get("index_exchange", "NSE_INDEX"))
-        idx_tfs = config.get("index_timeframes", [ltf])
-        log.info("  Index TFs     : %s", ", ".join(idx_tfs))
-    log.info("  HTF (trend)   : %s", htf)
-    log.info("  LTF (signal)  : %s", ltf)
+        log.info("  Option Symbols   : %s", ", ".join(index_symbols))
+        log.info("  Option Exchange  : %s (history via NFO)", config.get("index_exchange", "NSE_INDEX"))
+        opt_tfs = config.get("option_timeframes") or [equity_tf]
+        log.info("  Option TFs       : %s", ", ".join(opt_tfs))
+    log.info("  Trend Timeframe  : %s", trend_tf)
+    log.info("  Equity Timeframe : %s", equity_tf)
     log.info("  MTF Filter    : %s", "ENABLED" if mtf_enabled else "DISABLED")
     log.info("  Exchange      : %s", config.get("exchange", "NSE"))
     log.info("  Data Source   : %s", config.get("data_source", "openalgo").upper())
@@ -1078,9 +1125,9 @@ def main():
 
     symbols: list[str] = config.get("symbols") or []
     index_symbols: list[str] = config.get("index_symbols") or []
-    htf: str = config.get("htf", "15m")
-    ltf: str = config.get("ltf", "5m")
-    index_timeframes: list[str] = config.get("index_timeframes") or [ltf]
+    trend_timeframe: str = config.get("trend_timeframe", "15m")
+    equity_timeframe: str = config.get("equity_timeframe", "5m")
+    option_timeframes: list[str] = config.get("option_timeframes") or [equity_timeframe]
     exchange: str = config.get("exchange", "NSE")
     index_exchange: str = config.get("index_exchange", "NSE_INDEX")
     mtf_enabled: bool = config.get("mtf_filter", {}).get("enabled", False)
@@ -1134,12 +1181,12 @@ def main():
         shared_ltp_map = {}
         log.info("Data source is %s — skipping OpenAlgo client & WebSocket.", data_source.upper())
 
-    # ---- HTF workers (trend-only) — only spawned when MTF filter is enabled --
+    # ---- Trend workers (trend-only) — only spawned when MTF filter is enabled --
     if mtf_enabled:
         for symbol in symbols:
             worker = TimeframeWorker(
                 symbol=symbol,
-                timeframe=htf,
+                timeframe=trend_timeframe,
                 client=client,
                 config=config,
                 stop_event=stop_event,
@@ -1149,20 +1196,20 @@ def main():
             )
             t = threading.Thread(
                 target=worker.run,
-                name=f"Worker-{symbol}-{htf}-HTF",
+                name=f"Worker-{symbol}-{trend_timeframe}-TREND",
                 daemon=True,
             )
             threads.append(t)
             t.start()
-            log.info("Started HTF (trend) worker: %s @ %s [%s]", symbol, htf, exchange)
+            log.info("Started Trend worker: %s @ %s [%s]", symbol, trend_timeframe, exchange)
     else:
-        log.info("MTF filter DISABLED — HTF workers not started.")
+        log.info("MTF filter DISABLED — Trend workers not started.")
 
-    # ---- LTF workers (signal + order, one per equity symbol) -----------------
+    # ---- Equity workers (signal + order, one per equity symbol) ---------------
     for symbol in symbols:
         worker = TimeframeWorker(
             symbol=symbol,
-            timeframe=ltf,
+            timeframe=equity_timeframe,
             client=client,
             config=config,
             stop_event=stop_event,
@@ -1172,19 +1219,19 @@ def main():
         )
         t = threading.Thread(
             target=worker.run,
-            name=f"Worker-{symbol}-{ltf}-LTF",
+            name=f"Worker-{symbol}-{equity_timeframe}-EQUITY",
             daemon=True,
         )
         threads.append(t)
         t.start()
-        log.info("Started LTF (signal) worker: %s @ %s [%s]", symbol, ltf, exchange)
+        log.info("Started Equity worker: %s @ %s [%s]", symbol, equity_timeframe, exchange)
 
-    # ---- One worker thread per (option/index symbol, index timeframe) --------
+    # ---- One worker thread per (option/index symbol, option timeframe) -------
     for idx_sym in index_symbols:
         # Override exchange to NFO for option contract history & LTP
         idx_config = dict(config)
         idx_config["exchange"] = option_exchange
-        for tf in index_timeframes:
+        for tf in option_timeframes:
             worker = TimeframeWorker(
                 symbol=idx_sym,
                 timeframe=tf,
