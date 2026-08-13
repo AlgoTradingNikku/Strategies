@@ -1440,13 +1440,13 @@ input:checked + .slider:before {
 
 .pnl-profit {
     background-color: rgba(16, 185, 129, 0.15);
-    color: var(--success);
+    color: var(--color-buy);
     border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .pnl-loss {
     background-color: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
+    color: var(--color-sell);
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
@@ -1498,6 +1498,74 @@ input:checked + .slider:before {
     font-family: var(--font-mono);
     color: var(--color-accent);
     font-weight: 600;
+}
+
+/* ==========================================================================
+   Options Contract Details — expiry countdown, contract tag, lots pill
+   Used on the Positions tab (open + closed tables) and anywhere else a
+   symbol needs option context at a glance.
+   ========================================================================== */
+
+.contract-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+
+.contract-tag .opt-type-ce { color: var(--color-buy); font-weight: 700; }
+.contract-tag .opt-type-pe { color: var(--color-sell); font-weight: 700; }
+
+.lots-pill {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    margin-left: 6px;
+    white-space: nowrap;
+}
+
+.expiry-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+.expiry-badge.expiry-safe {
+    color: var(--color-buy);
+    background: var(--color-buy-bg);
+    border: 1px solid var(--color-buy-border);
+}
+
+.expiry-badge.expiry-near {
+    color: var(--color-warning);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.expiry-badge.expiry-today,
+.expiry-badge.expiry-expired {
+    color: var(--color-sell);
+    background: var(--color-sell-bg);
+    border: 1px solid var(--color-sell-border);
+    animation: badge-pulse 1.2s ease-in-out infinite;
+}
+
+.expiry-badge.expiry-unknown {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
 }
 
 

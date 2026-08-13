@@ -42,6 +42,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const dashMtfEnabled = document.getElementById("dash-mtf-enabled");
     const dashMlEnabled = document.getElementById("dash-ml-enabled");
 
+    // Positions (Trade Management)
+    const posKpiOpenCount = document.getElementById("pos-kpi-open-count");
+    const posKpiOpenPnl = document.getElementById("pos-kpi-open-pnl");
+    const posKpiRealizedPnl = document.getElementById("pos-kpi-realized-pnl");
+    const posKpiNearestExpiry = document.getElementById("pos-kpi-nearest-expiry");
+    const posKpiNearestExpirySymbol = document.getElementById("pos-kpi-nearest-expiry-symbol");
+    const positionsOpenBody = document.getElementById("positions-open-body");
+    const positionsClosedBody = document.getElementById("positions-closed-body");
+    const positionsLastUpdateBadge = document.getElementById("positions-last-update-badge");
+    const btnRefreshClosedPositions = document.getElementById("btn-refresh-closed-positions");
+
     // History
     const historyTable = document.getElementById("history-signals-table").querySelector("tbody");
     const btnApplyHistFilter = document.getElementById("btn-apply-hist-filter");
@@ -144,6 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (targetTab === "history") loadHistory(1);
             if (targetTab === "config") loadConfig();
             if (targetTab === "ml") loadMlStats();
+            if (targetTab === "positions") loadPositions();
         });
     });
 
@@ -411,6 +423,196 @@ document.addEventListener("DOMContentLoaded", () => {
             connectionStatus.innerText = "Connection Lost";
             console.error("Dashboard Poll Error:", e);
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Positions (Trade Management) — options contract, expiry, lot-size P&L
+    // ---------------------------------------------------------------------------
+    function fmtMoney(n) {
+        if (n === null || n === undefined || Number.isNaN(n)) return "—";
+        const sign = n > 0 ? "+" : "";
+        return `${sign}₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+    }
+
+    function pnlBadgeHtml(pct, amount) {
+        if (pct === null || pct === undefined) {
+            return `<span class="pnl-badge pnl-neutral">—</span>`;
+        }
+        const cls = pct > 0 ? "pnl-profit" : (pct < 0 ? "pnl-loss" : "pnl-neutral");
+        const amountStr = amount !== null && amount !== undefined ? ` (${fmtMoney(amount)})` : "";
+        return `<span class="pnl-badge ${cls}">${pct > 0 ? "+" : ""}${pct.toFixed(2)}%${amountStr}</span>`;
+    }
+
+    function contractTagHtml(pos) {
+        if (!pos.option_type) {
+            // Equity leg — just show the plain symbol
+            return `<strong>${pos.symbol}</strong>`;
+        }
+        const typeClass = pos.option_type === "CE" ? "opt-type-ce" : "opt-type-pe";
+        const lots = pos.lots;
+        const lotsHtml = lots ? `<span class="lots-pill">${lots}${lots === 1 ? " lot" : " lots"}</span>` : "";
+        return `
+            <div class="contract-tag">
+                <strong>${pos.underlying || pos.symbol}</strong>
+                <span>${pos.strike ?? ""}</span>
+                <span class="${typeClass}">${pos.option_type}</span>
+            </div>
+            ${lotsHtml}
+        `;
+    }
+
+    function expiryBadgeHtml(countdown) {
+        if (!countdown || !countdown.label || countdown.urgency === "unknown") {
+            return `<span class="expiry-badge expiry-unknown">—</span>`;
+        }
+        const icon = countdown.urgency === "expired" ? "fa-circle-exclamation" : "fa-hourglass-half";
+        return `<span class="expiry-badge expiry-${countdown.urgency}" title="${countdown.expiry || ""}">
+                    <i class="fa-solid ${icon}"></i> ${countdown.label}
+                </span>`;
+    }
+
+    function statusBadgeHtml(pos) {
+        if (pos.profit_locked) {
+            return `<span class="badge-status badge-status-locked">Profit Locked</span>`;
+        }
+        if (pos.trailing_active) {
+            return `<span class="badge-status badge-status-trailing">Trailing</span>`;
+        }
+        return `<span class="badge-status badge-status-monitoring">Monitoring</span>`;
+    }
+
+    async function loadPositions() {
+        try {
+            const [openRes, closedRes] = await Promise.all([
+                fetch("/api/positions"),
+                fetch("/api/positions/closed?limit=50"),
+            ]);
+            if (!openRes.ok || !closedRes.ok) throw new Error("Positions API failed");
+
+            const openData = await openRes.json();
+            const closedData = await closedRes.json();
+            const openPositions = openData.positions || [];
+            const closedPositions = closedData.positions || [];
+
+            if (positionsLastUpdateBadge) {
+                positionsLastUpdateBadge.textContent = "Live";
+                positionsLastUpdateBadge.className = "last-updated-badge badge-fresh";
+            }
+
+            // --- KPIs ---
+            posKpiOpenCount.innerText = openPositions.length;
+
+            let openPnlAmount = 0, openPnlKnown = false;
+            let nearest = null;
+            openPositions.forEach(p => {
+                if (p.unrealized_pnl_amount !== null && p.unrealized_pnl_amount !== undefined) {
+                    openPnlAmount += p.unrealized_pnl_amount;
+                    openPnlKnown = true;
+                }
+                const cd = p.expiry_countdown;
+                if (cd && cd.days_left !== null && cd.days_left !== undefined) {
+                    if (!nearest || cd.days_left < nearest.cd.days_left) {
+                        nearest = { cd, symbol: p.symbol };
+                    }
+                }
+            });
+            posKpiOpenPnl.innerText = openPnlKnown ? fmtMoney(openPnlAmount) : "—";
+            posKpiOpenPnl.className = "stat-value " + (openPnlKnown ? (openPnlAmount >= 0 ? "text-buy" : "text-sell") : "");
+
+            if (nearest) {
+                posKpiNearestExpiry.innerText = nearest.cd.label;
+                posKpiNearestExpirySymbol.innerText = nearest.symbol;
+            } else {
+                posKpiNearestExpiry.innerText = "—";
+                posKpiNearestExpirySymbol.innerText = "Across open positions";
+            }
+
+            const todayStr = new Date().toISOString().slice(0, 10);
+            let realizedToday = 0, realizedKnown = false;
+            closedPositions.forEach(p => {
+                if (p.close_time && p.close_time.startsWith(todayStr) &&
+                    p.pnl_amount !== null && p.pnl_amount !== undefined) {
+                    realizedToday += p.pnl_amount;
+                    realizedKnown = true;
+                }
+            });
+            posKpiRealizedPnl.innerText = realizedKnown ? fmtMoney(realizedToday) : "₹0";
+            posKpiRealizedPnl.className = "stat-value " + (realizedKnown ? (realizedToday >= 0 ? "text-buy" : "text-sell") : "");
+
+            // --- Open positions table ---
+            if (openPositions.length === 0) {
+                positionsOpenBody.innerHTML = `<tr><td colspan="11" class="empty-placeholder">No active positions currently registered for monitoring. Trade Management may be disabled in Settings, or no orders have fired yet.</td></tr>`;
+            } else {
+                positionsOpenBody.innerHTML = openPositions.map(p => `
+                    <tr>
+                        <td>${contractTagHtml(p)}</td>
+                        <td><span class="${p.direction === "BUY" ? "text-buy" : "text-sell"}">${p.direction}</span></td>
+                        <td>${p.lots ? `${p.lots} (${p.quantity})` : p.quantity}</td>
+                        <td>₹${Number(p.entry_price).toFixed(2)}</td>
+                        <td class="live-ltp">${p.live_ltp !== null && p.live_ltp !== undefined ? "₹" + Number(p.live_ltp).toFixed(2) : "—"}</td>
+                        <td>₹${Number(p.current_sl).toFixed(2)}</td>
+                        <td>₹${Number(p.target_price).toFixed(2)}</td>
+                        <td>${pnlBadgeHtml(p.unrealized_gain_pct, p.unrealized_pnl_amount)}</td>
+                        <td>${expiryBadgeHtml(p.expiry_countdown)}</td>
+                        <td>${statusBadgeHtml(p)}</td>
+                        <td><button class="btn btn-secondary btn-close-position" data-id="${p.id}" style="padding: 4px 10px; font-size: 0.78rem;"><i class="fa-solid fa-xmark"></i> Close</button></td>
+                    </tr>
+                `).join("");
+
+                document.querySelectorAll(".btn-close-position").forEach(btn => {
+                    btn.addEventListener("click", async () => {
+                        const posId = btn.getAttribute("data-id");
+                        if (!confirm(`Manually close position #${posId} at the current market price?`)) return;
+                        try {
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                            const res = await fetch(`/api/positions/${posId}/close`, { method: "POST" });
+                            const data = await res.json();
+                            if (res.ok) {
+                                showToast(data.message || "Position closed.");
+                                loadPositions();
+                            } else {
+                                showToast(data.detail || "Failed to close position", "error");
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Close';
+                            }
+                        } catch (err) {
+                            showToast("Error: " + err.message, "error");
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-xmark"></i> Close';
+                        }
+                    });
+                });
+            }
+
+            // --- Closed positions table ---
+            if (closedPositions.length === 0) {
+                positionsClosedBody.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No closed trades history found.</td></tr>`;
+            } else {
+                positionsClosedBody.innerHTML = closedPositions.map(p => `
+                    <tr>
+                        <td>${contractTagHtml(p)}</td>
+                        <td><span class="${p.direction === "BUY" ? "text-buy" : "text-sell"}">${p.direction}</span></td>
+                        <td>${p.lots ? `${p.lots} (${p.quantity})` : p.quantity}</td>
+                        <td>₹${Number(p.entry_price).toFixed(2)}</td>
+                        <td>${p.close_price !== null && p.close_price !== undefined ? "₹" + Number(p.close_price).toFixed(2) : "—"}</td>
+                        <td>${p.close_time || "—"}</td>
+                        <td><span class="badge-reason">${p.close_reason || "—"}</span></td>
+                        <td>${pnlBadgeHtml(p.pnl_pct, p.pnl_amount)}</td>
+                    </tr>
+                `).join("");
+            }
+        } catch (e) {
+            if (positionsLastUpdateBadge) {
+                positionsLastUpdateBadge.textContent = "Stale";
+                positionsLastUpdateBadge.className = "last-updated-badge badge-stale";
+            }
+            console.error("Positions Poll Error:", e);
+        }
+    }
+
+    if (btnRefreshClosedPositions) {
+        btnRefreshClosedPositions.addEventListener("click", () => loadPositions());
     }
 
     // Quick Control Toggle Handlers
@@ -788,5 +990,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------------------------------
     setInterval(updateDashboard, 1500);
     updateDashboard();
+    setInterval(loadPositions, 3000);
+    loadPositions();
     setupLogs();
 });
