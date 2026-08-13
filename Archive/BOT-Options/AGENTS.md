@@ -128,7 +128,11 @@ trading:
 
 ### Start Bot
 ```bash
-python app.py
+python app.py     # starts the dashboard at http://127.0.0.1:9000 — this is
+                   # the only supported entry point; there is no separate
+                   # headless mode anymore. `python server.py` / `python
+                   # dashboard.py` / `uvicorn server:app --port 9000` are
+                   # equivalent alternatives.
 ```
 
 ### Label Signals (after market close)

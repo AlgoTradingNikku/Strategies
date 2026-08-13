@@ -103,8 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
         trading_enabled: document.getElementById("cfg-trading-enabled"),
         oa_apikey: document.getElementById("cfg-oa-apikey"),
         oa_baseurl: document.getElementById("cfg-oa-baseurl"),
-        mkt_check: document.getElementById("cfg-mkt-check"),
-        check_interval: document.getElementById("cfg-check-interval")
+        mkt_check: document.getElementById("cfg-mkt-check")
     };
 
     // Logs
@@ -836,7 +835,6 @@ document.addEventListener("DOMContentLoaded", () => {
             cfgForm.oa_apikey.value = data.openalgo.apikey;
             cfgForm.oa_baseurl.value = data.openalgo.base_url;
             cfgForm.mkt_check.checked = data.bot.market_hours_check;
-            cfgForm.check_interval.value = data.bot.signal_check_interval;
             
         } catch (e) {
             console.error("Config load error", e);
@@ -880,8 +878,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 base_url: cfgForm.oa_baseurl.value
             },
             bot: {
-                market_hours_check: cfgForm.mkt_check.checked,
-                signal_check_interval: parseInt(cfgForm.check_interval.value)
+                market_hours_check: cfgForm.mkt_check.checked
             }
         };
 

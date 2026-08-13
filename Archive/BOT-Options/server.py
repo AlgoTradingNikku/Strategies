@@ -6,10 +6,11 @@
 Launches the UT Bot trading engine as background threads and exposes a full
 REST + Server-Sent-Events API consumed by the professional trading dashboard.
 
-Run:
-    uvicorn server:app --host 127.0.0.1 --port 8002 --reload
-  or:
+Run (any of these are equivalent):
+    python app.py                                     <- recommended, matches Bot-Stocks
+    python dashboard.py
     python server.py
+    uvicorn server:app --host 127.0.0.1 --port 9000 --reload
 
 API endpoints:
   GET  /api/status          Bot heartbeat, market hours, workers, ML status
@@ -283,6 +284,11 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def _startup():
+    # Refuse to start a second instance against the same broker/positions —
+    # this used to only run in app.py's now-retired headless main() loop, so
+    # the dashboard path had no protection against being launched twice.
+    _check_single_instance()
+
     log.info("[Server] FastAPI startup — launching bot workers...")
     try:
         config = load_config()
@@ -862,5 +868,5 @@ app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="front
 # Direct launch
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    log.info("Starting UT Bot Antigravity Dashboard on http://127.0.0.1:8002")
-    uvicorn.run("server:app", host="127.0.0.1", port=8002, reload=False)
+    log.info("Starting UT Bot Antigravity Dashboard on http://127.0.0.1:9000")
+    uvicorn.run("server:app", host="127.0.0.1", port=9000, reload=False)

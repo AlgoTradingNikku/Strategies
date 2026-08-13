@@ -108,14 +108,24 @@ The core strategy is a faithful Python port of the PineScript *UT Bot Alerts* in
 
 ### 4.1 `app.py` — The Orchestrator
 
-**Startup sequence:**
+**Startup sequence:** `python app.py` starts the dashboard (server.py's FastAPI app,
+listening on port 9000) rather than running headless. On FastAPI startup, `server.py`'s
+`BotEngine._spawn_workers()` does the equivalent of what a standalone headless runner
+would do:
 
 1. Load `config.yml`
-2. Acquire `.utbot.lock` (single-instance guard)
-3. Create `openalgo.api` client
-4. Start `LivePriceMonitor` thread (WebSocket LTP stream)
-5. Spawn one `TimeframeWorker` thread per `(symbol, timeframe)` pair
-6. Enter main loop — watches `config.yml` for changes and hot-reloads if it is saved
+2. Create `openalgo.api` client
+3. Start `LivePriceMonitor` thread (WebSocket LTP stream)
+4. Spawn one `TimeframeWorker` thread per `(symbol, timeframe)` pair
+
+Config changes are picked up via the dashboard's Settings tab (Save Config triggers
+`POST /api/config` → `BotEngine.restart()`) rather than by watching `config.yml`'s mtime —
+there's no automatic restart from hand-editing the file on disk while the bot is running.
+
+`main()` (further down in app.py) is the original standalone, dashboard-less engine loop —
+including its own config-file-watching hot-reload via process re-exec — kept in the file for
+reference but no longer wired up to anything; `if __name__ == "__main__":` now launches the
+dashboard instead of calling it.
 
 **`TimeframeWorker` inner loop (every `signal_check_interval` seconds):**
 
@@ -416,7 +426,9 @@ trading:
 ## 11. Quick-Start Commands
 
 ```bash
-# Run the bot
+# Run the bot — starts the dashboard at http://127.0.0.1:9000
+# (python server.py / python dashboard.py / uvicorn server:app --port 9000
+#  are equivalent; there is no separate headless mode)
 python app.py
 
 # Label signals after market close

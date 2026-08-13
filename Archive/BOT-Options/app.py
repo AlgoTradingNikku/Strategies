@@ -306,7 +306,7 @@ class TimeframeWorker:
         self.lookback_days = int(data_cfg.get("lookback_days", 5))
 
         bot_cfg = config.get("bot", {})
-        self.check_interval = int(bot_cfg.get("signal_check_interval", 5))
+        self.check_interval = 1.0  # Internal 1-second heartbeat timer
         interval_min = float(bot_cfg.get("auto_scan_interval_minutes", 5))
         self._auto_scan_interval_secs = interval_min * 60   # convert to seconds
         self._last_scan_time: float = 0.0                   # epoch of last scan
@@ -1327,5 +1327,32 @@ def main():
         log.info("All workers stopped. Bye!")
 
 
+# ============================================================================
+# ENTRY POINT — `python app.py` starts the dashboard (matches Bot-Stocks:
+# one bot, one file, one command). This is the only supported way to run
+# BOT-Options day-to-day; `main()` above (the old headless, dashboard-less
+# engine loop) is kept in the file for reference but is no longer wired up —
+# use the dashboard's Settings tab / Save Config + Run Scanner instead of
+# hand-editing config.yml and expecting an automatic restart.
+#
+# `dashboard.py` and `uvicorn server:app` remain equivalent ways to start the
+# same dashboard, for anyone with a habit of using one of those instead.
+# ============================================================================
 if __name__ == "__main__":
-    main()
+    # server.py does `from app import (...)` to reuse this file's classes
+    # (TimeframeWorker, LivePriceMonitor, position_monitor, etc.). Since this
+    # script is currently running as "__main__", not "app", that import would
+    # otherwise re-read and re-execute this entire file a second time under a
+    # separate "app" module identity — harmless (nothing in the orphaned copy
+    # ever runs) but wasteful and confusing. Aliasing "app" to this already-
+    # running module before importing server avoids that: server.py's import
+    # resolves to this exact module instead.
+    sys.modules.setdefault("app", sys.modules[__name__])
+
+    import uvicorn
+    DASHBOARD_PORT = 9000
+    print("==============================================================")
+    print("  UT BOT ANTIGRAVITY — Dashboard")
+    print(f"  URL: http://127.0.0.1:{DASHBOARD_PORT}")
+    print("==============================================================")
+    uvicorn.run("server:app", host="127.0.0.1", port=DASHBOARD_PORT, reload=False, access_log=False)

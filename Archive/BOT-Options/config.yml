@@ -34,14 +34,12 @@ equity_timeframe: "5m"     # Timeframe for scanning equity symbols (LTF)
 # index/option
 index_exchange: "NSE_INDEX"    # Exchange for index data
 index_symbols:
-  - NIFTY18AUG2624500PE
-  - NIFTY18AUG2624600PE
-  - NIFTY18AUG2624500CE
-  - NIFTY18AUG2624600CE
-
+- NIFTY18AUG2624500PE
+- NIFTY18AUG2624600PE
+- NIFTY18AUG2624500CE
+- NIFTY18AUG2624600CE
 option_timeframes:         # Timeframes for scanning index/option symbols
 - 5m
-
 strategy:
   key_value: 2
   atr_period: 1
@@ -64,13 +62,12 @@ data:
 # MTF Trend Filter
 # ------------------------------------------------------------
 mtf_filter:
-  enabled: true             # true  → trend_timeframe worker runs as trend filter; equity_timeframe only fires when trend agrees
+  enabled: false            # true  → trend_timeframe worker runs as trend filter; equity_timeframe only fires when trend agrees
                             # false → trend worker NOT started; only equity_timeframe runs and fires signals freely
 
 bot:
-  signal_check_interval: 5        # How often (seconds) the worker wakes to detect a new candle boundary
   auto_scan_enabled: true          # true = auto scanning on; false = manual only via 'Run Scanner' button
-  auto_scan_interval_minutes: 5   # How often (minutes) to trigger the scanner — independent of chart timeframe
+  auto_scan_interval_minutes: 1   # How often (minutes) to trigger the scanner — independent of chart timeframe
   market_hours_check: false   # Set to false to run 24/7 (ignores market_open/close)
   market_open: "09:15"       # For US 07:00 PM IST, INDIA - 09:15
   market_close: "15:30"      # For US 01:30 AM IST, INDIA - 15:30
@@ -121,38 +118,31 @@ trade_management:
   # on a single directional move — much wider than the 1-2% you'd use for a
   # stock — so these starting values are deliberately wide. Tighten them
   # after watching a few days of real premium behaviour per symbol.
-  stop_loss_pct: 20.0
-  target_pct: 40.0
+  stop_loss_pct: 20
+  target_pct: 40
 
   # Scale out of the position in tranches as it moves favourably.
   partial_exit:
     enabled: false
     tiers:
-    - trigger_pct: 20.0          # Fire Tier 1 when premium gain reaches 20%
-      exit_qty_fraction: 0.5     # Exit 50% of the position
-      move_sl_to_be: true        # Move SL to breakeven (entry premium) after this tier
-
-  # Ratchet SL up behind the high-water mark as the trade runs.
+    - trigger_pct: 20
+      exit_qty_fraction: 0.5
+      move_sl_to_be: true
   trailing_sl:
     enabled: false
-    activation_pct: 15.0         # Minimum premium gain before trailing activates
+    activation_pct: 15           # Minimum premium gain before trailing activates
     tiers:
-    - min_gain_pct: 15.0
-      distance_pct: 10.0         # Keep SL 10% behind HWM once gain crosses 15%
-    - min_gain_pct: 30.0
-      distance_pct: 6.0          # Tighten to 6% once gain crosses 30%
-
-  # Lock in a fraction of peak unrealised profit by ratcheting SL, without
-  # necessarily exiting any quantity.
+    - min_gain_pct: 15
+      distance_pct: 10
+    - min_gain_pct: 30
+      distance_pct: 6
   profit_lock:
     enabled: false
     tiers:
-    - threshold_pct: 20.0
-      lock_fraction: 0.3         # Lock 30% of the peak gain once premium gain crosses 20%
-    - threshold_pct: 35.0
-      lock_fraction: 0.5         # Lock 50% of the peak gain once premium gain crosses 35%
-
-  # Per-event Telegram toggles (all routed through the same telegram: config above)
+    - threshold_pct: 20
+      lock_fraction: 0.3
+    - threshold_pct: 35
+      lock_fraction: 0.5
   notifications:
     on_open: true
     on_exit: true
