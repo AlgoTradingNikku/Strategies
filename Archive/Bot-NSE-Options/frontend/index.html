@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTBot & SR Channels Options Scanner — Bot-NSE-Options</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/index.css?v=3">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <span class="logo-text">ANTIGRAVITY <span class="accent-text">OPTIONS</span></span>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-tab="positions">
+                    <i class="fa-solid fa-briefcase"></i>
+                    <span>Active Positions</span>
+                </button>
+                <button class="nav-item" data-tab="history">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Signal History</span>
+                </button>
+                <button class="nav-item" data-tab="stats">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Performance Stats</span>
+                </button>
+                <button class="nav-item" data-tab="config">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Settings</span>
+                </button>
+                <button class="nav-item" data-tab="logs">
+                    <i class="fa-solid fa-terminal"></i>
+                    <span>System Logs</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator online"></div>
+                <div class="status-info">
+                    <p class="status-title">System Status</p>
+                    <p class="status-desc" id="connection-status">Scanner System Online</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Global Header -->
+            <header class="top-header">
+                <div class="header-title-area" style="display: flex; align-items: center; gap: 14px;">
+                    <!-- Sidebar Toggle Button (Hamburger) -->
+                    <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="Toggle Navigation Sidebar">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-titles">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">LTF:</span>
+                                <select id="header-select-ltf" class="header-select">
+                                    <option value="1m">1m</option>
+                                    <option value="3m">3m</option>
+                                    <option value="5m" selected>5m</option>
+                                    <option value="15m">15m</option>
+                                    <option value="30m">30m</option>
+                                    <option value="1h">1h</option>
+                                    <option value="1d">1d</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary);">HTF:</span>
+                                <select id="header-select-htf" class="header-select">
+                                    <option value="1m">1m</option>
+                                    <option value="3m">3m</option>
+                                    <option value="5m">5m</option>
+                                    <option value="15m" selected>15m</option>
+                                    <option value="30m">30m</option>
+                                    <option value="1h">1h</option>
+                                    <option value="1d">1d</option>
+                                </select>
+                            </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="order-mode-toggle">
+                        <span class="order-mode-label">Order Mode:</span>
+                        <button class="order-mode-btn active" id="btn-mode-manual" data-mode="manual">
+                            <i class="fa-solid fa-hand-pointer"></i> Manual
+                        </button>
+                        <button class="order-mode-btn" id="btn-mode-auto" data-mode="auto">
+                            <i class="fa-solid fa-bolt"></i> Auto
+                        </button>
+                    </div>
+                    <button class="btn btn-secondary" id="btn-toggle-auto-refresh">
+                        <i class="fa-solid fa-rotate"></i> Auto-refresh: <span id="auto-refresh-state">ON</span>
+                    </button>
+                    <button class="btn btn-primary" id="btn-run-scan">
+                        <i class="fa-solid fa-play"></i> Run Scanner
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Panel -->
+            <section class="tab-panel active" id="panel-dashboard">
+                <!-- Top Row: Summary Stats & Index Cards -->
+                <div class="dashboard-top-row">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Total Contracts Scanned</span>
+                                <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                            </div>
+                            <h2 class="stat-value" id="stat-scanned-count">14</h2>
+                            <span class="stat-sub">3 Levels Up/Down CE & PE</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">BUY Signals</span>
+                                <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
+                            </div>
+                            <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
+                            <span class="stat-sub">Across option strike grid</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">SELL Signals</span>
+                                <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
+                            </div>
+                            <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
+                            <span class="stat-sub">Across option strike grid</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <span class="stat-title">Last Scan Cycle</span>
+                                <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                            </div>
+                            <h2 class="stat-value" id="stat-last-scan-time">—</h2>
+                            <span class="stat-sub">Local system time</span>
+                        </div>
+                    </div>
+
+                    <!-- Index Live Status Cards -->
+                    <div class="index-status-panel">
+                        <div class="index-card">
+                            <div class="index-name">Nifty 50</div>
+                            <div class="index-val" id="index-val-nifty">24,386.95</div>
+                            <div class="index-chg text-sell" id="index-chg-nifty">-49.00 (-0.20%)</div>
+                        </div>
+                        <div class="index-card">
+                            <div class="index-name">Bank Nifty</div>
+                            <div class="index-val" id="index-val-banknifty">57,631.25</div>
+                            <div class="index-chg text-sell" id="index-chg-banknifty">-254.60 (-0.44%)</div>
+                        </div>
+                        <div class="index-card">
+                            <div class="index-name">Nifty IT</div>
+                            <div class="index-val" id="index-val-niftyit">31,419.20</div>
+                            <div class="index-chg text-buy" id="index-chg-niftyit">+86.65 (+0.28%)</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Compact Profile Info Bar -->
+                <div id="profile-info-bar" style="
+                    display: flex; align-items: center; gap: 8px;
+                    background: rgba(255,255,255,0.03);
+                    border: 1px solid rgba(255,255,255,0.07);
+                    border-radius: 8px;
+                    padding: 8px 16px;
+                    margin-top: 12px;
+                    font-size: 0.78rem;
+                    font-family: var(--font-mono);
+                    color: var(--text-muted);
+                    flex-wrap: wrap;
+                ">
+                    <span><span style="color:var(--text-muted)">Profile:</span> <span id="info-profile" style="color:var(--accent-blue);font-weight:700;">OPENALGO</span></span>
+                    <span style="color:rgba(255,255,255,0.15)">|</span>
+                    <span><span style="color:var(--text-muted)">TF:</span> <span id="info-tf" style="color:var(--accent-blue);font-weight:700;">5m</span></span>
+                    <span style="color:rgba(255,255,255,0.15)">|</span>
+                    <span><span style="color:var(--text-muted)">ATM:</span> <span id="info-atm" style="color:var(--accent-blue);font-weight:700;">—</span></span>
+                    <span style="color:rgba(255,255,255,0.15)">|</span>
+                    <span><span style="color:var(--text-muted)">Expiry:</span> <span id="info-expiry" style="color:var(--accent-blue);font-weight:700;">—</span></span>
+                    <span style="color:rgba(255,255,255,0.15)">|</span>
+                    <span><span style="color:var(--text-muted)">Underlying:</span> <span id="info-underlying" style="color:var(--accent-blue);font-weight:700;">—</span></span>
+                    <span style="color:rgba(255,255,255,0.15)">|</span>
+                    <span><span style="color:var(--text-muted)">Mode:</span> <span id="info-mode" style="color:#a78bfa;font-weight:700;">—</span></span>
+                </div>
+
+                <!-- Split Layout: Tables on Left, Quick Filters on Right -->
+
+                <div class="dashboard-content-split">
+                    <!-- Left Column: Signal Tables -->
+                    <div class="dashboard-tables-column">
+                        <!-- Dynamic BUY Signals Table -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3 class="text-buy"><i class="fa-solid fa-circle-arrow-up"></i> Dynamic BUY Signals</h3>
+                                <span class="last-updated-badge" id="buy-last-updated">—</span>
+                                <div class="search-box">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="buy-search" placeholder="Search symbol...">
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table id="buy-signals-table" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Close</th>
+                                            <th>Win Rate</th>
+                                            <th>Grade</th>
+                                            <th>Confluence</th>
+                                            <th>Action</th>
+                                            <th>Stop Loss</th>
+                                            <th>Target</th>
+                                            <th>R:R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="9" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic SELL Signals Table -->
+                        <div class="table-card">
+                            <div class="table-card-header">
+                                <h3 class="text-sell"><i class="fa-solid fa-circle-arrow-down"></i> Dynamic SELL Signals</h3>
+                                <span class="last-updated-badge" id="sell-last-updated">—</span>
+                                <div class="search-box">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" id="sell-search" placeholder="Search symbol...">
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table id="sell-signals-table" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Symbol</th>
+                                            <th>Close</th>
+                                            <th>Win Rate</th>
+                                            <th>Grade</th>
+                                            <th>Confluence</th>
+                                            <th>Action</th>
+                                            <th>Stop Loss</th>
+                                            <th>Target</th>
+                                            <th>R:R</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td colspan="9" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Quick Filter Controls Sidebar -->
+                    <aside class="dashboard-controls-sidebar">
+                        <div class="sidebar-header">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Quick Filter Controls</span>
+                        </div>
+                        <p class="sidebar-desc-text">
+                            Toggle active scanner filters and criteria in real-time. Changes are saved dynamically and re-trigger scanning.
+                        </p>
+                        <div class="control-toggles-list">
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">UT Bot Engine</span>
+                                    <span class="toggle-desc">Enable UT Bot signals</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-ut-enabled" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">S/R Zones Engine</span>
+                                    <span class="toggle-desc">Enable S/R boundaries</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-sr-enabled" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">EMA Trend Filter</span>
+                                    <span class="toggle-desc">Filter signals by major EMA trend</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-filters-ema"><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Volume Filter</span>
+                                    <span class="toggle-desc">Require volume confirmation</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-filters-volume"><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">MTF Hard Confirmation</span>
+                                    <span class="toggle-desc">Filter signals by HTF trend (15m)</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-filters-mtf"><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Squeeze Filter</span>
+                                    <span class="toggle-desc">Require squeeze release</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-filters-squeeze"><span class="slider round"></span></label>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <!-- Active Positions Tab -->
+            <section class="tab-panel" id="panel-positions">
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-briefcase"></i> Active Open Positions</h3>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Trade ID</th>
+                                <th>Symbol</th>
+                                <th>Action</th>
+                                <th>Qty</th>
+                                <th>Entry Price</th>
+                                <th>Current LTP</th>
+                                <th>Trailing SL</th>
+                                <th>P&L (Pts)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-positions">
+                            <tr><td colspan="9" class="empty-placeholder">No open positions.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- History Tab -->
+            <section class="tab-panel" id="panel-history">
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left"></i> Signal History</h3>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Symbol</th>
+                                <th>Type</th>
+                                <th>Price</th>
+                                <th>Stop Loss</th>
+                                <th>Target</th>
+                                <th>R:R</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-history"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Performance Stats Tab -->
+            <section class="tab-panel" id="panel-stats">
+                <div class="table-card">
+                    <h3><i class="fa-solid fa-chart-pie"></i> Scanner Performance Statistics</h3>
+                    <div class="stats-grid" style="margin-top: 20px;">
+                        <div class="stat-card"><span class="stat-title">Total Signals</span><h2 class="stat-value" id="stat-total">0</h2></div>
+                        <div class="stat-card"><span class="stat-title">BUY Signals</span><h2 class="stat-value text-buy" id="stat-buy">0</h2></div>
+                        <div class="stat-card"><span class="stat-title">SELL Signals</span><h2 class="stat-value text-sell" id="stat-sell">0</h2></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Tab -->
+            <section class="tab-panel" id="panel-config">
+                <div class="table-card">
+                    <h3><i class="fa-solid fa-sliders"></i> Scanner & Option Grid Settings</h3>
+                    <form id="form-config" style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Base ATM Strike (blank = auto-detect)</label>
+                            <input type="number" class="form-input" id="cfg-base-strike" placeholder="e.g. 24300 (leave blank for auto)" min="0" step="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Strike Gap (points e.g. 50 or 100)</label>
+                            <input type="number" class="form-input" id="cfg-strike-gap" value="50">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Default Lot Quantity</label>
+                            <input type="number" class="form-input" id="cfg-quantity" value="65">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- System Logs Tab -->
+            <section class="tab-panel" id="panel-logs">
+                <div class="table-card">
+                    <h3><i class="fa-solid fa-terminal"></i> Console & System Logs</h3>
+                    <pre id="log-output" style="background: var(--bg-surface); padding: 16px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; height: 450px; overflow-y: auto; color: var(--text-secondary); margin-top: 16px;"></pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Order Placement Modal -->
+    <div class="modal-overlay" id="order-modal">
+        <div class="modal-box">
+            <h3 class="modal-title">Place Option Order</h3>
+            <form id="form-place-order">
+                <div class="form-group">
+                    <label class="form-label">Symbol</label>
+                    <input type="text" class="form-input" id="modal-symbol" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Action</label>
+                    <select class="form-select" id="modal-action">
+                        <option value="BUY">BUY</option>
+                        <option value="SELL">SELL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-input" id="modal-quantity" value="65">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Product</label>
+                    <select class="form-select" id="modal-product">
+                        <option value="NRML">NRML</option>
+                        <option value="MIS">MIS</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/index.js?v=3"></script>
+</body>
+</html>
