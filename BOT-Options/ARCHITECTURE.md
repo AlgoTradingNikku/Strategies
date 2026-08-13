@@ -9,12 +9,23 @@
 ```
 BOT-Antigravity/
 ├── app.py              ← Main bot: strategy engine + threading + order placement
+├── server.py           ← FastAPI dashboard server (wraps app.py's engine as background threads)
 ├── signal_logger.py    ← Captures every signal with 14 features to SQLite
 ├── label_signals.py    ← Offline script: grades each signal WIN/LOSS after the fact
 ├── ml_filter.py        ← XGBoost classifier: training (CLI) + inference (runtime)
 ├── telegram.py         ← Sends Telegram alerts (direct API or via OpenAlgo server)
+├── trade_management/   ← SL/target/trailing-SL/profit-lock/partial-exit monitoring (see §13)
+│   ├── models.py        ← Shared dataclasses + gain/SL/target/lots/P&L helpers
+│   ├── rules_engine.py  ← Pure decision logic (no side effects)
+│   ├── executor.py      ← Order placement + trade_db writes for each decision
+│   ├── alerts.py        ← Telegram notifications for position lifecycle events
+│   └── monitor.py       ← PositionMonitor: WS/polling loop, position registry
+├── trade_db.py          ← SQLite persistence for trade_management (trades.db)
+├── trading_adapter.py   ← Slim OpenAlgo-only place_order()/get_ltp() used by trade_management
+├── instrument_master.py ← Options metadata (lot size/strike/expiry) via instruments_cache.pkl
 ├── config.yml          ← Single source of truth for all parameters
 ├── signals.db          ← SQLite database (created at runtime)
+├── trades.db           ← Trade-management positions + audit log (created at runtime)
 ├── ml_model.pkl        ← Trained model (created after running --train)
 ├── utbot.log           ← Rolling application log (created at runtime)
 ├── .utbot.lock         ← PID lock file (prevents duplicate instances)
@@ -438,3 +449,78 @@ python label_signals.py --status
 | `yfinance` | Alternative data source (optional) |
 | `tvDatafeed` | TradingView data source (optional) |
 | `twelvedata` | TwelveData source (optional) |
+
+---
+
+## 13. Trade Management (SL / Target / Trailing / Profit-Lock / Partial-Exit)
+
+Ported from the sibling Bot-Stocks project's `trade_management/` package and adapted for
+options (premium-based percentages, lot size, expiry-aware position metadata). Disabled by
+default (`trade_management.enabled: false` in config.yml) — flip it on once you've dry-run
+watched the SL/target percentages against real premium behaviour.
+
+### 13.1 Why this hooks in differently than Bot-Stocks
+
+Bot-Stocks places orders through a `/api/order` endpoint that a human triggers by clicking a
+signal on the dashboard — trade-management registration happens inside that same request
+handler. BOT-Options places orders **autonomously**: `TimeframeWorker._place_order()` (in
+app.py) fires the moment a UT Bot signal crosses, from a background thread, with no human in
+the loop. So there's no request to hang position registration off — instead,
+`position_monitor.open_position(...)` is called **directly, in-process**, right after a
+successful order inside `_place_order()`. `position_monitor` is a module-level singleton in
+app.py; server.py starts/stops it on FastAPI startup/shutdown, independently of `BotEngine`
+(so open positions stay monitored across `/api/bot/restart` config reloads).
+
+### 13.2 Data flow
+
+```
+TimeframeWorker._place_order()  (app.py, background thread)
+  └─ order succeeds
+      └─ position_monitor.open_position(order_result, req, config, timeframe)
+          ├─ resolve entry price (LTP/close, already computed pre-order)
+          ├─ instrument_master.lookup(symbol) → underlying/strike/type/expiry/lot_size
+          ├─ compute initial SL/target from trade_management.stop_loss_pct/target_pct
+          │   (percentages of PREMIUM, not the underlying's price)
+          └─ trade_db.open_position_db()  →  trades.db
+
+PositionMonitor (WS ticks + HTTP-polling fallback)
+  └─ rules_engine.evaluate(pos, ltp, tm_cfg)   — pure, no side effects
+      └─ TradeAction(s): EXIT_TARGET / EXIT_SL / TRAILING_SL / PROFIT_LOCK / PARTIAL_EXIT
+          └─ executor.dispatch(...)  — places exit/partial orders, updates trades.db,
+                                        sends Telegram alerts, updates active_positions
+```
+
+### 13.3 Options-specific additions over the Bot-Stocks original
+
+- **`instrument_master.py`** — resolves lot size/strike/expiry/underlying from
+  `instruments_cache.pkl` (the OpenAlgo instrument master, one directory above this bot,
+  shared with Bot-Stocks). Falls back to regex-parsing the standard
+  `UNDERLYING+DDMMMYY+STRIKE+CE/PE` symbol format plus a small static lot-size table when a
+  contract isn't in the cache. Lot sizes get revised by NSE periodically — refresh
+  `instruments_cache.pkl` rather than trusting the fallback table long-term.
+- **Rupee P&L** (`pnl_amount`, alongside the existing `pnl_pct`) — since `quantity` on a
+  position is already total contract units (lot_size × lots, matching what OpenAlgo's
+  `placeorder()` expects), rupee P&L is `(exit − entry) × quantity`; no extra lot-size
+  multiplication needed. A `realized_pnl_amount` accumulator on the position tracks P&L
+  correctly across a mix of partial exits followed by a final target/SL exit.
+- **Expiry countdown** — `instrument_master.expiry_countdown()` returns a
+  days/hours-left label plus an urgency bucket (`safe`/`near`/`today`/`expired`) consumed by
+  `GET /api/positions` and rendered as a colour-coded badge on the dashboard's Positions tab.
+- **`trading_adapter.py`** is a single-broker (OpenAlgo-only) subset of Bot-Stocks' multi-broker
+  version, since BOT-Options only ever trades through OpenAlgo.
+
+### 13.4 New API endpoints (server.py)
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/positions` | Open positions enriched with live premium, unrealised P&L (%/₹), lots, expiry countdown |
+| `GET /api/positions/closed` | Paginated closed-trade history |
+| `GET /api/positions/{id}/events` | Full audit log for one position (opens, SL moves, exits) |
+| `POST /api/positions/{id}/close` | Manually square off an open position at current LTP |
+
+### 13.5 Dashboard
+
+New **Positions** tab: KPI row (open count, open unrealised P&L, today's realised P&L,
+nearest expiry) plus open/closed positions tables showing contract (underlying/strike/CE-PE),
+lots, entry/live premium, SL/target, P&L (% and ₹), expiry countdown badge, and status
+(Monitoring / Trailing / Profit Locked).

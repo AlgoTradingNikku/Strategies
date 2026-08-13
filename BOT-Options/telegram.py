@@ -6,20 +6,37 @@ def load_config(path="config.yml"):
         return yaml.safe_load(f)
 
 
-def send_telegram_alert(message, priority=5):
+def send_telegram_alert(message, priority=5, config: dict = None, silent: bool = False):
     """
     Send a Telegram alert using the configured mode.
 
     Modes:
       - "openalgo" : Route through OpenAlgo server's Telegram endpoint.
       - "direct"   : Send directly via Telegram Bot API (no OpenAlgo needed).
+
+    Parameters
+    ----------
+    config : dict, optional
+        Pre-loaded config dict. Existing callers (app.py's signal alerts) omit
+        this and keep the original behaviour: config.yml is read from disk and
+        the message is sent with Markdown parse_mode (matches the `*bold*`
+        style already used in those messages).
+
+        trade_management/alerts.py passes the live config dict explicitly and
+        its messages use HTML tags (<b>, <code>), so when `config` is provided
+        we skip the disk read and send with HTML parse_mode instead — this
+        keeps both calling styles correct without touching the original
+        signal-alert formatting.
     """
-    config = load_config()
+    is_new_style = config is not None
+    if config is None:
+        config = load_config()
     tg_cfg = config.get("telegram", {})
     mode = tg_cfg.get("mode", "openalgo").lower()
 
     if mode == "direct":
-        return _send_direct(tg_cfg, message)
+        parse_mode = "HTML" if is_new_style else "Markdown"
+        return _send_direct(tg_cfg, message, parse_mode=parse_mode, silent=silent)
     else:
         return _send_via_openalgo(config, message, priority)
 
@@ -46,7 +63,7 @@ def _send_via_openalgo(config, message, priority):
         return {"error": f"Request failed: {e}"}
 
 
-def _send_direct(tg_cfg, message):
+def _send_direct(tg_cfg, message, parse_mode: str = "Markdown", silent: bool = False):
     """Send Telegram alert directly via Telegram Bot API."""
     bot_token = tg_cfg.get("bot_token", "")
     chat_id = tg_cfg.get("chat_id", "")
@@ -58,7 +75,8 @@ def _send_direct(tg_cfg, message):
     payload = {
         "chat_id": chat_id,
         "text": message,
-        "parse_mode": "Markdown",
+        "parse_mode": parse_mode,
+        "disable_notification": silent,
     }
 
     try:

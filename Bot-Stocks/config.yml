@@ -10,7 +10,12 @@ scan_interval_seconds: 60            # Interval between scans in continuous mode
 segment:
 - NIFTY50
 - BANKNIFTY
-use_symbols: false
+
+# CUSTOM SYMBOLS LIST
+use_symbols: true
+
+symbols:
+- RPOWER
 
 # Number of closed candles to look back for UT Bot signals. 
 #(2=current + 1 prior candle)
@@ -178,12 +183,6 @@ bot:
   market_close: "15:30"
   auto_refresh_enabled: true         # Toggle dashboard auto-refresh on page load
 
-# ------------------------------------------------------------
-# 6. CUSTOM SYMBOLS LIST
-# ------------------------------------------------------------
-symbols:
-- ADANIENT
-- ADANIPORTS
 trade_management:
   enabled: true                  # Master switch — set true to activate auto monitoring
   poll_interval_seconds: 5       # Fallback polling interval when WebSocket is unavailable

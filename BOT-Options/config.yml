@@ -103,6 +103,64 @@ trading:
     price_type: "LIMIT"
 
 # ------------------------------------------------------------
+# Trade Management — automatic SL / target / trailing-SL / profit-lock /
+# partial-exit monitoring for positions opened by this bot's auto-trading.
+#
+# ROLLOUT: keep `enabled: false` until you've watched this run for a few
+# sessions with trading.enabled temporarily off (or on a throwaway symbol) —
+# the percentages below are starting points, not tuned values. Positions are
+# tracked in trades.db (separate from signals.db) and the dashboard's
+# Positions tab reads from it once this is on.
+# ------------------------------------------------------------
+trade_management:
+  enabled: false
+  poll_interval_seconds: 5       # HTTP-polling fallback when the trade-management WebSocket is briefly down
+
+  # Initial SL and Target as a percentage of the option's ENTRY PREMIUM (not
+  # the underlying's price). Option premiums commonly swing 15-40%+ intraday
+  # on a single directional move — much wider than the 1-2% you'd use for a
+  # stock — so these starting values are deliberately wide. Tighten them
+  # after watching a few days of real premium behaviour per symbol.
+  stop_loss_pct: 20.0
+  target_pct: 40.0
+
+  # Scale out of the position in tranches as it moves favourably.
+  partial_exit:
+    enabled: false
+    tiers:
+    - trigger_pct: 20.0          # Fire Tier 1 when premium gain reaches 20%
+      exit_qty_fraction: 0.5     # Exit 50% of the position
+      move_sl_to_be: true        # Move SL to breakeven (entry premium) after this tier
+
+  # Ratchet SL up behind the high-water mark as the trade runs.
+  trailing_sl:
+    enabled: false
+    activation_pct: 15.0         # Minimum premium gain before trailing activates
+    tiers:
+    - min_gain_pct: 15.0
+      distance_pct: 10.0         # Keep SL 10% behind HWM once gain crosses 15%
+    - min_gain_pct: 30.0
+      distance_pct: 6.0          # Tighten to 6% once gain crosses 30%
+
+  # Lock in a fraction of peak unrealised profit by ratcheting SL, without
+  # necessarily exiting any quantity.
+  profit_lock:
+    enabled: false
+    tiers:
+    - threshold_pct: 20.0
+      lock_fraction: 0.3         # Lock 30% of the peak gain once premium gain crosses 20%
+    - threshold_pct: 35.0
+      lock_fraction: 0.5         # Lock 50% of the peak gain once premium gain crosses 35%
+
+  # Per-event Telegram toggles (all routed through the same telegram: config above)
+  notifications:
+    on_open: true
+    on_exit: true
+    on_partial_exit: true
+    on_profit_lock: true
+    on_sl_move: false
+
+# ------------------------------------------------------------
 # Telegram Alerts
 # ------------------------------------------------------------
 telegram:

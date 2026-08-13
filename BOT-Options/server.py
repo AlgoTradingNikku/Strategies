@@ -26,6 +26,10 @@ API endpoints:
   GET  /api/htf-trend       Current HTF trend per symbol
   GET  /api/system          CPU / RAM / disk stats
   POST /api/bot/restart     Restart all bot workers
+  GET  /api/positions               Open positions (live P&L, lots, expiry countdown)
+  GET  /api/positions/closed        Closed trade history (paginated)
+  GET  /api/positions/{id}/events   Audit log for one position
+  POST /api/positions/{id}/close    Manually close an open position
 ===============================================================================
 """
 
@@ -86,7 +90,11 @@ from app import (
     _print_banner,
     compute_utbot_signals,
     load_config,
+    position_monitor,
 )
+import trade_db
+from instrument_master import expiry_countdown
+from trade_management.models import calc_gain_pct, calc_lots, calc_pnl_amount
 try:
     from signal_logger import labeled_count, signal_count
     _SIGNAL_LOGGER_AVAILABLE = True
@@ -283,11 +291,20 @@ async def _startup():
     except Exception as exc:
         log.error("[Server] Startup error: %s", exc)
 
+    # Trade management runs independently of the signal-worker engine — a
+    # config-reload / bot restart (see /api/bot/restart) shouldn't interrupt
+    # monitoring of positions that are already open in the market.
+    try:
+        position_monitor.start(config)
+    except Exception as exc:
+        log.error("[Server] Trade management startup error: %s", exc)
+
 
 @app.on_event("shutdown")
 async def _shutdown():
     log.info("[Server] FastAPI shutdown — stopping bot workers...")
     _engine.stop()
+    position_monitor.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -725,6 +742,110 @@ def manual_order(req: ManualOrderRequest):
         )
         return {"status": "success", "orderid": res.get("orderid", "")}
     except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# Positions & Trade Management
+# ---------------------------------------------------------------------------
+# GET  /api/positions            Open positions, enriched with live premium,
+#                                 unrealised P&L (%/₹), lots, and expiry countdown
+# GET  /api/positions/closed     Closed trade history (paginated)
+# GET  /api/positions/{id}/events  Full audit log for one position
+# POST /api/positions/{id}/close   Manually square off an open position
+# ---------------------------------------------------------------------------
+
+def _enrich_open_position(pos: dict) -> dict:
+    """Attach live premium, unrealised P&L, lots, and expiry countdown to an
+    open position row for the dashboard. Read-only — never mutates trade_db."""
+    enriched = dict(pos)
+    ltp = position_monitor.last_ltp.get(pos["symbol"])
+    enriched["live_ltp"] = ltp
+
+    if ltp is not None:
+        enriched["unrealized_gain_pct"] = round(calc_gain_pct(pos, ltp), 2)
+        enriched["unrealized_pnl_amount"] = calc_pnl_amount(pos, ltp)
+    else:
+        # No tick received yet since server start (e.g. just restarted with
+        # positions restored from DB) — dashboard should show "—", not 0%.
+        enriched["unrealized_gain_pct"] = None
+        enriched["unrealized_pnl_amount"] = None
+
+    enriched["lots"] = calc_lots(pos)
+
+    expiry_val = None
+    if pos.get("expiry_date"):
+        try:
+            from datetime import date as _date
+            expiry_val = _date.fromisoformat(pos["expiry_date"])
+        except ValueError:
+            expiry_val = None
+    enriched["expiry_countdown"] = expiry_countdown(expiry_val)
+
+    return enriched
+
+
+@app.get("/api/positions")
+def get_positions():
+    """List all currently open, trade-management-monitored positions."""
+    try:
+        open_pos = trade_db.get_open_positions()
+        return {"status": "success", "positions": [_enrich_open_position(p) for p in open_pos]}
+    except Exception as exc:
+        log.error("Failed to retrieve open positions: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/positions/closed")
+def get_closed_positions_endpoint(limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)):
+    """Paginated history of closed positions, newest first."""
+    try:
+        closed = trade_db.get_closed_positions(limit=limit, offset=offset)
+        for p in closed:
+            p["lots"] = calc_lots(p)
+        return {"status": "success", "positions": closed}
+    except Exception as exc:
+        log.error("Failed to retrieve closed positions: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/positions/{pos_id}/events")
+def get_position_events_endpoint(pos_id: int):
+    """Full audit trail (opens, SL moves, partial exits, close) for one position."""
+    try:
+        events = trade_db.get_position_events(pos_id)
+        return {"status": "success", "events": events}
+    except Exception as exc:
+        log.error("Failed to retrieve events for position %d: %s", pos_id, exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.post("/api/positions/{pos_id}/close")
+def manual_close_position(pos_id: int):
+    """Manually square off an open, monitored position at the current LTP."""
+    with position_monitor.lock:
+        target_pos = position_monitor.active_positions.get(pos_id)
+
+    if target_pos is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Position not found in the active monitor (already closed, or "
+                   "trade_management wasn't enabled when it was opened).",
+        )
+
+    ltp = position_monitor.last_ltp.get(target_pos["symbol"])
+    if ltp is None:
+        try:
+            from trading_adapter import get_ltp as _get_ltp
+            ltp = _get_ltp(load_config(), target_pos["symbol"], target_pos["exchange"])
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Could not resolve a current price to close at: {exc}")
+
+    try:
+        position_monitor._execute_exit(target_pos, ltp, "MANUAL")
+        return {"status": "success", "message": f"Manual exit triggered for position {pos_id} @ ~₹{ltp:.2f}."}
+    except Exception as exc:
+        log.error("Manual close failed for position %d: %s", pos_id, exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
 

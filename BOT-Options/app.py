@@ -91,6 +91,20 @@ _bot_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(_bot_dir))
 from telegram import send_telegram_alert  # noqa: E402
 
+# ---------------------------------------------------------------------------
+# Trade Management — SL/target/trailing-SL/profit-lock/partial-exit monitoring
+# ---------------------------------------------------------------------------
+# position_monitor is a module-level singleton: server.py starts/stops it
+# alongside the FastAPI app lifecycle (independent of BotEngine restarts, so
+# open positions stay monitored even if signal workers are reloaded), and
+# TimeframeWorker._place_order() below calls it directly and synchronously
+# right after a successful order — see the comment at that call site for why
+# this is a direct function call rather than routed through an API endpoint.
+from trade_management import PositionMonitor  # noqa: E402
+from trade_management.models import ExitOrderRequest as OrderRequestDTO  # noqa: E402
+
+position_monitor = PositionMonitor()
+
 
 # ============================================================================
 # CONFIG LOADING
@@ -847,6 +861,38 @@ class TimeframeWorker:
                     "[%s|%s] ✅ Order SUCCESS | id=%s | %s %d %s",
                     self.symbol, self.timeframe, oid, action, quantity, product,
                 )
+
+                # ── Register with trade management (SL/target/trailing monitoring) ──
+                # Signal-driven, in-process call — not a request to the dashboard's
+                # API — because this order was fired autonomously by this worker
+                # thread, not through a human clicking a button. Registration must
+                # never take down the order-placement path, so any failure here is
+                # logged loudly (a live, unmonitored position is a real risk) but
+                # does not raise.
+                tm_cfg = self.config.get("trade_management", {})
+                if tm_cfg.get("enabled", False):
+                    try:
+                        order_req = OrderRequestDTO(
+                            symbol=self.symbol,
+                            exchange=self.exchange,
+                            action=action,
+                            quantity=quantity,
+                            product=product,
+                            strategy=self._trading_strategy,
+                            price_type=ptype,
+                            price=price,
+                        )
+                        position_monitor.open_position(
+                            response, order_req, self.config, timeframe=self.timeframe,
+                        )
+                    except Exception as tm_exc:
+                        log.error(
+                            "[%s|%s] ⚠️ Order placed but trade-management registration "
+                            "FAILED — this position will NOT be auto-monitored (no SL/target "
+                            "enforcement): %s",
+                            self.symbol, self.timeframe, tm_exc,
+                        )
+
                 return f"{action} {quantity} ✅ (id: {oid})"
             else:
                 msg = response.get("message", str(response)) if isinstance(response, dict) else str(response)

@@ -28,6 +28,10 @@
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Dashboard</span>
                 </button>
+                <button class="nav-item" data-tab="positions">
+                    <i class="fa-solid fa-briefcase"></i>
+                    <span>Positions</span>
+                </button>
                 <button class="nav-item" data-tab="history">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Signal History</span>
@@ -266,6 +270,105 @@
                                 </div>
                             </div>
                         </aside>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Positions Panel (Trade Management) -->
+            <section class="tab-panel" id="panel-positions">
+                <div class="stats-grid" style="margin-bottom: 16px;">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Open Positions</span>
+                            <div class="stat-icon info-icon"><i class="fa-solid fa-briefcase"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="pos-kpi-open-count">-</h2>
+                        <span class="stat-sub">Currently monitored</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Open Unrealized P&amp;L</span>
+                            <div class="stat-icon scan-icon"><i class="fa-solid fa-chart-line"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="pos-kpi-open-pnl">-</h2>
+                        <span class="stat-sub">Mark-to-market, all open positions</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Today's Realized P&amp;L</span>
+                            <div class="stat-icon buy-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="pos-kpi-realized-pnl">-</h2>
+                        <span class="stat-sub">Closed trades, today</span>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Nearest Expiry</span>
+                            <div class="stat-icon sell-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                        </div>
+                        <h2 class="stat-value" id="pos-kpi-nearest-expiry">-</h2>
+                        <span class="stat-sub" id="pos-kpi-nearest-expiry-symbol">Across open positions</span>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-briefcase"></i> Active Monitored Positions</h3>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="last-updated-badge badge-fresh" id="positions-last-update-badge">Live</span>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table id="positions-open-table">
+                            <thead>
+                                <tr>
+                                    <th>Contract</th>
+                                    <th>Direction</th>
+                                    <th>Lots (Qty)</th>
+                                    <th>Entry Premium</th>
+                                    <th>LTP (Live)</th>
+                                    <th>SL</th>
+                                    <th>Target</th>
+                                    <th>P&amp;L</th>
+                                    <th>Expiry</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-open-body">
+                                <tr>
+                                    <td colspan="11" class="empty-placeholder">No active positions currently registered for monitoring. Trade Management may be disabled in Settings, or no orders have fired yet.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="table-card" style="margin-top: 20px;">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-box-archive"></i> Closed Trades History</h3>
+                        <button class="btn btn-secondary" id="btn-refresh-closed-positions"><i class="fa-solid fa-arrows-rotate"></i> Refresh</button>
+                    </div>
+                    <div class="table-container">
+                        <table id="positions-closed-table">
+                            <thead>
+                                <tr>
+                                    <th>Contract</th>
+                                    <th>Direction</th>
+                                    <th>Lots (Qty)</th>
+                                    <th>Entry</th>
+                                    <th>Exit</th>
+                                    <th>Close Time</th>
+                                    <th>Reason</th>
+                                    <th>P&amp;L</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-closed-body">
+                                <tr>
+                                    <td colspan="8" class="empty-placeholder">No closed trades history found.</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
