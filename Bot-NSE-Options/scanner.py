@@ -227,7 +227,8 @@ def run_scan(config: dict = None) -> dict:
 
         # Only emit a result if the engine fired a signal on this bar
         if not final_buy and not final_sell:
-            log.info("[%s] No signal on last bar. Skipping.", sym)
+            bar_label = "running bar" if config.get("strategy", {}).get("signal_on_running_bar", True) else "last completed bar"
+            log.info("[%s] No signal on %s. Skipping.", sym, bar_label)
             return None
 
         signal_type = "BUY" if final_buy else "SELL"
@@ -265,6 +266,59 @@ def run_scan(config: dict = None) -> dict:
         }
 
         log.info("[%s] Signal: %s | LTP Rs.%.2f | Grade %s %.1f", sym, signal_type, close_price, grade, score)
+
+        # Handle Automated Order Execution (Auto-Buy without manual intervention)
+        trading_cfg = config.get("trading", {})
+        trading_enabled = bool(trading_cfg.get("enabled", False))
+        order_mode = str(trading_cfg.get("order_mode", "manual")).lower()
+        allowed_actions = str(trading_cfg.get("allowed_actions", "BUY_ONLY")).upper()
+        opt_trade_cfg = trading_cfg.get("options", {})
+
+        if trading_enabled and order_mode == "auto":
+            if allowed_actions == "BUY_ONLY" and signal_type != "BUY":
+                log.info("[%s] Skipped auto order for %s signal (trading.allowed_actions = BUY_ONLY)", sym, signal_type)
+            elif allowed_actions == "SELL_ONLY" and signal_type != "SELL":
+                log.info("[%s] Skipped auto order for %s signal (trading.allowed_actions = SELL_ONLY)", sym, signal_type)
+            else:
+                log.info("[%s] Auto-executing %s order via OpenAlgo without manual intervention...", sym, signal_type)
+                order_req = {
+                    "symbol": sym,
+                    "exchange": option_exchange,
+                    "action": signal_type,
+                    "quantity": int(opt_trade_cfg.get("quantity", 65)),
+                    "product": str(opt_trade_cfg.get("product", "NRML")),
+                    "price_type": str(opt_trade_cfg.get("price_type", "MARKET")),
+                    "price": close_price,
+                    "strategy": str(trading_cfg.get("strategy_name", "UTBot_Options")),
+                }
+                ord_res = trading_adapter.place_order(config, order_req)
+                res["order_response"] = ord_res
+
+                # Register position in trade database for trade_management monitor
+                trade_id = trade_db.add_trade({
+                    "order_id": ord_res.get("order_id") or f"AUTO_{int(datetime.now().timestamp()*1000)}",
+                    "symbol": sym,
+                    "exchange": option_exchange,
+                    "action": signal_type,
+                    "quantity": int(opt_trade_cfg.get("quantity", 65)),
+                    "entry_price": close_price,
+                    "product": str(opt_trade_cfg.get("product", "NRML")),
+                    "stop_loss": rr["stop_loss"],
+                    "target": rr["target"],
+                })
+                res["trade_id"] = trade_id
+
+                # Dispatch Telegram Notification
+                tg_msg = (
+                    f"🚀 <b>AUTOMATED ORDER EXECUTED</b>\n"
+                    f"Symbol: <b>{sym}</b>\n"
+                    f"Action: <b>{signal_type}</b>\n"
+                    f"Price: ₹{close_price:.2f}\n"
+                    f"Qty: {opt_trade_cfg.get('quantity', 65)}\n"
+                    f"Grade: <b>{grade}</b> ({score:.1f})"
+                )
+                send_telegram_alert(config, tg_msg)
+
         return res
 
     with ThreadPoolExecutor(max_workers=min(10, len(symbols))) as executor:

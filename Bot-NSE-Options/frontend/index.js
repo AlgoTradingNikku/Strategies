@@ -54,12 +54,43 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Order Mode Buttons
+    // Order Mode Buttons & Sync
     const btnManual = document.getElementById("btn-mode-manual");
     const btnAuto = document.getElementById("btn-mode-auto");
 
-    btnManual.addEventListener("click", () => setOrderMode("manual"));
-    btnAuto.addEventListener("click", () => setOrderMode("auto"));
+    async function setOrderMode(mode) {
+        if (mode === "auto") {
+            if (!confirm("Enable Auto Order Mode? Orders will be placed automatically for every new scan signal without manual confirmation.")) return;
+        }
+        if (btnManual) btnManual.classList.toggle("active", mode === "manual");
+        if (btnAuto) btnAuto.classList.toggle("active", mode === "auto");
+
+        try {
+            const cfgRes = await fetch("/api/config");
+            const cfg = await cfgRes.json();
+            cfg.trading = cfg.trading || {};
+            cfg.trading.order_mode = mode;
+            await fetch("/api/config", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cfg)
+            });
+        } catch (e) {
+            console.error("Failed to update order mode:", e);
+        }
+    }
+
+    if (btnManual) btnManual.addEventListener("click", () => setOrderMode("manual"));
+    if (btnAuto) btnAuto.addEventListener("click", () => setOrderMode("auto"));
+
+    // Sync initial Order Mode state from backend config
+    fetch("/api/config").then(res => res.json()).then(cfg => {
+        const mode = cfg.trading?.order_mode || "manual";
+        if (btnManual) btnManual.classList.toggle("active", mode === "manual");
+        if (btnAuto) btnAuto.classList.toggle("active", mode === "auto");
+    // Bind Close All Positions button
+    const btnCloseAllHeader = document.getElementById("btn-close-all-positions");
+    if (btnCloseAllHeader) btnCloseAllHeader.addEventListener("click", closeAllPositions);
 
     // Symbol Search Filters — Fixed HTML Element IDs
     document.getElementById("buy-search").addEventListener("input", (e) => {
@@ -440,6 +471,28 @@ async function closePosition(tradeId) {
         loadPositions();
     } catch (err) {
         alert("Failed to close position");
+    }
+}
+
+async function closeAllPositions() {
+    const btn = document.getElementById("btn-close-all-positions");
+    if (!confirm("⚠️ Are you sure you want to CLOSE ALL active open positions immediately?")) return;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Closing All...';
+    }
+    try {
+        const res = await fetch("/api/positions/close-all", { method: "POST" });
+        const data = await res.json();
+        alert(data.message || "Successfully closed positions.");
+        loadPositions();
+    } catch (err) {
+        alert("Failed to close all positions");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-square-xmark"></i> Close All Positions';
+        }
     }
 }
 

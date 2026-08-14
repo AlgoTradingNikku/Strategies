@@ -327,8 +327,11 @@
             <!-- Active Positions Tab -->
             <section class="tab-panel" id="panel-positions">
                 <div class="table-card">
-                    <div class="table-card-header">
+                    <div class="table-card-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h3><i class="fa-solid fa-briefcase"></i> Active Open Positions</h3>
+                        <button class="btn btn-secondary" id="btn-close-all-positions" style="background-color: var(--color-sell); color: white; border: none; font-weight: 600; font-size: 0.85rem; padding: 6px 14px; cursor: pointer;">
+                            <i class="fa-solid fa-square-xmark"></i> Close All Positions
+                        </button>
                     </div>
                     <table class="data-table">
                         <thead>

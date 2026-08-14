@@ -65,14 +65,36 @@ class PositionMonitor:
 
         self.running = True
 
+        # Determine allowed direction from config
+        oa_cfg = config.get("openalgo", {})
+        allowed_actions = str(oa_cfg.get("allowed_actions", "BOTH")).upper()
+
         # Restore open positions from database on startup
+        # Skip positions whose direction violates allowed_actions so stale
+        # positions from a previous session don't get managed or exited.
         open_pos = trade_db.get_open_positions()
+        skipped = 0
         with self.lock:
             for pos in open_pos:
+                direction = str(pos.get("direction", "BUY")).upper()
+                if allowed_actions == "BUY_ONLY" and direction != "BUY":
+                    log.warning(
+                        "Skipping stale %s %s position (id=%s) — allowed_actions=BUY_ONLY",
+                        direction, pos.get("symbol"), pos.get("id"),
+                    )
+                    skipped += 1
+                    continue
+                if allowed_actions == "SELL_ONLY" and direction != "SELL":
+                    log.warning(
+                        "Skipping stale %s %s position (id=%s) — allowed_actions=SELL_ONLY",
+                        direction, pos.get("symbol"), pos.get("id"),
+                    )
+                    skipped += 1
+                    continue
                 self.active_positions[pos["id"]] = pos
         log.info(
-            "Trade Manager started. Loaded %d open position(s) from database.",
-            len(open_pos),
+            "Trade Manager started. Loaded %d open position(s) from database (%d skipped — direction filter).",
+            len(open_pos) - skipped, skipped,
         )
 
         # Background threads
@@ -177,18 +199,24 @@ class PositionMonitor:
                 with self.lock:
                     snapshot = list(self.active_positions.values())
 
-                for pos in snapshot:
+                # Group positions by (symbol, exchange) to fetch LTP only once per unique stock
+                sym_groups: dict = {}
+                for p in snapshot:
+                    key = (p["symbol"], p.get("exchange", "NSE"))
+                    sym_groups.setdefault(key, []).append(p)
+
+                for (symbol, exchange), pos_list in sym_groups.items():
                     if not self.running:
                         break
                     try:
-                        ltp = adapter_get_ltp(self.config, pos["symbol"], pos["exchange"])
-                        # Re-acquire lock to get fresh position reference
-                        with self.lock:
-                            live_pos = self.active_positions.get(pos["id"])
-                        if live_pos is not None:
-                            self._process_tick(live_pos, ltp)
+                        ltp = adapter_get_ltp(self.config, symbol, exchange)
+                        for p in pos_list:
+                            with self.lock:
+                                live_pos = self.active_positions.get(p["id"])
+                            if live_pos is not None:
+                                self._process_tick(live_pos, ltp)
                     except Exception as exc:
-                        log.error("Polling LTP failed for %s: %s", pos["symbol"], exc)
+                        log.error("Polling LTP failed for %s: %s", symbol, exc)
 
             time.sleep(interval)
 
@@ -236,7 +264,27 @@ class PositionMonitor:
         """
         Called by app.py after a successful order is placed.
         Computes initial SL + target, persists to DB, and starts monitoring.
+        Enforces allowed_actions filter — refuses to register a position whose
+        direction violates BUY_ONLY / SELL_ONLY to prevent stale positions
+        from accumulating across restarts.
         """
+        direction = str(getattr(req, "action", "BUY")).upper()
+        oa_cfg = config.get("openalgo", {})
+        allowed_actions = str(oa_cfg.get("allowed_actions", "BOTH")).upper()
+
+        if allowed_actions == "BUY_ONLY" and direction != "BUY":
+            log.info(
+                "[%s] Skipping position registration — direction=%s violates allowed_actions=BUY_ONLY",
+                getattr(req, "symbol", "?"), direction,
+            )
+            return
+        if allowed_actions == "SELL_ONLY" and direction != "SELL":
+            log.info(
+                "[%s] Skipping position registration — direction=%s violates allowed_actions=SELL_ONLY",
+                getattr(req, "symbol", "?"), direction,
+            )
+            return
+
         tm_cfg  = config.get("trade_management", {})
         sl_pct  = float(tm_cfg.get("stop_loss_pct", 1.0))
         tgt_pct = float(tm_cfg.get("target_pct", 2.0))
@@ -276,7 +324,7 @@ class PositionMonitor:
             "profit_lock_tier":  0,
             "trailing_active":   0,
             "partial_exit_tier": 0,
-            "timeframe":         config.get("scan_timeframe"),
+            "timeframe":         config.get("candle_timeframe", config.get("scan_timeframe", "5m")),
             "product":           getattr(req, "product", "MIS"),
         }
 

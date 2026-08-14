@@ -1066,7 +1066,7 @@ def evaluate_composite_signals(
                     candle_open_time = df.index[-1]
                     if hasattr(candle_open_time, 'to_pydatetime'):
                         candle_open_time = candle_open_time.to_pydatetime()
-                    tf_str   = config.get("scan_timeframe", "5m")
+                    tf_str   = config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
                     tf_lower = tf_str.strip().lower()
                     if tf_lower.endswith("m"):
                         candle_secs = int(tf_lower[:-1]) * 60
@@ -1272,7 +1272,7 @@ def evaluate_composite_signals(
                     candle_open_time = df.index[-1]
                     if hasattr(candle_open_time, 'to_pydatetime'):
                         candle_open_time = candle_open_time.to_pydatetime()
-                    tf_str   = config.get("scan_timeframe", "5m")
+                    tf_str   = config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
                     tf_lower = tf_str.strip().lower()
                     if tf_lower.endswith("m"):
                         candle_secs = int(tf_lower[:-1]) * 60

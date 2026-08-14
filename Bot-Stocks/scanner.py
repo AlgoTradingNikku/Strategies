@@ -662,7 +662,7 @@ def run_scan(
     config["strategy"] = strat
     config["sr_channels"] = sr_cfg
 
-    timeframe = timeframe_override or config.get("scan_timeframe", "15m")
+    timeframe = timeframe_override or config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
     lookback  = int(config.get("signal_lookback_candles", 2))
 
     ut_enabled = strat.get("ut_enabled", True)
@@ -843,6 +843,92 @@ def run_scan(
 
     if errors:
         log.warning("  Scan completed with %d error(s).", errors)
+
+    # ---- Auto Order Execution (when order_mode == 'auto') ----
+    oa_cfg = config.get("openalgo", {})
+    order_mode = str(oa_cfg.get("order_mode", "manual")).lower()
+    allowed_actions = str(oa_cfg.get("allowed_actions", "BUY_ONLY")).upper()
+
+    if order_mode == "auto":
+        log.info("  🤖 AUTO ORDER MODE ACTIVE | Action Filter: %s", allowed_actions)
+        from types import SimpleNamespace
+        import trading_adapter
+        import trade_db
+        from telegram import send_telegram_alert
+
+        try:
+            open_positions = trade_db.get_open_positions()
+            open_syms = {p["symbol"] for p in open_positions}
+        except Exception:
+            open_syms = set()
+
+        for r in (buy_results + sell_results):
+            sig = str(r.get("signal", "BUY")).upper()
+            sym = r["symbol"]
+
+            if allowed_actions == "BUY_ONLY" and sig != "BUY":
+                log.info("  [%s] Skipped auto order for %s signal (openalgo.allowed_actions = BUY_ONLY)", sym, sig)
+                continue
+            elif allowed_actions == "SELL_ONLY" and sig != "SELL":
+                log.info("  [%s] Skipped auto order for %s signal (openalgo.allowed_actions = SELL_ONLY)", sym, sig)
+                continue
+
+            if sym in open_syms:
+                log.info("  [%s] Skipped auto order: position already open in trade_db", sym)
+                continue
+
+            close_price = float(r.get("close") or 0.0)
+            stop_loss   = float(r.get("stop_loss") or close_price * 0.99)
+            target_price = float(r.get("target")   or close_price * 1.02)
+            quantity = int(oa_cfg.get("order_quantity", 1))
+            product = str(oa_cfg.get("order_product", "MIS"))
+            price_type = str(oa_cfg.get("order_type", "MARKET"))
+            exchange = str(config.get("exchange", "NSE"))
+
+            req = SimpleNamespace(
+                symbol=sym,
+                exchange=exchange,
+                action=sig,
+                quantity=quantity,
+                product=product,
+                price_type=price_type,
+                price=close_price,
+                trigger_price=0.0,
+                strategy="UTBot_SR_Stocks",
+            )
+
+            log.info("  [%s] Auto-executing %s order via trading adapter...", sym, sig)
+            ord_res = trading_adapter.place_order(config, req)
+
+            if ord_res.get("status") == "success":
+                try:
+                    pos_id = trade_db.open_position_db({
+                        "order_id": ord_res.get("orderid") or f"AUTO_{int(datetime.now().timestamp()*1000)}",
+                        "symbol": sym,
+                        "exchange": exchange,
+                        "direction": sig,
+                        "quantity": quantity,
+                        "entry_price": close_price,
+                        "current_sl": stop_loss,
+                        "initial_sl": stop_loss,
+                        "target_price": target_price,
+                        "product": product,
+                        "timeframe": timeframe,
+                    })
+                    open_syms.add(sym)
+                    log.info("  [%s] Registered auto position ID %d in trade_db", sym, pos_id)
+                except Exception as db_err:
+                    log.error("  [%s] Failed to record auto position in DB: %s", sym, db_err)
+
+                tg_msg = (
+                    f"🚀 <b>AUTO-ORDER EXECUTED (STOCKS)</b>\n"
+                    f"Symbol: <b>{sym}</b>\n"
+                    f"Action: <b>{sig}</b>\n"
+                    f"Price: ₹{close_price:.2f}\n"
+                    f"Qty: {quantity}\n"
+                    f"Setup Score: {r.get('setup_score', 0.0):.1f}"
+                )
+                send_telegram_alert(tg_msg, config=config)
 
     return buy_results, sell_results, segment_label, timeframe, len(symbols)
 
@@ -1108,7 +1194,7 @@ Examples:
         if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
             h.setLevel(log_level)
 
-    timeframe     = args.tf or config.get("scan_timeframe", "15m")
+    timeframe     = args.tf or config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
     segment       = args.segment  # None → use config value
     mode_override = args.mode     # None → use config value
     scan_interval = int(config.get("scan_interval_seconds", 300))

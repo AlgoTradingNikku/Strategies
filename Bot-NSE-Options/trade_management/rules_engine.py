@@ -9,6 +9,21 @@ def evaluate_position_rules(pos: Position, cfg: Dict[str, Any]) -> Tuple[str, Op
     tm_cfg = cfg.get("trade_management", {})
     ret_pct = pos.return_pct
 
+    # Check EOD Auto Square-Off (e.g. 15:15 IST)
+    if tm_cfg.get("auto_square_off_enabled", False):
+        cutoff_str = tm_cfg.get("auto_square_off_time", "15:15")
+        try:
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            now_tz = datetime.now(ZoneInfo("Asia/Kolkata"))
+            cutoff_parts = [int(p) for p in cutoff_str.strip().split(":")]
+            cutoff_min = cutoff_parts[0] * 60 + cutoff_parts[1]
+            now_min = now_tz.hour * 60 + now_tz.minute
+            if now_min >= cutoff_min:
+                return ("EXIT", pos.current_price, "EOD_SQUARE_OFF")
+        except Exception:
+            pass
+
     # Check hard Stop Loss
     sl_pct = float(tm_cfg.get("stop_loss_pct", 20.0))
     if ret_pct <= -sl_pct:

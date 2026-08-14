@@ -141,3 +141,15 @@ def get_all_trades(limit: int = 100) -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM trades ORDER BY trade_id DESC LIMIT ?", (limit,))
         return [dict(r) for r in cursor.fetchall()]
+
+
+def clear_all_trades() -> bool:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM trades")
+        try:
+            cursor.execute("DELETE FROM sqlite_sequence WHERE name = 'trades'")
+        except Exception:
+            pass
+        conn.commit()
+        return True

@@ -478,6 +478,24 @@ button, input, select, textarea {
 .table-container {
     width: 100%;
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 480px;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.table-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
 }
 
 table {
@@ -495,11 +513,36 @@ th, td {
 th {
     font-weight: 600;
     color: var(--text-secondary);
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: var(--bg-surface, #1e222d);
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Action Exit Button Styling */
+.btn-danger, .btn-close-pos {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    padding: 5px 12px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+.btn-danger:hover, .btn-close-pos:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.5) !important;
+    transform: translateY(-1px);
 }
 
 tr:last-child td {

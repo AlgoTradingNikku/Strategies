@@ -592,6 +592,27 @@ input:checked + .slider:before {
     text-transform: uppercase;
     color: var(--text-muted);
     font-weight: 700;
+    position: sticky;
+    top: 0;
+    background-color: var(--bg-card, #1e222d);
+    z-index: 5;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    padding: 5px 12px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.5) !important;
 }
 
 /* Score Cell & TradingView Link */

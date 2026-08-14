@@ -3,22 +3,17 @@
 data_source: "yfinance"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
 trading_api_source: "openalgo"        # Options: "openalgo", "flattrade", "mstock", "shoonya", "dhan"
 exchange: "NSE"                       # Target exchange
-scan_timeframe: "5m"                  # Lower Timeframe (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
-scan_interval_seconds: 60            # Interval between scans in continuous mode
+candle_timeframe: "5m"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_interval_seconds: 300            # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
 
 # Set to "" or [] to scan only the custom symbols list below
 segment:
 - NIFTY50
 - BANKNIFTY
-
-# CUSTOM SYMBOLS LIST
 use_symbols: true
 
 symbols:
 - RPOWER
-
-# Number of closed candles to look back for UT Bot signals. 
-#(2=current + 1 prior candle)
 signal_lookback_candles: 2
 
 # UT Bot Settings
@@ -116,10 +111,14 @@ openalgo:
   username: "rahul.tew"
   base_url: "http://127.0.0.1:5000"
   ws_url: "ws://127.0.0.1:8765"
-  order_mode: "manual"              # "manual" = Place Order button | "auto" = place immediately on signal
+  order_mode: "auto"                # Order Mode: 'auto' (place orders automatically) | 'manual' (alerts only, user places manual orders)
+  allowed_actions: "BUY_ONLY"       # Applies ONLY when order_mode is 'auto'. (Manual web UI orders are always unrestricted)
+                                    #   'BUY_ONLY'  -> Auto-place ONLY BUY signals
+                                    #   'BOTH'      -> Auto-place both BUY & SELL signals
+                                    #   'SELL_ONLY' -> Auto-place ONLY SELL signals
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
   order_quantity: 1                 # Default quantity per order
-  order_type: "LIMIT"               # "MARKET" or "LIMIT"
+  order_type: "MARKET"               # "MARKET" or "LIMIT"
 
 # ------------------------------------------------------------
 # Trading API Credentials (only the active trading_api_source is used)
@@ -181,11 +180,15 @@ bot:
   market_hours_check: false           # Restrict scanning to market hours only
   market_open: "09:15"
   market_close: "15:30"
-  auto_refresh_enabled: true         # Toggle dashboard auto-refresh on page load
+  auto_refresh_enabled: true         # Toggle dashboard auto-refresh on page load (uses scan_interval_seconds)
 
 trade_management:
   enabled: true                  # Master switch — set true to activate auto monitoring
   poll_interval_seconds: 5       # Fallback polling interval when WebSocket is unavailable
+
+  # Intraday EOD Auto Square-Off (avoids broker RMS auto-square-off penalty fees)
+  auto_square_off_enabled: true  # Automatically square off open positions before market close
+  auto_square_off_time: "15:15"  # Time (HH:MM IST 24-hr format) to execute square-off
 
   # Initial SL and Target (percentage-based, anchored to entry price)
   # Works correctly for ₹50 stocks and ₹5000 stocks alike.

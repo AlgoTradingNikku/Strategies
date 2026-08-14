@@ -383,3 +383,23 @@ def get_signal_history(limit: int = 50, offset: int = 0) -> list[dict]:
         return results
     finally:
         conn.close()
+
+
+def clear_all_signals() -> bool:
+    """Clear all logged signals from the database to start fresh."""
+    conn = _get_connection(None)
+    try:
+        conn.execute("DELETE FROM signals")
+        try:
+            conn.execute("DELETE FROM sqlite_sequence WHERE name = 'signals'")
+        except Exception:
+            pass
+        conn.commit()
+        log.info("Cleared all signal history from database.")
+        return True
+    except Exception as exc:
+        conn.rollback()
+        log.error("DB error clearing signal history: %s", exc)
+        return False
+    finally:
+        conn.close()

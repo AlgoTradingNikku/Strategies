@@ -224,3 +224,24 @@ def get_position_events(pos_id: int) -> list[dict]:
         return [dict(r) for r in rows]
     finally:
         conn.close()
+
+
+def clear_all_trades() -> bool:
+    """Clear all records from positions and position_events tables to start fresh."""
+    conn = _get_connection()
+    try:
+        conn.execute("DELETE FROM position_events")
+        conn.execute("DELETE FROM positions")
+        try:
+            conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('positions', 'position_events')")
+        except Exception:
+            pass
+        conn.commit()
+        log.info("Cleared all trades and position events from database.")
+        return True
+    except Exception as exc:
+        conn.rollback()
+        log.error("DB error clearing trades: %s", exc)
+        return False
+    finally:
+        conn.close()

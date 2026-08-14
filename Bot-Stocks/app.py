@@ -2,6 +2,7 @@ import sys
 import logging
 from pathlib import Path
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
 import pandas as pd
@@ -24,7 +25,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 # Import scanner functions
 from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
-from signal_db import get_signal_history, get_statistics
+from signal_db import get_signal_history, get_statistics, clear_all_signals
 from trading_adapter import place_order as adapter_place_order, get_ltp as adapter_get_ltp
 from trade_manager import PositionMonitor
 import trade_db
@@ -83,6 +84,7 @@ class OpenAlgoConfig(BaseModel):
     base_url: str
     ws_url: str
     order_mode: str = "manual"
+    allowed_actions: str = "BUY_ONLY"
     order_product: str = "MIS"
     order_quantity: int = 1
     order_type: str = "MARKET"
@@ -182,7 +184,8 @@ class ConfigUpdateRequest(BaseModel):
     data_source: str
     trading_api_source: str = "openalgo"
     exchange: str
-    scan_timeframe: str
+    candle_timeframe: str = "5m"
+    scan_timeframe: str | None = None
     scan_interval_seconds: int
     segment: list[str] | str
     use_symbols: bool
@@ -364,6 +367,114 @@ async def manual_close_position(pos_id: int):
         log.error("Manual exit failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Manual exit failed: {e}")
 
+
+@app.post("/api/positions/close-all")
+async def close_all_positions_endpoint():
+    """Square off and close ALL active monitored positions in one click (Parallelized)."""
+    try:
+        cfg = load_config()
+        open_pos_list = await run_in_threadpool(trade_db.get_open_positions)
+        if not open_pos_list:
+            return {"status": "success", "message": "No active open positions to close.", "closed_count": 0}
+
+        def _close_single_pos(p):
+            pos_id = p["id"]
+            target_pos = None
+            with _monitor.lock:
+                target_pos = _monitor.active_positions.get(pos_id)
+
+            symbol = p["symbol"]
+            exchange = p["exchange"]
+
+            ltp = adapter_get_ltp(cfg, symbol, exchange)
+            if ltp <= 0:
+                ltp = float(p.get("entry_price", 0.0))
+
+            if target_pos:
+                try:
+                    _monitor._execute_exit(target_pos, ltp, "MANUAL_CLOSE_ALL")
+                except Exception as e:
+                    log.warning("Monitor exit for %s raised exception: %s", symbol, e)
+            else:
+                action = "SELL" if p["direction"].upper() == "BUY" else "BUY"
+                from types import SimpleNamespace
+                req = SimpleNamespace(
+                    symbol=symbol,
+                    exchange=exchange,
+                    action=action,
+                    quantity=p["quantity"],
+                    product=p.get("product", "MIS"),
+                    price_type="MARKET",
+                    price=ltp,
+                    trigger_price=0.0,
+                    strategy="UTBot_SR_CloseAll",
+                )
+                try:
+                    adapter_place_order(cfg, req)
+                except Exception as e:
+                    log.warning("Adapter place order for %s exit raised: %s", symbol, e)
+
+            # Always mark position as CLOSED in trade_db & clear from monitor active positions
+            entry = float(p.get("entry_price", ltp or 1.0))
+            direction = p.get("direction", "BUY")
+            pnl_pct = round(((ltp - entry)/entry)*100, 2) if direction.upper() == "BUY" else round(((entry - ltp)/entry)*100, 2)
+
+            trade_db.update_position(
+                pos_id,
+                status="CLOSED",
+                close_reason="MANUAL_CLOSE_ALL",
+                close_price=ltp,
+                close_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                pnl_pct=pnl_pct
+            )
+            with _monitor.lock:
+                _monitor.active_positions.pop(pos_id, None)
+
+            return symbol
+
+        closed_count = 0
+        errors = []
+
+        def run_all_exits():
+            nonlocal closed_count
+            with ThreadPoolExecutor(max_workers=min(10, len(open_pos_list))) as pool:
+                futures = {pool.submit(_close_single_pos, p): p for p in open_pos_list}
+                for f in as_completed(futures):
+                    p = futures[f]
+                    try:
+                        f.result()
+                        closed_count += 1
+                    except Exception as exc:
+                        errors.append(f"{p['symbol']}: {exc}")
+
+        await run_in_threadpool(run_all_exits)
+
+        return {
+            "status": "success",
+            "message": f"Closed {closed_count} position(s)." + (f" Errors: {', '.join(errors)}" if errors else ""),
+            "closed_count": closed_count,
+        }
+    except Exception as e:
+        log.error("Close all positions failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Close all positions failed: {e}")
+
+@app.post("/api/reset-data")
+async def reset_data_endpoint():
+    """Clear all trades, position events, signal history, and outcomes to start fresh."""
+    try:
+        await run_in_threadpool(trade_db.clear_all_trades)
+        with _monitor.lock:
+            _monitor.active_positions.clear()
+        await run_in_threadpool(clear_all_signals)
+        return {
+            "status": "success",
+            "message": "All signal history, trade records, and position logs cleared successfully. Starting fresh!"
+        }
+    except Exception as e:
+        log.error("Failed to reset databases: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to reset databases: {e}")
+
+
 @app.post("/api/scan")
 async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
     """Trigger a manual scan and return the results.
@@ -397,7 +508,7 @@ def get_history(symbol: str, timeframe: str | None = None):
     """Fetch historical OHLC data and calculate UTBot/SR values for charting."""
     try:
         cfg = load_config()
-        tf = timeframe or cfg.get("scan_timeframe", "15m")
+        tf = timeframe or cfg.get("candle_timeframe", cfg.get("scan_timeframe", "5m"))
         
         # Fetch history via the scanner module's data source
         df = fetch_history(symbol, tf, cfg)

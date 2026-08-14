@@ -27,6 +27,8 @@ portal.
 ===============================================================================
 """
 
+import time
+import threading
 import hashlib
 import logging
 import requests
@@ -454,15 +456,21 @@ def place_order(cfg: dict, req) -> dict:
     return result
 
 
-def get_ltp(cfg: dict, symbol: str, exchange: str) -> float:
+_LTP_CACHE: dict = {}
+_LTP_CACHE_LOCK = threading.Lock()
+_LTP_CACHE_TTL: float = 1.5  # seconds cache validity for rapid repeat lookups
+
+
+def get_ltp(cfg: dict, symbol: str, exchange: str, max_age: float = 1.5) -> float:
     """
-    Fetch live LTP using the configured trading_api_source.
+    Fetch live LTP using the configured trading_api_source with short-lived TTL caching.
 
     Parameters
     ----------
     cfg      : full config dict
     symbol   : trading symbol (e.g. "INFY")
     exchange : exchange code (e.g. "NSE")
+    max_age  : cache freshness lifetime in seconds (default 1.5s)
 
     Returns
     -------
@@ -479,5 +487,16 @@ def get_ltp(cfg: dict, symbol: str, exchange: str) -> float:
             f"Unknown trading_api_source: '{source}'. "
             f"Valid options: {list(_GET_LTP_DISPATCH)}"
         )
-    log.info("Fetching LTP for %s (%s) via %s", symbol, exchange, source.upper())
-    return fn(cfg, symbol, exchange)
+
+    key = (source, symbol.upper(), exchange.upper())
+    now = time.time()
+    with _LTP_CACHE_LOCK:
+        cached = _LTP_CACHE.get(key)
+        if cached and (now - cached[0]) < max_age:
+            return cached[1]
+
+    log.debug("Fetching LTP for %s (%s) via %s", symbol, exchange, source.upper())
+    price = fn(cfg, symbol, exchange)
+    with _LTP_CACHE_LOCK:
+        _LTP_CACHE[key] = (now, price)
+    return price

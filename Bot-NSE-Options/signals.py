@@ -231,15 +231,21 @@ def evaluate_composite_signals(
     vol_sma = df["volume"].rolling(20).mean() if "volume" in df.columns else pd.Series(0, index=df.index)
     df["vol_sma"] = vol_sma
 
-    # 4. Determine signal from the LAST COMPLETED bar only.
-    #    Do NOT use cur_pos trend state — that would emit a perpetual BUY/SELL
-    #    for every bar after a crossover, which is incorrect.
-    last_bar = df.iloc[-1]
+    # 4. Determine signal evaluation bar: running bar (index -1) vs last completed bar (index -2)
+    signal_on_running_bar = bool(ut_cfg.get("signal_on_running_bar", True))
+    if signal_on_running_bar or len(df) < 2:
+        eval_idx = -1
+        bar_type_label = "running_bar"
+    else:
+        eval_idx = -2
+        bar_type_label = "completed_bar"
+
+    last_bar = df.iloc[eval_idx]
     last_ut_buy  = bool(last_bar.get("ut_buy",  False))
     last_ut_sell = bool(last_bar.get("ut_sell", False))
     last_sr_buy  = bool(last_bar.get("sr_buy",  False))
     last_sr_sell = bool(last_bar.get("sr_sell", False))
-    cur_pos      = int(df["ut_pos"].iloc[-1]) if "ut_pos" in df.columns else 0
+    cur_pos      = int(df["ut_pos"].iloc[eval_idx]) if "ut_pos" in df.columns else 0
 
     if mode == "UTBOT":
         final_buy  = last_ut_buy
@@ -256,8 +262,8 @@ def evaluate_composite_signals(
     df.iloc[-1, df.columns.get_loc("final_buy")]  = final_buy
     df.iloc[-1, df.columns.get_loc("final_sell")] = final_sell
 
-    # Calculate Confluence Matrix & Setup Score for the latest candle
-    last = df.iloc[-1]
+    # Calculate Confluence Matrix & Setup Score for the evaluated candle
+    last = df.iloc[eval_idx]
     last_close = float(last["close"])
     last_ema = float(last["ema_200"])
     last_rsi = float(last["rsi"]) if pd.notna(last["rsi"]) else 50.0

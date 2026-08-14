@@ -53,6 +53,8 @@ for both low-priced (₹50) and high-priced (₹5 000) stocks.
 
 from __future__ import annotations
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import List
 
 from .models import TradeAction, calc_gain_pct, sl_improves
@@ -69,7 +71,8 @@ def evaluate(pos: dict, ltp: float, tm_cfg: dict) -> List[TradeAction]:
     Evaluate all rules against the current position and return a list of
     TradeAction objects, ordered by priority:
 
-      1. Target exit   (highest priority — immediate close)
+      0. EOD Auto-Exit (highest priority — closes at 15:15 before broker RMS charges)
+      1. Target exit   (immediate close)
       2. SL exit       (immediate close)
       3. Trailing SL   (adjust SL — must be checked BEFORE profit_lock so
                         the tighter rule wins when both fire on same tick)
@@ -79,6 +82,11 @@ def evaluate(pos: dict, ltp: float, tm_cfg: dict) -> List[TradeAction]:
     The executor processes actions in order and stops after any EXIT action.
     """
     actions: List[TradeAction] = []
+
+    # --- 0. EOD Auto Square-Off Check (e.g. 15:15 IST) ---
+    eod_exit = _check_eod_square_off(tm_cfg)
+    if eod_exit:
+        return [eod_exit]
 
     # --- 1. High-water mark update (not an action, mutates pos in-place) ---
     _update_hwm(pos, ltp)
@@ -134,6 +142,26 @@ def _update_hwm(pos: dict, ltp: float) -> None:
         if ltp < pos["high_water_mark"]:
             pos["high_water_mark"] = ltp
             pos["_hwm_dirty"] = True
+
+
+# ---------------------------------------------------------------------------
+# Rule: EOD Intraday Auto Square-Off (e.g. 15:15 IST)
+# ---------------------------------------------------------------------------
+
+def _check_eod_square_off(tm_cfg: dict) -> TradeAction | None:
+    if not tm_cfg.get("auto_square_off_enabled", False):
+        return None
+    cutoff_str = tm_cfg.get("auto_square_off_time", "15:15")
+    try:
+        now_tz = datetime.now(ZoneInfo("Asia/Kolkata"))
+        cutoff_parts = [int(p) for p in cutoff_str.strip().split(":")]
+        cutoff_min = cutoff_parts[0] * 60 + cutoff_parts[1]
+        now_min = now_tz.hour * 60 + now_tz.minute
+        if now_min >= cutoff_min:
+            return TradeAction(action_type="EXIT_TARGET", reason="EOD_SQUARE_OFF")
+    except Exception as e:
+        log.debug("EOD square-off time evaluation error: %s", e)
+    return None
 
 
 # ---------------------------------------------------------------------------

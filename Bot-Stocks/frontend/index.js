@@ -130,21 +130,22 @@ document.addEventListener("DOMContentLoaded", () => {
             
             // Update Active Config display text
             const seg = Array.isArray(cfg.segment) ? cfg.segment.join("+") : (cfg.segment || "CUSTOM");
-            activeScanInfo.textContent = `Profile: ${cfg.data_source.toUpperCase()} | TF: ${cfg.scan_timeframe} | Segments: ${seg}`;
+            const activeTf = cfg.candle_timeframe || cfg.scan_timeframe || "5m";
+            activeScanInfo.textContent = `Profile: ${cfg.data_source.toUpperCase()} | TF: ${activeTf} | Segments: ${seg}`;
 
             // Set header dropdown values — suppress the change event so loadConfig
             // does not accidentally trigger a second scan when updating values programmatically.
             _suppressTfChange = true;
             const headerSelectLtf = document.getElementById("header-select-ltf");
             const headerSelectHtf = document.getElementById("header-select-htf");
-            if (headerSelectLtf) headerSelectLtf.value = cfg.scan_timeframe;
+            if (headerSelectLtf) headerSelectLtf.value = activeTf;
             if (headerSelectHtf) headerSelectHtf.value = cfg.filters.mtf_timeframe;
             _suppressTfChange = false;
             
             // Populate Config Form
             document.getElementById("cfg-data-source").value = cfg.data_source;
             document.getElementById("cfg-exchange").value = cfg.exchange;
-            document.getElementById("cfg-timeframe").value = cfg.scan_timeframe;
+            document.getElementById("cfg-timeframe").value = activeTf;
             document.getElementById("cfg-interval").value = cfg.scan_interval_seconds;
             document.getElementById("cfg-lookback").value = cfg.signal_lookback_candles;
 
@@ -208,6 +209,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (cfg.openalgo) {
                 const cfgMode = cfg.openalgo.order_mode || "manual";
                 document.getElementById("cfg-oa-order-mode").value = cfgMode;
+                const selectActions = document.getElementById("cfg-oa-allowed-actions");
+                if (selectActions) selectActions.value = cfg.openalgo.allowed_actions || "BUY_ONLY";
                 document.getElementById("cfg-oa-product").value = cfg.openalgo.order_product || "MIS";
                 document.getElementById("cfg-oa-quantity").value = cfg.openalgo.order_quantity || 1;
                 // Sync the dashboard header toggle with saved config
@@ -252,6 +255,16 @@ document.addEventListener("DOMContentLoaded", () => {
             if (cfg.bot) {
                 document.getElementById("cfg-bot-auto-refresh").checked = !!cfg.bot.auto_refresh_enabled;
             }
+
+            // Sync header scan-interval dropdown
+            const headerIntervalSel = document.getElementById("header-scan-interval");
+            if (headerIntervalSel && cfg.scan_interval_seconds) {
+                const secs = String(cfg.scan_interval_seconds);
+                const opts = Array.from(headerIntervalSel.options).map(o => parseInt(o.value));
+                let best = opts[0];
+                for (const v of opts) { if (v <= parseInt(secs)) best = v; }
+                headerIntervalSel.value = String(best);
+            }
             
             // Update Connection banner
             connectionStatus.textContent = "Scanner System Online";
@@ -274,6 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = {
             data_source: document.getElementById("cfg-data-source").value,
             exchange: document.getElementById("cfg-exchange").value,
+            candle_timeframe: document.getElementById("cfg-timeframe").value,
             scan_timeframe: document.getElementById("cfg-timeframe").value,
             scan_interval_seconds: parseInt(document.getElementById("cfg-interval").value),
             signal_lookback_candles: parseInt(document.getElementById("cfg-lookback").value),
@@ -333,6 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
             openalgo: {
                 ...activeConfig.openalgo,
                 order_mode: document.getElementById("cfg-oa-order-mode").value,
+                allowed_actions: document.getElementById("cfg-oa-allowed-actions")?.value || "BUY_ONLY",
                 order_product: document.getElementById("cfg-oa-product").value,
                 order_quantity: parseInt(document.getElementById("cfg-oa-quantity").value || 1),
             },
@@ -570,6 +585,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const htf = htfSelect.value;
         
         // Update local activeConfig state
+        activeConfig.candle_timeframe = ltf;
         activeConfig.scan_timeframe = ltf;
         activeConfig.filters.mtf_timeframe = htf;
         
@@ -620,22 +636,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Header toggle buttons
     if (btnModeManual) {
-        btnModeManual.addEventListener("click", () => {
+        btnModeManual.addEventListener("click", async () => {
             _applyOrderMode("manual");
-            // Persist to config immediately without full form submit
-            if (activeConfig?.openalgo) {
-                activeConfig.openalgo.order_mode = "manual";
-                document.getElementById("cfg-oa-order-mode").value = "manual";
+            try {
+                const resp = await fetch(`${API_BASE}/api/config`);
+                const cfg = await resp.json();
+                cfg.openalgo = cfg.openalgo || {};
+                cfg.openalgo.order_mode = "manual";
+                activeConfig = cfg;
+                const selectEl = document.getElementById("cfg-oa-order-mode");
+                if (selectEl) selectEl.value = "manual";
+                await fetch(`${API_BASE}/api/config`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(cfg)
+                });
+            } catch (e) {
+                console.error("Failed to persist order_mode:", e);
             }
         });
     }
     if (btnModeAuto) {
-        btnModeAuto.addEventListener("click", () => {
+        btnModeAuto.addEventListener("click", async () => {
             if (!confirm("Enable Auto mode? Orders will be placed automatically for every new scan signal without manual confirmation.")) return;
             _applyOrderMode("auto");
-            if (activeConfig?.openalgo) {
-                activeConfig.openalgo.order_mode = "auto";
-                document.getElementById("cfg-oa-order-mode").value = "auto";
+            try {
+                const resp = await fetch(`${API_BASE}/api/config`);
+                const cfg = await resp.json();
+                cfg.openalgo = cfg.openalgo || {};
+                cfg.openalgo.order_mode = "auto";
+                activeConfig = cfg;
+                const selectEl = document.getElementById("cfg-oa-order-mode");
+                if (selectEl) selectEl.value = "auto";
+                await fetch(`${API_BASE}/api/config`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(cfg)
+                });
+            } catch (e) {
+                console.error("Failed to persist order_mode:", e);
             }
         });
     }
@@ -905,14 +944,27 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
 
-        // Auto mode: fire orders for all new signals without any button click
+        // Auto mode: fire orders for new signals — respects allowed_actions setting
         if (orderMode === "auto") {
-            const allSignals = [
-                ...(data.buy_signals || []).map(s => ({ ...s, action: "BUY" })),
-                ...(data.sell_signals || []).map(s => ({ ...s, action: "SELL" })),
-            ];
-            allSignals.forEach(sig => {
-                const oa = activeConfig?.openalgo || {};
+            const oa = activeConfig?.openalgo || {};
+            const allowedActions = (oa.allowed_actions || "BOTH").toUpperCase();
+
+            let autoSignals = [];
+            if (allowedActions === "BUY_ONLY") {
+                // Only place BUY signals — skip SELL signals entirely
+                autoSignals = (data.buy_signals || []).map(s => ({ ...s, action: "BUY" }));
+            } else if (allowedActions === "SELL_ONLY") {
+                // Only place SELL signals — skip BUY signals entirely
+                autoSignals = (data.sell_signals || []).map(s => ({ ...s, action: "SELL" }));
+            } else {
+                // BOTH — place all signals
+                autoSignals = [
+                    ...(data.buy_signals || []).map(s => ({ ...s, action: "BUY" })),
+                    ...(data.sell_signals || []).map(s => ({ ...s, action: "SELL" })),
+                ];
+            }
+
+            autoSignals.forEach(sig => {
                 placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2, sig.close);
             });
         }
@@ -959,6 +1011,47 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function initAutoRefresh() {
+        const intervalSelect = document.getElementById("header-scan-interval");
+
+        // Sync dropdown to the value loaded from config
+        function _syncIntervalDropdown() {
+            if (!intervalSelect || !activeConfig) return;
+            const seconds = String(activeConfig.scan_interval_seconds || 60);
+            // Pick the closest option (exact match first, else nearest lower)
+            const options = Array.from(intervalSelect.options).map(o => parseInt(o.value));
+            let best = options[0];
+            for (const v of options) {
+                if (v <= parseInt(seconds)) best = v;
+            }
+            intervalSelect.value = String(best);
+        }
+        _syncIntervalDropdown();
+
+        // When user changes the dropdown: apply immediately + persist to backend
+        if (intervalSelect) {
+            intervalSelect.addEventListener("change", async () => {
+                const newSeconds = parseInt(intervalSelect.value);
+                if (!activeConfig) return;
+                activeConfig.scan_interval_seconds = newSeconds;
+                // Restart auto-refresh immediately with new interval (if running)
+                if (autoRefreshInterval !== null) {
+                    _startAutoRefresh();
+                }
+                // Persist to config.yml
+                try {
+                    await fetch(`${API_BASE}/api/config`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(activeConfig)
+                    });
+                    const label = intervalSelect.options[intervalSelect.selectedIndex].text;
+                    showToast(`✅ Auto-refresh interval set to ${label}`, "success");
+                } catch (err) {
+                    showToast(`❌ Failed to save interval: ${err.message}`, "error");
+                }
+            });
+        }
+
         // Toggle action
         btnToggleAutoRefresh.addEventListener("click", () => {
             if (autoRefreshInterval) {
@@ -1291,6 +1384,65 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             log.error("Error loading positions: %s", err);
         }
+    }
+
+    const btnCloseAllPos = document.getElementById("btn-close-all-positions");
+    if (btnCloseAllPos) {
+        btnCloseAllPos.addEventListener("click", async () => {
+            if (!confirm("⚠️ Are you sure you want to CLOSE ALL active monitored positions immediately?")) return;
+            btnCloseAllPos.disabled = true;
+            btnCloseAllPos.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Closing All...';
+            try {
+                const resp = await fetch(`${API_BASE}/api/positions/close-all`, { method: "POST" });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data.detail || data.message || "Failed to close all positions.");
+                }
+                alert(data.message || "Successfully closed positions.");
+                await loadPositions();
+                await loadClosedPositions();
+            } catch (err) {
+                alert("Failed to close all positions: " + err.message);
+            } finally {
+                btnCloseAllPos.disabled = false;
+                btnCloseAllPos.innerHTML = '<i class="fa-solid fa-square-xmark"></i> Close All Positions';
+            }
+        });
+    }
+
+    // Helper: shared reset-databases logic used by both buttons
+    async function resetAllDatabases(btn) {
+        if (!confirm("⚠️ Are you SURE you want to clear ALL trade database history, active positions, and signal history?\n\nThis will wipe all tracking logs to start completely fresh!")) return;
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Clearing DBs...';
+        try {
+            const resp = await fetch(`${API_BASE}/api/reset-data`, { method: "POST" });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || "Failed to reset databases.");
+            alert(data.message || "All databases cleared successfully! Starting fresh.");
+            await loadPositions();
+            await loadClosedPositions();
+            await loadHistory();
+            await loadStats();
+        } catch (err) {
+            alert("❌ Clear Databases Error: " + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+
+    // History tab: Clear All History & DBs button
+    const btnResetDb = document.getElementById("btn-reset-databases");
+    if (btnResetDb) {
+        btnResetDb.addEventListener("click", () => resetAllDatabases(btnResetDb));
+    }
+
+    // Positions tab: Clear All History & DBs button (same action)
+    const btnResetDbPos = document.getElementById("btn-reset-databases-pos");
+    if (btnResetDbPos) {
+        btnResetDbPos.addEventListener("click", () => resetAllDatabases(btnResetDbPos));
     }
 
     async function loadClosedPositions() {

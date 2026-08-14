@@ -13,6 +13,7 @@ import threading
 import logging
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import yaml
 import uvicorn
@@ -49,8 +50,15 @@ def _background_scanner_loop():
     while _auto_scan_running:
         try:
             cfg = load_config()
-            interval_mins = int(cfg.get("bot", {}).get("auto_scan_interval_minutes", 1))
-            interval_secs = max(10, interval_mins * 60)
+            interval_mins = float(cfg.get("bot", {}).get("auto_scan_interval_minutes", 1))
+            running_bar_mode = bool(cfg.get("strategy", {}).get("signal_on_running_bar", True))
+
+            # In running bar mode, scan every 15 seconds for real-time intraday crossovers;
+            # In completed bar mode, scan at interval boundary (e.g. 60s).
+            if running_bar_mode and interval_mins >= 1:
+                interval_secs = 15
+            else:
+                interval_secs = max(10, int(interval_mins * 60))
 
             run_scan(cfg)
             sys.stdout.flush()
@@ -155,14 +163,33 @@ async def get_config():
     return cfg
 
 
+def _save_commented_config(updater_fn):
+    """Utility to load config.yml preserving comments via ruamel.yaml, update values, and save back."""
+    config_path = _bot_dir / "config.yml"
+    ryaml = _RYAML()
+    ryaml.preserve_quotes = True
+    if config_path.exists():
+        with open(config_path, "r", encoding="utf-8") as fh:
+            commented_cfg = ryaml.load(fh)
+    else:
+        commented_cfg = {}
+    updater_fn(commented_cfg)
+    with open(config_path, "w", encoding="utf-8") as fh:
+        ryaml.dump(commented_cfg, fh)
+    return commented_cfg
+
+
 @app.post("/api/config")
 async def update_config(cfg_data: dict):
-    config_path = _bot_dir / "config.yml"
     try:
-        ryaml = _RYAML()
-        ryaml.preserve_quotes = True
-        with open(config_path, "w", encoding="utf-8") as fh:
-            ryaml.dump(cfg_data, fh)
+        def update_dict(target, source):
+            for k, v in source.items():
+                if isinstance(v, dict) and k in target and isinstance(target[k], dict):
+                    update_dict(target[k], v)
+                else:
+                    target[k] = v
+
+        _save_commented_config(lambda cfg: update_dict(cfg, cfg_data))
         return {"status": "success", "message": "Configuration updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -189,17 +216,15 @@ async def get_options_grid():
 
 @app.post("/api/options/grid")
 async def update_options_grid(req: GridUpdateRequest):
-    cfg = load_config()
-    cfg.setdefault("options", {})
-    cfg["options"]["base_atm_strike"] = req.base_atm_strike
-    cfg["options"]["underlying"] = req.underlying
-    cfg["options"]["expiry_date"] = req.expiry_date
-    cfg["options"]["levels_up_down"] = req.levels_up_down
-    cfg["options"]["strike_gap"] = req.strike_gap
+    def update_grid(cfg):
+        cfg.setdefault("options", {})
+        cfg["options"]["base_atm_strike"] = req.base_atm_strike
+        cfg["options"]["underlying"] = req.underlying
+        cfg["options"]["expiry_date"] = req.expiry_date
+        cfg["options"]["levels_up_down"] = req.levels_up_down
+        cfg["options"]["strike_gap"] = req.strike_gap
 
-    ryaml = _RYAML()
-    with open(_bot_dir / "config.yml", "w", encoding="utf-8") as fh:
-        ryaml.dump(cfg, fh)
+    _save_commented_config(update_grid)
 
     grid = generate_option_strike_grid(
         base_symbol_or_params=req.base_atm_strike,
@@ -211,18 +236,15 @@ async def update_options_grid(req: GridUpdateRequest):
 
 @app.post("/api/filters")
 async def toggle_filters(req: FilterToggleRequest):
-    cfg = load_config()
-    cfg.setdefault("strategy", {})["ut_enabled"] = req.ut_enabled
-    cfg.setdefault("sr_channels", {})["enabled"] = req.sr_enabled
-    cfg.setdefault("filters", {})["ema_trend_filter"] = req.ema_enabled
-    cfg["filters"]["volume_filter"] = req.volume_enabled
-    cfg["filters"]["mtf_confirmation"] = req.mtf_enabled
-    cfg["filters"]["squeeze_filter"] = req.squeeze_enabled
+    def update_filters(cfg):
+        cfg.setdefault("strategy", {})["ut_enabled"] = req.ut_enabled
+        cfg.setdefault("sr_channels", {})["enabled"] = req.sr_enabled
+        cfg.setdefault("filters", {})["ema_trend_filter"] = req.ema_enabled
+        cfg.setdefault("filters", {})["volume_filter"] = req.volume_enabled
+        cfg.setdefault("filters", {})["mtf_confirmation"] = req.mtf_enabled
+        cfg.setdefault("filters", {})["squeeze_filter"] = req.squeeze_enabled
 
-    ryaml = _RYAML()
-    with open(_bot_dir / "config.yml", "w", encoding="utf-8") as fh:
-        ryaml.dump(cfg, fh)
-
+    _save_commented_config(update_filters)
     return {"status": "success", "message": "Quick filters updated"}
 
 
@@ -257,6 +279,55 @@ async def close_position(trade_id: int):
     ltp = adapter_get_ltp(cfg, pos["symbol"], pos["exchange"])
     trade_db.close_trade(trade_id, exit_price=ltp if ltp > 0 else pos["entry_price"], exit_reason="MANUAL_WEB_UI")
     return {"status": "success", "message": f"Closed trade {trade_id} for {pos['symbol']}"}
+
+
+@app.post("/api/positions/close-all")
+async def close_all_positions_endpoint():
+    cfg = load_config()
+    trades = trade_db.get_active_trades()
+    if not trades:
+        return {"status": "success", "message": "No active positions to close.", "closed_count": 0}
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _close_opt_trade(pos):
+        trade_id = pos["trade_id"]
+        ltp = adapter_get_ltp(cfg, pos["symbol"], pos["exchange"])
+        trade_db.close_trade(trade_id, exit_price=ltp if ltp > 0 else pos["entry_price"], exit_reason="MANUAL_CLOSE_ALL")
+        return pos.get("symbol")
+
+    closed_count = 0
+    errors = []
+
+    def run_all_opt_exits():
+        nonlocal closed_count
+        with ThreadPoolExecutor(max_workers=min(10, len(trades))) as pool:
+            futures = {pool.submit(_close_opt_trade, pos): pos for pos in trades}
+            for f in as_completed(futures):
+                pos = futures[f]
+                try:
+                    f.result()
+                    closed_count += 1
+                except Exception as e:
+                    errors.append(f"{pos.get('symbol')}: {e}")
+
+    await run_in_threadpool(run_all_opt_exits)
+
+    return {
+        "status": "success",
+        "message": f"Closed {closed_count} position(s)." + (f" Errors: {', '.join(errors)}" if errors else ""),
+        "closed_count": closed_count,
+    }
+
+
+@app.post("/api/reset-data")
+async def reset_data_endpoint():
+    try:
+        await run_in_threadpool(trade_db.clear_all_trades)
+        return {"status": "success", "message": "All options trades and signal history cleared successfully. Starting fresh!"}
+    except Exception as e:
+        log.error("Failed to reset options database: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to reset database: {e}")
 
 
 @app.post("/api/order")
