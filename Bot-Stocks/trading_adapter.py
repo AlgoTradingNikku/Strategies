@@ -39,36 +39,112 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-def _post(url: str, payload: dict, headers: dict = None, timeout: int = 10) -> dict:
-    """POST JSON and return parsed response dict. Never raises — returns error dict."""
+# ---------------------------------------------------------------------------
+# Secret redaction — protect API keys / tokens from leaking into logs & errors
+# ---------------------------------------------------------------------------
+
+# Payload / header keys whose values must be redacted before being surfaced
+# in error messages or debug logs.  Case-insensitive substring match.
+_SECRET_KEY_HINTS = (
+    "apikey", "api_key", "api-key",
+    "secret", "api_secret",
+    "token", "access_token", "session_token", "auth_token",
+    "authorization", "password", "pwd", "sid",
+)
+
+
+def _redact(obj):
+    """Return a deep-copied version of `obj` with sensitive values masked.
+
+    Handles dicts recursively; leaves lists and scalars untouched (they should
+    not carry secrets in this codebase's request payloads).
+    """
+    if not isinstance(obj, dict):
+        return obj
+    redacted = {}
+    for k, v in obj.items():
+        if isinstance(k, str) and any(h in k.lower() for h in _SECRET_KEY_HINTS):
+            redacted[k] = "***REDACTED***"
+        elif isinstance(v, dict):
+            redacted[k] = _redact(v)
+        else:
+            redacted[k] = v
+    return redacted
+
+
+def _sanitize_url(url: str) -> str:
+    """Strip any query-string that might contain tokens from `url` for safe logging."""
+    if not url:
+        return url
+    return url.split("?", 1)[0]
+
+
+def _sanitize_text(text: str, headers: dict = None, payload: dict = None) -> str:
+    """Mask token/key values in a response body string so error messages are safe."""
+    if not text:
+        return text
+    result = str(text)
+    # Redact substrings that match values from headers or payload if they look
+    # sensitive (>= 8 chars, alphanumeric-ish).  This is a defence-in-depth
+    # measure — the server should not echo secrets, but some do.
+    def _mask_values(src: dict):
+        nonlocal result
+        for k, v in (src or {}).items():
+            if not isinstance(v, str) or len(v) < 8:
+                continue
+            if isinstance(k, str) and any(h in k.lower() for h in _SECRET_KEY_HINTS):
+                result = result.replace(v, "***REDACTED***")
+    _mask_values(headers or {})
+    _mask_values(payload or {})
+    return result
+
+
+def _post(url: str, payload: dict = None, headers: dict = None, timeout: int = 10) -> dict:
+    """POST JSON and return parsed response dict. Never raises — returns error dict.
+
+    Error messages have sensitive fields redacted so they can be safely logged
+    and returned to the API layer.
+    """
+    safe_url = _sanitize_url(url)
+    r = None
     try:
         r = requests.post(url, json=payload, headers=headers or {}, timeout=timeout)
         r.raise_for_status()
         return r.json()
-    except requests.exceptions.HTTPError as e:
-        return {"status": "error", "message": f"HTTP {r.status_code}: {r.text}"}
+    except requests.exceptions.HTTPError:
+        status = r.status_code if r is not None else "?"
+        body = _sanitize_text(r.text if r is not None else "", headers, payload)
+        return {"status": "error", "message": f"HTTP {status}: {body}"}
     except requests.exceptions.ConnectionError:
-        return {"status": "error", "message": f"Connection refused: {url}"}
+        return {"status": "error", "message": f"Connection refused: {safe_url}"}
     except requests.exceptions.Timeout:
-        return {"status": "error", "message": f"Request timed out: {url}"}
+        return {"status": "error", "message": f"Request timed out: {safe_url}"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": _sanitize_text(str(e), headers, payload)}
 
 
 def _get(url: str, params: dict = None, headers: dict = None, timeout: int = 10) -> dict:
-    """GET and return parsed response dict. Never raises — returns error dict."""
+    """GET and return parsed response dict. Never raises — returns error dict.
+
+    Error messages have sensitive fields redacted so they can be safely logged
+    and returned to the API layer.
+    """
+    safe_url = _sanitize_url(url)
+    r = None
     try:
         r = requests.get(url, params=params or {}, headers=headers or {}, timeout=timeout)
         r.raise_for_status()
         return r.json()
-    except requests.exceptions.HTTPError as e:
-        return {"status": "error", "message": f"HTTP {r.status_code}: {r.text}"}
+    except requests.exceptions.HTTPError:
+        status = r.status_code if r is not None else "?"
+        body = _sanitize_text(r.text if r is not None else "", headers, params)
+        return {"status": "error", "message": f"HTTP {status}: {body}"}
     except requests.exceptions.ConnectionError:
-        return {"status": "error", "message": f"Connection refused: {url}"}
+        return {"status": "error", "message": f"Connection refused: {safe_url}"}
     except requests.exceptions.Timeout:
-        return {"status": "error", "message": f"Request timed out: {url}"}
+        return {"status": "error", "message": f"Request timed out: {safe_url}"}
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": _sanitize_text(str(e), headers, params)}
 
 
 # ---------------------------------------------------------------------------
@@ -460,6 +536,12 @@ _LTP_CACHE: dict = {}
 _LTP_CACHE_LOCK = threading.Lock()
 _LTP_CACHE_TTL: float = 1.5  # seconds cache validity for rapid repeat lookups
 
+# Retry policy for LTP fetches.  LTP is read-only (idempotent) so it's safe to
+# retry.  Order placement is NOT retried automatically — that must remain a
+# single explicit call so we never double-fire an order.
+_LTP_RETRY_ATTEMPTS = 3
+_LTP_RETRY_BASE_DELAY = 0.3   # seconds; doubles each attempt (0.3, 0.6, 1.2)
+
 
 def get_ltp(cfg: dict, symbol: str, exchange: str, max_age: float = 1.5) -> float:
     """
@@ -478,7 +560,14 @@ def get_ltp(cfg: dict, symbol: str, exchange: str, max_age: float = 1.5) -> floa
 
     Raises
     ------
-    RuntimeError if the source is unknown or the broker call fails.
+    RuntimeError if the source is unknown or the broker call fails after
+    _LTP_RETRY_ATTEMPTS attempts.
+
+    Retry policy
+    ------------
+    LTP calls are idempotent, so transient failures (connection errors,
+    timeouts, momentarily empty responses) are retried up to
+    ``_LTP_RETRY_ATTEMPTS`` times with exponential backoff.
     """
     source = cfg.get("trading_api_source", "openalgo").lower()
     fn = _GET_LTP_DISPATCH.get(source)
@@ -496,7 +585,28 @@ def get_ltp(cfg: dict, symbol: str, exchange: str, max_age: float = 1.5) -> floa
             return cached[1]
 
     log.debug("Fetching LTP for %s (%s) via %s", symbol, exchange, source.upper())
-    price = fn(cfg, symbol, exchange)
-    with _LTP_CACHE_LOCK:
-        _LTP_CACHE[key] = (now, price)
-    return price
+
+    last_exc: Exception | None = None
+    for attempt in range(1, _LTP_RETRY_ATTEMPTS + 1):
+        try:
+            price = fn(cfg, symbol, exchange)
+            if price is None or not (isinstance(price, (int, float))) or price <= 0:
+                raise RuntimeError(f"Invalid LTP value from {source}: {price!r}")
+            with _LTP_CACHE_LOCK:
+                _LTP_CACHE[key] = (time.time(), float(price))
+            return float(price)
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= _LTP_RETRY_ATTEMPTS:
+                break
+            delay = _LTP_RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            log.debug(
+                "LTP fetch attempt %d/%d for %s failed (%s); retrying in %.2fs",
+                attempt, _LTP_RETRY_ATTEMPTS, symbol, exc, delay,
+            )
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"LTP fetch failed for {symbol} ({exchange}) via {source} "
+        f"after {_LTP_RETRY_ATTEMPTS} attempts: {last_exc}"
+    )

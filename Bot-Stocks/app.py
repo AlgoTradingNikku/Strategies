@@ -1,5 +1,6 @@
 import sys
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -44,21 +45,32 @@ def _get_oa_client(oa_cfg: dict):
     return _oa_client_cache[key]
 
 
-app = FastAPI(title="UTBot + SR Channels Scanner API")
-
 _monitor = PositionMonitor()
 
-@app.on_event("startup")
-async def startup_event():
+
+# ---------------------------------------------------------------------------
+# Lifespan handler (replaces deprecated @app.on_event startup/shutdown)
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    # ---- Startup ----
     try:
         cfg = load_config()
         _monitor.start(cfg)
     except Exception as e:
         log.error("Failed to start Trade Monitor: %s", e)
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    _monitor.stop()
+    try:
+        yield
+    finally:
+        # ---- Shutdown ----
+        try:
+            _monitor.stop()
+        except Exception as e:
+            log.error("Failed to stop Trade Monitor cleanly: %s", e)
+
+
+app = FastAPI(title="UTBot + SR Channels Scanner API", lifespan=_lifespan)
 
 # Enable CORS for local development
 app.add_middleware(
@@ -242,7 +254,14 @@ def _update_commented_map(cm, updates: dict) -> None:
 
 @app.post("/api/config")
 def update_config(req: ConfigUpdateRequest):
-    """Save the updated configuration file to disk, preserving all YAML comments."""
+    """Save the updated configuration file to disk, preserving all YAML comments.
+
+    Uses an atomic write pattern (write-to-temp + os.replace) so a crash mid-write
+    can never leave `config.yml` truncated or corrupt.
+    """
+    import os
+    import tempfile
+
     try:
         config_path = _bot_dir / "config.yml"
         config_dict = req.model_dump()
@@ -257,9 +276,33 @@ def update_config(req: ConfigUpdateRequest):
         # Merge new values into the CommentedMap without disturbing comment nodes
         _update_commented_map(commented_map, config_dict)
 
-        # Write back — comments and key order are preserved
-        with open(config_path, "w", encoding="utf-8") as fh:
-            ryaml.dump(commented_map, fh)
+        # ---- Atomic write ----
+        # 1. Write to a temp file in the same directory (so os.replace is atomic
+        #    on Windows and POSIX — same-filesystem requirement).
+        # 2. fsync + close.
+        # 3. os.replace() renames it over the original in one atomic step.
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            prefix="config.",
+            suffix=".yml.tmp",
+            dir=str(_bot_dir),
+        )
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_fh:
+                ryaml.dump(commented_map, tmp_fh)
+                tmp_fh.flush()
+                try:
+                    os.fsync(tmp_fh.fileno())
+                except (OSError, AttributeError):
+                    pass  # some filesystems don't support fsync — non-fatal
+            os.replace(tmp_path, str(config_path))
+        except Exception:
+            # Clean up the temp file if the swap failed
+            try:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            except Exception:
+                pass
+            raise
 
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:

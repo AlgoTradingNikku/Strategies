@@ -63,6 +63,22 @@ def _get_connection(config: dict = None) -> sqlite3.Connection:
                 outcome_time       TEXT
             )
         """)
+        # ---- Indexes -----------------------------------------------------
+        # Speeds up:
+        #   • get_signal_history() — ORDER BY timestamp DESC + pagination
+        #   • check_outcomes()     — WHERE outcome_checked = 0 AND timestamp <= ?
+        #   • get_statistics()     — WHERE timestamp >= ?
+        # All are IF NOT EXISTS so they're safe on pre-existing databases.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_outcome_pending "
+            "ON signals(outcome_checked, timestamp)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol)"
+        )
         conn.commit()
         _db_initialized = True
     return conn

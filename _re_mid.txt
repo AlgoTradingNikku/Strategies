@@ -1,0 +1,160 @@
+﻿    # --- 1. High-water mark update (not an action, mutates pos in-place) ---
+    _update_hwm(pos, ltp)
+
+    gain_pct = calc_gain_pct(pos, ltp)
+
+    # --- 2. Target exit ---
+    exit_action = _check_target_exit(pos, ltp)
+    if exit_action:
+        return [exit_action]   # no further evaluation needed
+
+    # --- 3. SL exit ---
+    sl_exit = _check_sl_exit(pos, ltp)
+    if sl_exit:
+        return [sl_exit]
+
+    # --- 4. Trailing SL ---
+    tsl_action = _check_trailing_sl(pos, ltp, gain_pct, tm_cfg)
+    if tsl_action:
+        actions.append(tsl_action)
+
+    # --- 5. Profit Lock ---
+    pl_action = _check_profit_lock(pos, ltp, gain_pct, tm_cfg)
+    if pl_action:
+        # Only apply profit lock if it beats the trailing-SL level already proposed
+        if actions and actions[-1].action_type == "TRAILING_SL":
+            # Keep whichever gives better protection
+            if sl_improves(pos["direction"], pl_action.new_sl, actions[-1].new_sl):
+                actions[-1] = pl_action   # profit lock is tighter, replace
+            # else trailing SL already gives better protection â€” discard profit lock
+        else:
+            actions.append(pl_action)
+
+    # --- 6. Partial Exit ---
+    pe_action = _check_partial_exit(pos, ltp, gain_pct, tm_cfg)
+    if pe_action:
+        actions.append(pe_action)
+
+    return actions
+
+
+# ---------------------------------------------------------------------------
+# Rule: High-Water Mark / Low-Water Mark
+# ---------------------------------------------------------------------------
+
+def _update_hwm(pos: dict, ltp: float) -> None:
+    """Update the high (or low) water mark in-place on the position dict."""
+    if pos["direction"] == "BUY":
+        if ltp > pos["high_water_mark"]:
+            pos["high_water_mark"] = ltp
+            pos["_hwm_dirty"] = True   # signals monitor to persist to DB
+    else:
+        if ltp < pos["high_water_mark"]:
+            pos["high_water_mark"] = ltp
+            pos["_hwm_dirty"] = True
+
+
+# ---------------------------------------------------------------------------
+# Rule: EOD Intraday Auto Square-Off (e.g. 15:15 IST)
+# ---------------------------------------------------------------------------
+
+def _check_eod_square_off(tm_cfg: dict) -> TradeAction | None:
+    if not tm_cfg.get("auto_square_off_enabled", False):
+        return None
+    cutoff_str = tm_cfg.get("auto_square_off_time", "15:15")
+    try:
+        now_tz = datetime.now(ZoneInfo("Asia/Kolkata"))
+        cutoff_parts = [int(p) for p in cutoff_str.strip().split(":")]
+        cutoff_min = cutoff_parts[0] * 60 + cutoff_parts[1]
+        now_min = now_tz.hour * 60 + now_tz.minute
+        if now_min >= cutoff_min:
+            return TradeAction(action_type="EXIT_TARGET", reason="EOD_SQUARE_OFF")
+    except Exception as e:
+        log.debug("EOD square-off time evaluation error: %s", e)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Rule: Target Exit
+# ---------------------------------------------------------------------------
+
+def _check_target_exit(pos: dict, ltp: float) -> TradeAction | None:
+    target = pos.get("target_price", 0.0)
+    if not target:
+        return None
+    direction = pos["direction"]
+    hit = (direction == "BUY" and ltp >= target) or \
+          (direction == "SELL" and ltp <= target)
+    if hit:
+        return TradeAction(action_type="EXIT_TARGET", reason="TARGET")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Rule: Stop-Loss Exit
+# ---------------------------------------------------------------------------
+
+def _check_sl_exit(pos: dict, ltp: float) -> TradeAction | None:
+    current_sl = pos.get("current_sl", 0.0)
+    if not current_sl:
+        return None
+    direction = pos["direction"]
+    hit = (direction == "BUY" and ltp <= current_sl) or \
+          (direction == "SELL" and ltp >= current_sl)
+    if hit:
+        return TradeAction(action_type="EXIT_SL", reason="STOP_LOSS")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Rule: Trailing Stop Loss
+# ---------------------------------------------------------------------------
+
+def _check_trailing_sl(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) -> TradeAction | None:
+    tsl_cfg = tm_cfg.get("trailing_sl", {})
+    if not tsl_cfg.get("enabled", False):
+        return None
+
+    activation_pct = float(tsl_cfg.get("activation_pct", 1.0))
+    if gain_pct < activation_pct:
+        return None   # trailing not yet active
+
+    hwm = pos["high_water_mark"]
+    direction = pos["direction"]
+    current_sl = pos["current_sl"]
+
+    # Resolve trailing distance â€” tiered takes precedence over flat key
+    tiers = tsl_cfg.get("tiers", [])
+    if tiers:
+        distance_pct = _resolve_tsl_tier_distance(gain_pct, tiers)
+    else:
+        distance_pct = float(tsl_cfg.get("distance_pct", 0.5))
+
+    if direction == "BUY":
+        new_sl = hwm * (1.0 - distance_pct / 100.0)
+    else:
+        new_sl = hwm * (1.0 + distance_pct / 100.0)
+
+    new_sl = round(new_sl, 2)
+
+    if sl_improves(direction, new_sl, current_sl):
+        return TradeAction(
+            action_type="TRAILING_SL",
+            new_sl=new_sl,
+            reason=f"Trailing SL: {distance_pct}% behind HWM {hwm:.2f}",
+        )
+    return None
+
+
+def _resolve_tsl_tier_distance(gain_pct: float, tiers: list) -> float:
+    """
+    Return the trailing distance_pct for the highest applicable tier.
+
+    Tiers are expected as a list of dicts:
+        [{"min_gain_pct": 1.0, "distance_pct": 0.8},
+         {"min_gain_pct": 2.0, "distance_pct": 0.5},
+         {"min_gain_pct": 3.0, "distance_pct": 0.3}]
+
+    The highest tier whose min_gain_pct <= current gain_pct is selected,
+    giving a tighter trail as the trade becomes more profitable.
+    """

@@ -351,6 +351,14 @@ def _check_partial_exit(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) ->
 
         qty_fraction = float(tier.get("exit_qty_fraction", 0.5))
         exit_qty = max(1, int(pos["quantity"] * qty_fraction))
+        # Guard: a "partial" exit must never close the entire remaining position.
+        # If the requested fraction would leave zero shares, either skip (when
+        # only 1 share remains — nothing meaningful to scale out of) or clamp
+        # to `quantity - 1` so at least one share survives for later rules.
+        if exit_qty >= pos["quantity"]:
+            if pos["quantity"] <= 1:
+                return None
+            exit_qty = pos["quantity"] - 1
         if exit_qty <= 0:
             return None
 
@@ -371,6 +379,14 @@ def _check_partial_exit(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) ->
 
     qty_fraction = float(pe_cfg.get("exit_qty_fraction", 0.5))
     exit_qty = max(1, int(pos["quantity"] * qty_fraction))
+    # Same guard as multi-tier: never let a "partial" swallow the whole position.
+    if exit_qty >= pos["quantity"]:
+        if pos["quantity"] <= 1:
+            return None
+        exit_qty = pos["quantity"] - 1
+    if exit_qty <= 0:
+        return None
+
     return TradeAction(
         action_type="PARTIAL_EXIT",
         exit_qty=exit_qty,

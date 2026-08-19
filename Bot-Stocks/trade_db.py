@@ -92,6 +92,16 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "positions", "profit_lock_tier",  "INTEGER DEFAULT 0")
     _add_column_if_missing(conn, "positions", "partial_exit_tier", "INTEGER DEFAULT 0")
 
+    # ---- Indexes (IF NOT EXISTS keeps them safe on existing DBs) ----
+    # Speeds up:
+    #   • get_open_positions()     — WHERE status = 'OPEN'
+    #   • get_closed_positions()   — WHERE status != 'OPEN' ORDER BY close_time DESC
+    #   • get_position_events()    — WHERE position_id = ? ORDER BY event_time
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_close_time ON positions(close_time DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_events_position ON position_events(position_id, event_time)")
+    conn.commit()
+
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
     """ALTER TABLE to add a column only if it doesn't already exist."""

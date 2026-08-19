@@ -1,0 +1,56 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Rahul\Trade\Strategies\Bot-Stocks
+plugins: anyio-4.14.2
+collected 21 items
+
+tests\test_rules_engine.py ...........F........F                         [100%]
+
+================================== FAILURES ===================================
+_______________ TestProfitLock.test_tiered_mode_picks_best_tier _______________
+
+self = <tests.test_rules_engine.TestProfitLock object at 0x00000208DE3E1F90>
+
+    def test_tiered_mode_picks_best_tier(self):
+        pos = _make_buy_position(high_water_mark=1030.0)   # +3% peak
+        tm_cfg = {
+            "profit_lock": {
+                "enabled": True,
+                "tiers": [
+                    {"threshold_pct": 1.0, "lock_fraction": 0.3},
+                    {"threshold_pct": 2.0, "lock_fraction": 0.5},
+                    {"threshold_pct": 3.0, "lock_fraction": 0.8},
+                ],
+            },
+        }
+        actions = rules_engine.evaluate(pos, ltp=1029.0, tm_cfg=tm_cfg)
+        pl = next((a for a in actions if a.action_type == "PROFIT_LOCK"), None)
+>       assert pl is not None
+E       assert None is not None
+
+tests\test_rules_engine.py:176: AssertionError
+_____ TestTrailingVsProfitLock.test_profit_lock_replaces_looser_trailing ______
+
+self = <tests.test_rules_engine.TestTrailingVsProfitLock object at 0x00000208DE3E25D0>
+
+    def test_profit_lock_replaces_looser_trailing(self):
+        pos = _make_buy_position(high_water_mark=1030.0)
+        tm_cfg = {
+            "trailing_sl": {"enabled": True, "activation_pct": 1.0, "distance_pct": 2.0},
+            "profit_lock": {"enabled": True, "threshold_pct": 1.5, "lock_fraction": 0.8},
+        }
+        actions = rules_engine.evaluate(pos, ltp=1030.0, tm_cfg=tm_cfg)
+        # Trailing \u2192 1030 * 0.98 = 1009.4
+        # Profit lock \u2192 1000 + 0.8 * (1030 - 1000) = 1024.0 (tighter for BUY)
+        adjust_actions = [
+            a for a in actions if a.action_type in ("TRAILING_SL", "PROFIT_LOCK")
+        ]
+>       assert len(adjust_actions) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+tests\test_rules_engine.py:292: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_rules_engine.py::TestProfitLock::test_tiered_mode_picks_best_tier
+FAILED tests/test_rules_engine.py::TestTrailingVsProfitLock::test_profit_lock_replaces_looser_trailing
+======================== 2 failed, 19 passed in 0.38s =========================

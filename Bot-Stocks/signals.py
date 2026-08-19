@@ -1063,9 +1063,15 @@ def evaluate_composite_signals(
                 norm_vol = raw_vol
                 try:
                     import datetime as _dt
+                    try:
+                        from zoneinfo import ZoneInfo as _ZoneInfo
+                    except Exception:
+                        _ZoneInfo = None
+
                     candle_open_time = df.index[-1]
                     if hasattr(candle_open_time, 'to_pydatetime'):
                         candle_open_time = candle_open_time.to_pydatetime()
+
                     tf_str   = config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
                     tf_lower = tf_str.strip().lower()
                     if tf_lower.endswith("m"):
@@ -1074,12 +1080,33 @@ def evaluate_composite_signals(
                         candle_secs = int(tf_lower[:-1]) * 3600
                     else:
                         candle_secs = 300  # default 5 min
+
                     # Only normalise for intraday timeframes (< 1 day)
                     if candle_secs < 86400:
-                        now_naive = _dt.datetime.now()
-                        if candle_open_time.tzinfo is not None:
-                            candle_open_time = candle_open_time.replace(tzinfo=None)
-                        elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
+                        # Determine exchange timezone (NSE/BSE → Asia/Kolkata).
+                        exch = str(config.get("exchange", "NSE")).upper()
+                        tz_name = "Asia/Kolkata" if exch in ("NSE", "BSE") else "UTC"
+                        tz = _ZoneInfo(tz_name) if _ZoneInfo else None
+
+                        # Compute elapsed seconds using aware datetimes when
+                        # possible.  Prior implementation stripped tzinfo and
+                        # compared to *server local* time, which is only correct
+                        # when the server itself runs in the exchange tz.
+                        if tz is not None:
+                            now_aware = _dt.datetime.now(tz)
+                            if candle_open_time.tzinfo is None:
+                                # Treat naive index as being in the exchange tz —
+                                # yfinance returns tz-aware for intraday NSE, but
+                                # a fallback keeps behaviour identical for daily.
+                                candle_open_time = candle_open_time.replace(tzinfo=tz)
+                            elapsed_secs = max(1, (now_aware - candle_open_time).total_seconds())
+                        else:
+                            # Legacy fallback (no zoneinfo): naive comparison
+                            now_naive = _dt.datetime.now()
+                            if candle_open_time.tzinfo is not None:
+                                candle_open_time = candle_open_time.replace(tzinfo=None)
+                            elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
+
                         # Cap elapsed at candle duration (closed candles: elapsed ≥ candle_secs)
                         elapsed_frac = min(1.0, elapsed_secs / candle_secs)
                         if elapsed_frac > 0.05:  # ignore if < 5% elapsed (data timing artefact)
