@@ -3,6 +3,7 @@ from typing import Dict, Any
 from .models import Position
 import trade_db
 import trading_adapter
+import risk_manager
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
@@ -21,6 +22,11 @@ def execute_exit(pos: Position, cfg: dict, reason: str) -> bool:
     res = trading_adapter.place_order(cfg, req)
     exit_price = pos.current_price
     trade_db.close_trade(pos.trade_id, exit_price=exit_price, exit_reason=reason)
+    # [Sprint-1] Record exit time for cool-down / duplicate-entry guard
+    try:
+        risk_manager.record_exit(pos.symbol)
+    except Exception:
+        pass
     return True
 
 def execute_update_sl(pos: Position, new_sl: float):

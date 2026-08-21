@@ -9,14 +9,11 @@ scan_interval_seconds: 300            # Scan / Auto-refresh interval in seconds 
 # Set to "" or [] to scan only the custom symbols list below
 segment:
 - BANKNIFTY
-#- NIFTY50
-
 use_symbols: true
 
 symbols:
 - RPOWER
 - IOC
-
 signal_lookback_candles: 2
 
 # UT Bot Settings
@@ -279,3 +276,4 @@ trade_management:
     on_sl_move: false            # Alert on every trailing SL adjustment (verbose)
 
 
+scan_timeframe: 5m

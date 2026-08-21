@@ -197,6 +197,64 @@
                     <span><span style="color:var(--text-muted)">Mode:</span> <span id="info-mode" style="color:#a78bfa;font-weight:700;">—</span></span>
                 </div>
 
+                <!-- ═══ [Sprint-1] Risk Status Strip + Kill Switch ═══ -->
+                <div id="risk-status-strip" class="risk-status-strip">
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Trading:</span>
+                        <span class="risk-status-badge" id="risk-trading-badge">—</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Day P&L:</span>
+                        <span class="risk-status-value" id="risk-day-pnl">₹0.00 (0.00%)</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Realized:</span>
+                        <span class="risk-status-value" id="risk-realized-pnl">₹0.00</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Unrealized:</span>
+                        <span class="risk-status-value" id="risk-unrealized-pnl">₹0.00</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Market:</span>
+                        <span class="risk-status-value" id="risk-market-state">—</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Breaker:</span>
+                        <span class="risk-status-badge ok" id="risk-cb-status">CB: OK</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Exposure:</span>
+                        <span class="risk-status-badge ok" id="risk-exposure-status" title="Open premium as % of equity">0.0%</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Positions:</span>
+                        <span class="risk-status-badge ok" id="risk-positions-status" title="Open positions / cap">0 / 3</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Regime:</span>
+                        <span class="risk-status-badge ok" id="risk-regime-status" title="VIX-based volatility regime (LOW/NORMAL/HIGH)">NORMAL</span>
+                    </div>
+                    <div class="risk-status-sep">|</div>
+                    <div class="risk-status-item">
+                        <span class="risk-status-label">Session:</span>
+                        <span class="risk-status-badge ok" id="risk-session-status" title="Intraday session bucket">prime</span>
+                    </div>
+                    <div style="margin-left:auto;">
+                        <button class="btn-kill-switch" id="btn-kill-switch" title="Emergency stop: block all new auto-orders">
+                            <i class="fa-solid fa-power-off"></i> <span id="btn-kill-switch-label">KILL SWITCH: OFF</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Split Layout: Tables on Left, Quick Filters on Right -->
 
                 <div class="dashboard-content-split">
@@ -319,6 +377,128 @@
                                 </div>
                                 <label class="switch"><input type="checkbox" id="dash-filters-squeeze"><span class="slider round"></span></label>
                             </div>
+
+                            <!-- ═══ [Sprint-1] Risk & Execution Guardrails ═══ -->
+                            <div style="margin: 14px 0 6px 0; padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.06em;">
+                                <i class="fa-solid fa-shield-halved"></i> Risk Guardrails
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Duplicate Entry Guard</span>
+                                    <span class="toggle-desc">Block re-entry + cool-down</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-dedup-enabled" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Directional Gate</span>
+                                    <span class="toggle-desc">Align CE/PE with spot trend</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-directional-gate" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Market Hours Check</span>
+                                    <span class="toggle-desc">Block orders outside 09:15–15:30</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-market-hours" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Daily Loss Limit</span>
+                                    <span class="toggle-desc">Auto-halt if day loss breaches cap</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-daily-loss" checked><span class="slider round"></span></label>
+                            </div>
+
+                            <!-- ═══ [Sprint-2] Signal-Quality Filters ═══ -->
+                            <div style="margin: 14px 0 6px 0; padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.06em;">
+                                <i class="fa-solid fa-wave-square"></i> Signal Quality
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">ATR% Filter</span>
+                                    <span class="toggle-desc">Skip dead / chaotic premiums</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-atr-filter" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">ADX Trend Filter</span>
+                                    <span class="toggle-desc">Skip chop-zone entries</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-adx-filter" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Spread / OI Filter</span>
+                                    <span class="toggle-desc">Reject illiquid strikes</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-spread-filter" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Consecutive-Loss Breaker</span>
+                                    <span class="toggle-desc">Halt after N losses today</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-consecutive-loss" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Dynamic Position Sizing</span>
+                                    <span class="toggle-desc">Risk-based qty from SL distance</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-position-sizing" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Grade Multiplier</span>
+                                    <span class="toggle-desc">Scale risk% by A/B/C grade</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-grade-multiplier"><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Alpha Enhancers</span>
+                                    <span class="toggle-desc">Master — regime, session, POC, greeks</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-alpha-master" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">VIX Regime Adaptive</span>
+                                    <span class="toggle-desc">Scale risk by VIX (LOW/NORMAL/HIGH)</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-vix-regime" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Session Weighting</span>
+                                    <span class="toggle-desc">Bonus/penalty by time-of-day</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-session-weight" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Volume Profile POC</span>
+                                    <span class="toggle-desc">Reject far-from-POC entries</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-volume-profile" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Greeks Filter</span>
+                                    <span class="toggle-desc">Reject deep-OTM &amp; high-theta</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-greeks-filter" checked><span class="slider round"></span></label>
+                            </div>
+                            <div class="control-toggle-item">
+                                <div class="toggle-info">
+                                    <span class="toggle-name">Strict MTF (aggressive)</span>
+                                    <span class="toggle-desc">Require all timeframes to agree</span>
+                                </div>
+                                <label class="switch"><input type="checkbox" id="dash-strict-mtf"><span class="slider round"></span></label>
+                            </div>
                         </div>
                     </aside>
                 </div>
@@ -411,10 +591,365 @@
                         </div>
                     </form>
                 </div>
-            </section>
 
-            <!-- System Logs Tab -->
+                <!-- ═══ [Sprint-1] Risk Management Settings ═══ -->
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3><i class="fa-solid fa-shield-halved"></i> Risk Management & Guardrails</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
+                        These settings govern the pre-trade risk gates. All new auto-orders must pass every enabled check.
+                        Values are also editable in <code>config.yml</code>.
+                    </p>
+                    <form id="form-risk-settings" style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Account Equity (₹) — total trading capital</label>
+                            <input type="number" class="form-input" id="cfg-risk-equity" min="0" step="1000" value="100000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Daily Loss Max % (of equity, halts trading)</label>
+                            <input type="number" class="form-input" id="cfg-risk-dloss-pct" min="0.1" max="20" step="0.1" value="3.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Daily Loss — Auto Square-Off on breach</label>
+                            <select class="form-select" id="cfg-risk-dloss-auto">
+                                <option value="true">Yes — close all positions on breach</option>
+                                <option value="false">No — only block new orders</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Grade for Auto-Order (A/B/C/D)</label>
+                            <select class="form-select" id="cfg-risk-min-grade">
+                                <option value="A">A (strictest)</option>
+                                <option value="B" selected>B (balanced)</option>
+                                <option value="C">C (loose)</option>
+                                <option value="D">D (any signal)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Setup Score (0–100)</label>
+                            <input type="number" class="form-input" id="cfg-risk-min-score" min="0" max="100" step="1" value="60">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Cool-Down After Exit (minutes)</label>
+                            <input type="number" class="form-input" id="cfg-risk-cooldown" min="0" step="1" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Market Open (HH:MM IST)</label>
+                            <input type="text" class="form-input" id="cfg-risk-mkt-open" placeholder="09:15" value="09:15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Market Close (HH:MM IST)</label>
+                            <input type="text" class="form-input" id="cfg-risk-mkt-close" placeholder="15:30" value="15:30">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">No New Entries After (HH:MM IST)</label>
+                            <input type="text" class="form-input" id="cfg-risk-entry-cutoff" placeholder="14:45" value="14:45">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Consecutive Losses — trip threshold</label>
+                            <input type="number" class="form-input" id="cfg-risk-cbrk-max" min="1" max="20" step="1" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Consecutive-Loss Cool-Down (minutes)</label>
+                            <input type="number" class="form-input" id="cfg-risk-cbrk-cooldown" min="1" max="480" step="1" value="30">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save Risk Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ═══ [Sprint-2] Signal Quality Settings ═══ -->
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3><i class="fa-solid fa-wave-square"></i> Signal Quality & Scoring</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
+                        Advanced pre-trade filters that reject low-probability signals BEFORE Sprint-1 risk gates.
+                        Also drives the transparent 0-100 signal score you see on every scan row.
+                    </p>
+                    <form id="form-sq-settings" style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Weighted Scoring — override legacy score</label>
+                            <select class="form-select" id="cfg-sq-scoring-enabled">
+                                <option value="true" selected>Yes — use transparent breakdown</option>
+                                <option value="false">No — keep legacy score</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ADX Minimum (underlying trend strength)</label>
+                            <input type="number" class="form-input" id="cfg-sq-adx-min" min="0" max="100" step="1" value="20">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ATR% Minimum (skip dead premiums)</label>
+                            <input type="number" class="form-input" id="cfg-sq-atr-min" min="0" max="50" step="0.1" value="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ATR% Maximum (skip news chaos)</label>
+                            <input type="number" class="form-input" id="cfg-sq-atr-max" min="0.5" max="100" step="0.1" value="8.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Bid-Ask Spread % of LTP</label>
+                            <input type="number" class="form-input" id="cfg-sq-spread-max" min="0.1" max="20" step="0.1" value="1.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Open Interest (contracts)</label>
+                            <input type="number" class="form-input" id="cfg-sq-min-oi" min="0" step="100" value="500">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save Signal-Quality Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ═══ [Sprint-3] Position Sizing Settings ═══ -->
+                <div class="table-card" style="margin-top: 20px;">
+                    <h3><i class="fa-solid fa-scale-balanced"></i> Dynamic Position Sizing</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 6px;">
+                        Replaces static lot count with risk-based sizing. Every trade risks a controlled
+                        fraction of equity so a stop-loss hit costs exactly <b>risk_per_trade_pct</b> of your account.
+                        Quantities always snap DOWN to lot-size (75 for NIFTY, 30 for BANKNIFTY).
+                    </p>
+                    <form id="form-position-sizing" style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label class="form-label">Sizing Mode</label>
+                            <select class="form-select" id="cfg-ps-mode">
+                                <option value="fixed_fractional" selected>Fixed-Fractional (safer)</option>
+                                <option value="kelly">Kelly (adaptive, needs history)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Risk per Trade %</label>
+                            <input type="number" class="form-input" id="cfg-ps-risk-pct" min="0.1" max="10" step="0.1" value="1.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Risk per Trade % (hard cap)</label>
+                            <input type="number" class="form-input" id="cfg-ps-max-risk-pct" min="0.5" max="10" step="0.1" value="3.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Portfolio Exposure %</label>
+                            <input type="number" class="form-input" id="cfg-ps-max-exposure" min="1" max="100" step="1" value="15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Concurrent Positions</label>
+                            <input type="number" class="form-input" id="cfg-ps-max-positions" min="1" max="20" step="1" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Kelly Fraction (0.25 = quarter-Kelly)</label>
+                            <input type="number" class="form-input" id="cfg-ps-kelly-frac" min="0.05" max="1.0" step="0.05" value="0.25">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Kelly Min Trades (fallback until met)</label>
+                            <input type="number" class="form-input" id="cfg-ps-kelly-min" min="5" max="500" step="1" value="20">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save Position-Sizing Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ============ Alpha Enhancers Settings [Sprint-4] ============ -->
+                <div class="form-card" style="margin-top:20px;">
+                    <h3 style="margin-bottom: 4px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Alpha Enhancers</h3>
+                    <p class="form-subtitle" style="color:var(--text-secondary); margin-bottom:16px;">
+                        Market-context filters: VIX regime, session weighting, POC distance, greeks. All fail-open on missing data.
+                    </p>
+                    <form id="form-alpha-enhancers" style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+                        <div class="form-group">
+                            <label class="form-label">VIX Low Threshold (below = LOW regime)</label>
+                            <input type="number" class="form-input" id="cfg-ae-vix-low" min="5" max="30" step="0.5" value="15.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">VIX High Threshold (above = HIGH regime)</label>
+                            <input type="number" class="form-input" id="cfg-ae-vix-high" min="10" max="60" step="0.5" value="22.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Risk Multiplier — LOW regime</label>
+                            <input type="number" class="form-input" id="cfg-ae-mult-low" min="0.1" max="3.0" step="0.05" value="1.10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Risk Multiplier — NORMAL regime</label>
+                            <input type="number" class="form-input" id="cfg-ae-mult-normal" min="0.1" max="3.0" step="0.05" value="1.00">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Risk Multiplier — HIGH regime</label>
+                            <input type="number" class="form-input" id="cfg-ae-mult-high" min="0.1" max="3.0" step="0.05" value="0.60">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session — Opening Window (minutes)</label>
+                            <input type="number" class="form-input" id="cfg-ae-open-mins" min="5" max="120" step="5" value="30">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session — Closing Window (minutes)</label>
+                            <input type="number" class="form-input" id="cfg-ae-close-mins" min="5" max="120" step="5" value="30">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Bonus — Opening</label>
+                            <input type="number" class="form-input" id="cfg-ae-bonus-opening" min="-30" max="30" step="0.5" value="-5.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Bonus — Prime (mid-day)</label>
+                            <input type="number" class="form-input" id="cfg-ae-bonus-prime" min="-30" max="30" step="0.5" value="5.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Session Bonus — Closing</label>
+                            <input type="number" class="form-input" id="cfg-ae-bonus-closing" min="-50" max="30" step="0.5" value="-10.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">POC Max Distance (%) — reject beyond</label>
+                            <input type="number" class="form-input" id="cfg-ae-poc-dist" min="0.1" max="10.0" step="0.1" value="1.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Greeks — Min |Delta| (reject deep-OTM)</label>
+                            <input type="number" class="form-input" id="cfg-ae-min-delta" min="0.0" max="1.0" step="0.05" value="0.20">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Greeks — Max Theta % of LTP</label>
+                            <input type="number" class="form-input" id="cfg-ae-max-theta" min="0.1" max="50.0" step="0.5" value="5.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Strict MTF — Required Timeframes (comma-sep)</label>
+                            <input type="text" class="form-input" id="cfg-ae-mtf-tfs" placeholder="5m,15m" value="5m,15m">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save Alpha-Enhancer Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ============ [Sprint-5] Production Hardening System Card ============ -->
+                <div class="form-card" style="margin-top:20px;">
+                    <h3 style="margin-bottom: 4px;"><i class="fa-solid fa-heart-pulse"></i> System Health & Maintenance</h3>
+                    <p class="form-subtitle" style="color:var(--text-secondary); margin-bottom:16px;">
+                        Live health status, rotating logs, broker retries, and stale-position cleanup.
+                        Fetched from <code>/api/health</code> on demand.
+                    </p>
+                    <div id="sys-health-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Overall</div>
+                            <div class="stat-value" id="sys-health-status" style="font-size:1.1rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Uptime</div>
+                            <div class="stat-value" id="sys-health-uptime" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Broker</div>
+                            <div class="stat-value" id="sys-health-broker" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Database</div>
+                            <div class="stat-value" id="sys-health-db" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Stale Positions</div>
+                            <div class="stat-value" id="sys-health-stale" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Log Size</div>
+                            <div class="stat-value" id="sys-health-logsize" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Disk Free</div>
+                            <div class="stat-value" id="sys-health-disk" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Secrets Source</div>
+                            <div class="stat-value" id="sys-health-secrets" style="font-size:0.85rem;">--</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                        <button type="button" class="btn btn-secondary" id="btn-sys-refresh">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh Health
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btn-sys-reconcile-dry">
+                            <i class="fa-solid fa-eye"></i> Preview Stale Cleanup
+                        </button>
+                        <button type="button" class="btn btn-danger" id="btn-sys-reconcile-run">
+                            <i class="fa-solid fa-broom"></i> Reconcile Stale Positions
+                        </button>
+                    </div>
+                    <form id="form-sys-settings" style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-top:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Log Rotation Size (MB)</label>
+                            <input type="number" class="form-input" id="cfg-sys-log-mb" min="1" max="500" step="1" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Log Backup Count</label>
+                            <input type="number" class="form-input" id="cfg-sys-log-backups" min="1" max="30" step="1" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Broker Retry Attempts</label>
+                            <input type="number" class="form-input" id="cfg-sys-retry-attempts" min="1" max="10" step="1" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Retry Backoff Base (sec)</label>
+                            <input type="number" class="form-input" id="cfg-sys-retry-backoff" min="0.1" max="10" step="0.1" value="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Rate Limit (req/min per IP; 0 = disabled)</label>
+                            <input type="number" class="form-input" id="cfg-sys-rate-per-min" min="0" max="10000" step="10" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Stale-Position Cutoff (hours)</label>
+                            <input type="number" class="form-input" id="cfg-sys-stale-hours" min="1" max="720" step="1" value="24">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button type="submit" class="btn btn-primary">Save System Settings</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ============ [Sprint-6] Observability & Resilience Card ============ -->
+                <div class="form-card" style="margin-top:20px;">
+                    <h3 style="margin-bottom: 4px;"><i class="fa-solid fa-chart-line"></i> Live Metrics & Watchdog</h3>
+                    <p class="form-subtitle" style="color:var(--text-secondary); margin-bottom:16px;">
+                        In-process counters and broker watchdog state. Prometheus scrape at
+                        <code>/api/metrics</code>; JSON snapshot at <code>/api/metrics/snapshot</code>.
+                    </p>
+                    <div id="metrics-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Watchdog State</div>
+                            <div class="stat-value" id="metric-wd-state" style="font-size:1.1rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Last Broker Latency</div>
+                            <div class="stat-value" id="metric-wd-latency" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Broker Failures (streak)</div>
+                            <div class="stat-value" id="metric-wd-fails" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Orders (ok / fail)</div>
+                            <div class="stat-value" id="metric-orders" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Signals (accepted)</div>
+                            <div class="stat-value" id="metric-signals" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Retry Attempts (avg)</div>
+                            <div class="stat-value" id="metric-retry-avg" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Retries Exhausted</div>
+                            <div class="stat-value" id="metric-retry-exhausted" style="font-size:1.0rem;">--</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Rate-Limit Blocks</div>
+                            <div class="stat-value" id="metric-ratelimit" style="font-size:1.0rem;">--</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary" id="btn-metrics-refresh">
+                            <i class="fa-solid fa-arrows-rotate"></i> Refresh Metrics
+                        </button>
+                        <a class="btn btn-secondary" href="/api/metrics" target="_blank" rel="noopener">
+                            <i class="fa-solid fa-file-lines"></i> Raw /api/metrics
+                        </a>
+                    </div>
+                </div>
+            </section>
             <section class="tab-panel" id="panel-logs">
+
                 <div class="table-card">
                     <h3><i class="fa-solid fa-terminal"></i> Console & System Logs</h3>
                     <pre id="log-output" style="background: var(--bg-surface); padding: 16px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.82rem; height: 450px; overflow-y: auto; color: var(--text-secondary); margin-top: 16px;"></pre>

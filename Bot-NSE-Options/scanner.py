@@ -75,13 +75,24 @@ from options_grid import generate_option_strike_grid
 import trading_adapter
 import trade_db
 import instrument_master
+import risk_manager
+import signal_quality
+import position_sizer
+import alpha_enhancers
 
 
 def load_config(path: Path | str = None) -> dict:
     if path is None:
         path = _bot_dir / "config.yml"
     with open(path, "r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+        cfg = yaml.safe_load(fh)
+    # [Sprint-5] Overlay secrets from environment / .env before returning.
+    try:
+        from secrets_loader import apply_env_overrides
+        apply_env_overrides(cfg)
+    except Exception as _exc:  # fail-open: keep yaml values if secrets_loader breaks
+        log.debug("[config] secrets overlay skipped: %s", _exc)
+    return cfg
 
 
 def fetch_history(symbol: str, timeframe: str, config: dict, exchange: str = "NFO") -> pd.DataFrame | None:
@@ -233,6 +244,103 @@ def run_scan(config: dict = None) -> dict:
 
         signal_type = "BUY" if final_buy else "SELL"
 
+        # ── [Sprint-2] Signal-Quality: compute ATR%, ADX, quote spread, then filter ──
+        atr_pct_val = signal_quality.compute_atr_pct(df_sig)
+
+        # Underlying ADX from index history (spot). Fail-open on errors.
+        adx_val = 0.0
+        try:
+            spot_tf = opt_cfg.get("timeframe", "5m")
+            df_spot = fetch_history(underlying, spot_tf, config, exchange=index_exchange)
+            if df_spot is not None and len(df_spot) >= 30:
+                adx_val = signal_quality.compute_adx(df_spot, period=14)
+        except Exception as _adx_exc:
+            log.debug("[%s] ADX compute skipped: %s", sym, _adx_exc)
+
+        # Spread / OI check — best-effort quote fetch; missing quotes fail-open.
+        quote_info = None
+        try:
+            quote_info = trading_adapter.get_quote(config, sym, exchange=option_exchange) if hasattr(trading_adapter, "get_quote") else None
+        except Exception:
+            quote_info = None
+        spread_ok, spread_reason = signal_quality.check_spread_liquidity(config, quote_info, close_price)
+
+        # Individual gate checks (early reject before scoring so we don't waste it)
+        sq_cfg = config.get("signal_quality", {})
+        sq_reject_reason = ""
+        if sq_cfg.get("enabled", True):
+            ok_atr, r_atr = signal_quality.check_atr_range(config, atr_pct_val)
+            ok_adx, r_adx = signal_quality.check_adx_trend(config, adx_val)
+            if not ok_atr:
+                sq_reject_reason = r_atr
+            elif not ok_adx:
+                sq_reject_reason = r_adx
+            elif not spread_ok:
+                sq_reject_reason = spread_reason
+
+        # MTF alignment flag from confluence (already computed by evaluate_composite_signals)
+        mtf_pass = bool(confluence.get("mtf", True))
+        sr_pass = bool(confluence.get("sr", False))
+        vol_pass = bool(confluence.get("vol", True))
+        ut_active_pos = int(df_sig["ut_pos"].iloc[-1]) if "ut_pos" in df_sig.columns else 0
+
+        # ── [Sprint-2] Transparent weighted score + grade override ──
+        sq_result = signal_quality.compute_signal_score(
+            ut_fired=(ut_buy or ut_sell),
+            ut_active_pos=ut_active_pos,
+            sr_pass=sr_pass,
+            mtf_pass=mtf_pass,
+            vol_pass=vol_pass,
+            adx=adx_val,
+            atr_pct=atr_pct_val,
+            spread_ok=spread_ok,
+            cfg=config,
+        )
+        # Override the legacy score if signal_quality scoring is enabled
+        if sq_cfg.get("scoring_enabled", True):
+            score = sq_result["score"]
+            grade = sq_result["grade"]
+
+        # ── [Sprint-4] Alpha Enhancements — regime / session / POC / greeks ──
+        try:
+            regime, vix_val = alpha_enhancers.get_vix_regime(config)
+        except Exception:
+            regime, vix_val = "UNKNOWN", 0.0
+        try:
+            session_bucket = alpha_enhancers.get_session_bucket(config)
+            session_bonus = alpha_enhancers.get_session_bonus(config, session_bucket)
+        except Exception:
+            session_bucket, session_bonus = "prime", 0.0
+
+        # POC from the option's own intraday history (df is already fetched)
+        try:
+            poc_price = alpha_enhancers.compute_poc(
+                df, price_bins=int(config.get("alpha_enhancers", {}).get("volume_profile", {}).get("price_bins", 40))
+            )
+        except Exception:
+            poc_price = 0.0
+
+        # Aggregate alpha filters
+        try:
+            alpha_res = alpha_enhancers.run_alpha_filters(
+                config,
+                price=close_price,
+                poc=poc_price,
+                quote=quote_info,
+                mtf_results={},   # strict_mtf disabled by default; extend later if per-tf pass data available
+            )
+        except Exception as _aexc:
+            log.debug("[%s] alpha_filters skipped: %s", sym, _aexc)
+            alpha_res = {"reject_reason": "", "poc_distance_pct": 0.0, "greeks": {}, "mtf_strict_pass": True, "enabled": False}
+
+        # Apply session bonus to score (bounded 0..100)
+        if config.get("alpha_enhancers", {}).get("enabled", True) and session_bonus:
+            score = max(0.0, min(100.0, float(score) + float(session_bonus)))
+            if sq_cfg.get("scoring_enabled", True):
+                grade = signal_quality.score_to_grade(score)
+
+        alpha_reject_reason = alpha_res.get("reject_reason", "")
+
         rr = calculate_risk_reward(
             entry_price=close_price,
             signal_type=signal_type,
@@ -263,7 +371,34 @@ def run_scan(config: dict = None) -> dict:
             "risk_reward": rr["risk_reward"],
             "timestamp": datetime.now().strftime("%H:%M:%S"),
             "timeframe": timeframe,
+            # Sprint-2: signal-quality breakdown for dashboard transparency
+            "atr_pct": round(atr_pct_val, 3),
+            "adx": round(adx_val, 1),
+            "score_breakdown": sq_result["breakdown"],
+            "sq_reject_reason": sq_reject_reason,
+            # [Sprint-4] Alpha enhancement telemetry
+            "vix": round(vix_val, 2),
+            "regime": regime,
+            "session": session_bucket,
+            "session_bonus": session_bonus,
+            "poc": round(poc_price, 2),
+            "poc_distance_pct": alpha_res.get("poc_distance_pct", 0.0),
+            "delta": round(float(alpha_res.get("greeks", {}).get("delta", 0.0)), 3),
+            "theta": round(float(alpha_res.get("greeks", {}).get("theta", 0.0)), 3),
+            "alpha_reject_reason": alpha_reject_reason,
         }
+
+        # ── [Sprint-3] Position sizing — compute dynamic quantity ─────────
+        _lot = int(c_info.lot_size or 65)
+        _sizing = position_sizer.compute_position_size(
+            config,
+            entry_price=close_price,
+            stop_loss=rr["stop_loss"],
+            lot_size=_lot,
+            grade=grade,
+        )
+        res["position_sizing"] = _sizing
+        res["sized_quantity"] = int(_sizing.get("quantity", 0) or 0)
 
         log.info("[%s] Signal: %s | LTP Rs.%.2f | Grade %s %.1f", sym, signal_type, close_price, grade, score)
 
@@ -280,12 +415,56 @@ def run_scan(config: dict = None) -> dict:
             elif allowed_actions == "SELL_ONLY" and signal_type != "SELL":
                 log.info("[%s] Skipped auto order for %s signal (trading.allowed_actions = SELL_ONLY)", sym, signal_type)
             else:
+                # ── [Sprint-4] Alpha reject BEFORE Sprint-2/1/3 gates ──
+                if alpha_reject_reason:
+                    log.info("[%s] ✨ Alpha REJECT: %s", sym, alpha_reject_reason)
+                    res["risk_block_reason"] = alpha_reject_reason
+                    return res
+
+                # ── [Sprint-2] Signal-quality reject BEFORE risk gates ──
+                if sq_reject_reason:
+                    log.info("[%s] 🎯 Signal-Quality REJECT: %s", sym, sq_reject_reason)
+                    res["risk_block_reason"] = sq_reject_reason
+                    return res
+
+                # ── [Sprint-1] Risk Manager pre-trade gate ─────────────────────
+                # Runs: kill-switch, market-hours, daily-loss-limit, min-grade,
+                # directional-gate (spot trend), duplicate-entry / cool-down.
+                allowed, reason = risk_manager.can_place_order(
+                    cfg=config,
+                    symbol=sym,
+                    option_type=option_type,
+                    signal_type=signal_type,
+                    grade=grade,
+                    score=score,
+                )
+                if not allowed:
+                    log.info("[%s] 🛡️ Order BLOCKED by risk manager: %s", sym, reason)
+                    res["risk_block_reason"] = reason
+                    return res
+
+                # ── [Sprint-3] Skip if sizer produced 0 quantity (below 1 lot / invalid) ──
+                _sized_qty = int(res.get("sized_quantity", 0) or 0)
+                if _sized_qty <= 0:
+                    _ps_reason = _sizing.get("reason", "SIZING_ZERO")
+                    log.info("[%s] 📏 Order BLOCKED by position sizer: %s", sym, _ps_reason)
+                    res["risk_block_reason"] = f"SIZING_{_ps_reason}"
+                    return res
+
+                # Also enforce portfolio exposure with THIS specific premium
+                _extra_prem = close_price * _sized_qty
+                _ok_exp, _exp_reason = position_sizer.check_portfolio_exposure(config, extra_premium=_extra_prem)
+                if not _ok_exp:
+                    log.info("[%s] 📏 Order BLOCKED — %s", sym, _exp_reason)
+                    res["risk_block_reason"] = _exp_reason
+                    return res
+
                 log.info("[%s] Auto-executing %s order via OpenAlgo without manual intervention...", sym, signal_type)
                 order_req = {
                     "symbol": sym,
                     "exchange": option_exchange,
                     "action": signal_type,
-                    "quantity": int(opt_trade_cfg.get("quantity", 65)),
+                    "quantity": _sized_qty,
                     "product": str(opt_trade_cfg.get("product", "NRML")),
                     "price_type": str(opt_trade_cfg.get("price_type", "MARKET")),
                     "price": close_price,
@@ -300,7 +479,7 @@ def run_scan(config: dict = None) -> dict:
                     "symbol": sym,
                     "exchange": option_exchange,
                     "action": signal_type,
-                    "quantity": int(opt_trade_cfg.get("quantity", 65)),
+                    "quantity": _sized_qty,
                     "entry_price": close_price,
                     "product": str(opt_trade_cfg.get("product", "NRML")),
                     "stop_loss": rr["stop_loss"],
@@ -342,6 +521,16 @@ def run_scan(config: dict = None) -> dict:
 
     if signals_to_log:
         log_signals_batch(signals_to_log)
+
+    # [Sprint-6] Emit metrics for accepted BUY / SELL signals.
+    try:
+        import metrics as _metrics
+        for _r in buy_results:
+            _metrics.record_signal("BUY", accepted=True)
+        for _r in sell_results:
+            _metrics.record_signal("SELL", accepted=True)
+    except Exception:
+        pass
 
     indices = fetch_indices_quotes(config)
     last_scan_time = datetime.now().strftime("%H:%M:%S")

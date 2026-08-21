@@ -309,6 +309,7 @@ def evaluate_composite_signals(
         "vol": vol_pass,
         "sr": sr_pass,
         "sqz": sqz_pass,
+        "mtf": bool(df.attrs.get("mtf_pass", True)),
     }
 
     return df

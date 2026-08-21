@@ -9,6 +9,14 @@ import logging
 import requests
 from typing import Dict, Any, Optional
 
+from broker_retry import with_retry  # [Sprint-5] exponential backoff wrapper
+
+# [Sprint-6] Metrics — fail-open import.
+try:
+    import metrics as _metrics
+except Exception:  # pragma: no cover
+    _metrics = None
+
 log = logging.getLogger("UTBotSRChannelsScanner")
 
 _oa_client_cache: Dict[tuple, Any] = {}
@@ -50,8 +58,8 @@ def place_order(cfg: dict, order_req: dict) -> dict:
     trigger_price = float(order_req.get("trigger_price", 0.0))
     strategy = order_req.get("strategy", cfg.get("trading", {}).get("strategy_name", "UTBot_Options"))
 
-    try:
-        res = client.placeorder(
+    def _do_place():
+        return client.placeorder(
             strategy=strategy,
             symbol=symbol,
             action=action,
@@ -62,12 +70,28 @@ def place_order(cfg: dict, order_req: dict) -> dict:
             price=price,
             trigger_price=trigger_price,
         )
+
+    try:
+        # [Sprint-5] Wrap in retry for transient network errors
+        res = with_retry(_do_place, cfg=cfg, op_name=f"place_order[{symbol}]")
         log.info("Placed %s order for %s: %s", action, symbol, res)
+        # [Sprint-6] Record success.
+        if _metrics is not None:
+            try:
+                _metrics.record_order(action, symbol, success=True)
+            except Exception:
+                pass
         if isinstance(res, dict):
             return res
         return {"status": "success", "order_id": str(res), "response": res}
     except Exception as exc:
         log.error("Failed to place order for %s: %s", symbol, exc)
+        # [Sprint-6] Record failure.
+        if _metrics is not None:
+            try:
+                _metrics.record_order(action, symbol, success=False)
+            except Exception:
+                pass
         return {"status": "error", "message": str(exc)}
 
 
@@ -76,8 +100,12 @@ def get_ltp(cfg: dict, symbol: str, exchange: str = "NFO") -> float:
     oa_cfg = cfg.get("openalgo", {})
     client = _get_oa_client(oa_cfg)
 
+    def _do_ltp():
+        return client.getltp(symbol=symbol, exchange=exchange)
+
     try:
-        resp = client.getltp(symbol=symbol, exchange=exchange)
+        # [Sprint-5] Retry transient network errors only; parse errors are not retried.
+        resp = with_retry(_do_ltp, cfg=cfg, op_name=f"get_ltp[{symbol}]")
         if isinstance(resp, dict) and resp.get("status") == "success":
             return float(resp.get("data", {}).get("ltp", 0.0) or resp.get("ltp", 0.0))
         if isinstance(resp, (int, float)):
@@ -86,3 +114,49 @@ def get_ltp(cfg: dict, symbol: str, exchange: str = "NFO") -> float:
         log.debug("Failed to fetch LTP for %s: %s", symbol, exc)
 
     return 0.0
+
+
+def get_quote(cfg: dict, symbol: str, exchange: str = "NFO") -> dict | None:
+    """
+    [Sprint-2] Fetch bid, ask, open-interest for a contract via OpenAlgo /quotes.
+    Returns dict with keys: bid, ask, ltp, volume, oi (or None on any failure).
+
+    Consumed by signal_quality.check_spread_liquidity — spread + OI filter.
+    All errors are logged at DEBUG and return None (fail-open policy).
+    """
+    oa_cfg = cfg.get("openalgo", {})
+    try:
+        client = _get_oa_client(oa_cfg)
+
+        def _do_quote():
+            # OpenAlgo Python SDK exposes .quotes() returning a dict payload
+            if hasattr(client, "quotes"):
+                return client.quotes(symbol=symbol, exchange=exchange)
+            if hasattr(client, "quote"):
+                return client.quote(symbol=symbol, exchange=exchange)
+            return None
+
+        # [Sprint-5] Retry transient errors on quote fetch too.
+        resp = with_retry(_do_quote, cfg=cfg, op_name=f"get_quote[{symbol}]")
+        if not isinstance(resp, dict):
+            return None
+        data = resp.get("data", resp) if resp.get("status", "success") == "success" else None
+        if not data:
+            return None
+        return {
+            "bid": float(data.get("bid") or data.get("best_bid") or 0.0),
+            "ask": float(data.get("ask") or data.get("best_ask") or 0.0),
+            "ltp": float(data.get("ltp") or 0.0),
+            "volume": int(data.get("volume") or 0),
+            "oi": int(data.get("oi") or data.get("open_interest") or 0),
+            # [Sprint-4] Optional greeks — fail-open (0.0) if broker doesn't return them
+            "delta": float(data.get("delta") or 0.0),
+            "theta": float(data.get("theta") or 0.0),
+            "gamma": float(data.get("gamma") or 0.0),
+            "vega": float(data.get("vega") or 0.0),
+            "iv": float(data.get("iv") or data.get("implied_volatility") or 0.0),
+        }
+    except Exception as exc:
+        log.debug("Failed to fetch quote for %s: %s", symbol, exc)
+        return None
+

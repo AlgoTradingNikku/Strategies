@@ -27,7 +27,7 @@ options:
   index_exchange: NSE_INDEX         # Exchange segment for underlying index spot price
   option_exchange: NFO              # Exchange segment for derivative option contracts
   base_atm_strike: ''               # Manual ATM strike override (leave empty '' for dynamic auto-detection)
-  expiry_date: 18AUG26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
+  expiry_date: 25AUG26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
   levels_up_down: 3                 # Number of strike levels above and below ATM in option grid (3 CE + 1 ATM + 3 PE)
   strike_gap: 50                    # Strike price interval in points (50 for NIFTY, 100 for BANKNIFTY)
   timeframe: 5m                     # Primary candlestick timeframe for signal scanning (e.g., 1m, 3m, 5m, 15m)
@@ -82,10 +82,50 @@ bot:
   port: 9000                        # Web dashboard webserver port (http://localhost:9000)
   auto_scan_enabled: true           # Enable automated background market scanner daemon
   auto_scan_interval_minutes: 1     # Frequency (in minutes) for running auto-scan cycles
-  market_hours_check: false         # Set true to restrict scanning to NSE market hours; false for continuous 24/7 run
-  market_open: 09:15                # Market session start time (HH:MM IST)
-  market_close: 930                 # Market session end time (HH:MM IST or 15:30)
+  market_hours_check: true          # ✅ [Sprint-1] Hard-block order placement outside NSE market hours (recommended: true)
+  market_open: '09:15'              # Market session start time (HH:MM IST). Orders blocked before this time.
+  market_close: '15:30'             # Market session end time (HH:MM IST). Orders blocked after this time.
+  entry_cutoff_time: '14:45'        # ✅ [Sprint-1] No NEW entries after this time (existing positions still managed).
+                                    #    Prevents opening fresh trades in the last 45 min (illiquid + high theta risk).
   log_level: INFO                   # Application logging verbosity (DEBUG, INFO, WARNING, ERROR)
+
+  # ---------------------------------------------------------------------------
+  # ✅ [Sprint-5] Production Hardening — logging rotation, broker retry, admin
+  # ---------------------------------------------------------------------------
+  # Rotating log file (in addition to the legacy scanner.log stream)
+  log_file: logs/bot.log            # Path (relative to bot dir) of the rotating log
+  log_max_bytes: 10485760           # Rotate when this size is reached (default 10 MB)
+  log_backup_count: 5               # Keep this many rotated backups (bot.log.1 .. bot.log.5)
+
+  # Broker retry (exponential backoff + jitter) — wraps trading_adapter calls
+  retry:
+    enabled: true                   # Master toggle for retry wrapper
+    max_attempts: 3                 # Total attempts including the first (1 = no retry)
+    backoff_base_sec: 0.5           # Sleeps: 0.5s, 1s, 2s, ... (× 2^attempt) + jitter
+
+  # Per-IP rate limiter for /api/* (opt-in — disabled by default)
+  rate_limit:
+    enabled: false                  # Turn on when exposing the dashboard beyond localhost
+    per_minute: 120                 # Token-bucket capacity + refill rate per client IP
+
+  # DB maintenance — cutoff used by /api/admin/reconcile and /api/health
+  stale_position_cutoff_hours: 24   # OPEN trades older than this are flagged as stale
+
+  # ---------------------------------------------------------------------------
+  # ✅ [Sprint-6] Observability & Resilience — watchdog, JSON logs, metrics
+  # ---------------------------------------------------------------------------
+  # Broker watchdog — periodic LTP probe on the underlying; flips broker_up
+  # gauge and emits recovery/disconnect events. Reports state in /api/health.
+  watchdog:
+    enabled: true                   # Master toggle for the background watchdog
+    interval_sec: 30                # Seconds between probes (min 5)
+    failure_threshold: 3            # Consecutive failures before marking DOWN
+
+  # Optional JSON-formatted rotating log (in addition to plain text log).
+  # Consume with Loki / ELK / CloudWatch. Uses same rotation size + backups
+  # as the plain log above.
+  log_json: false                   # Turn on to enable JSON log stream
+  log_json_file: logs/bot.jsonl     # Path (relative to bot dir)
 
 # ------------------------------------------------------------------------------
 # 7. Automated Execution & Order Settings
@@ -99,7 +139,28 @@ trading:
                                     #   'BUY_ONLY'  -> Auto-place ONLY BUY signals (Options Buying: CE/PE)
                                     #   'BOTH'      -> Auto-place both BUY and SELL signals
                                     #   'SELL_ONLY' -> Auto-place ONLY SELL signals
-  strategy_name: UTBot_Options       # Strategy identifier tag attached to order payload sent to broker
+  strategy_name: UTBot_Options      # Strategy identifier tag attached to order payload sent to broker
+
+  # ---- [Sprint-1] Min-Grade / Min-Score Gate ----
+  # Auto-executes ONLY when signal quality meets these minimums. Grade order: A > B > C > D.
+  # Grade is derived from setup_score; both must pass. Raise these to trade fewer, higher-quality setups.
+  min_grade: 'B'                    # Minimum grade for auto-execution (A/B/C/D). 'B' = balanced, 'A' = strict.
+  min_score: 60                     # Minimum setup_score (0-100) for auto-execution. 60 = balanced, 75 = strict.
+
+  # ---- [Sprint-1] Duplicate-Entry Guard & Cool-Down ----
+  # Prevents stacking multiple orders on the same option contract and rapid re-entry
+  # after an exit (which typically produces whipsaw losses on the same underlying move).
+  dedup:
+    enabled: true                   # Block new entry if same-symbol position already OPEN, or exited recently.
+    cooldown_minutes: 5             # Minutes to wait after an exit before allowing re-entry on the same symbol.
+
+  # ---- [Sprint-1] Directional Gate (spot-trend alignment) ----
+  # Uses UT-Bot on the UNDERLYING (e.g. NIFTY spot) as a directional filter.
+  # Only allows CE-BUY when spot is UP-trending and PE-BUY when spot is DOWN-trending.
+  # Kills the "long-gamma-both-sides" trap where CE and PE are bought simultaneously.
+  directional_gate:
+    enabled: true                   # Master toggle for spot-trend directional filter.
+
   options:
     quantity: 65                    # Lot size / contract quantity per trade (65 = 1 lot NIFTY)
     product: NRML                   # Product type: NRML (Normal/Overnight) or MIS (Intraday)
@@ -152,6 +213,171 @@ trade_management:
 # ------------------------------------------------------------------------------
 # 9. Telegram Alerting Setup
 # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# 10. Risk Management & Guardrails (Sprint-1)
+# ------------------------------------------------------------------------------
+# Global safety net for the bot. These guardrails are checked BEFORE every new
+# auto-order is placed. If any check fails, the order is skipped and logged.
+# Also drives the dashboard status strip (Trading Allowed / Day P&L / Kill Switch).
+risk:
+  kill_switch: false                # 🛑 Master OFF switch. When true, blocks ALL new auto-orders instantly.
+                                    #    Existing positions are still monitored / managed. Toggle from dashboard
+                                    #    with the big red "KILL SWITCH" button.
+
+  account_equity: 100000            # Total trading capital in ₹. Used as denominator for daily-loss %
+                                    #    and (future Sprint-5) risk-per-trade position sizing.
+
+  # ---- Daily Loss Kill-Switch ----
+  # Tracks realized + unrealized day P&L in ₹. If P&L % of account_equity drops
+  # below -max_loss_pct, the bot HALTS new orders. If auto_square_off is true it
+  # also flat-closes every OPEN position immediately.
+  daily_loss_limit:
+    enabled: true                   # Enable automatic daily-loss circuit breaker.
+    max_loss_pct: 3.0               # Max % of account_equity to lose in ONE day before halt (e.g. 3.0 = -₹3000 on ₹1L).
+                                    #    Typical range: 2.0 – 5.0. Aggressive traders use 5, conservative use 2.
+    auto_square_off: true           # If true, on breach, also auto-close all OPEN positions (else just block new).
+
+  # ---- [Sprint-2] Consecutive-Loss Circuit Breaker ----
+  # After N consecutive losing trades in the SAME day, pause new orders for
+  # cooldown_minutes. Auto-clears after cooldown or on the first winning trade
+  # (post-cooldown). Protects against intraday strategy edge decay / regime change.
+  consecutive_loss_breaker:
+    enabled: true                   # Toggle the entire consecutive-loss breaker.
+    max_losses: 3                   # Trip threshold. Typical: 2 (tight) – 5 (loose).
+    cooldown_minutes: 30            # Halt duration in minutes after tripping.
+
+# ------------------------------------------------------------------------------
+# 11. Signal Quality Filters & Scoring (Sprint-2)
+# ------------------------------------------------------------------------------
+# Advanced pre-trade filters that reject low-probability signals BEFORE the
+# Sprint-1 risk gates. Also provides transparent weighted scoring (0-100)
+# with per-factor breakdown visible on the dashboard.
+signal_quality:
+  enabled: true                     # Master toggle for all signal-quality filters below.
+                                    #    When false, signals pass through with legacy scoring only.
+  scoring_enabled: true             # If true, overrides legacy setup_score with the weighted
+                                    #    signal_quality score. Turn off to keep legacy scoring.
+
+  # ---- ATR% Filter (option's own volatility) ----
+  atr_filter_enabled: true          # Reject options whose ATR% is outside [min, max] band.
+  atr_pct_min: 0.5                  # Below this = dead premium, no expected movement (skip).
+  atr_pct_max: 8.0                  # Above this = post-news chaos / gap risk (skip).
+
+  # ---- ADX Filter (underlying trend strength) ----
+  adx_filter_enabled: true          # Reject entries when spot is in chop-zone.
+  adx_min: 20.0                     # Minimum ADX of the underlying. 20 = mild trend, 25 = strong.
+
+  # ---- Spread & Liquidity Filter (option chain) ----
+  spread_filter_enabled: true       # Reject illiquid strikes with wide bid-ask spreads.
+  max_spread_pct: 1.5               # Max (ask-bid)/LTP as %. Typical: 1.0 (tight) – 2.5 (loose).
+  min_open_interest: 500            # Minimum open interest. Below this = illiquid contract.
+                                    #    Uses OpenAlgo /quote depth. Fail-open if unavailable.
+
+# ------------------------------------------------------------------------------
+# 12. Dynamic Position Sizing (Sprint-3)
+# ------------------------------------------------------------------------------
+# Replaces the static trading.options.quantity with risk-based dynamic sizing.
+# Every trade risks only a controlled fraction of account equity based on the
+# distance from entry to stop-loss. Quantities always snap DOWN to lot_size.
+position_sizing:
+  enabled: true                     # Master toggle. When false → falls back to trading.options.quantity.
+
+  mode: fixed_fractional            # 'fixed_fractional' (safer) | 'kelly' (aggressive, adaptive).
+                                    #    Kelly falls back to fixed_fractional when trade sample < kelly_min_trades.
+  risk_per_trade_pct: 1.0           # % of account equity to risk per trade. Industry standard: 0.5-2%.
+                                    #    1% means a losing trade with SL costs exactly 1% of equity.
+  max_risk_per_trade_pct: 3.0       # Hard ceiling regardless of grade multiplier / Kelly output.
+                                    #    Protects against config typos or runaway Kelly during hot streaks.
+
+  # ---- Portfolio-level caps ----
+  max_portfolio_exposure_pct: 15.0  # Reject if total open premium × qty > this % of equity.
+                                    #    Prevents over-leveraging during high-signal windows.
+  max_concurrent_positions: 3       # Hard cap on simultaneous open positions across all symbols.
+                                    #    Typical: 2 (tight) – 5 (loose).
+
+  # ---- Grade multiplier (opt-in) ----
+  grade_multiplier_enabled: false   # If true, scales risk_per_trade_pct by signal grade below.
+                                    #    Deploy more capital on higher-conviction A-grade setups.
+  grade_multipliers:
+    A: 1.0                          # Full risk on A-grade signals.
+    B: 0.75                         # 75% of risk_per_trade_pct for B-grade.
+    C: 0.50                         # Half risk for C-grade. (D usually blocked by min_grade.)
+
+  # ---- Kelly-mode specific (only used when mode='kelly') ----
+  kelly_min_trades: 20              # Minimum closed trades required to trust the win-rate/payoff sample.
+                                    #    Below this → falls back to fixed_fractional automatically.
+  kelly_fraction: 0.25              # Fraction of full-Kelly to actually use. 0.25 = quarter-Kelly.
+                                    #    Full Kelly (1.0) is theoretically optimal but too volatile in practice.
+  kelly_max_risk_pct: 5.0           # Absolute Kelly ceiling. Kelly can't request more than this % risk.
+
+# ------------------------------------------------------------------------------
+# 13. Alpha Enhancements (Sprint-4)
+# ------------------------------------------------------------------------------
+# Alpha-generating layers on top of Sprint-1/2/3 risk foundation. These are
+# edge finders (not loss-stoppers) that use market context — VIX regime,
+# options greeks, session time, volume profile — to upgrade signal quality.
+# All checks fail-open on missing data.
+alpha_enhancers:
+  enabled: true                     # Master toggle for the entire alpha layer.
+
+  # ---- VIX Regime Adaptive Risk ----
+  # Reads INDIA VIX. In LOW-VIX (calm) we relax slightly; in HIGH-VIX (chaos)
+  # we tighten. The risk_per_trade_pct is multiplied by the regime factor below.
+  vix_regime:
+    enabled: true
+    vix_symbol: "INDIAVIX"          # Symbol to query for the VIX quote.
+    vix_exchange: "NSE_INDEX"       # Exchange for the VIX ticker.
+    low_threshold: 15.0             # VIX < 15 → LOW regime (calm markets).
+    high_threshold: 22.0            # VIX > 22 → HIGH regime (elevated fear).
+                                    #   Between = NORMAL regime.
+    risk_multipliers:               # Scales position_sizing.risk_per_trade_pct.
+      LOW: 1.10                     # Slight boost when calm.
+      NORMAL: 1.00                  # No change.
+      HIGH: 0.60                    # Cut risk 40% during volatility spikes.
+      UNKNOWN: 1.00                 # Fail-open when VIX quote unavailable.
+
+  # ---- Session-Based Signal Weighting ----
+  # Weights signal quality by time of day. Opening minutes = volatile/lower
+  # confidence. Prime session = trending/best. Closing = fade-only.
+  session_weighting:
+    enabled: true
+    opening_minutes: 30             # First N minutes of the session = 'opening'.
+    closing_minutes: 30             # Last N minutes = 'closing'.
+    bonuses:                        # Score modifier (added to weighted score).
+      opening: -5.0                 # Penalty during opening chop.
+      prime: 5.0                    # Bonus during mid-session trending window.
+      closing: -10.0                # Heavier penalty near close.
+      off: -100.0                   # Effectively rejects (should never fire — mkt_hours gates).
+
+  # ---- Volume Profile POC (Point of Control) ----
+  # Computes the price level with the highest traded volume from intraday bars.
+  # Rejects entries too far from POC (poor mean-reversion odds).
+  volume_profile:
+    enabled: true
+    price_bins: 40                  # Number of price buckets for the histogram.
+    max_poc_distance_pct: 1.5       # Reject when |price − POC| / POC > this %.
+                                    #    Typical: 1.0 (tight) – 3.0 (loose).
+
+  # ---- Options Greeks Filter ----
+  # Rejects deep-OTM lottery tickets and high-theta-burn contracts. Fail-open
+  # when broker/OpenAlgo does not return greeks in the quote payload.
+  greeks:
+    enabled: true
+    min_abs_delta: 0.20             # Reject |delta| < 0.20 (too far OTM).
+                                    #   0.20 ≈ 20% probability of expiring ITM.
+    max_theta_pct: 5.0              # Reject when daily theta > 5% of LTP.
+                                    #   Protects against extreme decay on 0DTE trades.
+
+  # ---- Strict Multi-Timeframe (opt-in, aggressive) ----
+  # Requires ALL listed timeframes to agree on trend before firing.
+  # Off by default — this is the tightest filter in the whole system.
+  strict_mtf:
+    enabled: false                  # Turn on only when you want maximum precision.
+    required_timeframes:            # All must agree.
+      - "5m"
+      - "15m"
+
 telegram:
   enabled: true                     # Master toggle for Telegram alert notifications
   mode: direct                      # Connection mode ('direct' sends directly via Bot API)
