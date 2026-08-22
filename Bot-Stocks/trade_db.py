@@ -223,6 +223,28 @@ def get_closed_positions(limit: int = 50, offset: int = 0) -> list[dict]:
         conn.close()
 
 
+def get_realized_pnl_pct_since(iso_start: str) -> float:
+    """Return the SUM of ``pnl_pct`` for positions closed on/after ``iso_start``.
+
+    Used by the risk-limits gate to enforce a daily-loss cutoff. When no
+    matching rows exist, returns 0.0.  ``iso_start`` should be an
+    'YYYY-MM-DD HH:MM:SS' string in the same local timezone the writer uses
+    (execution paths write ``close_time = datetime.now().strftime(...)`` so
+    this is always local naive time).
+    """
+    conn = _get_connection()
+    try:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(pnl_pct), 0.0) AS total "
+            "FROM positions "
+            "WHERE status = 'CLOSED' AND close_time >= ?",
+            (iso_start,),
+        ).fetchone()
+        return float(row["total"] if row and row["total"] is not None else 0.0)
+    finally:
+        conn.close()
+
+
 def get_position_events(pos_id: int) -> list[dict]:
     """Return the full audit event log for a specific position."""
     conn = _get_connection()

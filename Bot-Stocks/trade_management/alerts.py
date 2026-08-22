@@ -55,9 +55,10 @@ def alert_exit(pos: dict, exit_price: float, reason: str, pnl_pct: float, cfg: d
         return
     emoji = "✅" if pnl_pct >= 0 else "❌"
     reason_label = {
-        "TARGET":    "Target Reached 🎯",
-        "STOP_LOSS": "Stop Loss Hit 🛑",
-        "MANUAL":    "Manual Exit 👤",
+        "TARGET":         "Target Reached 🎯",
+        "STOP_LOSS":      "Stop Loss Hit 🛑",
+        "MANUAL":         "Manual Exit 👤",
+        "EOD_SQUARE_OFF": "EOD Auto Square-off ⏰",
     }.get(reason, reason)
     msg = (
         f"🔔 <b>Trade Closed ({reason_label})</b>\n"

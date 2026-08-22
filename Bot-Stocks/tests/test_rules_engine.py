@@ -160,7 +160,10 @@ class TestProfitLock:
         assert pl.new_sl == pytest.approx(1010.0, abs=0.01)
 
     def test_tiered_mode_picks_best_tier(self):
-        pos = _make_buy_position(high_water_mark=1030.0)   # +3% peak
+        # LTP=1029 exceeds default target 1020 → would short-circuit with
+        # EXIT_TARGET; give this test a target above LTP so the profit-lock
+        # branch actually gets a chance to run.
+        pos = _make_buy_position(high_water_mark=1030.0, target_price=1100.0)   # +3% peak
         tm_cfg = {
             "profit_lock": {
                 "enabled": True,
@@ -278,7 +281,9 @@ class TestHighWaterMark:
 
 class TestTrailingVsProfitLock:
     def test_profit_lock_replaces_looser_trailing(self):
-        pos = _make_buy_position(high_water_mark=1030.0)
+        # Use a large target so the target-exit rule doesn't short-circuit
+        # this test (LTP=1030 would otherwise hit the default 1020 target).
+        pos = _make_buy_position(high_water_mark=1030.0, target_price=1100.0)
         tm_cfg = {
             "trailing_sl": {"enabled": True, "activation_pct": 1.0, "distance_pct": 2.0},
             "profit_lock": {"enabled": True, "threshold_pct": 1.5, "lock_fraction": 0.8},

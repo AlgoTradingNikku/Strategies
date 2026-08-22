@@ -30,3 +30,6 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# --- Scratch / ad-hoc scripts (not part of test suite) ---
+scratch/

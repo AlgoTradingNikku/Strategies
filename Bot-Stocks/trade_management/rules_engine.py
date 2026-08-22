@@ -57,7 +57,17 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import List
 
-from .models import TradeAction, calc_gain_pct, sl_improves
+from .models import (
+    TradeAction,
+    calc_gain_pct,
+    sl_improves,
+    ACTION_EXIT_TARGET,
+    ACTION_EXIT_SL,
+    ACTION_EXIT_EOD,
+    ACTION_PARTIAL_EXIT,
+    ACTION_PROFIT_LOCK,
+    ACTION_TRAILING_SL,
+)
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
@@ -83,36 +93,44 @@ def evaluate(pos: dict, ltp: float, tm_cfg: dict) -> List[TradeAction]:
     """
     actions: List[TradeAction] = []
 
-    # --- 0. EOD Auto Square-Off Check (e.g. 15:15 IST) ---
+    # --- 1. High-water mark update (not an action, mutates pos in-place) ---
+    #     Run this FIRST so persist-HWM works even on the tick that fires
+    #     the EOD square-off, and so profit-lock/trailing rules see the peak.
+    _update_hwm(pos, ltp)
+
+    # --- 2. EOD Auto Square-Off Check (e.g. 15:15 IST) ---
+    #     Uses its own action type so DB events and Telegram alerts don't
+    #     mislabel the exit as a target hit.
     eod_exit = _check_eod_square_off(tm_cfg)
     if eod_exit:
         return [eod_exit]
 
-    # --- 1. High-water mark update (not an action, mutates pos in-place) ---
-    _update_hwm(pos, ltp)
-
     gain_pct = calc_gain_pct(pos, ltp)
 
-    # --- 2. Target exit ---
+    # --- 3. Target exit ---
     exit_action = _check_target_exit(pos, ltp)
     if exit_action:
         return [exit_action]   # no further evaluation needed
 
-    # --- 3. SL exit ---
+    # --- 4. SL exit ---
     sl_exit = _check_sl_exit(pos, ltp)
     if sl_exit:
         return [sl_exit]
 
-    # --- 4. Trailing SL ---
+    # --- 5. Trailing SL ---
     tsl_action = _check_trailing_sl(pos, ltp, gain_pct, tm_cfg)
     if tsl_action:
         actions.append(tsl_action)
 
-    # --- 5. Profit Lock ---
-    pl_action = _check_profit_lock(pos, ltp, gain_pct, tm_cfg)
+    # --- 6. Profit Lock ---
+    #     Profit-lock tier eligibility is based on the PEAK gain (from HWM),
+    #     not the current gain — otherwise a pull-back would prevent the
+    #     higher tier from ever firing even though the trade already reached it.
+    peak_gain_pct = _calc_peak_gain_pct(pos)
+    pl_action = _check_profit_lock(pos, ltp, peak_gain_pct, tm_cfg)
     if pl_action:
         # Only apply profit lock if it beats the trailing-SL level already proposed
-        if actions and actions[-1].action_type == "TRAILING_SL":
+        if actions and actions[-1].action_type == ACTION_TRAILING_SL:
             # Keep whichever gives better protection
             if sl_improves(pos["direction"], pl_action.new_sl, actions[-1].new_sl):
                 actions[-1] = pl_action   # profit lock is tighter, replace
@@ -120,12 +138,29 @@ def evaluate(pos: dict, ltp: float, tm_cfg: dict) -> List[TradeAction]:
         else:
             actions.append(pl_action)
 
-    # --- 6. Partial Exit ---
+    # --- 7. Partial Exit ---
     pe_action = _check_partial_exit(pos, ltp, gain_pct, tm_cfg)
     if pe_action:
         actions.append(pe_action)
 
     return actions
+
+
+def _calc_peak_gain_pct(pos: dict) -> float:
+    """Return the maximum unrealised gain-% ever seen for this position,
+    computed from ``high_water_mark`` (updated every tick by ``_update_hwm``).
+
+    Positive on the favourable side for both BUY and SELL.  Used by the
+    profit-lock rule so that tier eligibility latches at the peak — a
+    subsequent pull-back cannot demote the trade back below a threshold.
+    """
+    entry = float(pos["entry_price"])
+    if entry <= 0:
+        return 0.0
+    hwm = float(pos.get("high_water_mark", entry))
+    if pos["direction"] == "BUY":
+        return (hwm - entry) / entry * 100.0
+    return (entry - hwm) / entry * 100.0
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +193,7 @@ def _check_eod_square_off(tm_cfg: dict) -> TradeAction | None:
         cutoff_min = cutoff_parts[0] * 60 + cutoff_parts[1]
         now_min = now_tz.hour * 60 + now_tz.minute
         if now_min >= cutoff_min:
-            return TradeAction(action_type="EXIT_TARGET", reason="EOD_SQUARE_OFF")
+            return TradeAction(action_type=ACTION_EXIT_EOD, reason="EOD_SQUARE_OFF")
     except Exception as e:
         log.debug("EOD square-off time evaluation error: %s", e)
     return None
@@ -176,7 +211,7 @@ def _check_target_exit(pos: dict, ltp: float) -> TradeAction | None:
     hit = (direction == "BUY" and ltp >= target) or \
           (direction == "SELL" and ltp <= target)
     if hit:
-        return TradeAction(action_type="EXIT_TARGET", reason="TARGET")
+        return TradeAction(action_type=ACTION_EXIT_TARGET, reason="TARGET")
     return None
 
 
@@ -192,7 +227,7 @@ def _check_sl_exit(pos: dict, ltp: float) -> TradeAction | None:
     hit = (direction == "BUY" and ltp <= current_sl) or \
           (direction == "SELL" and ltp >= current_sl)
     if hit:
-        return TradeAction(action_type="EXIT_SL", reason="STOP_LOSS")
+        return TradeAction(action_type=ACTION_EXIT_SL, reason="STOP_LOSS")
     return None
 
 
@@ -229,7 +264,7 @@ def _check_trailing_sl(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) -> 
 
     if sl_improves(direction, new_sl, current_sl):
         return TradeAction(
-            action_type="TRAILING_SL",
+            action_type=ACTION_TRAILING_SL,
             new_sl=new_sl,
             reason=f"Trailing SL: {distance_pct}% behind HWM {hwm:.2f}",
         )
@@ -295,7 +330,7 @@ def _check_profit_lock(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) -> 
 
         if best_new_sl is not None:
             return TradeAction(
-                action_type="PROFIT_LOCK",
+                action_type=ACTION_PROFIT_LOCK,
                 new_sl=best_new_sl,
                 tier_index=next_tier_idx,
                 reason=f"Profit lock tier {next_tier_idx} @ gain {gain_pct:.2f}%",
@@ -318,7 +353,7 @@ def _check_profit_lock(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) -> 
 
     if sl_improves(direction, candidate_sl, current_sl):
         return TradeAction(
-            action_type="PROFIT_LOCK",
+            action_type=ACTION_PROFIT_LOCK,
             new_sl=candidate_sl,
             tier_index=1,
             reason=f"Profit locked at threshold {threshold}%",
@@ -363,7 +398,7 @@ def _check_partial_exit(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) ->
             return None
 
         return TradeAction(
-            action_type="PARTIAL_EXIT",
+            action_type=ACTION_PARTIAL_EXIT,
             exit_qty=exit_qty,
             tier_index=current_tier,
             reason=f"Partial exit tier {current_tier + 1} @ gain {gain_pct:.2f}%",
@@ -388,7 +423,7 @@ def _check_partial_exit(pos: dict, ltp: float, gain_pct: float, tm_cfg: dict) ->
         return None
 
     return TradeAction(
-        action_type="PARTIAL_EXIT",
+        action_type=ACTION_PARTIAL_EXIT,
         exit_qty=exit_qty,
         tier_index=0,
         reason=f"Partial exit @ gain {gain_pct:.2f}%",

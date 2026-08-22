@@ -21,10 +21,29 @@ from typing import Optional
 
 import trade_db
 from trading_adapter import place_order as adapter_place_order
-from .models import ExitOrderRequest, TradeAction
+from .models import (
+    ExitOrderRequest,
+    TradeAction,
+    ACTION_EXIT_TARGET,
+    ACTION_EXIT_SL,
+    ACTION_EXIT_EOD,
+    ACTION_TRAILING_SL,
+    ACTION_PROFIT_LOCK,
+    ACTION_PARTIAL_EXIT,
+    FULL_EXIT_ACTIONS,
+)
 from . import alerts
 
 log = logging.getLogger("UTBotSRChannelsScanner")
+
+
+# Map action_type → close_reason string persisted to DB / passed to alerts.
+# Kept here (not in models) because it's a routing concern of the executor.
+_EXIT_REASONS = {
+    ACTION_EXIT_TARGET: "TARGET",
+    ACTION_EXIT_SL:     "STOP_LOSS",
+    ACTION_EXIT_EOD:    "EOD_SQUARE_OFF",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -55,17 +74,20 @@ def dispatch(
     """
     t = action.action_type
 
-    if t in ("EXIT_TARGET", "EXIT_SL"):
-        execute_full_exit(pos, ltp, action.reason, config, active_positions, lock, ws_client)
+    if t in FULL_EXIT_ACTIONS:
+        # Prefer the action's own reason string when set (e.g. rules_engine
+        # sets "EOD_SQUARE_OFF"); otherwise fall back to the canonical label.
+        reason = action.reason or _EXIT_REASONS.get(t, t)
+        execute_full_exit(pos, ltp, reason, config, active_positions, lock, ws_client)
 
-    elif t == "TRAILING_SL":
+    elif t == ACTION_TRAILING_SL:
         _apply_sl_update(pos, action.new_sl, "SL_MOVED",
                          f"Trailing SL: {action.reason}", config, notify_fn=alerts.alert_sl_move)
 
-    elif t == "PROFIT_LOCK":
+    elif t == ACTION_PROFIT_LOCK:
         _apply_profit_lock(pos, action.new_sl, action.tier_index, action.reason, config)
 
-    elif t == "PARTIAL_EXIT":
+    elif t == ACTION_PARTIAL_EXIT:
         tm_cfg = config.get("trade_management", {})
         pe_cfg = tm_cfg.get("partial_exit", {})
         execute_partial_exit(pos, ltp, action.exit_qty, action.tier_index, pe_cfg, config)

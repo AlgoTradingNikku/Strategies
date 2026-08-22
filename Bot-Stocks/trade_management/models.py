@@ -52,6 +52,7 @@ class TradeAction:
     ------------------
     EXIT_TARGET       — close full position; target reached
     EXIT_SL           — close full position; stop-loss hit
+    EXIT_EOD          — close full position; intraday EOD auto square-off
     PARTIAL_EXIT      — scale out a tranche of the position
     PROFIT_LOCK       — ratchet SL up to lock-in a portion of unrealised profit
     TRAILING_SL       — move SL behind the high-water mark
@@ -62,6 +63,23 @@ class TradeAction:
     exit_qty: Optional[int] = None
     tier_index: Optional[int] = None   # which tier fired (0-based)
     reason: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Action type constants — canonical spelling used across rules_engine + executor.
+# Keeping them here (rather than as free strings) avoids typo-drift when new
+# call-sites are added.
+# ---------------------------------------------------------------------------
+
+ACTION_EXIT_TARGET  = "EXIT_TARGET"
+ACTION_EXIT_SL      = "EXIT_SL"
+ACTION_EXIT_EOD     = "EXIT_EOD"          # intraday EOD auto square-off
+ACTION_PARTIAL_EXIT = "PARTIAL_EXIT"
+ACTION_PROFIT_LOCK  = "PROFIT_LOCK"
+ACTION_TRAILING_SL  = "TRAILING_SL"
+
+# All action types that fully close a position (executor treats them uniformly).
+FULL_EXIT_ACTIONS = frozenset({ACTION_EXIT_TARGET, ACTION_EXIT_SL, ACTION_EXIT_EOD})
 
 
 # ---------------------------------------------------------------------------

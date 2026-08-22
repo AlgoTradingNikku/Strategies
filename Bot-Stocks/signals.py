@@ -35,6 +35,77 @@ def _crossover(s1: pd.Series, s2: pd.Series) -> pd.Series:
     return (s1 > s2) & (s1.shift(1) <= s2.shift(1))
 
 
+def _parse_timeframe_seconds(timeframe: str) -> int | None:
+    """Convert a config timeframe string (e.g. '5m', '1h', '1d') to seconds.
+
+    Returns None if the format is not recognised — callers should treat that
+    as "cannot determine bar boundary" and skip closed-candle logic.
+    """
+    if not isinstance(timeframe, str) or len(timeframe) < 2:
+        return None
+    try:
+        num = int(timeframe[:-1])
+    except (ValueError, TypeError):
+        return None
+    unit = timeframe[-1].lower()
+    if unit == "m":
+        return num * 60
+    if unit == "h":
+        return num * 3600
+    if unit == "d":
+        return num * 86400
+    if unit == "w":
+        return num * 604800
+    return None
+
+
+def _is_last_candle_incomplete(df: pd.DataFrame, config: dict) -> bool:
+    """Return True when the LAST row of ``df`` is still-forming.
+
+    Heuristic: given the configured candle timeframe, compute the expected
+    close time of the last bar (bar_open + timeframe) and compare against the
+    current wall clock in the exchange timezone. When the current time is
+    before the expected close, the bar is still open ("running bar").
+
+    Falls back to False (i.e. "treat as closed") when:
+      • the df index isn't a DatetimeIndex,
+      • the timeframe string can't be parsed,
+      • or any other error occurs — so callers never accidentally strip a
+        legitimate closed bar due to a helper malfunction.
+    """
+    if df is None or len(df) == 0:
+        return False
+    try:
+        idx = df.index
+        if not isinstance(idx, pd.DatetimeIndex):
+            return False
+
+        timeframe = config.get("candle_timeframe") or config.get("scan_timeframe", "5m")
+        bar_secs = _parse_timeframe_seconds(str(timeframe))
+        if bar_secs is None:
+            return False
+
+        # Use the exchange tz — for NSE/BSE that's Asia/Kolkata; fallback UTC.
+        from zoneinfo import ZoneInfo
+        tz_name = "Asia/Kolkata" if config.get("exchange", "NSE").upper() in ("NSE", "BSE") else "UTC"
+        tz = ZoneInfo(tz_name)
+
+        last_open = idx[-1]
+        # Normalise both times to naive-in-tz for comparison.
+        if last_open.tzinfo is None:
+            last_open_local = last_open
+        else:
+            last_open_local = last_open.astimezone(tz).replace(tzinfo=None)
+
+        from datetime import datetime, timedelta
+        now_local = datetime.now(tz).replace(tzinfo=None)
+        expected_close = last_open_local + timedelta(seconds=bar_secs)
+
+        return now_local < expected_close
+    except Exception:
+        return False
+
+
 # ============================================================================
 # 1. UT BOT ENGINE
 # ============================================================================
@@ -433,21 +504,33 @@ def compute_sr_signals(
     sr_buy    = pd.Series(False, index=df.index)
     sr_sell   = pd.Series(False, index=df.index)
     close_v   = df["close"]
+    open_v    = df["open"]
+
+    # For bars whose close is inside a zone, we can't call it "support" OR
+    # "resistance" purely from proximity — the candle direction disambiguates:
+    #   • Green candle (close > open) inside the zone  ⇒ likely support bounce ⇒ BUY
+    #   • Red candle   (close < open) inside the zone  ⇒ likely resistance rejection ⇒ SELL
+    #   • Doji (close == open) inside zone             ⇒ ambiguous; skip both
+    # This prevents the SR engine from firing BUY and SELL on the same bar,
+    # which downstream turns into a "signal conflict" that the composite
+    # scorer treats as noise.
+    bar_is_bull = close_v > open_v
+    bar_is_bear = close_v < open_v
 
     for zone_hi, zone_lo, _strength in zones:
         prox = close_v * proximity_pct / 100.0
 
-        # Price is inside the zone → both S (below) and R (above) apply
-        inside   = (close_v >= zone_lo) & (close_v <= zone_hi)
-        sr_buy   = sr_buy  | inside
-        sr_sell  = sr_sell | inside
+        # Price is INSIDE the zone — disambiguate by candle direction
+        inside      = (close_v >= zone_lo) & (close_v <= zone_hi)
+        sr_buy      = sr_buy  | (inside & bar_is_bull)
+        sr_sell     = sr_sell | (inside & bar_is_bear)
 
-        # Zone is below price → Support; buy if price is within proximity
+        # Zone is BELOW price → Support; buy if price is within proximity
         # above the zone top (zone_hi < close and close - zone_hi <= prox)
         below_near = (zone_hi < close_v) & ((close_v - zone_hi) <= prox)
         sr_buy     = sr_buy | below_near
 
-        # Zone is above price → Resistance; sell if price is within proximity
+        # Zone is ABOVE price → Resistance; sell if price is within proximity
         # below the zone bottom (zone_lo > close and zone_lo - close <= prox)
         above_near = (zone_lo > close_v) & ((zone_lo - close_v) <= prox)
         sr_sell    = sr_sell | above_near
@@ -925,20 +1008,31 @@ def evaluate_composite_signals(
     ut_enabled = strat.get("ut_enabled", True)
     sr_enabled = sr_cfg.get("enabled", True)
 
+    # ---- Optional closed-candle-only mode ----------------------------------
+    # If ``strategy.signal_on_closed_bar`` is truthy in config, drop the last
+    # (possibly still-forming) row before evaluating UTBot / SR flags. Default
+    # is False for backwards compat — the scanner has always looked at the
+    # running bar, which lets users see intraday-forming signals but can also
+    # cause a signal to disappear later if the bar reverses before it closes.
+    eval_df = df
+    if bool(strat.get("signal_on_closed_bar", False)) and len(df) >= 2:
+        if _is_last_candle_incomplete(df, config):
+            eval_df = df.iloc[:-1]
+
     # ---- UT Bot: check last N candles for any buy/sell ----------------------
     ut_buy  = False
     ut_sell = False
-    if ut_enabled and "ut_buy" in df.columns:
-        tail    = df.tail(lookback_candles)
+    if ut_enabled and "ut_buy" in eval_df.columns:
+        tail    = eval_df.tail(lookback_candles)
         ut_buy  = bool(tail["ut_buy"].any())
         ut_sell = bool(tail["ut_sell"].any())
 
     # ---- S/R Channels: check current (last) candle only --------------------
     sr_buy  = False
     sr_sell = False
-    if sr_enabled and "sr_buy" in df.columns and len(df) > 0:
-        sr_buy  = bool(df["sr_buy"].iloc[-1])
-        sr_sell = bool(df["sr_sell"].iloc[-1])
+    if sr_enabled and "sr_buy" in eval_df.columns and len(eval_df) > 0:
+        sr_buy  = bool(eval_df["sr_buy"].iloc[-1])
+        sr_sell = bool(eval_df["sr_sell"].iloc[-1])
 
     # ---- Combine based on enabled engines ----------------------------------
     triggered_buy  = []

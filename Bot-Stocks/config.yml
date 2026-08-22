@@ -117,8 +117,21 @@ openalgo:
                                     #   'BOTH'      -> Auto-place both BUY & SELL signals
                                     #   'SELL_ONLY' -> Auto-place ONLY SELL signals
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
-  order_quantity: 1                 # Default quantity per order
+  order_quantity: 1                 # Default quantity per order (used when capital_per_trade is unset)
   order_type: "MARKET"               # "MARKET" or "LIMIT"
+  # capital_per_trade: 25000        # Optional: when set, quantity = max(1, floor(capital / price))
+                                    # Takes precedence over order_quantity for auto-orders.
+
+# ------------------------------------------------------------
+# Risk Limits — pre-trade gate for auto orders (all keys optional)
+# ------------------------------------------------------------
+# All defaults are permissive; nothing changes unless risk_limits.enabled is true.
+risk_limits:
+  enabled: false                    # Master toggle for the gate
+  max_concurrent_positions: 5       # Reject when open positions >= this count
+  max_positions_per_symbol: 1       # Reject duplicate direction/symbol churn
+  daily_loss_stop_pct: -3.0         # Reject new trades once today's realized PnL% ≤ this floor
+                                    # (negative → loss cutoff; sum of pnl_pct across trades closed since local midnight)
 
 # ------------------------------------------------------------
 # Trading API Credentials (only the active trading_api_source is used)

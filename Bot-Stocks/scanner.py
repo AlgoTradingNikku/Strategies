@@ -368,19 +368,22 @@ def _evaluate_trade(
     bar index (relative to entry+1) each event first occurred.
 
     Returns (tp_ok, sl_ok, tp_hit_idx, sl_hit_idx).
+    When an event was NOT hit, the corresponding hit_idx is -1 (not 0) so the
+    caller cannot accidentally interpret a "no hit" as "hit at bar 0".
     """
     if is_buy:
-        sl, tp  = entry - 2.0 * atr, entry + 3.0 * atr
-        tp_hit  = np.argmax(future_high >= tp)
-        sl_hit  = np.argmax(future_low  <= sl)
-        tp_ok   = bool(future_high[tp_hit] >= tp) if len(future_high) else False
-        sl_ok   = bool(future_low[sl_hit]  <= sl) if len(future_low)  else False
+        sl, tp     = entry - 2.0 * atr, entry + 3.0 * atr
+        tp_mask    = future_high >= tp
+        sl_mask    = future_low  <= sl
     else:
-        sl, tp  = entry + 2.0 * atr, entry - 3.0 * atr
-        tp_hit  = np.argmax(future_low  <= tp)
-        sl_hit  = np.argmax(future_high >= sl)
-        tp_ok   = bool(future_low[tp_hit]  <= tp) if len(future_low)  else False
-        sl_ok   = bool(future_high[sl_hit] >= sl) if len(future_high) else False
+        sl, tp     = entry + 2.0 * atr, entry - 3.0 * atr
+        tp_mask    = future_low  <= tp
+        sl_mask    = future_high >= sl
+
+    tp_ok  = bool(tp_mask.any()) if tp_mask.size else False
+    sl_ok  = bool(sl_mask.any()) if sl_mask.size else False
+    tp_hit = int(np.argmax(tp_mask)) if tp_ok else -1
+    sl_hit = int(np.argmax(sl_mask)) if sl_ok else -1
     return tp_ok, sl_ok, tp_hit, sl_hit
 
 
@@ -633,13 +636,18 @@ def run_scan(
     timeframe_override: str = None,
     segment_override: str   = None,
     mode_override: str      = None,
-) -> tuple[list[dict], list[dict], str, str]:
+) -> tuple[list[dict], list[dict], str, str, int]:
     """
     Scan all symbols in parallel and return buy/sell results.
 
     Returns
     -------
-    tuple: (buy_results, sell_results, segment_label, timeframe)
+    tuple: (buy_results, sell_results, segment_label, timeframe, total_symbols_scanned)
+        - buy_results   : list[dict]  each dict is one BUY signal + metadata
+        - sell_results  : list[dict]  each dict is one SELL signal + metadata
+        - segment_label : str         human-readable segment name (e.g. "NIFTY50+CUSTOM")
+        - timeframe     : str         effective candle timeframe used
+        - total_symbols_scanned : int number of unique symbols the scanner iterated over
     """
     strat  = copy.deepcopy(config.get("strategy", {}))
     sr_cfg = copy.deepcopy(config.get("sr_channels", {}))
@@ -854,13 +862,25 @@ def run_scan(
         from types import SimpleNamespace
         import trading_adapter
         import trade_db
+        import risk_limits
         from telegram import send_telegram_alert
 
         try:
             open_positions = trade_db.get_open_positions()
             open_syms = {p["symbol"] for p in open_positions}
         except Exception:
+            open_positions = []
             open_syms = set()
+
+        # Log risk-limits config once per scan so operators know it's active.
+        rl_cfg = config.get("risk_limits", {}) or {}
+        if rl_cfg.get("enabled", False):
+            log.info(
+                "  🛡  Risk limits ON | max_concurrent=%s max_per_sym=%s daily_loss=%s%%",
+                rl_cfg.get("max_concurrent_positions", "∞"),
+                rl_cfg.get("max_positions_per_symbol", "∞"),
+                rl_cfg.get("daily_loss_stop_pct", "off"),
+            )
 
         for r in (buy_results + sell_results):
             sig = str(r.get("signal", "BUY")).upper()
@@ -877,10 +897,21 @@ def run_scan(
                 log.info("  [%s] Skipped auto order: position already open in trade_db", sym)
                 continue
 
+            # ---- Risk-limits gate ----
+            # Re-uses the cached ``open_positions`` list so all candidates in
+            # this scan share the same "current state" snapshot rather than
+            # racing against each other's DB writes.
+            ok, why = risk_limits.check_can_open_new(sym, config, open_positions)
+            if not ok:
+                log.info("  [%s] Skipped auto order — risk gate: %s", sym, why)
+                continue
+
             close_price = float(r.get("close") or 0.0)
             stop_loss   = float(r.get("stop_loss") or close_price * 0.99)
             target_price = float(r.get("target")   or close_price * 1.02)
-            quantity = int(oa_cfg.get("order_quantity", 1))
+            # Capital-aware sizing: prefers openalgo.capital_per_trade when
+            # set, else falls back to openalgo.order_quantity (or 1).
+            quantity = risk_limits.compute_quantity(close_price, config, fallback_qty=1)
             product = str(oa_cfg.get("order_product", "MIS"))
             price_type = str(oa_cfg.get("order_type", "MARKET"))
             exchange = str(config.get("exchange", "NSE"))
@@ -916,6 +947,16 @@ def run_scan(
                         "timeframe": timeframe,
                     })
                     open_syms.add(sym)
+                    # Append to the in-memory snapshot so subsequent candidates
+                    # in this same scan see the fresh position when the risk
+                    # gate re-evaluates max_concurrent_positions.
+                    open_positions.append({
+                        "symbol": sym,
+                        "exchange": exchange,
+                        "direction": sig,
+                        "quantity": quantity,
+                        "entry_price": close_price,
+                    })
                     log.info("  [%s] Registered auto position ID %d in trade_db", sym, pos_id)
                 except Exception as db_err:
                     log.error("  [%s] Failed to record auto position in DB: %s", sym, db_err)
