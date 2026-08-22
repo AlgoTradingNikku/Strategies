@@ -118,35 +118,31 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-header">
-                                <span class="stat-title">Total Contracts Scanned</span>
+                                <span class="stat-title">Scanned</span>
                                 <div class="stat-icon info-icon"><i class="fa-solid fa-layer-group"></i></div>
                             </div>
                             <h2 class="stat-value" id="stat-scanned-count">14</h2>
-                            <span class="stat-sub">3 Levels Up/Down CE & PE</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
-                                <span class="stat-title">BUY Signals</span>
+                                <span class="stat-title">BUY</span>
                                 <div class="stat-icon buy-icon"><i class="fa-solid fa-circle-arrow-up"></i></div>
                             </div>
                             <h2 class="stat-value text-buy" id="stat-buy-count">0</h2>
-                            <span class="stat-sub">Across option strike grid</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
-                                <span class="stat-title">SELL Signals</span>
+                                <span class="stat-title">SELL</span>
                                 <div class="stat-icon sell-icon"><i class="fa-solid fa-circle-arrow-down"></i></div>
                             </div>
                             <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
-                            <span class="stat-sub">Across option strike grid</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-header">
-                                <span class="stat-title">Last Scan Cycle</span>
+                                <span class="stat-title">Last Scan</span>
                                 <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
                             </div>
                             <h2 class="stat-value" id="stat-last-scan-time">—</h2>
-                            <span class="stat-sub">Local system time</span>
                         </div>
                     </div>
 
@@ -349,34 +345,6 @@
                                 </div>
                                 <label class="switch"><input type="checkbox" id="dash-sr-enabled" checked><span class="slider round"></span></label>
                             </div>
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">EMA Trend Filter</span>
-                                    <span class="toggle-desc">Filter signals by major EMA trend</span>
-                                </div>
-                                <label class="switch"><input type="checkbox" id="dash-filters-ema"><span class="slider round"></span></label>
-                            </div>
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">Volume Filter</span>
-                                    <span class="toggle-desc">Require volume confirmation</span>
-                                </div>
-                                <label class="switch"><input type="checkbox" id="dash-filters-volume"><span class="slider round"></span></label>
-                            </div>
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">MTF Hard Confirmation</span>
-                                    <span class="toggle-desc">Filter signals by HTF trend (15m)</span>
-                                </div>
-                                <label class="switch"><input type="checkbox" id="dash-filters-mtf"><span class="slider round"></span></label>
-                            </div>
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">Squeeze Filter</span>
-                                    <span class="toggle-desc">Require squeeze release</span>
-                                </div>
-                                <label class="switch"><input type="checkbox" id="dash-filters-squeeze"><span class="slider round"></span></label>
-                            </div>
 
                             <!-- ═══ [Sprint-1] Risk & Execution Guardrails ═══ -->
                             <div style="margin: 14px 0 6px 0; padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.06em;">
@@ -443,6 +411,10 @@
                                 </div>
                                 <label class="switch"><input type="checkbox" id="dash-consecutive-loss" checked><span class="slider round"></span></label>
                             </div>
+                            <!-- ═══ [Sprint-3] Position-Sizing Toggles ═══ -->
+                            <div style="margin: 14px 0 6px 0; padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.06em;">
+                                <i class="fa-solid fa-scale-balanced"></i> Position Sizing
+                            </div>
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
                                     <span class="toggle-name">Dynamic Position Sizing</span>
@@ -456,6 +428,11 @@
                                     <span class="toggle-desc">Scale risk% by A/B/C grade</span>
                                 </div>
                                 <label class="switch"><input type="checkbox" id="dash-grade-multiplier"><span class="slider round"></span></label>
+                            </div>
+
+                            <!-- ═══ [Sprint-4] Alpha-Enhancer Toggles ═══ -->
+                            <div style="margin: 14px 0 6px 0; padding: 8px 0 4px 0; border-top: 1px solid var(--border-color); font-size: 0.72rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.06em;">
+                                <i class="fa-solid fa-bolt"></i> Alpha Enhancers
                             </div>
                             <div class="control-toggle-item">
                                 <div class="toggle-info">

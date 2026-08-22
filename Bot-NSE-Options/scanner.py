@@ -69,7 +69,6 @@ from signals import (
     compute_sr_signals,
     evaluate_composite_signals,
     calculate_risk_reward,
-    check_mtf_confirmation,
 )
 from options_grid import generate_option_strike_grid
 import trading_adapter

@@ -256,10 +256,6 @@ class GridUpdateRequest(BaseModel):
 class FilterToggleRequest(BaseModel):
     ut_enabled: bool = True
     sr_enabled: bool = True
-    ema_enabled: bool = False
-    volume_enabled: bool = False
-    mtf_enabled: bool = False
-    squeeze_enabled: bool = False
     # ---- [Sprint-1] New guardrail toggles ---------------------------------
     dedup_enabled: bool = True                 # Duplicate-Entry Guard
     directional_gate_enabled: bool = True      # Spot-trend directional filter
@@ -426,10 +422,6 @@ async def toggle_filters(req: FilterToggleRequest):
     def update_filters(cfg):
         cfg.setdefault("strategy", {})["ut_enabled"] = req.ut_enabled
         cfg.setdefault("sr_channels", {})["enabled"] = req.sr_enabled
-        cfg.setdefault("filters", {})["ema_trend_filter"] = req.ema_enabled
-        cfg.setdefault("filters", {})["volume_filter"] = req.volume_enabled
-        cfg.setdefault("filters", {})["mtf_confirmation"] = req.mtf_enabled
-        cfg.setdefault("filters", {})["squeeze_filter"] = req.squeeze_enabled
         # [Sprint-1] Guardrail toggles
         cfg.setdefault("trading", {}).setdefault("dedup", {})["enabled"] = req.dedup_enabled
         cfg.setdefault("trading", {}).setdefault("directional_gate", {})["enabled"] = req.directional_gate_enabled

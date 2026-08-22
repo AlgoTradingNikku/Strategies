@@ -61,10 +61,6 @@ FastAPI + web dashboard and OpenAlgo broker integration.
 |----------------------------------|-----------------------------------------------|--------------------------------------|--------|
 | UT Bot signals                   | `strategy.ut_enabled`                         | Quick Filters → UT Bot Engine        | Core   |
 | S/R Channels                     | `sr_channels.enabled`                         | Quick Filters → S/R Zones Engine     | Core   |
-| EMA trend filter                 | `filters.ema_trend_filter`                    | Quick Filters → EMA Trend Filter     | Core   |
-| Volume filter                    | `filters.volume_filter`                       | Quick Filters → Volume Filter        | Core   |
-| MTF confirmation                 | `filters.mtf_confirmation`                    | Quick Filters → MTF Hard Confirm     | Core   |
-| Squeeze filter                   | `filters.squeeze_filter`                      | Quick Filters → Squeeze Filter       | Core   |
 | **Kill switch**                  | `risk.kill_switch`                            | Header → KILL SWITCH button          | **1**  |
 | **Duplicate-entry guard**        | `trading.dedup.enabled`                       | Quick Filters → Duplicate Entry Guard| **1**  |
 | **Cool-down after exit**         | `trading.dedup.cooldown_minutes`              | Settings → Cool-Down (min)           | **1**  |
@@ -102,7 +98,6 @@ Every feature is toggleable. Key sections:
 - **`options`** — underlying, expiry, strike-gap.
 - **`strategy`** — UT-Bot key value, ATR period, Heikin-Ashi.
 - **`sr_channels`** — S/R zone width & lookback.
-- **`filters`** — EMA / volume / MTF / squeeze toggles.
 - **`bot`** — Port, auto-scan interval, market hours, entry cutoff.
 - **`trading`** — Auto/manual mode, min grade/score, dedup, directional gate.
 - **`trade_management`** — Trailing SL rules, break-even shift, monitor interval.

@@ -104,7 +104,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Quick Filter Switches (+ [Sprint-1] risk guardrail toggles + [Sprint-2] signal-quality)
     const filterSwitches = [
         "dash-ut-enabled", "dash-sr-enabled",
-        "dash-filters-ema", "dash-filters-volume", "dash-filters-mtf", "dash-filters-squeeze",
         "dash-dedup-enabled", "dash-directional-gate", "dash-market-hours", "dash-daily-loss",
         "dash-atr-filter", "dash-adx-filter", "dash-spread-filter", "dash-consecutive-loss",
         // [Sprint-3] Position-sizing toggles
@@ -243,10 +242,6 @@ async function updateQuickFilters() {
     const payload = {
         ut_enabled: document.getElementById("dash-ut-enabled").checked,
         sr_enabled: document.getElementById("dash-sr-enabled").checked,
-        ema_enabled: document.getElementById("dash-filters-ema").checked,
-        volume_enabled: document.getElementById("dash-filters-volume").checked,
-        mtf_enabled: document.getElementById("dash-filters-mtf").checked,
-        squeeze_enabled: document.getElementById("dash-filters-squeeze").checked,
         // [Sprint-1] Guardrail toggles
         dedup_enabled: document.getElementById("dash-dedup-enabled")?.checked ?? true,
         directional_gate_enabled: document.getElementById("dash-directional-gate")?.checked ?? true,

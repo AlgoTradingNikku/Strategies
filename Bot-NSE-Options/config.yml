@@ -69,12 +69,6 @@ data:
 mtf_filter:
   enabled: false                    # Set true to enforce Multi-Timeframe trend filtering (signal must match trend)
 
-filters:
-  ema_trend_filter: false           # Filter signals using EMA trend direction
-  volume_filter: false              # Filter signals using volume spike confirmation
-  mtf_confirmation: false           # Require multi-timeframe alignment confirmation
-  squeeze_filter: false             # Filter trades during low-volatility squeeze periods
-
 # ------------------------------------------------------------------------------
 # 6. Bot Runtime & Background Scanner
 # ------------------------------------------------------------------------------

@@ -343,9 +343,3 @@ def calculate_risk_reward(
         "risk_reward": f"1:{rr_ratio:.1f}",
     }
 
-
-def check_mtf_confirmation(df_ltf: pd.DataFrame, df_htf: pd.DataFrame) -> bool:
-    if df_htf is None or df_htf.empty or len(df_htf) < 2:
-        return True
-    df_htf = compute_utbot_signals(df_htf)
-    return bool(df_htf["ut_pos"].iloc[-1] >= 0)
