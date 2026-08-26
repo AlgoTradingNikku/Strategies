@@ -1020,12 +1020,31 @@ def evaluate_composite_signals(
             eval_df = df.iloc[:-1]
 
     # ---- UT Bot: check last N candles for any buy/sell ----------------------
+    # "Most-recent-wins" reducer: when both a BUY and a SELL are present inside
+    # the lookback window (e.g. a rapid flip on two consecutive bars), keep only
+    # whichever fired on the more recent bar. This matches how a human reads
+    # the discrete TradingView labels — the latest tag is the active signal —
+    # and prevents contradictory BUY+SELL both being True on the same symbol.
     ut_buy  = False
     ut_sell = False
     if ut_enabled and "ut_buy" in eval_df.columns:
         tail    = eval_df.tail(lookback_candles)
         ut_buy  = bool(tail["ut_buy"].any())
         ut_sell = bool(tail["ut_sell"].any())
+
+        if ut_buy and ut_sell:
+            # Locate the last True index for each side within the tail window.
+            buy_positions  = np.where(tail["ut_buy"].values)[0]
+            sell_positions = np.where(tail["ut_sell"].values)[0]
+            last_buy_idx   = int(buy_positions[-1])  if len(buy_positions)  else -1
+            last_sell_idx  = int(sell_positions[-1]) if len(sell_positions) else -1
+            if last_sell_idx > last_buy_idx:
+                ut_buy = False
+            elif last_buy_idx > last_sell_idx:
+                ut_sell = False
+            # Ties (same bar produced both — practically impossible for UT Bot,
+            # since ut_buy and ut_sell are mutually-exclusive crossovers) are
+            # left as-is so downstream scoring can decide.
 
     # ---- S/R Channels: check current (last) candle only --------------------
     sr_buy  = False

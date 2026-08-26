@@ -87,6 +87,9 @@ sys.path.insert(0, str(_bot_dir))
 from telegram import send_telegram_alert                       # noqa: E402
 from nse_indices import get_index_symbols, list_available_segments  # noqa: E402
 from signal_db import log_signals_batch, check_outcomes                            # noqa: E402
+from regime    import classify_regime                                              # noqa: E402
+import regime_gate                                                                  # noqa: E402
+import signal_grader                                                                # noqa: E402
 from signals import (                                          # noqa: E402
     compute_utbot_signals,
     compute_sr_signals,
@@ -111,6 +114,56 @@ def load_config(path: Path | str = None) -> dict:
 # ============================================================================
 # DATA FETCHING
 # ============================================================================
+
+# ---------------------------------------------------------------------------
+# OpenAlgo helpers (interval mapping + per-process broker capability cache)
+# ---------------------------------------------------------------------------
+# Bot-Stocks uses yfinance-style timeframes ("5m", "1h", "1d", "1W"). OpenAlgo
+# expects broker-native codes ("5m", "1h", "D", "W"). Map before calling.
+_OPENALGO_INTERVAL_MAP = {
+    "1m": "1m", "2m": "2m", "3m": "3m", "5m": "5m",
+    "10m": "10m", "15m": "15m", "20m": "20m", "30m": "30m",
+    "1h": "1h", "2h": "2h", "3h": "3h", "4h": "4h",
+    "1d": "D", "d": "D", "day": "D",
+    "1w": "W", "w": "W", "1W": "W",
+    "1M": "M", "1Q": "Q", "1Y": "Y",
+}
+
+# Cache client.intervals() response for the life of the process. Keyed on
+# (host, apikey) so multi-tenant test envs stay separated. Value is either
+# a set of supported broker codes, or None when the probe failed (in which
+# case we skip the capability check silently and rely on the API's own 400).
+_OPENALGO_SUPPORTED_CACHE: dict[tuple[str, str], set[str] | None] = {}
+
+
+def _openalgo_map_interval(timeframe: str) -> str:
+    """Translate a Bot-Stocks timeframe into an openalgo-native interval code."""
+    return _OPENALGO_INTERVAL_MAP.get(timeframe, _OPENALGO_INTERVAL_MAP.get(timeframe.lower(), timeframe))
+
+
+def _openalgo_supported_intervals(client, host: str, apikey: str) -> set[str] | None:
+    """Return the set of interval codes the active openalgo broker supports.
+
+    Cached per process. Returns None on any error so the caller can skip the
+    pre-flight check gracefully.
+    """
+    key = (host, apikey)
+    if key in _OPENALGO_SUPPORTED_CACHE:
+        return _OPENALGO_SUPPORTED_CACHE[key]
+    try:
+        resp = client.intervals()
+        if isinstance(resp, dict) and resp.get("status") == "success":
+            data = resp.get("data", {}) or {}
+            supported: set[str] = set()
+            for group in ("seconds", "minutes", "hours", "days", "weeks", "months"):
+                supported.update(data.get(group, []) or [])
+            _OPENALGO_SUPPORTED_CACHE[key] = supported or None
+            return _OPENALGO_SUPPORTED_CACHE[key]
+    except Exception:
+        pass
+    _OPENALGO_SUPPORTED_CACHE[key] = None
+    return None
+
 
 def _parse_timeframe(tf: str) -> timedelta:
     """Convert a timeframe string (e.g. '15m', '1h', '1d') to a timedelta."""
@@ -294,21 +347,60 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
         # ------------------------------------------------------------------
         elif data_source == "openalgo":
             from openalgo import api as oa_api
+            import random
 
             oa_cfg = config.get("openalgo", {})
-            client = oa_api(
-                api_key=oa_cfg.get("apikey", ""),
-                host=oa_cfg.get("base_url", "http://127.0.0.1:5000"),
-            )
+            host   = oa_cfg.get("base_url", "http://127.0.0.1:5000")
+            apikey = oa_cfg.get("apikey", "")
+            client = oa_api(api_key=apikey, host=host)
 
-            raw = client.history(
-                symbol=symbol,
-                exchange=exchange,
-                interval=timeframe,
-                start_date=start_str,
-                end_date=end_str,
-            )
+            # --- Interval mapping (openalgo uses "D"/"W"/"M", not "1d"/"1W"/"1M") ---
+            oa_interval = _openalgo_map_interval(timeframe)
 
+            # --- Pre-flight capability check (broker-specific) -----------------
+            supported = _openalgo_supported_intervals(client, host, apikey)
+            if supported is not None and oa_interval not in supported:
+                log.warning(
+                    "[%s] timeframe %r (openalgo=%r) not supported by active broker; supported=%s",
+                    symbol, timeframe, oa_interval, sorted(supported),
+                )
+                return None
+
+            # --- Fetch with retry/backoff (mirrors yfinance branch) ------------
+            max_retries = 3
+            raw = None
+            for attempt in range(max_retries):
+                try:
+                    raw = client.history(
+                        symbol=symbol,
+                        exchange=exchange,
+                        interval=oa_interval,
+                        start_date=start_str,
+                        end_date=end_str,
+                    )
+                    # Success signal: a DataFrame, or a dict with status=='success'.
+                    if isinstance(raw, pd.DataFrame) and not raw.empty:
+                        break
+                    if isinstance(raw, dict):
+                        if raw.get("status") == "error":
+                            # Structured API error — surface once, don't retry blindly
+                            log.warning(
+                                "[%s] openalgo error: %s (code=%s)",
+                                symbol, raw.get("message"), raw.get("code"),
+                            )
+                            return None
+                        if raw.get("data") is not None:
+                            break
+                except Exception as ex:
+                    if attempt == max_retries - 1:
+                        log.warning(
+                            "[%s] openalgo fetch failed after %d attempts: %s",
+                            symbol, max_retries, ex,
+                        )
+                        return None
+                time.sleep(0.5 * (attempt + 1) + random.uniform(0.05, 0.25))
+
+            # --- Normalise response into a DataFrame ---------------------------
             if isinstance(raw, pd.DataFrame):
                 df = raw
             elif isinstance(raw, dict):
@@ -328,6 +420,7 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
                 log.warning("[%s] No data from openalgo.", symbol)
                 return None
 
+            # --- Index normalisation ------------------------------------------
             if "datetime" in df.columns:
                 df["datetime"] = pd.to_datetime(df["datetime"])
                 df = df.set_index("datetime")
@@ -339,6 +432,43 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
 
             df = df.sort_index()
             df.columns = [c.lower() for c in df.columns]
+
+            # Drop broker-specific columns not used anywhere in Bot-Stocks
+            # (openalgo returns 'oi' / 'open_interest' for equities as 0).
+            df = df.drop(columns=[c for c in ("oi", "open_interest") if c in df.columns])
+
+            # Strip tz so downstream code matches the yfinance/tvdatafeed/twelvedata
+            # branches (naive wall-clock in IST). Openalgo returns Asia/Kolkata tz-aware.
+            if df.index.tz is not None:
+                df.index = df.index.tz_convert("Asia/Kolkata").tz_localize(None)
+
+            # Collapse duplicate timestamps (Historify occasionally emits dupes on
+            # backfill boundaries).
+            df = df[~df.index.duplicated(keep="last")]
+
+            # Coerce OHLC to numeric and drop rows with NaN in any OHLC field.
+            for _c in ("open", "high", "low", "close"):
+                if _c in df.columns:
+                    df[_c] = pd.to_numeric(df[_c], errors="coerce")
+            df = df.dropna(subset=[c for c in ("open", "high", "low", "close") if c in df.columns])
+
+            # Filter synthetic post-close "flat" bars: volume==0 AND OHLC all equal.
+            # These are emitted by openalgo Historify at 15:15/15:20 IST after
+            # session close and would pull ATR toward zero if left in place.
+            if "volume" in df.columns and not df.empty:
+                _flat = (
+                    (df["volume"] == 0)
+                    & (df["open"] == df["close"])
+                    & (df["high"] == df["low"])
+                    & (df["open"] == df["high"])
+                )
+                if _flat.any():
+                    log.debug("[%s] dropping %d synthetic zero-vol flat bars.", symbol, int(_flat.sum()))
+                    df = df[~_flat]
+
+            if df.empty:
+                log.warning("[%s] No usable rows after openalgo cleanup.", symbol)
+                return None
 
         # ------------------------------------------------------------------
         else:
@@ -600,7 +730,7 @@ def scan_symbol(
         if filters_cfg.get("risk_reward_enabled", True):
             rr = calculate_risk_reward(df, signal_type, zones, config)
 
-        return {
+        result = {
             **base_info,
             "signal":        signal_type,
             "triggered":     triggered,
@@ -611,6 +741,22 @@ def scan_symbol(
             "risk_reward":   rr.get("risk_reward"),
             "hist_win_rate": hist_win_rate,
         }
+
+        # ---- Sprint 3: signal grading -------------------------------------
+        # Graded here (rather than in the auto-order block) so EVERY signal
+        # carries a grade — including ones that never reach auto-order because
+        # auto_order is off or a gate rejects them. That's what makes
+        # win-rate-by-grade analysis possible over the whole signal population
+        # rather than just the traded subset.
+        try:
+            grade_info = signal_grader.grade_signal(result, config)
+            result["grade"]           = grade_info.get("grade")
+            result["grade_score"]     = grade_info.get("score")
+            result["grade_breakdown"] = grade_info.get("breakdown", {})
+        except Exception as ge:      # pragma: no cover — grader is fail-open
+            log.debug("Grading failed for %s: %s", symbol, ge)
+
+        return result
 
     if composite["buy"]:
         buy_res = _build_result(
@@ -636,18 +782,20 @@ def run_scan(
     timeframe_override: str = None,
     segment_override: str   = None,
     mode_override: str      = None,
-) -> tuple[list[dict], list[dict], str, str, int]:
+) -> tuple[list[dict], list[dict], str, str, int, str]:
     """
     Scan all symbols in parallel and return buy/sell results.
 
     Returns
     -------
-    tuple: (buy_results, sell_results, segment_label, timeframe, total_symbols_scanned)
+    tuple: (buy_results, sell_results, segment_label, timeframe, total_symbols_scanned, current_regime)
         - buy_results   : list[dict]  each dict is one BUY signal + metadata
         - sell_results  : list[dict]  each dict is one SELL signal + metadata
         - segment_label : str         human-readable segment name (e.g. "NIFTY50+CUSTOM")
         - timeframe     : str         effective candle timeframe used
         - total_symbols_scanned : int number of unique symbols the scanner iterated over
+        - current_regime : str        Sprint-1.5 regime tag from NIFTY at scan time
+                                       (e.g. "trending_up", "chop", "unknown")
     """
     strat  = copy.deepcopy(config.get("strategy", {}))
     sr_cfg = copy.deepcopy(config.get("sr_channels", {}))
@@ -767,6 +915,19 @@ def run_scan(
     except Exception as e:
         log.debug("Could not fetch NIFTY50 index for RS: %s", e)
 
+    # ---- Classify current market regime -----------------------------------
+    # Uses the same nifty_df already fetched for Relative Strength — no extra
+    # network call. Regime is a tag on every signal from this scan and is used
+    # by Sprint 2 to gate engines (e.g. disable UT Bot in chop).
+    regime_info = classify_regime(nifty_df, config)
+    current_regime = regime_info["regime"]
+    log.info(
+        "  Market Regime : %s  (ADX=%s  +DI=%s  -DI=%s  vol_pct=%s)",
+        current_regime,
+        regime_info["adx"], regime_info["plus_di"],
+        regime_info["minus_di"], regime_info["vol_pct"],
+    )
+
     # ---- Pre-fetch HTF data for all symbols in parallel (MTF confirmation) --
     # Mirrors the nifty_df pattern: one parallel batch before the main scan
     # executor, eliminating a second sequential fetch inside each worker thread.
@@ -876,11 +1037,21 @@ def run_scan(
         rl_cfg = config.get("risk_limits", {}) or {}
         if rl_cfg.get("enabled", False):
             log.info(
-                "  🛡  Risk limits ON | max_concurrent=%s max_per_sym=%s daily_loss=%s%%",
+                "  🛡  Risk limits ON | max_concurrent=%s max_per_sym=%s daily_loss=%s%% sizing=%s",
                 rl_cfg.get("max_concurrent_positions", "∞"),
                 rl_cfg.get("max_positions_per_symbol", "∞"),
                 rl_cfg.get("daily_loss_stop_pct", "off"),
+                rl_cfg.get("sizing_mode", "legacy"),
             )
+
+        # Sprint-2: log regime-gate state once per scan.
+        if regime_gate.is_gate_enabled(config):
+            log.info(
+                "  🚦 Regime gate ON | current_regime=%s (signals from disabled engines will be skipped)",
+                current_regime,
+            )
+        else:
+            log.debug("  Regime gate OFF — tagging only (current_regime=%s)", current_regime)
 
         for r in (buy_results + sell_results):
             sig = str(r.get("signal", "BUY")).upper()
@@ -897,6 +1068,46 @@ def run_scan(
                 log.info("  [%s] Skipped auto order: position already open in trade_db", sym)
                 continue
 
+            # ---- Sprint-2 Regime gate ----
+            # Derive engine tag from the ``triggered`` list. A composite
+            # signal (UT + S/R both triggered) is treated as UT-Bot for
+            # gating purposes because UT is the trend-following leg; if
+            # UT is disabled in the current regime we should block the
+            # composite too.
+            triggered_list = r.get("triggered", []) or []
+            triggered_upper = " ".join(str(t).upper() for t in triggered_list)
+            if "UT" in triggered_upper:
+                engine_tag = "utbot"
+            elif "S/R" in triggered_upper or "SR" in triggered_upper:
+                engine_tag = "sr"
+            else:
+                engine_tag = "unknown"
+            r["engine"] = engine_tag  # journal-friendly
+
+            ok_gate, gate_reason = regime_gate.check_signal_allowed(
+                engine_tag, current_regime, config,
+            )
+            if not ok_gate:
+                log.info("  [%s] Skipped auto order — %s", sym, gate_reason)
+                r["regime_gate_ok"] = False
+                r["regime_gate_reason"] = gate_reason
+                continue
+            r["regime_gate_ok"] = True
+
+            # ---- Sprint-3 Min-grade gate ----
+            # Runs after the regime gate (cheap, no DB) and before the
+            # risk-limits gate (which hits trade_db). Default
+            # min_grade_to_trade="D" makes this a no-op until an operator
+            # tightens it, so Sprint 3 ships observe-only.
+            sig_grade = r.get("grade")
+            ok_grade, grade_reason = signal_grader.meets_min_grade(sig_grade, config)
+            if not ok_grade:
+                log.info("  [%s] Skipped auto order — %s", sym, grade_reason)
+                r["grade_gate_ok"] = False
+                r["grade_gate_reason"] = grade_reason
+                continue
+            r["grade_gate_ok"] = True
+
             # ---- Risk-limits gate ----
             # Re-uses the cached ``open_positions`` list so all candidates in
             # this scan share the same "current state" snapshot rather than
@@ -909,9 +1120,59 @@ def run_scan(
             close_price = float(r.get("close") or 0.0)
             stop_loss   = float(r.get("stop_loss") or close_price * 0.99)
             target_price = float(r.get("target")   or close_price * 1.02)
-            # Capital-aware sizing: prefers openalgo.capital_per_trade when
-            # set, else falls back to openalgo.order_quantity (or 1).
-            quantity = risk_limits.compute_quantity(close_price, config, fallback_qty=1)
+
+            # ---- Sprint-2 sizing ----
+            # When risk_limits.sizing_mode is set (risk_based / capital_pct),
+            # use the new sizer. Otherwise fall back to legacy compute_quantity
+            # so existing configs keep working unchanged.
+            sizing_mode_cfg = str((config.get("risk_limits", {}) or {}).get("sizing_mode", "legacy")).lower()
+            if sizing_mode_cfg in ("risk_based", "capital_pct"):
+                sizing = risk_limits.compute_quantity_risk_based(
+                    entry_price=close_price,
+                    stop_loss=stop_loss,
+                    config=config,
+                    fallback_qty=1,
+                    grade=sig_grade,
+                )
+                quantity = int(sizing.get("quantity", 0) or 0)
+                r["position_sizing"] = sizing
+                if quantity < 1:
+                    log.info(
+                        "  [%s] Skipped auto order — sizer returned 0 qty (%s)",
+                        sym, sizing.get("reason", "?"),
+                    )
+                    continue
+                log.info(
+                    "  [%s] 📏 Sized qty=%d | risk=₹%.0f (%.2f%% of ₹%.0f) | mode=%s | grade=%s ×%.2f",
+                    sym, quantity, sizing.get("risk_amount", 0.0),
+                    sizing.get("risk_pct", 0.0), sizing.get("capital", 0.0),
+                    sizing.get("mode", "?"),
+                    sizing.get("grade") or "—",
+                    sizing.get("grade_multiplier", 1.0),
+                )
+            else:
+                # Legacy path — capital-aware qty from openalgo.capital_per_trade.
+                quantity = risk_limits.compute_quantity(close_price, config, fallback_qty=1)
+
+            # ---- Sprint-3 Portfolio exposure cap ----
+            # Checked AFTER sizing because the projected notional depends on the
+            # final quantity (which the grade multiplier may have scaled up).
+            # Re-uses the same cached ``open_positions`` snapshot as the
+            # risk-limits gate so every candidate in this scan sees consistent
+            # state. Disabled unless risk_limits.enabled AND
+            # max_portfolio_exposure_pct are both set.
+            ok_exp, exp_reason = risk_limits.check_portfolio_exposure(
+                config,
+                new_notional=quantity * close_price,
+                open_positions=open_positions,
+            )
+            if not ok_exp:
+                log.info("  [%s] Skipped auto order — %s", sym, exp_reason)
+                r["exposure_gate_ok"] = False
+                r["exposure_gate_reason"] = exp_reason
+                continue
+            r["exposure_gate_ok"] = True
+
             product = str(oa_cfg.get("order_product", "MIS"))
             price_type = str(oa_cfg.get("order_type", "MARKET"))
             exchange = str(config.get("exchange", "NSE"))
@@ -966,12 +1227,24 @@ def run_scan(
                     f"Symbol: <b>{sym}</b>\n"
                     f"Action: <b>{sig}</b>\n"
                     f"Price: ₹{close_price:.2f}\n"
+                    f"SL: ₹{stop_loss:.2f} | Target: ₹{target_price:.2f}\n"
                     f"Qty: {quantity}\n"
+                )
+                # Sprint-2: append risk-based sizing metrics when available.
+                _ps = r.get("position_sizing") or {}
+                if _ps.get("mode", "").startswith("risk_based"):
+                    tg_msg += (
+                        f"Risk: ₹{_ps.get('risk_amount', 0):.0f} "
+                        f"({_ps.get('risk_pct', 0):.2f}% of ₹{_ps.get('capital', 0):.0f})\n"
+                    )
+                tg_msg += (
+                    f"Regime: <b>{current_regime}</b> | "
+                    f"Engine: {r.get('engine', '?')}\n"
                     f"Setup Score: {r.get('setup_score', 0.0):.1f}"
                 )
                 send_telegram_alert(tg_msg, config=config)
 
-    return buy_results, sell_results, segment_label, timeframe, len(symbols)
+    return buy_results, sell_results, segment_label, timeframe, len(symbols), current_regime
 
 
 # ============================================================================
@@ -1253,7 +1526,7 @@ Examples:
         else:
             eff_mode = "None"
 
-    def _do_scan() -> tuple[list, list, str, str, int]:
+    def _do_scan() -> tuple[list, list, str, str, int, str]:
         return run_scan(
             config,
             timeframe_override=timeframe,
@@ -1266,7 +1539,7 @@ Examples:
         if not _is_market_hours(config):
             log.info("Outside market hours — running scan anyway (--once mode).")
 
-        buy_results, sell_results, seg_label, tf, total = _do_scan()
+        buy_results, sell_results, seg_label, tf, total, market_regime = _do_scan()
 
         print_results_table(buy_results, sell_results, seg_label, tf, total)
 
@@ -1289,7 +1562,8 @@ Examples:
         # Log signals to history database in batch
         if config.get("filters", {}).get("signal_history_enabled", True):
             try:
-                log_signals_batch(buy_results + sell_results, timeframe=tf, config=config)
+                log_signals_batch(buy_results + sell_results, timeframe=tf,
+                                  config=config, regime=market_regime)
             except Exception as e:
                 log.debug("Signal history log failed: %s", e)
 
@@ -1314,7 +1588,7 @@ Examples:
                     if boundary != last_scan_boundary:
                         last_scan_boundary = boundary
 
-                        buy_results, sell_results, seg_label, tf, total = _do_scan()
+                        buy_results, sell_results, seg_label, tf, total, market_regime = _do_scan()
 
                         print_results_table(buy_results, sell_results, seg_label, tf, total)
 
@@ -1340,7 +1614,8 @@ Examples:
                             # Log signals to history database in batch
                             if config.get("filters", {}).get("signal_history_enabled", True):
                                 try:
-                                    log_signals_batch(buy_results + sell_results, timeframe=tf, config=config)
+                                    log_signals_batch(buy_results + sell_results, timeframe=tf,
+                                                      config=config, regime=market_regime)
                                 except Exception as e:
                                     log.debug("Signal history log failed: %s", e)
                         else:

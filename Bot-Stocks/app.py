@@ -528,12 +528,26 @@ async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
     """
     try:
         cfg = load_config()
-        buy, sell, label, tf, total_symbols = await run_in_threadpool(
+        # run_scan returns a 6-tuple since Sprint 1.5 (adds current_regime).
+        # The 6th element is the market regime string (e.g. "trending_up",
+        # "chop", "unknown"). Older code assumed 5 items — fixed here.
+        buy, sell, label, tf, total_symbols, current_regime = await run_in_threadpool(
             run_scan,
             cfg,
             timeframe_override=timeframe,
             mode_override=mode,
         )
+        # Sprint 2.5: surface regime + gate state at the top level so the
+        # dashboard can render a status strip without hitting /api/risk/status
+        # for every scan. Individual per-row fields (engine, regime_gate_ok,
+        # position_sizing) already live inside each buy/sell dict — scanner
+        # attaches them during the auto-order pass.
+        try:
+            from regime_gate import is_gate_enabled  # local to avoid cycle
+            gate_on = is_gate_enabled(cfg)
+        except Exception:
+            gate_on = False
+
         return {
             "status": "success",
             "segment_label": label,
@@ -541,9 +555,12 @@ async def trigger_scan(timeframe: str | None = None, mode: str | None = None):
             "buy_signals": buy,
             "sell_signals": sell,
             "total_scanned": total_symbols,
+            "current_regime": current_regime,
+            "regime_gate_enabled": gate_on,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
     except Exception as e:
+        log.error("run_scan failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to run scan: {e}")
 
 @app.get("/api/history/{symbol}")
@@ -641,6 +658,116 @@ def get_stats(days: int = 30):
         log.error("Failed to retrieve statistics: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {e}")
 
+
+@app.get("/api/risk/status")
+def get_risk_status():
+    """[Sprint 2.5] Snapshot of current risk state for the dashboard status strip.
+
+    Returns
+    -------
+    dict
+        regime_gate_enabled : bool
+        sizing_mode         : "legacy" | "risk_based" | "capital_pct"
+        capital             : effective ₹ capital (clamped to config range)
+        risk_per_trade_pct  : float
+        daily_loss_cap_pct  : float | None  (Sprint 1 legacy %-based cap)
+        daily_loss_cap_rupees : float | None (Sprint 2 absolute-₹ cap)
+        realized_pnl_today_rupees : float  (sum of (close-entry)*qty*sign since 00:00 IST)
+        realized_pnl_today_pct    : float  (as % of effective capital, informational)
+        open_positions      : int   (currently monitored)
+        min_grade_to_trade  : "A"|"B"|"C"|"D"  (Sprint 3; "D" = no gating)
+        grade_multiplier_enabled : bool  (Sprint 3)
+        portfolio_exposure  : dict | None — {exposure_rupees, budget_rupees,
+                              exposure_pct, max_pct, positions, enabled}
+
+    Never raises — on any downstream failure returns partial dict with
+    `error` key so the dashboard degrades gracefully.
+    """
+    out: dict = {
+        "regime_gate_enabled": False,
+        "sizing_mode": "legacy",
+        "capital": None,
+        "risk_per_trade_pct": None,
+        "daily_loss_cap_pct": None,
+        "daily_loss_cap_rupees": None,
+        "realized_pnl_today_rupees": 0.0,
+        "realized_pnl_today_pct": 0.0,
+        "open_positions": 0,
+        "min_grade_to_trade": "D",
+        "grade_multiplier_enabled": False,
+        "portfolio_exposure": None,
+    }
+    try:
+        cfg = load_config()
+        rl_cfg = cfg.get("risk_limits", {}) or {}
+        regime_cfg = cfg.get("regime", {}) or {}
+
+        out["regime_gate_enabled"] = bool(regime_cfg.get("gate_enabled", False))
+        out["sizing_mode"]         = str(rl_cfg.get("sizing_mode", "legacy"))
+        out["risk_per_trade_pct"]  = float(rl_cfg.get("risk_per_trade_pct", 1.0))
+        out["daily_loss_cap_pct"]  = rl_cfg.get("daily_loss_stop_pct")
+        out["daily_loss_cap_rupees"] = rl_cfg.get("daily_loss_stop_rupees")
+
+        # Capital via validate_capital → applies clamp / unlimited flag consistently
+        try:
+            from risk_limits import validate_capital
+            out["capital"] = float(validate_capital(cfg))
+        except Exception as ce:
+            log.debug("validate_capital failed in /api/risk/status: %s", ce)
+            out["capital"] = float(rl_cfg.get("capital", 100000))
+
+        # Today's realized ₹ P&L — since 00:00 in the configured tz.
+        # Uses trade_db.get_realized_pnl_rupees_since (added in Sprint 2).
+        try:
+            from datetime import datetime as _dt
+            # Match scanner's tz handling — fall back to naive local if config
+            # doesn't specify. get_realized_pnl_rupees_since accepts an ISO
+            # string; we deliberately keep it in local time to mirror how
+            # closed_at timestamps are recorded in trade_db.
+            start_iso = _dt.now().replace(hour=0, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M:%S")
+            pnl_r = trade_db.get_realized_pnl_rupees_since(start_iso)
+            out["realized_pnl_today_rupees"] = round(float(pnl_r), 2)
+            if out["capital"] and out["capital"] > 0:
+                out["realized_pnl_today_pct"] = round(pnl_r / out["capital"] * 100.0, 3)
+        except Exception as pe:
+            log.debug("realized-pnl lookup failed in /api/risk/status: %s", pe)
+
+        # Open positions count — cheap, from trade_db active view.
+        active = []
+        try:
+            active = trade_db.get_open_positions() or []
+            out["open_positions"] = len(active)
+        except Exception:
+            pass
+
+        # ---- Sprint 3: grading + portfolio exposure ----------------------
+        # Each block is independently guarded so a Sprint-3 module problem
+        # can't strip the Sprint-2 fields the dashboard already depends on.
+        try:
+            import signal_grader
+            out["min_grade_to_trade"] = signal_grader.get_min_grade(cfg)
+            out["grading_enabled"] = signal_grader.is_grading_enabled(cfg)
+        except Exception as ge:
+            log.debug("grading status lookup failed in /api/risk/status: %s", ge)
+
+        try:
+            out["grade_multiplier_enabled"] = bool(
+                rl_cfg.get("grade_multiplier_enabled", False)
+            )
+            from risk_limits import compute_portfolio_exposure
+            # Pass the already-fetched positions so we don't hit the DB twice.
+            out["portfolio_exposure"] = compute_portfolio_exposure(cfg, active)
+        except Exception as ee:
+            log.debug("exposure lookup failed in /api/risk/status: %s", ee)
+
+        out["status"] = "success"
+        return out
+    except Exception as e:
+        log.error("Failed to build risk status: %s", e, exc_info=True)
+        out["status"] = "partial"
+        out["error"] = str(e)
+        return out
+
 @app.get("/api/index-status")
 async def get_index_status_endpoint():
     """
@@ -687,6 +814,97 @@ async def get_index_status_endpoint():
     except Exception as e:
         log.error("Failed to retrieve index status: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to retrieve index status: {e}")
+
+# ---------------------------------------------------------------------------
+# Sprint 3 — Operator controls for grading and risk scaling
+# ---------------------------------------------------------------------------
+
+@app.post("/api/config/grading")
+def update_grading_config(grade_multiplier_enabled: bool = None, min_grade_to_trade: str = None):
+    """[Sprint 3] Live update of grading configuration without restart.
+    
+    Parameters
+    ----------
+    grade_multiplier_enabled : bool, optional
+        If True, risk sizing scales by conviction (A×1.5, B×1.25, C×1.0, D×0.75).
+        If False (or omitted), all signals use base risk.
+    min_grade_to_trade : {"A", "B", "C", "D"}, optional
+        Minimum grade required to auto-place orders. "D" = no gating.
+        If omitted, leaves current setting unchanged.
+    
+    Returns
+    -------
+    dict
+        {
+            "status": "success" | "error",
+            "message": str,
+            "grade_multiplier_enabled": bool,
+            "min_grade_to_trade": str
+        }
+    
+    Notes
+    -----
+    Changes are persisted to config.yml and take effect immediately on the next scan.
+    """
+    try:
+        cfg = load_config()
+        if cfg is None:
+            cfg = {}
+        
+        rl_cfg = cfg.get("risk_limits", {})
+        if rl_cfg is None:
+            rl_cfg = {}
+        
+        sg_cfg = cfg.get("signal_grading", {})
+        if sg_cfg is None:
+            sg_cfg = {}
+        
+        changes = []
+        
+        # Update grade_multiplier_enabled
+        if grade_multiplier_enabled is not None:
+            old_val = rl_cfg.get("grade_multiplier_enabled", False)
+            rl_cfg["grade_multiplier_enabled"] = bool(grade_multiplier_enabled)
+            changes.append(f"grade_multiplier_enabled: {old_val} → {bool(grade_multiplier_enabled)}")
+            cfg["risk_limits"] = rl_cfg
+        
+        # Update min_grade_to_trade
+        if min_grade_to_trade is not None:
+            if str(min_grade_to_trade).upper() not in ("A", "B", "C", "D"):
+                return {
+                    "status": "error",
+                    "message": f"Invalid min_grade_to_trade: {min_grade_to_trade}. Must be A/B/C/D.",
+                    "grade_multiplier_enabled": rl_cfg.get("grade_multiplier_enabled", False),
+                    "min_grade_to_trade": sg_cfg.get("min_grade_to_trade", "D"),
+                }
+            old_grade = sg_cfg.get("min_grade_to_trade", "D")
+            new_grade = str(min_grade_to_trade).upper()
+            sg_cfg["min_grade_to_trade"] = new_grade
+            changes.append(f"min_grade_to_trade: {old_grade} → {new_grade}")
+            cfg["signal_grading"] = sg_cfg
+        
+        # Persist to config.yml
+        import yaml
+        config_path = _bot_dir / "config.yml"
+        with open(config_path, "w", encoding="utf-8") as f:
+            yaml.dump(cfg, f, default_flow_style=False)
+        
+        log.info("Grading config updated: %s", ", ".join(changes))
+        
+        return {
+            "status": "success",
+            "message": f"Updated: {', '.join(changes) if changes else 'no changes'}",
+            "grade_multiplier_enabled": rl_cfg.get("grade_multiplier_enabled", False),
+            "min_grade_to_trade": sg_cfg.get("min_grade_to_trade", "D"),
+        }
+    except Exception as e:
+        log.error("Failed to update grading config: %s", e, exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Failed: {str(e)}",
+            "grade_multiplier_enabled": None,
+            "min_grade_to_trade": None,
+        }
 
 @app.get("/api/logs")
 def get_logs(lines: int = 150):

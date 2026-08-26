@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="index.css?v=10">
+    <link rel="stylesheet" href="index.css?v=11">
 </head>
 <body>
     <div class="app-container">
@@ -165,13 +165,13 @@
                                 <h2 class="stat-value text-sell" id="stat-sell-count">0</h2>
                                 <span class="stat-sub">Across all segments</span>
                             </div>
-                            <div class="stat-card">
+                            <div class="stat-card" id="stat-regime-card">
                                 <div class="stat-header">
-                                    <span class="stat-title">Last Scan Cycle</span>
-                                    <div class="stat-icon scan-icon"><i class="fa-solid fa-clock"></i></div>
+                                    <span class="stat-title">Market Regime</span>
+                                    <div class="stat-icon scan-icon"><i class="fa-solid fa-compass"></i></div>
                                 </div>
-                                <h2 class="stat-value" id="stat-last-scan-time">-</h2>
-                                <span class="stat-sub">Local system time</span>
+                                <h2 class="stat-value" id="stat-regime-value" style="text-transform: capitalize;">—</h2>
+                                <span class="stat-sub" id="stat-regime-sub">Gate: <b>off</b> · P&amp;L today: <b>₹0</b></span>
                             </div>
                         </div>
 
@@ -782,8 +782,57 @@
                         </div>
                     </div>
 
-                    <!-- Bottom Bar: Save Action -->
-                    <div class="config-form-actions">
+                    <!-- Right Column: Sprint 3 Grading & Risk Controls -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-ranking-star"></i> Signal Quality & Risk Scaling (Sprint 3)
+                        </div>
+                        <div class="config-card-body">
+                            <p style="font-size: 0.85rem; color: var(--text-secondary,#94a3b8); margin-bottom: 12px;">
+                                Grade signals by market context (ADX, RS, S/R, MTF, engine consensus) and scale risk by conviction.
+                            </p>
+
+                            <!-- Grade Multiplier Toggle -->
+                            <div class="form-group toggle-group">
+                                <label for="cfg-grade-multiplier\">Enable Risk Scaling by Grade</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-grade-multiplier">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary,#94a3b8); margin: -8px 0 12px 0;">
+                                When ON: A×1.5, B×1.25, C×1.0, D×0.75 risk sizing
+                            </p>
+
+                            <!-- Minimum Grade to Trade -->
+                            <div class="form-group">
+                                <label for="cfg-min-grade\">Minimum Grade to Auto-Trade</label>
+                                <select id="cfg-min-grade">
+                                    <option value="D">D — No gating (all grades trade)</option>
+                                    <option value="C">C — Filter weak signals</option>
+                                    <option value="B">B — Medium-conviction only</option>
+                                    <option value="A">A — High-conviction only</option>
+                                </select>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary,#94a3b8); margin: -8px 0 12px 0;">
+                                Locked signals below this grade won't auto-place; manual trade still possible.
+                            </p>
+
+                            <!-- Grading Status Info -->
+                            <div class="form-group" style="background: var(--surface-2,#1e2130); padding: 10px; border-radius: 4px; border-left: 3px solid var(--accent-blue,#3b82f6);">
+                                <p style="font-size: 0.75rem; margin: 0; color: var(--text-secondary,#94a3b8);"><strong>Active Gradings:</strong></p>
+                                <p style="font-size: 0.75rem; margin: 4px 0 0 0; color: var(--text-primary,#e2e8f0);" id="grading-status-text">
+                                    Loading...
+                                </p>
+                            </div>
+
+                            <!-- Action Button -->
+                            <button type="button" class="btn btn-accent" id="btn-apply-grading-settings" style="width: 100%; margin-top: 12px;">
+                                <i class="fa-solid fa-save"></i> Apply Grading Settings
+                            </button>
+                        </div>
+                    </div>
+
                         <button type="button" class="btn btn-secondary" id="btn-reset-config">Reset Changes</button>
                         <button type="submit" class="btn btn-primary">Save Configuration</button>
                     </div>
@@ -999,6 +1048,6 @@
             </section>
         </main>
     </div>
-    <script src="index.js?v=12"></script>
+    <script src="index.js?v=15"></script>
 </body>
 </html>

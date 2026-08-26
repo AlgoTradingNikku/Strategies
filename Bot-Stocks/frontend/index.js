@@ -34,7 +34,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const statScannedDetails = document.getElementById("stat-scanned-details");
     const statBuyCount = document.getElementById("stat-buy-count");
     const statSellCount = document.getElementById("stat-sell-count");
-    const statLastScanTime = document.getElementById("stat-last-scan-time");
+    // Sprint 2.5: regime + risk status card (replaces Last Scan Cycle)
+    const statRegimeValue = document.getElementById("stat-regime-value");
+    const statRegimeSub   = document.getElementById("stat-regime-sub");
+    const statRegimeCard  = document.getElementById("stat-regime-card");
 
     // Tables & Search
     const buySignalsTable = document.getElementById("buy-signals-table").querySelector("tbody");
@@ -397,6 +400,79 @@ document.addEventListener("DOMContentLoaded", () => {
             loadConfig();
         }
     });
+
+     // ---------------------------------------------------------------------------
+     // Sprint 3: Grading Control Handlers
+     // ---------------------------------------------------------------------------
+     const btnApplyGrading = document.getElementById("btn-apply-grading-settings");
+     const cfgGradeMultiplier = document.getElementById("cfg-grade-multiplier");
+     const cfgMinGrade = document.getElementById("cfg-min-grade");
+     const gradingStatusText = document.getElementById("grading-status-text");
+
+     // Load grading state from /api/risk/status when config tab is opened
+     async function loadGradingState() {
+         try {
+             const resp = await fetch(`${API_BASE}/api/risk/status`);
+             if (!resp.ok) throw new Error("Failed to load grading state.");
+             const status = await resp.json();
+             
+             // Update controls
+             if (cfgGradeMultiplier) {
+                 cfgGradeMultiplier.checked = status.grade_multiplier_enabled === true;
+             }
+             if (cfgMinGrade) {
+                 cfgMinGrade.value = status.min_grade_to_trade || "D";
+             }
+             
+             // Update status text
+             if (gradingStatusText) {
+                 const enabled = status.grading_enabled === true ? "✓ Enabled" : "✗ Disabled";
+                 const mult = status.grade_multiplier_enabled === true
+                     ? "A×1.5, B×1.25, C×1.0, D×0.75"
+                     : "Uniform risk (×1.0)";
+                 gradingStatusText.innerHTML = `<strong>${enabled}</strong> · Min Grade: <strong>${status.min_grade_to_trade}</strong> · Multiplier: ${mult}`;
+             }
+         } catch (err) {
+             console.error("Failed to load grading state:", err);
+             if (gradingStatusText) gradingStatusText.textContent = "Error loading status";
+         }
+     }
+
+     // Apply grading settings via POST /api/config/grading
+     if (btnApplyGrading) {
+         btnApplyGrading.addEventListener("click", async () => {
+             try {
+                 const enabled = cfgGradeMultiplier ? cfgGradeMultiplier.checked : false;
+                 const minGrade = cfgMinGrade ? cfgMinGrade.value : "D";
+                 
+                 const params = new URLSearchParams();
+                 params.append("grade_multiplier_enabled", enabled);
+                 params.append("min_grade_to_trade", minGrade);
+                 
+                 const resp = await fetch(`${API_BASE}/api/config/grading`, {
+                     method: "POST",
+                     body: params,
+                     headers: { "Content-Type": "application/x-www-form-urlencoded" }
+                 });
+                 
+                 if (!resp.ok) throw new Error("API request failed");
+                 const result = await resp.json();
+                 
+                 if (result.status === "success") {
+                     alert("✓ Grading settings applied! Changes take effect on next scan.");
+                     loadGradingState();  // Refresh UI
+                 } else {
+                     alert(`✗ Error: ${result.message}`);
+                 }
+             } catch (err) {
+                 alert(`Failed to apply settings: ${err.message}`);
+             }
+         });
+     }
+
+     // Load grading state on initial load
+     setTimeout(loadGradingState, 500);
+
 
     // ---------------------------------------------------------------------------
     // Logging Terminal Logic
@@ -864,8 +940,61 @@ document.addEventListener("DOMContentLoaded", () => {
             const winRateStr = item.hist_win_rate !== undefined && item.hist_win_rate !== null ? `${item.hist_win_rate}%` : "—";
 
             const actionClass = type === "BUY" ? "btn-order-buy" : "btn-order-sell";
+
+            // Sprint 2.5: engine tag + regime-gate + sizing badges rendered
+            // inline with the symbol so no new columns are needed. Fields are
+            // optional — pre-Sprint-2 rows simply render without them.
+            let sprintTagsHtml = "";
+            const eng = item.engine;
+            if (eng) {
+                const engMap = { utbot: "UT", sr: "SR", "utbot+sr": "UT+SR" };
+                const engLabel = engMap[String(eng).toLowerCase()] || eng;
+                sprintTagsHtml += `<span class="engine-tag" style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:var(--surface-2,#1e2130); color:var(--text-secondary,#94a3b8); border:1px solid var(--border,#2d3748); vertical-align:middle;" title="Signal engine">${engLabel}</span>`;
+            }
+            // Sprint 3: grade badge — A green, B blue, C amber, D red. Tooltip
+            // carries the composite score; the full per-factor breakdown lives
+            // in item.grade_breakdown if you want to extend the tooltip later.
+            const gr = item.grade;
+            if (gr) {
+                const gradeColours = {
+                    A: { bg: "rgba(16,185,129,0.15)",  fg: "var(--success,#10b981)", bd: "rgba(16,185,129,0.35)" },
+                    B: { bg: "rgba(59,130,246,0.15)",  fg: "var(--accent-blue,#3b82f6)", bd: "rgba(59,130,246,0.35)" },
+                    C: { bg: "rgba(245,158,11,0.15)",  fg: "var(--warning,#f59e0b)", bd: "rgba(245,158,11,0.35)" },
+                    D: { bg: "rgba(239,68,68,0.15)",   fg: "var(--danger,#ef4444)",  bd: "rgba(239,68,68,0.35)" },
+                };
+                const c = gradeColours[String(gr).toUpperCase()] || gradeColours.C;
+                const gScore = item.grade_score !== undefined && item.grade_score !== null
+                    ? ` · score ${Number(item.grade_score).toFixed(0)}` : "";
+                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; vertical-align:middle;" title="Signal grade ${String(gr).toUpperCase()}${gScore} (market-context quality — see signal_grading config)">${String(gr).toUpperCase()}</span>`;
+            }
+            if (item.regime_gate_ok === false) {
+                const gr2 = item.regime_gate_reason || "gate blocked";
+                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gr2.replace(/"/g,"&quot;")}">GATE</span>`;
+            }
+            if (item.grade_gate_ok === false) {
+                const gg = item.grade_gate_reason || "grade gate blocked";
+                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gg.replace(/"/g,"&quot;")}">GRADE</span>`;
+            }
+            if (item.exposure_gate_ok === false) {
+                const ex = item.exposure_gate_reason || "exposure cap hit";
+                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${ex.replace(/"/g,"&quot;")}">EXPOSURE</span>`;
+            }
+            const ps = item.position_sizing;
+            let psTooltip = "";
+            if (ps && typeof ps === "object" && ps.quantity !== undefined) {
+                // NOTE: the scanner emits ``quantity`` (not ``qty``) in the
+                // sizing dict — this was the reason the badge never rendered.
+                const psMode  = ps.mode || "";
+                const psQty   = ps.quantity;
+                const psRisk  = ps.risk_amount !== undefined ? `₹${Number(ps.risk_amount).toFixed(0)}` : "?";
+                const psMult  = ps.grade_multiplier !== undefined && ps.grade_multiplier !== 1.0
+                    ? ` · grade ×${ps.grade_multiplier}` : "";
+                psTooltip = `Sizing: ${psMode} · qty ${psQty} · risk ${psRisk}${psMult}`;
+                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.15); color:var(--success,#10b981); border:1px solid rgba(16,185,129,0.35); vertical-align:middle;" title="${psTooltip.replace(/"/g,'&quot;')}">Qty ${psQty}</span>`;
+            }
+
             tr.innerHTML = `
-                <td><strong>${item.symbol}</strong></td>
+                <td><strong>${item.symbol}</strong>${sprintTagsHtml}</td>
                 <td>${item.close.toFixed(2)}</td>
                 <td><span class="win-rate-val">${winRateStr}</span></td>
                 <td>
@@ -973,10 +1102,40 @@ document.addEventListener("DOMContentLoaded", () => {
         const total = (data.buy_signals?.length || 0) + (data.sell_signals?.length || 0);
         statBuyCount.textContent = data.buy_signals?.length || 0;
         statSellCount.textContent = data.sell_signals?.length || 0;
-        // Show only the time portion of the timestamp (e.g. "20:59:15")
-        const rawTs = data.timestamp || "";
-        const timeOnly = rawTs.includes(" ") ? rawTs.split(" ")[1] : (rawTs || new Date().toLocaleTimeString());
-        statLastScanTime.textContent = timeOnly;
+
+        // Sprint 2.5: populate the Market Regime card from top-level scan payload.
+        // The regime is computed from NIFTY on every scan (see Sprint 1.5).
+        // Gate state + today's P&L come from a separate /api/risk/status call
+        // fired here (piggyback — no independent polling loop).
+        if (statRegimeValue) {
+            const regime = (data.current_regime || "unknown").replace(/_/g, " ");
+            statRegimeValue.textContent = regime;
+            // Colour-code: trending → green, chop → orange, high_vol → red, else neutral
+            const r = (data.current_regime || "").toLowerCase();
+            let colour = "var(--text-primary)";
+            if (r.startsWith("trending"))   colour = "var(--success, #10b981)";
+            else if (r === "chop")          colour = "var(--warning, #f59e0b)";
+            else if (r.includes("high_vol"))colour = "var(--danger,  #ef4444)";
+            statRegimeValue.style.color = colour;
+        }
+        // Fire-and-forget risk status refresh (never blocks scan render).
+        fetch(`${API_BASE}/api/risk/status`)
+            .then(r => r.ok ? r.json() : null)
+            .then(rs => {
+                if (!rs || !statRegimeSub) return;
+                const gateTxt = rs.regime_gate_enabled ? "<b style='color:var(--success)'>ON</b>"
+                                                       : "<b>off</b>";
+                const pnl = Number(rs.realized_pnl_today_rupees ?? 0);
+                const pnlColour = pnl > 0 ? "var(--success, #10b981)"
+                                : pnl < 0 ? "var(--danger,  #ef4444)"
+                                :           "var(--text-primary)";
+                const pnlStr = (pnl >= 0 ? "+₹" : "−₹") + Math.abs(pnl).toLocaleString("en-IN", {maximumFractionDigits: 0});
+                const modeTxt = rs.sizing_mode && rs.sizing_mode !== "legacy"
+                    ? ` · <span title='Sizing mode'>${rs.sizing_mode}</span>`
+                    : "";
+                statRegimeSub.innerHTML = `Gate: ${gateTxt} · P&L today: <b style="color:${pnlColour}">${pnlStr}</b>${modeTxt}`;
+            })
+            .catch(() => { /* silent — dashboard degrades gracefully */ });
 
         // Use the exact symbol count from the API response.
         // Falls back to the sum of buy+sell signals for older API versions.

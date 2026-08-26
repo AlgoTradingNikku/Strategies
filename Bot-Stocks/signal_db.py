@@ -31,6 +31,20 @@ def _get_tz(config: dict) -> object:
     return ZoneInfo("Asia/Kolkata") if exchange.upper() in ("NSE", "BSE") else ZoneInfo("UTC")
 
 
+def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, coltype: str) -> None:
+    """Add a column to *table* only if it doesn't already exist.
+
+    SQLite has no ``ADD COLUMN IF NOT EXISTS``. This helper reads
+    ``pragma_table_info`` and issues the ALTER TABLE only when the column
+    is missing, so it can be called safely on every startup without
+    exploding on already-migrated databases.
+    """
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+        log.info("signal_db: added column %s.%s (%s)", table, column, coltype)
+
+
 def _get_connection(config: dict = None) -> sqlite3.Connection:
     """Get a connection to the SQLite database, creating tables if needed (once per process)."""
     global _db_initialized
@@ -60,9 +74,25 @@ def _get_connection(config: dict = None) -> sqlite3.Connection:
                 outcome_hit_target INTEGER DEFAULT 0,
                 outcome_hit_stop   INTEGER DEFAULT 0,
                 outcome_price      REAL,
-                outcome_time       TEXT
+                outcome_time       TEXT,
+                regime             TEXT,
+                mae_pct            REAL,
+                mfe_pct            REAL,
+                grade              TEXT,
+                grade_score        REAL
             )
         """)
+        # ---- Backfill new columns on pre-existing databases --------------
+        # SQLite lacks ADD COLUMN IF NOT EXISTS, so probe pragma_table_info
+        # and issue ALTER TABLE only when the column is missing. Safe to run
+        # on every startup; idempotent.
+        _add_column_if_missing(conn, "signals", "regime",  "TEXT")
+        _add_column_if_missing(conn, "signals", "mae_pct", "REAL")
+        _add_column_if_missing(conn, "signals", "mfe_pct", "REAL")
+        # Sprint 3 — signal grading.
+        _add_column_if_missing(conn, "signals", "grade",       "TEXT")
+        _add_column_if_missing(conn, "signals", "grade_score", "REAL")
+
         # ---- Indexes -----------------------------------------------------
         # Speeds up:
         #   • get_signal_history() — ORDER BY timestamp DESC + pagination
@@ -89,7 +119,12 @@ def _get_connection(config: dict = None) -> sqlite3.Connection:
 # ============================================================================
 
 
-def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: dict = None) -> list[int]:  # noqa: E501
+def log_signals_batch(
+    signals_list: list[dict],
+    timeframe: str = None,
+    config: dict = None,
+    regime: str = None,
+) -> list[int]:  # noqa: E501
     """
     Insert a list of signals into the database in a single transaction.
 
@@ -98,6 +133,9 @@ def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: d
     signals_list : list of dicts from scanner.py's scan_symbol result
     timeframe    : scan timeframe string (e.g. "5m", "1h")
     config       : optional configuration dict
+    regime       : optional market-regime tag (e.g. "trending_up", "chop")
+                   from ``regime.classify_regime``. Applied to every row in
+                   the batch — reflects the market state at scan time.
 
     Returns
     -------
@@ -128,8 +166,9 @@ def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: d
                 INSERT INTO signals (
                     timestamp, symbol, signal_type, close_price, setup_score,
                     score_reasons, stop_loss, target, risk_reward,
-                    triggered_conditions, timeframe, adx, rs_ratio, mtf_trend
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    triggered_conditions, timeframe, adx, rs_ratio, mtf_trend,
+                    regime, grade, grade_score
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 now,
                 signal_dict.get("symbol", ""),
@@ -145,6 +184,12 @@ def log_signals_batch(signals_list: list[dict], timeframe: str = None, config: d
                 signal_dict.get("adx"),
                 signal_dict.get("rs_ratio"),
                 mtf_trend,
+                regime,
+                # Sprint 3 — grade is attached by scanner._build_result. Absent
+                # on pre-Sprint-3 callers, which is fine: NULL buckets under
+                # "unknown" in get_statistics.
+                signal_dict.get("grade"),
+                signal_dict.get("grade_score"),
             ))
             inserted_ids.append(cursor.lastrowid)
         conn.commit()
@@ -188,7 +233,7 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
         cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
         unchecked = conn.execute("""
-            SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe
+            SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe, timestamp
             FROM signals
             WHERE outcome_checked = 0 AND timestamp <= ?
         """, (cutoff,)).fetchall()
@@ -228,6 +273,21 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
                 post_high = float(post_df["high"].max())
                 post_low  = float(post_df["low"].min())
 
+                # ---- MAE / MFE (max adverse / favourable excursion) --------
+                # Both are expressed as % of entry_price and are always ≥ 0.
+                # For a BUY: adverse = drawdown from entry (post_low ≤ entry);
+                #            favourable = rally from entry (post_high ≥ entry).
+                # For a SELL the roles flip.
+                mae_pct = None
+                mfe_pct = None
+                if entry_price and entry_price > 0:
+                    if sig_type == "BUY":
+                        mae_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
+                        mfe_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
+                    else:  # SELL
+                        mae_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
+                        mfe_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
+
                 # Determine outcome using OHLC extremes on post-signal candles
                 hit_target = 0
                 hit_stop   = 0
@@ -247,9 +307,11 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
                 conn.execute("""
                     UPDATE signals
                     SET outcome_checked = 1, outcome_pnl_pct = ?, outcome_hit_target = ?,
-                        outcome_hit_stop = ?, outcome_price = ?, outcome_time = ?
+                        outcome_hit_stop = ?, outcome_price = ?, outcome_time = ?,
+                        mae_pct = ?, mfe_pct = ?
                     WHERE id = ?
-                """, (round(pnl_pct, 2), hit_target, hit_stop, current_price, now, sig_id))
+                """, (round(pnl_pct, 2), hit_target, hit_stop, current_price, now,
+                      mae_pct, mfe_pct, sig_id))
                 updated += 1
 
             except Exception as e:
@@ -280,6 +342,9 @@ def get_statistics(days: int = 30, config: dict = None) -> dict:
         by_score_tier       : dict mapping score tier to {total, wins, win_rate}
         by_signal_type      : dict mapping BUY/SELL to {total, wins, win_rate}
         by_timeframe        : dict mapping TF to {total, wins, win_rate}
+        by_regime           : dict mapping market regime to {total, wins, win_rate}
+        by_grade            : dict mapping signal grade (A/B/C/D/unknown) to
+                              {total, wins, win_rate}
         avg_rr_winners      : float — average R:R of winning trades
         avg_rr_losers       : float — average R:R of losing trades
     """
@@ -307,8 +372,14 @@ def get_statistics(days: int = 30, config: dict = None) -> dict:
             "by_score_tier": {},
             "by_signal_type": {},
             "by_timeframe": {},
+            "by_regime": {},
+            "by_grade": {},
             "avg_rr_winners": 0.0,
             "avg_rr_losers": 0.0,
+            "avg_mae_winners": 0.0,
+            "avg_mae_losers": 0.0,
+            "avg_mfe_winners": 0.0,
+            "avg_mfe_losers": 0.0,
         }
 
         def _tier(score):
@@ -330,6 +401,8 @@ def get_statistics(days: int = 30, config: dict = None) -> dict:
 
         winner_rrs = []
         loser_rrs = []
+        winner_maes, loser_maes = [], []
+        winner_mfes, loser_mfes = [], []
 
         for r in rows:
             if not r["outcome_checked"]:
@@ -341,15 +414,39 @@ def get_statistics(days: int = 30, config: dict = None) -> dict:
             _update_bucket(stats["by_signal_type"], r["signal_type"], is_win)
             if r["timeframe"]:
                 _update_bucket(stats["by_timeframe"], r["timeframe"], is_win)
+            # Bucket by market regime — the whole point of Sprint 1.5. Rows
+            # written before the regime column existed will have NULL here
+            # and are bucketed under "unknown" so they don't skew any single
+            # regime's stats.
+            regime_key = r["regime"] if "regime" in r.keys() and r["regime"] else "unknown"
+            _update_bucket(stats["by_regime"], regime_key, is_win)
+
+            # Bucket by signal grade — Sprint 3. Rows written before the grade
+            # column existed (or by callers that don't grade) bucket under
+            # "unknown" so they never inflate a real grade's win rate. This is
+            # the table you consult before enabling grade_multiplier_enabled or
+            # raising min_grade_to_trade.
+            grade_key = r["grade"] if "grade" in r.keys() and r["grade"] else "unknown"
+            _update_bucket(stats["by_grade"], grade_key, is_win)
 
             if r["risk_reward"] is not None:
-                if is_win:
-                    winner_rrs.append(r["risk_reward"])
-                else:
-                    loser_rrs.append(r["risk_reward"])
+                (winner_rrs if is_win else loser_rrs).append(r["risk_reward"])
 
-        stats["avg_rr_winners"] = round(sum(winner_rrs) / len(winner_rrs), 2) if winner_rrs else 0.0
-        stats["avg_rr_losers"] = round(sum(loser_rrs) / len(loser_rrs), 2) if loser_rrs else 0.0
+            # MAE / MFE — only present on rows checked after the Sprint-1.5
+            # migration. Older rows contribute nothing (guarded by None).
+            mae = r["mae_pct"] if "mae_pct" in r.keys() else None
+            mfe = r["mfe_pct"] if "mfe_pct" in r.keys() else None
+            if mae is not None:
+                (winner_maes if is_win else loser_maes).append(mae)
+            if mfe is not None:
+                (winner_mfes if is_win else loser_mfes).append(mfe)
+
+        stats["avg_rr_winners"]  = round(sum(winner_rrs) / len(winner_rrs), 2) if winner_rrs else 0.0
+        stats["avg_rr_losers"]   = round(sum(loser_rrs)  / len(loser_rrs),  2) if loser_rrs  else 0.0
+        stats["avg_mae_winners"] = round(sum(winner_maes) / len(winner_maes), 3) if winner_maes else 0.0
+        stats["avg_mae_losers"]  = round(sum(loser_maes)  / len(loser_maes),  3) if loser_maes  else 0.0
+        stats["avg_mfe_winners"] = round(sum(winner_mfes) / len(winner_mfes), 3) if winner_mfes else 0.0
+        stats["avg_mfe_losers"]  = round(sum(loser_mfes)  / len(loser_mfes),  3) if loser_mfes  else 0.0
 
         return stats
 
@@ -395,6 +492,10 @@ def get_signal_history(limit: int = 50, offset: int = 0) -> list[dict]:
                 "outcome_hit_stop":     bool(r["outcome_hit_stop"]),
                 "outcome_price":        r["outcome_price"],
                 "outcome_time":         r["outcome_time"],
+                # Sprint 3 — guarded with a key probe so this still works if the
+                # migration hasn't run yet on an exotic/read-only DB copy.
+                "grade":                r["grade"] if "grade" in r.keys() else None,
+                "grade_score":          r["grade_score"] if "grade_score" in r.keys() else None,
             })
         return results
     finally:

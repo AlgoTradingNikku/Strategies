@@ -245,6 +245,44 @@ def get_realized_pnl_pct_since(iso_start: str) -> float:
         conn.close()
 
 
+def get_realized_pnl_rupees_since(iso_start: str) -> float:
+    """Return the SUM of realised ₹-PnL for positions closed on/after ``iso_start``.
+
+    Sprint 2 addition: complements ``get_realized_pnl_pct_since`` for the
+    absolute-rupee daily-loss cutoff. Because ``pnl_amount`` is not stored
+    on the positions table today, we reconstruct it from
+    ``(close_price - entry_price) × qty × direction_sign`` for CLOSED rows.
+
+    When no matching rows exist, returns 0.0.
+    """
+    conn = _get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT direction, quantity, entry_price, close_price "
+            "FROM positions "
+            "WHERE status = 'CLOSED' AND close_time >= ? "
+            "  AND close_price IS NOT NULL AND entry_price IS NOT NULL",
+            (iso_start,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    total = 0.0
+    for r in rows:
+        try:
+            direction = str(r["direction"]).upper()
+            qty = float(r["quantity"] or 0)
+            entry = float(r["entry_price"] or 0.0)
+            close = float(r["close_price"] or 0.0)
+            sign = 1.0 if direction == "BUY" else -1.0
+            total += (close - entry) * qty * sign
+        except (TypeError, ValueError, KeyError):
+            continue
+    return total
+
+
+
+
 def get_position_events(pos_id: int) -> list[dict]:
     """Return the full audit event log for a specific position."""
     conn = _get_connection()
