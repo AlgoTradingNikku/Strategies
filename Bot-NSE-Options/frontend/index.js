@@ -1,5 +1,6 @@
 let autoRefreshInterval = null;
 let currentScanData = { buy_results: [], sell_results: [] };
+let activeConfig = null;  // Global config cache for interval management
 
 document.addEventListener("DOMContentLoaded", () => {
     // Sidebar Collapse Toggle Logic
@@ -88,6 +89,56 @@ document.addEventListener("DOMContentLoaded", () => {
         const mode = cfg.trading?.order_mode || "manual";
         if (btnManual) btnManual.classList.toggle("active", mode === "manual");
         if (btnAuto) btnAuto.classList.toggle("active", mode === "auto");
+    }).catch(err => console.error("Failed to load order mode config:", err));
+
+    // Scan Interval Dropdown Handler - Load config and setup change listener
+    const intervalSelect = document.getElementById("header-scan-interval");
+    if (intervalSelect) {
+        // Load config and sync dropdown
+        fetch("/api/config")
+            .then(res => res.json())
+            .then(cfg => {
+                activeConfig = cfg;
+                const configSeconds = cfg.scan_interval_seconds || cfg.bot?.auto_scan_interval_minutes * 60 || 300;
+                // Sync dropdown to config value
+                intervalSelect.value = String(configSeconds);
+            })
+            .catch(err => {
+                console.error("Failed to load scan interval config:", err);
+                activeConfig = { scan_interval_seconds: 300 }; // Fallback
+            });
+
+        // Handle interval change
+        intervalSelect.addEventListener("change", async () => {
+            const newSeconds = parseInt(intervalSelect.value);
+            
+            // Update in-memory config
+            if (activeConfig) {
+                activeConfig.scan_interval_seconds = newSeconds;
+            } else {
+                activeConfig = { scan_interval_seconds: newSeconds };
+            }
+            
+            // Restart auto-refresh with new interval (if running)
+            if (autoRefreshInterval !== null) {
+                startAutoRefresh();
+            }
+            
+            // Persist to backend
+            try {
+                await fetch("/api/config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(activeConfig)
+                });
+                const label = intervalSelect.options[intervalSelect.selectedIndex].text;
+                console.log(`✅ Auto-refresh interval set to ${label}`);
+            } catch (err) {
+                console.error("❌ Failed to save interval:", err.message);
+            }
+        });
+    }
+
     // Bind Close All Positions button
     const btnCloseAllHeader = document.getElementById("btn-close-all-positions");
     if (btnCloseAllHeader) btnCloseAllHeader.addEventListener("click", closeAllPositions);
@@ -211,10 +262,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function startAutoRefresh() {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    
+    // Get interval from dropdown or fallback to config/default
+    const intervalSelect = document.getElementById("header-scan-interval");
+    const seconds = intervalSelect ? 
+        parseInt(intervalSelect.value) : 
+        (activeConfig?.scan_interval_seconds || 300);
+    
     autoRefreshInterval = setInterval(() => {
         runScan();
         loadIndices();
-    }, 60000);
+    }, seconds * 1000);  // Dynamic from dropdown
+    
     document.getElementById("auto-refresh-state").textContent = "ON";
     const btn = document.getElementById("btn-toggle-auto-refresh");
     btn.classList.replace("btn-secondary", "btn-primary");

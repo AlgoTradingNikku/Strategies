@@ -197,11 +197,25 @@ def run_scan(config: dict = None) -> dict:
 
     symbols = grid_info["symbols"]
     im = instrument_master.get_instrument_master()
+    
+    # Get signal evaluation settings for logging
+    ut_cfg = config.get("strategy", {})
+    lookback_candles = int(opt_cfg.get("signal_lookback_candles", 2))
+    
+    # Handle both old and new config naming
+    if "signal_on_closed_bar" in ut_cfg:
+        signal_on_closed_bar = bool(ut_cfg.get("signal_on_closed_bar", True))
+    else:
+        signal_on_closed_bar = not bool(ut_cfg.get("signal_on_running_bar", False))
+    
+    bar_mode = "Closed-bar only (TradingView parity)" if signal_on_closed_bar else "Running-bar included"
 
     log.info(
         "========================================================\n"
-        "Starting Options Scan Cycle | Underlying: %s | ATM Strike: %.1f | Gap: %s | Contracts: %d",
+        "Starting Options Scan Cycle | Underlying: %s | ATM Strike: %.1f | Gap: %s | Contracts: %d\n"
+        "Signal Mode: %s | Timeframe: %s | Lookback: %d candles | Bar Mode: %s",
         underlying, grid_info["atm_strike"], grid_info["strike_gap"], len(symbols),
+        signal_mode, timeframe, lookback_candles, bar_mode,
     )
 
     buy_results = []
@@ -237,7 +251,13 @@ def run_scan(config: dict = None) -> dict:
 
         # Only emit a result if the engine fired a signal on this bar
         if not final_buy and not final_sell:
-            bar_label = "running bar" if config.get("strategy", {}).get("signal_on_running_bar", True) else "last completed bar"
+            # Updated to use new config naming
+            ut_cfg = config.get("strategy", {})
+            if "signal_on_closed_bar" in ut_cfg:
+                bar_label = "last completed bar" if ut_cfg.get("signal_on_closed_bar", True) else "running bar"
+            else:
+                # Backward compatibility with old naming
+                bar_label = "running bar" if ut_cfg.get("signal_on_running_bar", False) else "last completed bar"
             log.info("[%s] No signal on %s. Skipping.", sym, bar_label)
             return None
 

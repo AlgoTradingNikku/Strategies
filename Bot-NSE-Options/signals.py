@@ -22,6 +22,78 @@ def _crossover(s1: pd.Series, s2: pd.Series) -> pd.Series:
     return (s1 > s2) & (s1.shift(1) <= s2.shift(1))
 
 
+def _parse_timeframe_seconds(tf_str: str) -> int | None:
+    """
+    Parse timeframe string (e.g., '5m', '1h', '1d') into seconds.
+    Returns None if format is unrecognized.
+    """
+    tf_str = str(tf_str).strip().lower()
+    if not tf_str:
+        return None
+    
+    # Extract numeric part and unit
+    import re
+    match = re.match(r"^(\d+)([smhd])$", tf_str)
+    if not match:
+        return None
+    
+    value, unit = int(match.group(1)), match.group(2)
+    
+    multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+    return value * multipliers.get(unit, 60)  # default to minutes if unknown
+
+
+def _is_last_candle_incomplete(df: pd.DataFrame, config: dict) -> bool:
+    """
+    Return True when the LAST row of ``df`` is still-forming (incomplete candle).
+
+    Heuristic: given the configured candle timeframe, compute the expected
+    close time of the last bar (bar_open + timeframe) and compare against the
+    current wall clock in the exchange timezone. When the current time is
+    before the expected close, the bar is still open ("running bar").
+
+    Falls back to False (i.e. "treat as closed") when:
+      • the df index isn't a DatetimeIndex,
+      • the timeframe string can't be parsed,
+      • or any other error occurs — so callers never accidentally strip a
+        legitimate closed bar due to a helper malfunction.
+    """
+    if df is None or len(df) == 0:
+        return False
+    try:
+        idx = df.index
+        if not isinstance(idx, pd.DatetimeIndex):
+            return False
+
+        # Look in options.timeframe first, then fallback to candle_timeframe
+        timeframe = config.get("options", {}).get("timeframe") or config.get("candle_timeframe", "5m")
+        bar_secs = _parse_timeframe_seconds(str(timeframe))
+        if bar_secs is None:
+            return False
+
+        # Use the exchange tz — for NSE/BSE that's Asia/Kolkata; fallback UTC.
+        from zoneinfo import ZoneInfo
+        exchange = config.get("options", {}).get("index_exchange", "NSE_INDEX")
+        tz_name = "Asia/Kolkata" if exchange.upper() in ("NSE", "BSE", "NSE_INDEX") else "UTC"
+        tz = ZoneInfo(tz_name)
+
+        last_open = idx[-1]
+        # Normalize both times to naive-in-tz for comparison.
+        if last_open.tzinfo is None:
+            last_open_local = last_open
+        else:
+            last_open_local = last_open.astimezone(tz).replace(tzinfo=None)
+
+        from datetime import datetime, timedelta
+        now_local = datetime.now(tz).replace(tzinfo=None)
+        expected_close = last_open_local + timedelta(seconds=bar_secs)
+
+        return now_local < expected_close
+    except Exception as exc:
+        log.debug("_is_last_candle_incomplete error (fail-open): %s", exc)
+        return False
+
+
 # ============================================================================
 # 1. UT BOT ENGINE
 # ============================================================================
@@ -231,31 +303,74 @@ def evaluate_composite_signals(
     vol_sma = df["volume"].rolling(20).mean() if "volume" in df.columns else pd.Series(0, index=df.index)
     df["vol_sma"] = vol_sma
 
-    # 4. Determine signal evaluation bar: running bar (index -1) vs last completed bar (index -2)
-    signal_on_running_bar = bool(ut_cfg.get("signal_on_running_bar", True))
-    if signal_on_running_bar or len(df) < 2:
-        eval_idx = -1
-        bar_type_label = "running_bar"
+    # ---- 4. Get lookback candles parameter and handle closed-bar mode --------
+    # Read from options.signal_lookback_candles (new location) or fall back to old config location
+    opt_cfg = cfg.get("options", {})
+    lookback_candles = int(opt_cfg.get("signal_lookback_candles", cfg.get("signal_lookback_candles", 2)))
+    
+    # Backward compatibility: support both old and new config variable names
+    # Old: signal_on_running_bar (inverted logic)
+    # New: signal_on_closed_bar (standard naming)
+    if "signal_on_closed_bar" in ut_cfg:
+        signal_on_closed_bar = bool(ut_cfg.get("signal_on_closed_bar", True))
+    elif "signal_on_running_bar" in ut_cfg:
+        # Inverted logic for backward compatibility
+        signal_on_closed_bar = not bool(ut_cfg.get("signal_on_running_bar", False))
     else:
-        eval_idx = -2
-        bar_type_label = "completed_bar"
+        signal_on_closed_bar = True  # Safe default
+    
+    # If signal_on_closed_bar is True, drop the incomplete candle before evaluation
+    eval_df = df
+    bar_type_label = "closed_bar"
+    if signal_on_closed_bar and len(df) >= 2:
+        if _is_last_candle_incomplete(df, cfg):
+            eval_df = df.iloc[:-1]
+            log.debug("Dropped incomplete candle for closed-bar evaluation")
+    else:
+        bar_type_label = "running_bar"
 
-    last_bar = df.iloc[eval_idx]
-    last_ut_buy  = bool(last_bar.get("ut_buy",  False))
-    last_ut_sell = bool(last_bar.get("ut_sell", False))
+    # ---- 5. UT Bot: check last N candles with "most-recent-wins" logic --------
+    # When both BUY and SELL are present in the lookback window, keep only the
+    # most recent signal. This prevents contradictory signals and matches how
+    # TradingView displays discrete labels (latest tag = active signal).
+    ut_buy  = False
+    ut_sell = False
+    if "ut_buy" in eval_df.columns and "ut_sell" in eval_df.columns:
+        tail = eval_df.tail(lookback_candles)
+        ut_buy  = bool(tail["ut_buy"].any())
+        ut_sell = bool(tail["ut_sell"].any())
+        
+        # Most-recent-wins conflict resolver
+        if ut_buy and ut_sell:
+            buy_positions  = np.where(tail["ut_buy"].values)[0]
+            sell_positions = np.where(tail["ut_sell"].values)[0]
+            last_buy_idx   = int(buy_positions[-1])  if len(buy_positions)  else -1
+            last_sell_idx  = int(sell_positions[-1]) if len(sell_positions) else -1
+            
+            if last_sell_idx > last_buy_idx:
+                ut_buy = False  # SELL is more recent, suppress older BUY
+                log.debug("Lookback window: SELL more recent than BUY — keeping SELL only")
+            else:
+                ut_sell = False  # BUY is more recent, suppress older SELL
+                log.debug("Lookback window: BUY more recent than SELL — keeping BUY only")
+
+    # ---- 6. SR Channels: check only the last evaluated candle ----------------
+    last_bar = eval_df.iloc[-1]
     last_sr_buy  = bool(last_bar.get("sr_buy",  False))
     last_sr_sell = bool(last_bar.get("sr_sell", False))
-    cur_pos      = int(df["ut_pos"].iloc[eval_idx]) if "ut_pos" in df.columns else 0
+    cur_pos      = int(eval_df["ut_pos"].iloc[-1]) if "ut_pos" in eval_df.columns else 0
 
+    # ---- 7. Determine final composite signals based on signal_mode -----------
+    mode = signal_mode.upper().strip()
     if mode == "UTBOT":
-        final_buy  = last_ut_buy
-        final_sell = last_ut_sell
+        final_buy  = ut_buy
+        final_sell = ut_sell
     elif mode == "SRCHANNELS":
         final_buy  = last_sr_buy
         final_sell = last_sr_sell
     else:  # UTBOT (default) — both engines, UTBot crossover required, SR proximity adds confluence
-        final_buy  = last_ut_buy
-        final_sell = last_ut_sell
+        final_buy  = ut_buy
+        final_sell = ut_sell
 
     df["final_buy"]  = False
     df["final_sell"] = False
@@ -263,7 +378,7 @@ def evaluate_composite_signals(
     df.iloc[-1, df.columns.get_loc("final_sell")] = final_sell
 
     # Calculate Confluence Matrix & Setup Score for the evaluated candle
-    last = df.iloc[eval_idx]
+    last = eval_df.iloc[-1]
     last_close = float(last["close"])
     last_ema = float(last["ema_200"])
     last_rsi = float(last["rsi"]) if pd.notna(last["rsi"]) else 50.0
@@ -281,7 +396,7 @@ def evaluate_composite_signals(
     score = 45.0
     if cur_pos == 1 or cur_pos == -1:   # in an active UTBot trend
         score += 15.0
-    if last_ut_buy or last_ut_sell:     # UTBot crossover fired this bar
+    if ut_buy or ut_sell:     # UTBot crossover fired in lookback window
         score += 20.0
     if ema_pass:
         score += 10.0

@@ -14,7 +14,6 @@ use_symbols: true
 symbols:
 - RPOWER
 - IOC
-signal_lookback_candles: 2
 
 # UT Bot Settings
 strategy:
@@ -24,6 +23,8 @@ strategy:
   use_heikin_ashi: false              # Use Heikin Ashi candle close as price source
   signal_on_closed_bar: true          # true = ignore the still-forming candle (TradingView-parity, avoids intrabar flicker)
                                       # false = evaluate the running bar (earlier alerts, but signals can flip mid-bar)
+
+signal_lookback_candles: 2
 
 # Support/Resistance Channels Settings
 sr_channels:
