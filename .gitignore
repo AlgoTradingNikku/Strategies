@@ -9,10 +9,26 @@ Strategies.code-workspace
 # Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Log files
 *.log
+logs/
+
+# Database files
+*.db
+signals.db
+trades.db
 
 # Auto-generated daily segment cache
 segment_cache.json
-signals.db
+
+# Backup and temp files
+*.env-backup
+*.pkl
+*_lock.json
+_*.txt
+
+# Document files (optional - uncomment if you want to exclude docs)
+# *.docx
+# *.ini
