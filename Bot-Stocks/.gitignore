@@ -5,7 +5,7 @@ __pycache__/
 *.pyd
 
 # --- Local secrets & runtime state (NEVER commit) ---
-config.yml
+# config.yml  # Commented out - user wants to push config files
 config.local.yml
 
 # --- SQLite databases (auto-created at runtime) ---
@@ -33,3 +33,9 @@ htmlcov/
 
 # --- Scratch / ad-hoc scripts (not part of test suite) ---
 scratch/
+
+# --- Backup files ---
+*.backup
+*.bak
+*~
+

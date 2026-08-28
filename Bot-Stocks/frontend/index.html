@@ -77,6 +77,7 @@
                                     <option value="30m">30m</option>
                                     <option value="1h">1h</option>
                                     <option value="1d">1d</option>
+                                    <option value="1w">1w</option>
                                 </select>
                             </div>
                             <div style="display: flex; align-items: center; gap: 5px;">
@@ -89,6 +90,7 @@
                                     <option value="30m">30m</option>
                                     <option value="1h">1h</option>
                                     <option value="1d">1d</option>
+                                    <option value="1w">1w</option>
                                 </select>
                             </div>
                         </div>
@@ -104,6 +106,7 @@
                         <button class="order-mode-btn" id="btn-mode-auto" data-mode="auto">
                             <i class="fa-solid fa-bolt"></i> Auto
                         </button>
+                        <span id="auto-order-badge" class="auto-badge" style="display: none;">Waiting...</span>
                     </div>
                     <button class="btn btn-secondary" id="btn-toggle-auto-refresh">
                         <i class="fa-solid fa-rotate"></i> Auto-refresh: <span id="auto-refresh-state">ON</span>
@@ -217,7 +220,6 @@
                                             <th>Close</th>
                                             <th>Win Rate</th>
                                             <th></th>
-                                            <th>Confluence</th>
                                             <th>Action</th>
                                             <th>Stop Loss</th>
                                             <th>Target</th>
@@ -226,7 +228,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="9" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
+                                            <td colspan="8" class="empty-placeholder">No active BUY signals. Click "Run Scanner" to fetch new data.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -251,7 +253,6 @@
                                             <th>Close</th>
                                             <th>Win Rate</th>
                                             <th></th>
-                                            <th>Confluence</th>
                                             <th>Action</th>
                                             <th>Stop Loss</th>
                                             <th>Target</th>
@@ -260,7 +261,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td colspan="9" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
+                                            <td colspan="8" class="empty-placeholder">No active SELL signals. Click "Run Scanner" to fetch new data.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -279,8 +280,8 @@
                             Toggle active scanner filters and criteria in real-time. Changes are saved dynamically and re-trigger scanning.
                         </p>
                         <div class="control-toggles-list">
-                            <!-- UTBot Engine -->
-                            <div class="control-toggle-item">
+                            <!-- UTBot Engine (will be replaced dynamically) -->
+                            <div class="control-toggle-item" data-engine-toggle="ut_bot">
                                 <div class="toggle-info">
                                     <span class="toggle-name">UT Bot Engine</span>
                                     <span class="toggle-desc">Enable UT Bot signals</span>
@@ -290,8 +291,8 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- SR Channels Engine -->
-                            <div class="control-toggle-item">
+                            <!-- SR Channels Engine (will be replaced dynamically) -->
+                            <div class="control-toggle-item" data-engine-toggle="sr_channels">
                                 <div class="toggle-info">
                                     <span class="toggle-name">S/R Zones Engine</span>
                                     <span class="toggle-desc">Enable S/R boundaries</span>
@@ -301,32 +302,18 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- EMA Trend Filter -->
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">EMA Trend Filter</span>
-                                    <span class="toggle-desc" id="dash-desc-ema">Filter signals by major EMA trend</span>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="dash-filters-ema">
-                                    <span class="slider round"></span>
-                                </label>
+                            <!-- REMOVED: EMA, Volume filters (now engine-specific, not global filters) -->
+                            
+                            <!-- SIGNAL FILTERS Section Header -->
+                            <div class="filters-section-header">
+                                <i class="fa-solid fa-filter"></i>
+                                <span>SIGNAL FILTERS</span>
                             </div>
-                            <!-- Volume Filter -->
+                            
+                            <!-- HTF Confirmation Filter -->
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">Volume Filter</span>
-                                    <span class="toggle-desc">Require volume confirmation</span>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="dash-filters-volume">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <!-- MTF Hard Confirmation -->
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">MTF Hard Confirmation</span>
+                                    <span class="toggle-name">HTF Confirmation</span>
                                     <span class="toggle-desc" id="dash-desc-mtf">Filter signals by HTF trend</span>
                                 </div>
                                 <label class="switch">
@@ -334,39 +321,19 @@
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- Volatility Squeeze Filter -->
+                            <!-- Relative Strength Filter -->
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">Squeeze Filter</span>
-                                    <span class="toggle-desc">Require squeeze release</span>
+                                    <span class="toggle-name">Outperformers Only</span>
+                                    <span class="toggle-desc" id="dash-desc-rs">Trade stocks beating the index</span>
                                 </div>
                                 <label class="switch">
-                                    <input type="checkbox" id="dash-filters-squeeze">
+                                    <input type="checkbox" id="dash-filters-rs-enabled">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
-                            <!-- ADX Hard Filter -->
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">ADX Hard Filter</span>
-                                    <span class="toggle-desc">Restrict signals by trend strength</span>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="dash-filters-adx-filt">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <!-- RSI Hard Filter -->
-                            <div class="control-toggle-item">
-                                <div class="toggle-info">
-                                    <span class="toggle-name">RSI Hard Filter</span>
-                                    <span class="toggle-desc">Limit momentum boundary zones</span>
-                                </div>
-                                <label class="switch">
-                                    <input type="checkbox" id="dash-filters-rsi-filter">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
+                            <!-- REMOVED: Squeeze filter (now part of engines, not global) -->
+                            <!-- REMOVED: ADX, RSI filters (now engine-specific components) -->
                             <!-- Risk/Reward -->
                             <div class="control-toggle-item">
                                 <div class="toggle-info">
@@ -397,64 +364,84 @@
 
             <!-- Tab 3: Configuration Panel -->
             <section class="tab-panel" id="panel-config">
-                <form id="config-form" class="config-grid">
-                    <!-- Left Column: Core Setup -->
-                    <div class="config-card">
-                        <div class="config-card-header">
-                            <i class="fa-solid fa-gears"></i> Core Scanner Settings
+                <form id="config-form" class="config-accordion">
+                    
+                    <!-- SECTION 1: CORE SCANNER SETTINGS -->
+                    <div class="accordion-section" data-section="core">
+                        <div class="accordion-header" data-accent="blue">
+                            <div class="accordion-title">
+                                <i class="fa-solid fa-gears"></i>
+                                <span>Core Scanner Settings</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down accordion-icon"></i>
                         </div>
-                        <div class="config-card-body">
-                            <div class="form-group">
-                                <label for="cfg-data-source">Data Provider</label>
-                                <select id="cfg-data-source">
-                                    <option value="yfinance">yFinance (Free/Recommended)</option>
-                                    <option value="openalgo">OpenAlgo Server</option>
-                                    <option value="tvdatafeed">TvDatafeed</option>
-                                    <option value="twelvedata">TwelveData</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-exchange">Exchange</label>
-                                <input type="text" id="cfg-exchange">
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-timeframe">Chart Candle Timeframe</label>
-                                <select id="cfg-timeframe">
-                                    <option value="1m">1 minute</option>
-                                    <option value="3m">3 minutes</option>
-                                    <option value="5m">5 minutes</option>
-                                    <option value="15m">15 minutes</option>
-                                    <option value="30m">30 minutes</option>
-                                    <option value="1h">1 hour</option>
-                                    <option value="1d">1 day</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-interval">Scan Interval (Seconds)</label>
-                                <input type="number" id="cfg-interval">
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-lookback">Signal Lookback (Candles)</label>
-                                <input type="number" id="cfg-lookback" min="1" max="10">
-                            </div>
-                            <div class="form-group toggle-group" style="margin-top: 10px;">
-                                <label for="cfg-bot-auto-refresh">Default Auto-refresh Status</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="cfg-bot-auto-refresh">
-                                    <span class="slider round"></span>
-                                </label>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <div class="form-group">
+                                    <label for="cfg-data-source">Data Provider</label>
+                                    <select id="cfg-data-source">
+                                        <option value="yfinance">yFinance (Free/Recommended)</option>
+                                        <option value="openalgo">OpenAlgo Server</option>
+                                        <option value="tvdatafeed">TvDatafeed</option>
+                                        <option value="twelvedata">TwelveData</option>
+                                    </select>
+                                    <span class="help-text">Choose market data source for scanning</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-exchange">Exchange</label>
+                                    <input type="text" id="cfg-exchange">
+                                    <span class="help-text">Target exchange (e.g., NSE, BSE)</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-timeframe">Chart Candle Timeframe</label>
+                                    <select id="cfg-timeframe">
+                                        <option value="1m">1 minute</option>
+                                        <option value="3m">3 minutes</option>
+                                        <option value="5m">5 minutes</option>
+                                        <option value="15m">15 minutes</option>
+                                        <option value="30m">30 minutes</option>
+                                        <option value="1h">1 hour</option>
+                                        <option value="1d">1 day</option>
+                                    </select>
+                                    <span class="help-text">Primary timeframe for all engines</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-interval">Scan Interval (Seconds)</label>
+                                    <input type="number" id="cfg-interval">
+                                    <span class="help-text">Auto-refresh interval when enabled</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-lookback">Signal Lookback (Candles)</label>
+                                    <input type="number" id="cfg-lookback" min="1" max="10">
+                                    <span class="help-text">How many recent candles to check for signals</span>
+                                </div>
+                                <div class="form-group toggle-group">
+                                    <label for="cfg-bot-auto-refresh">Default Auto-refresh Status</label>
+                                    <label class="switch">
+                                        <input type="checkbox" id="cfg-bot-auto-refresh">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <p class="help-text" style="margin-top: -12px;">When enabled, scanner runs automatically at the specified interval</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Middle Column: Strategy Parameters -->
-                    <div class="config-card">
-                        <div class="config-card-header">
-                            <i class="fa-solid fa-bolt"></i> Strategy Coefficients
+
+                    <!-- SECTION 2: SIGNAL ENGINES -->
+                    <div class="accordion-section" data-section="engines">
+                        <div class="accordion-header" data-accent="green">
+                            <div class="accordion-title">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Signal Engines</span>
+                            </div>
+                            <i class="fa-solid fa-chevron-down accordion-icon"></i>
                         </div>
-                        <div class="config-card-body">
-                            <!-- UTBot -->
-                            <h4 class="sub-header-line">UT Bot Parameters</h4>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <!-- UTBot Engine -->
+                                <div class="engine-subsection">
+                                    <h4 class="sub-header-line">UT Bot Engine</h4>
                             <div class="form-group toggle-group">
                                 <label for="cfg-ut-enabled">Enable UT Bot Engine</label>
                                 <label class="switch">
@@ -535,39 +522,10 @@
                             <i class="fa-solid fa-bell"></i> Alerts & Symbols
                         </div>
                         <div class="config-card-body">
-                            <h4 class="sub-header-line">Setup Filters &amp; Priorities</h4>
+                            <h4 class="sub-header-line">Cross-Cutting Filters</h4>
+                            <p class="help-text">These filters apply AFTER engine scoring. Engine-specific components (EMA, Volume, RSI, ADX) are configured within each engine.</p>
 
-                            <!-- EMA Trend Filter -->
-                            <div class="form-group toggle-group">
-                                <label for="cfg-filters-ema">EMA Trend Filter</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-ema">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-filters-ema-period">EMA Period</label>
-                                <input type="number" id="cfg-filters-ema-period" min="10" max="500" step="10">
-                            </div>
-
-                            <!-- Volume Filter -->
-                            <div class="form-group toggle-group">
-                                <label for="cfg-filters-volume">Volume Confirmation Filter</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-volume">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="form-group-row">
-                                <div class="form-group">
-                                    <label for="cfg-filters-vol-sma">Volume SMA Period</label>
-                                    <input type="number" id="cfg-filters-vol-sma" min="5" max="100">
-                                </div>
-                                <div class="form-group">
-                                    <label for="cfg-filters-vol-pct">Min Volume % of SMA</label>
-                                    <input type="number" id="cfg-filters-vol-pct" min="10" max="200">
-                                </div>
-                            </div>
+                            <!-- REMOVED: EMA, Volume filters - now engine-specific components -->
 
                             <!-- Alert Score -->
                             <div class="form-group">
@@ -575,16 +533,16 @@
                                 <input type="number" id="cfg-filters-score" min="0" max="100">
                             </div>
 
-                            <h4 class="sub-header-line">Multi-Timeframe Confirmation</h4>
+                            <h4 class="sub-header-line">Higher Timeframe Confirmation (HTF)</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-filters-mtf-filter">MTF Hard Confirmation</label>
+                                <label for="cfg-filters-mtf-filter">Enable HTF Confirmation</label>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-filters-mtf-filter">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
                             <div class="form-group">
-                                <label for="cfg-filters-mtf-tf">MTF Timeframe</label>
+                                <label for="cfg-filters-mtf-tf">HTF Timeframe</label>
                                 <select id="cfg-filters-mtf-tf">
                                     <option value="15m">15 minutes</option>
                                     <option value="30m">30 minutes</option>
@@ -593,83 +551,54 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="cfg-filters-mtf-neutral">MTF Neutral Zone (%)</label>
+                                <label for="cfg-filters-mtf-neutral">HTF Neutral Zone (%)</label>
                                 <input type="number" id="cfg-filters-mtf-neutral" step="0.1" min="0.0" max="5.0">
                             </div>
                             <div class="form-group">
-                                <label for="cfg-filters-mtf-atr-period">MTF ATR Period</label>
+                                <label for="cfg-filters-mtf-atr-period">HTF ATR Period</label>
                                 <input type="number" id="cfg-filters-mtf-atr-period" step="1" min="1" max="50" title="ATR period for UTBot trail on the higher timeframe. Use 10–14 for a smoother trail (recommended). Lower values (e.g. 2) are more reactive.">
                             </div>
 
-                            <h4 class="sub-header-line">ADX Trend Strength</h4>
+                            <!-- REMOVED: ADX and RSI hard filter sections - now engine-specific components -->
+
+                            <h4 class="sub-header-line">Relative Strength Filter (Outperformers Only)</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-filters-adx-filt">ADX Hard Filter</label>
+                                <label for="cfg-filters-rs-enabled">Enable Relative Strength Filter</label>
                                 <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-adx-filt">
+                                    <input type="checkbox" id="cfg-filters-rs-enabled">
                                     <span class="slider round"></span>
                                 </label>
                             </div>
+                            <p style="color: #888; font-size: 13px; margin: -8px 0 12px 0; line-height: 1.5;">
+                                📊 <strong>What it does:</strong> Only trades stocks that are <strong>outperforming</strong> (BUY) or <strong>underperforming</strong> (SELL) the benchmark index.<br>
+                                • <strong>BUY signals:</strong> Pass only if RS ≥ threshold (stock beating index)<br>
+                                • <strong>SELL signals:</strong> Pass only if RS ≤ threshold (stock lagging index)<br>
+                                • <strong>RS Ratio:</strong> (Stock Return) / (Index Return) over lookback period
+                            </p>
                             <div class="form-group">
-                                <label for="cfg-filters-adx-val">ADX Min Threshold (Hard Filter)</label>
-                                <input type="number" id="cfg-filters-adx-val" min="5" max="50">
+                                <label for="cfg-filters-rs-index">Benchmark Index</label>
+                                <select id="cfg-filters-rs-index">
+                                    <option value="NIFTY50">NIFTY 50</option>
+                                    <option value="BANKNIFTY">BANK NIFTY</option>
+                                    <option value="FINNIFTY">FIN NIFTY</option>
+                                    <option value="NIFTYIT">NIFTY IT</option>
+                                </select>
                             </div>
-                            <div class="form-group-row">
-                                <div class="form-group">
-                                    <label for="cfg-filters-adx-strong">ADX Strong Threshold</label>
-                                    <input type="number" id="cfg-filters-adx-strong" min="10" max="60">
-                                </div>
-                                <div class="form-group">
-                                    <label for="cfg-filters-adx-moderate">ADX Moderate Threshold</label>
-                                    <input type="number" id="cfg-filters-adx-moderate" min="5" max="50">
-                                </div>
-                            </div>
-
-                            <h4 class="sub-header-line">RSI Momentum Scoring</h4>
-                            <div class="form-group toggle-group">
-                                <label for="cfg-filters-rsi-filter">RSI Hard Filter</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="cfg-filters-rsi-filter">
-                                    <span class="slider round"></span>
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label for="cfg-filters-rsi-period">RSI Period</label>
-                                <input type="number" id="cfg-filters-rsi-period" min="5" max="50">
-                            </div>
-                            <div class="form-group-row">
-                                <div class="form-group">
-                                    <label for="cfg-filters-rsi-buy-min">RSI BUY Min</label>
-                                    <input type="number" id="cfg-filters-rsi-buy-min" min="0" max="100">
-                                </div>
-                                <div class="form-group">
-                                    <label for="cfg-filters-rsi-buy-max">RSI BUY Max</label>
-                                    <input type="number" id="cfg-filters-rsi-buy-max" min="0" max="100">
-                                </div>
-                            </div>
-                            <div class="form-group-row">
-                                <div class="form-group">
-                                    <label for="cfg-filters-rsi-sell-min">RSI SELL Min</label>
-                                    <input type="number" id="cfg-filters-rsi-sell-min" min="0" max="100">
-                                </div>
-                                <div class="form-group">
-                                    <label for="cfg-filters-rsi-sell-max">RSI SELL Max</label>
-                                    <input type="number" id="cfg-filters-rsi-sell-max" min="0" max="100">
-                                </div>
-                            </div>
-
-                            <h4 class="sub-header-line">Relative Strength vs NIFTY</h4>
                             <div class="form-group">
                                 <label for="cfg-filters-rs-period">RS Lookback Period (bars)</label>
                                 <input type="number" id="cfg-filters-rs-period" min="5" max="100">
+                                <small style="color: #888;">Number of candles to calculate returns (typical: 10-30)</small>
                             </div>
                             <div class="form-group-row">
                                 <div class="form-group">
-                                    <label for="cfg-filters-rs-buy">RS BUY Threshold</label>
-                                    <input type="number" id="cfg-filters-rs-buy" step="0.05" min="0.5" max="3.0">
+                                    <label for="cfg-filters-rs-buy">BUY: Min RS Ratio</label>
+                                    <input type="number" id="cfg-filters-rs-buy" step="0.01" min="1.00" max="3.0">
+                                    <small style="color: #888;">e.g., 1.05 = +5% outperformance required</small>
                                 </div>
                                 <div class="form-group">
-                                    <label for="cfg-filters-rs-sell">RS SELL Threshold</label>
-                                    <input type="number" id="cfg-filters-rs-sell" step="0.05" min="0.1" max="1.5">
+                                    <label for="cfg-filters-rs-sell">SELL: Max RS Ratio</label>
+                                    <input type="number" id="cfg-filters-rs-sell" step="0.01" min="0.1" max="1.00">
+                                    <small style="color: #888;">e.g., 0.95 = -5% underperformance required</small>
                                 </div>
                             </div>
 
@@ -861,6 +790,26 @@
 
             <!-- Tab: Positions Panel -->
             <section class="tab-panel" id="panel-positions">
+                <!-- Portfolio Summary Card -->
+                <div class="portfolio-summary-card" id="portfolio-summary" style="display: none; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(99, 102, 241, 0.1)); padding: 20px; border-radius: 10px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div class="summary-stat" style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 5px;">Total Positions</div>
+                        <div id="summary-total-positions" style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);">0</div>
+                    </div>
+                    <div class="summary-stat" style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 5px;">Total Invested</div>
+                        <div id="summary-total-invested" style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);">₹0.00</div>
+                    </div>
+                    <div class="summary-stat" style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 5px;">Current Value</div>
+                        <div id="summary-current-value" style="font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary);">₹0.00</div>
+                    </div>
+                    <div class="summary-stat" style="text-align: center;">
+                        <div style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 5px;">Total P&amp;L</div>
+                        <div id="summary-total-pnl" style="font-size: 1.5rem; font-weight: 700;">₹0.00 (0.00%)</div>
+                    </div>
+                </div>
+
                 <div class="table-card">
                     <div class="table-card-header">
                         <h3><i class="fa-solid fa-briefcase"></i> Active Monitored Positions</h3>
@@ -882,18 +831,20 @@
                                     <th>Direction</th>
                                     <th>Qty</th>
                                     <th>Entry Price</th>
-                                    <th>LTP (Live)</th>
-                                    <th>Initial SL</th>
+                                    <th>Current Price</th>
+                                    <th>Invested (₹)</th>
+                                    <th>Current Value (₹)</th>
+                                    <th>P&amp;L (₹)</th>
+                                    <th>P&amp;L (%)</th>
                                     <th>Current SL</th>
                                     <th>Target</th>
-                                    <th>P&amp;L (%)</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="positions-open-body">
                                 <tr>
-                                    <td colspan="11" class="empty-placeholder">No active positions currently registered for monitoring. Placed orders will show up here.</td>
+                                    <td colspan="13" class="empty-placeholder">No active positions currently registered for monitoring. Placed orders will show up here.</td>
                                 </tr>
                             </tbody>
                         </table>

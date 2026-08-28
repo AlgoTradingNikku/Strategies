@@ -27,6 +27,74 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 
 
 # ============================================================================
+# ENGINE REGISTRY — Scalable N-engine configuration
+# ============================================================================
+
+ENGINE_REGISTRY = [
+    {
+        "key": "ut_bot",
+        "label": "UT Bot",
+        "config_section": "strategy",
+        "enabled_key": "ut_enabled",
+        "buy_col": "ut_buy",
+        "sell_col": "ut_sell",
+        "eval_mode": "window",  # Checks last N candles with most-recent-wins reducer
+        "buy_label": "UT Bot",
+        "sell_label": "UT Bot",
+    },
+    {
+        "key": "sr_channels",
+        "label": "S/R Channels",
+        "config_section": "sr_channels",
+        "enabled_key": "enabled",
+        "buy_col": "sr_buy",
+        "sell_col": "sr_sell",
+        "eval_mode": "instant",  # Checks only the last candle
+        "buy_label": "S/R Support",
+        "sell_label": "S/R Resistance",
+    },
+    {
+        "key": "momentum",
+        "label": "Momentum Engine",
+        "config_section": "momentum",
+        "enabled_key": "enabled",
+        "buy_col": "momentum_buy",
+        "sell_col": "momentum_sell",
+        "eval_mode": "window",
+        "buy_label": "Momentum Long",
+        "sell_label": "Momentum Short",
+        "components": [
+            {"key": "rsi", "label": "RSI", "config_key": "rsi_enabled", "display_label": "RSI (14:40-70)"},
+            {"key": "volume", "label": "Volume", "config_key": "volume_enabled", "display_label": "Volume (1.5× SMA)"},
+            {"key": "adx", "label": "ADX", "config_key": "adx_enabled", "display_label": "ADX (14 > 20)"},
+            {"key": "ema", "label": "EMA", "config_key": "ema_enabled", "display_label": "EMA Trend (200)"},
+            {"key": "bb", "label": "BB", "config_key": "bb_enabled", "display_label": "BB (20:2)"},
+            {"key": "roc", "label": "ROC", "config_key": "roc_enabled", "display_label": "ROC (10 > 3%)"},
+        ],
+    },
+    {
+        "key": "mean_reversion",
+        "label": "Mean Reversion Engine",
+        "config_section": "mean_reversion",
+        "enabled_key": "enabled",
+        "buy_col": "mr_buy",
+        "sell_col": "mr_sell",
+        "eval_mode": "instant",
+        "buy_label": "Mean Rev Long",
+        "sell_label": "Mean Rev Short",
+        "components": [
+            {"key": "bb", "label": "BB Touch", "config_key": "bb_enabled", "display_label": "BB Touch (20:2)"},
+            {"key": "rsi_div", "label": "RSI Divergence", "config_key": "rsi_div_enabled", "display_label": "RSI Divergence"},
+            {"key": "rsi_extreme", "label": "RSI Extreme", "config_key": "rsi_extreme_enabled", "display_label": "RSI <30 or >70"},
+            {"key": "stochastic", "label": "Stochastic", "config_key": "stochastic_enabled", "display_label": "Stochastic (14)"},
+            {"key": "zscore", "label": "Z-Score", "config_key": "zscore_enabled", "display_label": "Z-Score (±2)"},
+            {"key": "vol_climax", "label": "Volume Climax", "config_key": "vol_climax_enabled", "display_label": "Vol Climax (2.5×)"},
+        ],
+    },
+]
+
+
+# ============================================================================
 # UTILITY
 # ============================================================================
 
@@ -755,6 +823,262 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.Series:
 
 
 # ============================================================================
+# 6. MOMENTUM ENGINE — Trend Continuation Detection
+# ============================================================================
+
+def compute_momentum_signals(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """
+    Momentum Engine: Multi-factor trend continuation detection.
+    
+    Returns DataFrame with momentum_buy, momentum_sell, momentum_score_buy/sell columns.
+    """
+    df = df.copy()
+    n = len(df)
+    buy_score = np.zeros(n)
+    sell_score = np.zeros(n)
+    
+    # RSI Component
+    if cfg.get("rsi_enabled", True):
+        rsi_period = cfg.get("rsi_period", 14)
+        rsi_buy_zone = cfg.get("rsi_buy_zone", [40, 70])
+        rsi_sell_zone = cfg.get("rsi_sell_zone", [30, 60])
+        rsi_weight = cfg.get("rsi_weight", 20)
+        
+        delta = df["close"].diff()
+        gain = delta.where(delta > 0, 0).ewm(alpha=1.0/rsi_period, adjust=False).mean()
+        loss = -delta.where(delta < 0, 0).ewm(alpha=1.0/rsi_period, adjust=False).mean()
+        rs = gain / (loss + 1e-10)
+        rsi = 100 - (100 / (1 + rs))
+        df["momentum_rsi"] = rsi
+        
+        buy_score += np.where((rsi >= rsi_buy_zone[0]) & (rsi <= rsi_buy_zone[1]), rsi_weight, 0)
+        sell_score += np.where((rsi >= rsi_sell_zone[0]) & (rsi <= rsi_sell_zone[1]), rsi_weight, 0)
+    
+    # Volume Component
+    if cfg.get("volume_enabled", True) and "volume" in df.columns:
+        vol_sma_period = cfg.get("volume_sma_period", 20)
+        vol_surge_min = cfg.get("volume_surge_min", 1.5)
+        vol_weight = cfg.get("volume_weight", 20)
+        
+        vol_sma = df["volume"].rolling(vol_sma_period).mean()
+        vol_ratio = df["volume"] / (vol_sma + 1e-10)
+        df["momentum_vol_ratio"] = vol_ratio
+        
+        vol_pts = np.where(vol_ratio >= vol_surge_min, vol_weight, 0)
+        buy_score += vol_pts
+        sell_score += vol_pts
+    
+    # ADX Component
+    if cfg.get("adx_enabled", True):
+        adx_period = cfg.get("adx_period", 14)
+        adx_min = cfg.get("adx_min_threshold", 20.0)
+        adx_strong = cfg.get("adx_strong_threshold", 25.0)
+        adx_weight = cfg.get("adx_weight", 15)
+        
+        adx, plus_di, minus_di = compute_adx(df, period=adx_period)
+        df["momentum_adx"] = adx
+        df["momentum_plus_di"] = plus_di
+        df["momentum_minus_di"] = minus_di
+        
+        adx_pts = np.where(adx >= adx_strong, adx_weight, np.where(adx >= adx_min, adx_weight * 0.6, 0))
+        buy_score += np.where(plus_di > minus_di, adx_pts, 0)
+        sell_score += np.where(minus_di > plus_di, adx_pts, 0)
+    
+    # EMA Component
+    if cfg.get("ema_enabled", True):
+        ema_period = cfg.get("ema_period", 200)
+        ema_weight = cfg.get("ema_weight", 20)
+        
+        ema = df["close"].ewm(span=ema_period, adjust=False).mean()
+        df["momentum_ema"] = ema
+        
+        buy_score += np.where(df["close"] > ema, ema_weight, 0)
+        sell_score += np.where(df["close"] < ema, ema_weight, 0)
+    
+    # Bollinger Bands Component
+    if cfg.get("bb_enabled", True):
+        bb_period = cfg.get("bb_period", 20)
+        bb_std = cfg.get("bb_std_dev", 2.0)
+        bb_weight = cfg.get("bb_weight", 15)
+        
+        sma = df["close"].rolling(bb_period).mean()
+        std = df["close"].rolling(bb_period).std()
+        bb_upper = sma + (bb_std * std)
+        bb_lower = sma - (bb_std * std)
+        bb_width = (bb_upper - bb_lower) / (sma + 1e-10) * 100
+        
+        df["momentum_bb_upper"] = bb_upper
+        df["momentum_bb_lower"] = bb_lower
+        df["momentum_bb_width"] = bb_width
+        
+        bb_expanding = bb_width > bb_width.shift(1)
+        buy_score += np.where((df["close"] > bb_upper) | (bb_expanding & (df["close"] > sma)), bb_weight, 0)
+        sell_score += np.where((df["close"] < bb_lower) | (bb_expanding & (df["close"] < sma)), bb_weight, 0)
+    
+    # ROC Component
+    if cfg.get("roc_enabled", True):
+        roc_period = cfg.get("roc_period", 10)
+        roc_buy_thresh = cfg.get("roc_buy_threshold", 3.0)
+        roc_sell_thresh = cfg.get("roc_sell_threshold", -3.0)
+        roc_weight = cfg.get("roc_weight", 25)
+        
+        roc = ((df["close"] - df["close"].shift(roc_period)) / (df["close"].shift(roc_period) + 1e-10)) * 100
+        df["momentum_roc"] = roc
+        
+        buy_score += np.where(roc >= roc_buy_thresh * 1.5, roc_weight, np.where(roc >= roc_buy_thresh, roc_weight * 0.7, 0))
+        sell_score += np.where(roc <= roc_sell_thresh * 1.5, roc_weight, np.where(roc <= roc_sell_thresh, roc_weight * 0.7, 0))
+    
+    # Final scoring
+    df["momentum_score_buy"] = buy_score
+    df["momentum_score_sell"] = sell_score
+    min_score = cfg.get("min_momentum_score", 70)
+    df["momentum_buy"] = buy_score >= min_score
+    df["momentum_sell"] = sell_score >= min_score
+    
+    return df
+
+
+# ============================================================================
+# 7. MEAN REVERSION ENGINE — Oversold/Overbought Bounce Detection
+# ============================================================================
+
+def compute_mean_reversion_signals(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """
+    Mean Reversion Engine: Detects stretched price moves likely to snap back.
+    
+    Returns DataFrame with mr_buy, mr_sell, mr_score_buy/sell columns.
+    """
+    df = df.copy()
+    n = len(df)
+    buy_score = np.zeros(n)
+    sell_score = np.zeros(n)
+    
+    # BB Touch Component
+    if cfg.get("bb_enabled", True):
+        bb_period = cfg.get("bb_period", 20)
+        bb_std = cfg.get("bb_std_dev", 2.0)
+        bb_weight = cfg.get("bb_weight", 25)
+        bb_touch_thresh = cfg.get("bb_touch_threshold", 0.02)
+        
+        sma = df["close"].rolling(bb_period).mean()
+        std = df["close"].rolling(bb_period).std()
+        bb_upper = sma + (bb_std * std)
+        bb_lower = sma - (bb_std * std)
+        
+        df["mr_bb_upper"] = bb_upper
+        df["mr_bb_lower"] = bb_lower
+        
+        lower_touch = (df["close"] - bb_lower) / (bb_lower + 1e-10) <= bb_touch_thresh
+        upper_touch = (bb_upper - df["close"]) / (bb_upper + 1e-10) <= bb_touch_thresh
+        
+        buy_score += np.where(lower_touch, bb_weight, 0)
+        sell_score += np.where(upper_touch, bb_weight, 0)
+    
+    # RSI Extremes Component
+    if cfg.get("rsi_extreme_enabled", True):
+        rsi_extreme_period = cfg.get("rsi_extreme_period", 14)
+        rsi_oversold = cfg.get("rsi_oversold", 30)
+        rsi_overbought = cfg.get("rsi_overbought", 70)
+        rsi_extreme_weight = cfg.get("rsi_extreme_weight", 20)
+        
+        delta = df["close"].diff()
+        gain = delta.where(delta > 0, 0).ewm(alpha=1.0/rsi_extreme_period, adjust=False).mean()
+        loss = -delta.where(delta < 0, 0).ewm(alpha=1.0/rsi_extreme_period, adjust=False).mean()
+        rs = gain / (loss + 1e-10)
+        rsi = 100 - (100 / (1 + rs))
+        df["mr_rsi"] = rsi
+        
+        buy_score += np.where(rsi < rsi_oversold, rsi_extreme_weight, 0)
+        sell_score += np.where(rsi > rsi_overbought, rsi_extreme_weight, 0)
+    
+    # Stochastic Component
+    if cfg.get("stochastic_enabled", True):
+        stoch_k_period = cfg.get("stoch_k_period", 14)
+        stoch_d_period = cfg.get("stoch_d_period", 3)
+        stoch_smooth_k = cfg.get("stoch_smooth_k", 3)
+        stoch_oversold = cfg.get("stoch_oversold", 20)
+        stoch_overbought = cfg.get("stoch_overbought", 80)
+        stoch_weight = cfg.get("stoch_weight", 15)
+        
+        low_min = df["low"].rolling(stoch_k_period).min()
+        high_max = df["high"].rolling(stoch_k_period).max()
+        stoch_k_raw = 100 * (df["close"] - low_min) / (high_max - low_min + 1e-10)
+        stoch_k = stoch_k_raw.rolling(stoch_smooth_k).mean()
+        stoch_d = stoch_k.rolling(stoch_d_period).mean()
+        
+        df["mr_stoch_k"] = stoch_k
+        df["mr_stoch_d"] = stoch_d
+        
+        buy_score += np.where(stoch_k < stoch_oversold, stoch_weight, 0)
+        sell_score += np.where(stoch_k > stoch_overbought, stoch_weight, 0)
+    
+    # Z-Score Component
+    if cfg.get("zscore_enabled", True):
+        zscore_period = cfg.get("zscore_period", 20)
+        zscore_buy_thresh = cfg.get("zscore_buy_threshold", -2.0)
+        zscore_sell_thresh = cfg.get("zscore_sell_threshold", 2.0)
+        zscore_weight = cfg.get("zscore_weight", 25)
+        
+        mean = df["close"].rolling(zscore_period).mean()
+        std = df["close"].rolling(zscore_period).std()
+        zscore = (df["close"] - mean) / (std + 1e-10)
+        df["mr_zscore"] = zscore
+        
+        buy_score += np.where(zscore < zscore_buy_thresh, zscore_weight, 0)
+        sell_score += np.where(zscore > zscore_sell_thresh, zscore_weight, 0)
+    
+    # Volume Climax Component
+    if cfg.get("vol_climax_enabled", True) and "volume" in df.columns:
+        vol_climax_period = cfg.get("vol_climax_period", 20)
+        vol_climax_thresh = cfg.get("vol_climax_threshold", 2.5)
+        vol_climax_weight = cfg.get("vol_climax_weight", 15)
+        
+        vol_sma = df["volume"].rolling(vol_climax_period).mean()
+        vol_ratio = df["volume"] / (vol_sma + 1e-10)
+        df["mr_vol_ratio"] = vol_ratio
+        
+        climax = vol_ratio >= vol_climax_thresh
+        price_pct = (df["close"] - df["close"].rolling(20).min()) / (df["close"].rolling(20).max() - df["close"].rolling(20).min() + 1e-10)
+        
+        buy_score += np.where(climax & (price_pct < 0.3), vol_climax_weight, 0)
+        sell_score += np.where(climax & (price_pct > 0.7), vol_climax_weight, 0)
+    
+    # RSI Divergence Component (optimized vectorized version)
+    if cfg.get("rsi_div_enabled", True):
+        rsi_div_weight = cfg.get("rsi_div_weight", 30)
+        rsi_div_lookback = cfg.get("rsi_div_lookback", 15)
+        
+        if "mr_rsi" not in df.columns:
+            rsi_div_period = cfg.get("rsi_div_period", 14)
+            delta = df["close"].diff()
+            gain = delta.where(delta > 0, 0).ewm(alpha=1.0/rsi_div_period, adjust=False).mean()
+            loss = -delta.where(delta < 0, 0).ewm(alpha=1.0/rsi_div_period, adjust=False).mean()
+            rs = gain / (loss + 1e-10)
+            df["mr_rsi"] = 100 - (100 / (1 + rs))
+        
+        # Vectorized divergence detection
+        price_shift = df["close"].shift(rsi_div_lookback)
+        rsi_shift = df["mr_rsi"].shift(rsi_div_lookback)
+        
+        # Bullish divergence: price lower, RSI higher
+        bullish_div = (df["close"] < price_shift) & (df["mr_rsi"] > rsi_shift)
+        buy_score += np.where(bullish_div, rsi_div_weight, 0)
+        
+        # Bearish divergence: price higher, RSI lower
+        bearish_div = (df["close"] > price_shift) & (df["mr_rsi"] < rsi_shift)
+        sell_score += np.where(bearish_div, rsi_div_weight, 0)
+    
+    # Final scoring
+    df["mr_score_buy"] = buy_score
+    df["mr_score_sell"] = sell_score
+    min_score = cfg.get("min_mr_score", 70)
+    df["mr_buy"] = buy_score >= min_score
+    df["mr_sell"] = sell_score >= min_score
+    
+    return df
+
+
+# ============================================================================
 # 6. ATR-BASED RISK/REWARD CALCULATOR
 # ============================================================================
 
@@ -1003,88 +1327,103 @@ def evaluate_composite_signals(
     if "volume" in df.columns and len(df) >= vol_sma_period:
         df["vol_sma"] = df["volume"].rolling(vol_sma_period).mean()
 
-    strat  = config.get("strategy", {})
-    sr_cfg = config.get("sr_channels", {})
-    ut_enabled = strat.get("ut_enabled", True)
-    sr_enabled = sr_cfg.get("enabled", True)
-
     # ---- Optional closed-candle-only mode ----------------------------------
     # If ``strategy.signal_on_closed_bar`` is truthy in config, drop the last
-    # (possibly still-forming) row before evaluating UTBot / SR flags. Default
+    # (possibly still-forming) row before evaluating engine signals. Default
     # is False for backwards compat — the scanner has always looked at the
     # running bar, which lets users see intraday-forming signals but can also
     # cause a signal to disappear later if the bar reverses before it closes.
     eval_df = df
+    strat = config.get("strategy", {})
     if bool(strat.get("signal_on_closed_bar", False)) and len(df) >= 2:
         if _is_last_candle_incomplete(df, config):
             eval_df = df.iloc[:-1]
 
-    # ---- UT Bot: check last N candles for any buy/sell ----------------------
-    # "Most-recent-wins" reducer: when both a BUY and a SELL are present inside
-    # the lookback window (e.g. a rapid flip on two consecutive bars), keep only
-    # whichever fired on the more recent bar. This matches how a human reads
-    # the discrete TradingView labels — the latest tag is the active signal —
-    # and prevents contradictory BUY+SELL both being True on the same symbol.
-    ut_buy  = False
-    ut_sell = False
-    if ut_enabled and "ut_buy" in eval_df.columns:
-        tail    = eval_df.tail(lookback_candles)
-        ut_buy  = bool(tail["ut_buy"].any())
-        ut_sell = bool(tail["ut_sell"].any())
-
-        if ut_buy and ut_sell:
-            # Locate the last True index for each side within the tail window.
-            buy_positions  = np.where(tail["ut_buy"].values)[0]
-            sell_positions = np.where(tail["ut_sell"].values)[0]
-            last_buy_idx   = int(buy_positions[-1])  if len(buy_positions)  else -1
-            last_sell_idx  = int(sell_positions[-1]) if len(sell_positions) else -1
-            if last_sell_idx > last_buy_idx:
-                ut_buy = False
-            elif last_buy_idx > last_sell_idx:
-                ut_sell = False
-            # Ties (same bar produced both — practically impossible for UT Bot,
-            # since ut_buy and ut_sell are mutually-exclusive crossovers) are
-            # left as-is so downstream scoring can decide.
-
-    # ---- S/R Channels: check current (last) candle only --------------------
-    sr_buy  = False
-    sr_sell = False
-    if sr_enabled and "sr_buy" in eval_df.columns and len(eval_df) > 0:
-        sr_buy  = bool(eval_df["sr_buy"].iloc[-1])
-        sr_sell = bool(eval_df["sr_sell"].iloc[-1])
-
     # ---- Combine based on enabled engines ----------------------------------
+    # Generic N-engine AND combination using ENGINE_REGISTRY.
+    # Only enabled engines participate; all enabled engines must agree.
     triggered_buy  = []
     triggered_sell = []
-
-    if ut_enabled and sr_enabled:
-        # Both must trigger (UTBot + SR)
-        composite_buy  = ut_buy and sr_buy
-        composite_sell = ut_sell and sr_sell
-        if composite_buy:
-            triggered_buy.extend(["UT Bot", "S/R Support"])
-        if composite_sell:
-            triggered_sell.extend(["UT Bot", "S/R Resistance"])
-    elif ut_enabled:
-        # UTBot only
-        composite_buy  = ut_buy
-        composite_sell = ut_sell
-        if ut_buy:
-            triggered_buy.append("UT Bot")
-        if ut_sell:
-            triggered_sell.append("UT Bot")
-    elif sr_enabled:
-        # SR Channels only
-        composite_buy  = sr_buy
-        composite_sell = sr_sell
-        if sr_buy:
-            triggered_buy.append("S/R Support")
-        if sr_sell:
-            triggered_sell.append("S/R Resistance")
-    else:
-        # Neither enabled -> no signals
-        composite_buy  = False
+    
+    # Step 1: Build active engine list
+    active_engines = []
+    for engine in ENGINE_REGISTRY:
+        cfg_section = config.get(engine["config_section"], {})
+        is_enabled = cfg_section.get(engine["enabled_key"], True)
+        if is_enabled:
+            active_engines.append(engine)
+    
+    # Step 2: Evaluate each active engine
+    if not active_engines:
+        # No engines enabled → no signals
+        composite_buy = False
         composite_sell = False
+    else:
+        # All active engines must agree (AND logic)
+        buy_votes = []
+        sell_votes = []
+        
+        for engine in active_engines:
+            buy_col = engine["buy_col"]
+            sell_col = engine["sell_col"]
+            eval_mode = engine["eval_mode"]
+            
+            # Evaluate engine signal based on its mode
+            if eval_mode == "window":
+                # Window mode: check last N candles with most-recent-wins reducer
+                # (Currently only UT Bot uses this)
+                engine_buy = False
+                engine_sell = False
+                
+                if buy_col in eval_df.columns:
+                    tail = eval_df.tail(lookback_candles)
+                    engine_buy = bool(tail[buy_col].any())
+                    engine_sell = bool(tail[sell_col].any())
+                    
+                    # Most-recent-wins conflict resolution
+                    if engine_buy and engine_sell:
+                        buy_positions = np.where(tail[buy_col].values)[0]
+                        sell_positions = np.where(tail[sell_col].values)[0]
+                        last_buy_idx = int(buy_positions[-1]) if len(buy_positions) else -1
+                        last_sell_idx = int(sell_positions[-1]) if len(sell_positions) else -1
+                        if last_sell_idx > last_buy_idx:
+                            engine_buy = False
+                        elif last_buy_idx > last_sell_idx:
+                            engine_sell = False
+                
+                buy_votes.append(engine_buy)
+                sell_votes.append(engine_sell)
+                
+                if engine_buy:
+                    triggered_buy.append(engine["buy_label"])
+                if engine_sell:
+                    triggered_sell.append(engine["sell_label"])
+                    
+            elif eval_mode == "instant":
+                # Instant mode: check only the last candle
+                # (Currently only S/R uses this)
+                engine_buy = False
+                engine_sell = False
+                
+                if buy_col in eval_df.columns and len(eval_df) > 0:
+                    engine_buy = bool(eval_df[buy_col].iloc[-1])
+                    engine_sell = bool(eval_df[sell_col].iloc[-1])
+                
+                buy_votes.append(engine_buy)
+                sell_votes.append(engine_sell)
+                
+                if engine_buy:
+                    triggered_buy.append(engine["buy_label"])
+                if engine_sell:
+                    triggered_sell.append(engine["sell_label"])
+            else:
+                # Unknown eval_mode — treat as disabled
+                log.warning(f"Unknown eval_mode '{eval_mode}' for engine {engine['key']}")
+                continue
+        
+        # Composite signal = ALL active engines agree
+        composite_buy = all(buy_votes) if buy_votes else False
+        composite_sell = all(sell_votes) if sell_votes else False
 
     # ---- Calculate Setup Score & Reasons -----------------------------------
     # NOTE: Scoring always runs on the raw signal state — hard filters only
@@ -1156,127 +1495,21 @@ def evaluate_composite_signals(
                 sell_score += best_sell_zone_pts
                 sell_reasons.append(best_sell_zone_reason)
 
-        # 2. Volume Spike Confirmation (up to 15 pts) — DIRECTIONAL
-        # Points are awarded ONLY when volume exceeds the SMA average (vol_ratio > 1.0),
-        # scaling from 0 pts at 1x average to 15 pts at 2.5x average.
-        # Below-average volume earns zero points — weak volume should not boost score.
-        #
-        # Partial-candle normalisation: when scanning intraday the last candle may be
-        # incomplete (e.g. only 2 of 5 minutes elapsed). Raw volume is projected to a
-        # full-candle equivalent before comparing against the SMA of closed candles.
-        # This prevents mid-candle scans from incorrectly penalising normal volume.
-        if "volume" in df.columns and "vol_sma" in df.columns:
-            vol_sma  = float(last_row["vol_sma"])
-            raw_vol  = float(last_row["volume"])
-            if vol_sma > 0 and raw_vol >= 0:
-                # --- Partial-candle normalisation ---
-                # Estimate the fraction of the candle that has elapsed using the
-                # gap between the last candle's open-time and now vs the candle duration.
-                # Falls back to raw volume if the index is not a DatetimeIndex.
-                norm_vol = raw_vol
-                try:
-                    import datetime as _dt
-                    try:
-                        from zoneinfo import ZoneInfo as _ZoneInfo
-                    except Exception:
-                        _ZoneInfo = None
+        # 2. Volume Spike Confirmation - DISABLED (use momentum.volume_enabled instead)
+        # This scoring was previously used for UT Bot & S/R signals but is now
+        # redundant with the Momentum engine's volume component.
 
-                    candle_open_time = df.index[-1]
-                    if hasattr(candle_open_time, 'to_pydatetime'):
-                        candle_open_time = candle_open_time.to_pydatetime()
+        # 3. EMA Trend Confluence - DISABLED (use momentum.ema_enabled instead)
+        # This scoring was previously used for UT Bot & S/R signals but is now
+        # redundant with the Momentum engine's EMA component.
+        # ema_above is left as None for backward compatibility.
+        ema_above = None   # Legacy: no longer computed for UT Bot/S/R
 
-                    tf_str   = config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
-                    tf_lower = tf_str.strip().lower()
-                    if tf_lower.endswith("m"):
-                        candle_secs = int(tf_lower[:-1]) * 60
-                    elif tf_lower.endswith("h"):
-                        candle_secs = int(tf_lower[:-1]) * 3600
-                    else:
-                        candle_secs = 300  # default 5 min
-
-                    # Only normalise for intraday timeframes (< 1 day)
-                    if candle_secs < 86400:
-                        # Determine exchange timezone (NSE/BSE → Asia/Kolkata).
-                        exch = str(config.get("exchange", "NSE")).upper()
-                        tz_name = "Asia/Kolkata" if exch in ("NSE", "BSE") else "UTC"
-                        tz = _ZoneInfo(tz_name) if _ZoneInfo else None
-
-                        # Compute elapsed seconds using aware datetimes when
-                        # possible.  Prior implementation stripped tzinfo and
-                        # compared to *server local* time, which is only correct
-                        # when the server itself runs in the exchange tz.
-                        if tz is not None:
-                            now_aware = _dt.datetime.now(tz)
-                            if candle_open_time.tzinfo is None:
-                                # Treat naive index as being in the exchange tz —
-                                # yfinance returns tz-aware for intraday NSE, but
-                                # a fallback keeps behaviour identical for daily.
-                                candle_open_time = candle_open_time.replace(tzinfo=tz)
-                            elapsed_secs = max(1, (now_aware - candle_open_time).total_seconds())
-                        else:
-                            # Legacy fallback (no zoneinfo): naive comparison
-                            now_naive = _dt.datetime.now()
-                            if candle_open_time.tzinfo is not None:
-                                candle_open_time = candle_open_time.replace(tzinfo=None)
-                            elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
-
-                        # Cap elapsed at candle duration (closed candles: elapsed ≥ candle_secs)
-                        elapsed_frac = min(1.0, elapsed_secs / candle_secs)
-                        if elapsed_frac > 0.05:  # ignore if < 5% elapsed (data timing artefact)
-                            norm_vol = raw_vol / elapsed_frac
-                except Exception:
-                    pass  # silently fall back to raw volume
-
-                vol_ratio = norm_vol / vol_sma
-                # Score only above-average volume: 0 pts at 1x, 15 pts at 2.5x, capped.
-                vol_pts = round(min(15.0, max(0.0, 10.0 * (vol_ratio - 1.0))), 1)
-                if vol_pts > 0:
-                    if candle_bullish:
-                        buy_score += vol_pts
-                        buy_reasons.append(f"Bullish volume surge: {vol_ratio:.2f}x avg (norm) (+{vol_pts:.1f} pts)")
-                    else:
-                        sell_score += vol_pts
-                        sell_reasons.append(f"Bearish volume surge: {vol_ratio:.2f}x avg (norm) (+{vol_pts:.1f} pts)")
-
-        # 3. EMA Trend Confluence (10–20 pts) — PROPORTIONAL
-        # Scoring scales with how far price is from the EMA:
-        #   within 1% of EMA → 10 pts; 2%+ away → 20 pts (linearly interpolated).
-        # ema_above is always captured so the frontend icon knows the EMA position.
-        ema_above = None   # None = no EMA data available
-        if "ema_trend" in df.columns and len(df) >= ema_period:
-            ema_val = float(last_row["ema_trend"])
-            if ema_val > 0:
-                ema_above = close_price > ema_val
-                pct_from_ema = abs(close_price - ema_val) / ema_val * 100.0
-                ema_pts = round(min(20.0, 10.0 + 5.0 * pct_from_ema), 1)
-                if close_price > ema_val:
-                    buy_score += ema_pts
-                    buy_reasons.append(f"Bullish: above EMA{ema_period} by {pct_from_ema:.1f}% (+{ema_pts:.1f} pts)")
-                else:
-                    sell_score += ema_pts
-                    sell_reasons.append(f"Bearish: below EMA{ema_period} by {pct_from_ema:.1f}% (+{ema_pts:.1f} pts)")
-
-        # 4. RSI Momentum Confluence (up to 10 pts) — EXCLUSIVE RANGES
-        # Ranges are now enforced as exclusive so a single RSI value cannot
-        # simultaneously boost both BUY and SELL scores.
-        # rsi_ok is always captured so the frontend icon knows the RSI range pass/fail.
-        rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
-        rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))   # tightened from 65
-        rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))  # tightened from 35
-        rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
-        rsi_ok = None   # None = no RSI data available
-        if "rsi" in df.columns:
-            rsi = float(last_row["rsi"])
-            # rsi_ok: passes the range relevant to the candle direction
-            rsi_ok = (rsi_buy_min <= rsi <= rsi_buy_max) if candle_bullish \
-                else (rsi_sell_min <= rsi <= rsi_sell_max)
-            # Only award RSI pts to the direction the candle is moving
-            if candle_bullish and rsi_ok:
-                buy_score += 10.0
-                buy_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_buy_min:.0f}-{rsi_buy_max:.0f}) (+10.0 pts)")
-            elif not candle_bullish and rsi_ok:
-                sell_score += 10.0
-                sell_reasons.append(f"Optimal RSI: {rsi:.1f} ({rsi_sell_min:.0f}-{rsi_sell_max:.0f}) (+10.0 pts)")
+        # 4. RSI Momentum Confluence - DISABLED (use momentum.rsi_enabled instead)
+        # This scoring was previously used for UT Bot & S/R signals but is now
+        # redundant with the Momentum engine's RSI component.
+        # rsi_ok is left as None for backward compatibility.
+        rsi_ok = None   # Legacy: no longer computed for UT Bot/S/R
 
         # 4.5 RSI Divergence (up to 15 pts)
         divs = detect_rsi_divergence(df, lookback=15)
@@ -1289,49 +1522,16 @@ def evaluate_composite_signals(
             sell_reasons.append("Bearish RSI Divergence (+15.0 pts)")
             triggered_sell.append("Bearish Divergence")
 
-        # 5. ADX Trend Strength (up to 10 pts) — DIRECTIONAL via +DI / -DI
-        # Uses +DI > -DI to confirm bullish momentum; -DI > +DI for bearish.
-        # Prevents a strong downtrend from inflating a BUY score.
-        # adx_ok is always captured so the frontend icon knows the ADX threshold pass/fail.
-        adx_strong          = float(filters_cfg.get("adx_strong_threshold", 25))
-        adx_moderate        = float(filters_cfg.get("adx_moderate_threshold", 20))
-        adx_threshold_hard  = float(filters_cfg.get("adx_min_threshold", 20))
-        adx_ok = None   # None = no ADX data available
-        if "adx_14" in df.columns and "plus_di" in df.columns and "minus_di" in df.columns:
-            adx_val  = float(last_row["adx_14"])
-            plus_di  = float(last_row["plus_di"])
-            minus_di = float(last_row["minus_di"])
-            adx_ok = adx_val >= adx_threshold_hard
-            if adx_val >= adx_strong:
-                adx_pts = 10.0
-            elif adx_val >= adx_moderate:
-                adx_pts = 5.0
-            else:
-                adx_pts = 0.0
-            if adx_pts > 0:
-                if plus_di > minus_di:
-                    buy_score += adx_pts
-                    buy_reasons.append(f"Bullish ADX: {adx_val:.1f} (+DI>{minus_di:.1f}) (+{adx_pts:.1f} pts)")
-                else:
-                    sell_score += adx_pts
-                    sell_reasons.append(f"Bearish ADX: {adx_val:.1f} (-DI>{plus_di:.1f}) (+{adx_pts:.1f} pts)")
+        # 5. ADX Trend Strength - DISABLED (use momentum.adx_enabled instead)
+        # This scoring was previously used for UT Bot & S/R signals but is now
+        # redundant with the Momentum engine's ADX component.
+        # adx_ok is left as None for backward compatibility.
+        adx_ok = None   # Legacy: no longer computed for UT Bot/S/R
 
-        # 5.5 Volatility Squeeze Release (up to 15 pts)
-        # Squeeze release happens when Bollinger Bands expand outside Keltner Channels.
-        # sqz_ok is always captured so the frontend icon knows whether a release occurred.
-        sqz_ok = None   # None = no squeeze data available
-        if "squeeze_release" in df.columns:
-            sqz_ok = bool(last_row["squeeze_release"])
-            if sqz_ok:
-                # Squeeze released! Award 15 pts to the direction of the signal
-                if candle_bullish:
-                    buy_score += 15.0
-                    buy_reasons.append("Bullish Squeeze Release (+15.0 pts)")
-                    triggered_buy.append("Squeeze Release")
-                else:
-                    sell_score += 15.0
-                    sell_reasons.append("Bearish Squeeze Release (+15.0 pts)")
-                    triggered_sell.append("Squeeze Release")
+        # 5.5 Volatility Squeeze Release - DISABLED (covered by momentum.bb_enabled)
+        # This feature is now covered by the Momentum engine's BB breakout detection.
+        # sqz_ok is left as None for backward compatibility.
+        sqz_ok = None   # Legacy: no longer computed for UT Bot/S/R
 
         # 6. Candlestick Pattern Recognition (up to 8 pts) — BEST ONLY (no stacking)
         # Only the highest-scoring bullish/bearish pattern is counted to avoid
@@ -1375,114 +1575,11 @@ def evaluate_composite_signals(
     buy_score  = round(buy_score, 1)
     sell_score = round(sell_score, 1)
 
-    # ---- Apply Hard Filters (gate visibility, NOT scoring) -----------------
-    # These run AFTER scoring so scores are always fully computed.
-    if last_row is not None:
-        close_price = float(last_row["close"])
-
-        # EMA Trend Filter — mandatory gate when enabled
-        ema_filter = filters_cfg.get("ema_filter_enabled", False)
-        if ema_filter and "ema_trend" in df.columns and len(df) >= ema_period:
-            ema_val = float(last_row["ema_trend"])
-            if composite_buy and close_price <= ema_val:
-                composite_buy = False
-                log.info("Filtered out BUY: Close (%.2f) below EMA %d (%.2f)", close_price, ema_period, ema_val)
-            if composite_sell and close_price >= ema_val:
-                composite_sell = False
-                log.info("Filtered out SELL: Close (%.2f) above EMA %d (%.2f)", close_price, ema_period, ema_val)
-
-        # Volume SMA Filter — mandatory gate when enabled.
-        # vol_ok is always computed (regardless of filter toggle) so the frontend
-        # icon faithfully reflects whether volume cleared the configured threshold.
-        #
-        # Same partial-candle normalisation as the scoring block above: raw volume is
-        # projected to a full-candle equivalent so mid-candle scans do not incorrectly
-        # reject valid signals due to an incomplete bar's naturally lower volume.
-        vol_filter  = filters_cfg.get("volume_filter_enabled", False)
-        vol_min_pct = float(filters_cfg.get("volume_min_pct", 80)) / 100.0
-        vol_ok = True   # default: pass (no vol data → show icon as active)
-        if "volume" in df.columns and "vol_sma" in df.columns:
-            vol_sma  = float(last_row["vol_sma"])
-            raw_vol  = float(last_row["volume"])
-            if vol_sma > 0 and raw_vol >= 0:
-                # --- Partial-candle normalisation (same logic as scoring block) ---
-                norm_vol = raw_vol
-                try:
-                    import datetime as _dt
-                    candle_open_time = df.index[-1]
-                    if hasattr(candle_open_time, 'to_pydatetime'):
-                        candle_open_time = candle_open_time.to_pydatetime()
-                    tf_str   = config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
-                    tf_lower = tf_str.strip().lower()
-                    if tf_lower.endswith("m"):
-                        candle_secs = int(tf_lower[:-1]) * 60
-                    elif tf_lower.endswith("h"):
-                        candle_secs = int(tf_lower[:-1]) * 3600
-                    else:
-                        candle_secs = 300
-                    if candle_secs < 86400:
-                        now_naive = _dt.datetime.now()
-                        if candle_open_time.tzinfo is not None:
-                            candle_open_time = candle_open_time.replace(tzinfo=None)
-                        elapsed_secs = max(1, (now_naive - candle_open_time).total_seconds())
-                        elapsed_frac = min(1.0, elapsed_secs / candle_secs)
-                        if elapsed_frac > 0.05:
-                            norm_vol = raw_vol / elapsed_frac
-                except Exception:
-                    pass
-
-                vol_ratio = norm_vol / vol_sma
-                vol_ok    = (norm_vol >= vol_min_pct * vol_sma)
-                if vol_filter:
-                    if composite_buy and not vol_ok:
-                        composite_buy = False
-                        log.info("Filtered out BUY (Volume): Projected vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                                 norm_vol, vol_ratio * 100, vol_min_pct * 100)
-                    elif composite_buy:
-                        log.debug("Volume OK for BUY: Projected vol=%.0f is %.0f%% of SMA", norm_vol, vol_ratio * 100)
-                    if composite_sell and not vol_ok:
-                        composite_sell = False
-                        log.info("Filtered out SELL (Volume): Projected vol=%.0f is %.0f%% of SMA (min %.0f%%)",
-                                 norm_vol, vol_ratio * 100, vol_min_pct * 100)
-
-        # ADX Hard Filter (opt-in)
-        adx_hard_filter = filters_cfg.get("adx_filter_enabled", False)
-        adx_threshold   = float(filters_cfg.get("adx_min_threshold", 20))
-        if adx_hard_filter and "adx_14" in df.columns:
-            adx_val = float(last_row["adx_14"])
-            if composite_buy and adx_val < adx_threshold:
-                composite_buy = False
-                log.info("Filtered out BUY: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
-            if composite_sell and adx_val < adx_threshold:
-                composite_sell = False
-                log.info("Filtered out SELL: ADX (%.1f) below threshold (%.0f)", adx_val, adx_threshold)
-
-        # RSI Hard Filter (opt-in)
-        rsi_hard_filter = filters_cfg.get("rsi_filter_enabled", False)
-        if rsi_hard_filter and "rsi" in df.columns:
-            rsi_val      = float(last_row["rsi"])
-            rsi_buy_min  = float(filters_cfg.get("rsi_buy_min", 40))
-            rsi_buy_max  = float(filters_cfg.get("rsi_buy_max", 60))
-            rsi_sell_min = float(filters_cfg.get("rsi_sell_min", 40))
-            rsi_sell_max = float(filters_cfg.get("rsi_sell_max", 60))
-            if composite_buy and not (rsi_buy_min <= rsi_val <= rsi_buy_max):
-                composite_buy = False
-                log.info("Filtered out BUY: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_buy_min, rsi_buy_max)
-            if composite_sell and not (rsi_sell_min <= rsi_val <= rsi_sell_max):
-                composite_sell = False
-                log.info("Filtered out SELL: RSI (%.1f) outside range (%.0f-%.0f)", rsi_val, rsi_sell_min, rsi_sell_max)
-
-        # Volatility Squeeze Hard Filter (opt-in)
-        # Only allow signals if they occur exactly when a squeeze releases.
-        sqz_hard_filter = filters_cfg.get("squeeze_filter_enabled", False)
-        if sqz_hard_filter and "squeeze_release" in df.columns:
-            is_release = bool(last_row["squeeze_release"])
-            if composite_buy and not is_release:
-                composite_buy = False
-                log.info("Filtered out BUY: Not in a Squeeze Release")
-            if composite_sell and not is_release:
-                composite_sell = False
-                log.info("Filtered out SELL: Not in a Squeeze Release")
+    # ---- Hard Filters REMOVED -----------------------------------------------
+    # All hard filters (EMA, Volume, ADX, RSI, Squeeze) have been removed.
+    # Use engine-specific components instead (momentum.* or mean_reversion.*).
+    # Legacy status variables are left as None for backward compatibility.
+    vol_ok = None   # Legacy: was volume filter pass/fail
 
     # ---- Collect detail metadata for display --------------------------------
     details = {}

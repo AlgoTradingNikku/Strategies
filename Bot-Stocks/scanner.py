@@ -116,6 +116,73 @@ def load_config(path: Path | str = None) -> dict:
 # ============================================================================
 
 # ---------------------------------------------------------------------------
+# Index Symbol Mapping (Multi-Source Support)
+# ---------------------------------------------------------------------------
+def get_index_symbol(index_name: str, data_source: str) -> str:
+    """
+    Get the correct index symbol format for the configured data source.
+    
+    Parameters
+    ----------
+    index_name : str
+        Standard index name: "NIFTY50", "BANKNIFTY", "FINNIFTY", "NIFTYIT"
+    data_source : str
+        Data provider: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
+    
+    Returns
+    -------
+    str
+        Data-source-specific symbol format
+        
+    Examples
+    --------
+    >>> get_index_symbol("NIFTY50", "yfinance")
+    "^NSEI"
+    >>> get_index_symbol("NIFTY50", "openalgo")
+    "NIFTY 50"
+    """
+    INDEX_SYMBOL_MAP = {
+        "NIFTY50": {
+            "yfinance": "^NSEI",
+            "openalgo": "NIFTY 50",
+            "tvdatafeed": "NIFTY",
+            "twelvedata": "NIFTY50",
+        },
+        "BANKNIFTY": {
+            "yfinance": "^NSEBANK",
+            "openalgo": "NIFTY BANK",
+            "tvdatafeed": "BANKNIFTY",
+            "twelvedata": "BANKNIFTY",
+        },
+        "FINNIFTY": {
+            "yfinance": "^CNXFIN",
+            "openalgo": "FINNIFTY",
+            "tvdatafeed": "FINNIFTY",
+            "twelvedata": "FINNIFTY",
+        },
+        "NIFTYIT": {
+            "yfinance": "^CNXIT",
+            "openalgo": "NIFTY IT",
+            "tvdatafeed": "CNXIT",
+            "twelvedata": "NIFTYIT",
+        },
+    }
+    
+    index_map = INDEX_SYMBOL_MAP.get(index_name.upper(), {})
+    symbol = index_map.get(data_source.lower())
+    
+    if symbol is None:
+        # Fallback: return the index name as-is
+        log.warning(
+            "Unknown index '%s' or data source '%s'. Using fallback: %s",
+            index_name, data_source, index_name
+        )
+        return index_name
+    
+    return symbol
+
+
+# ---------------------------------------------------------------------------
 # OpenAlgo helpers (interval mapping + per-process broker capability cache)
 # ---------------------------------------------------------------------------
 # Bot-Stocks uses yfinance-style timeframes ("5m", "1h", "1d", "1W"). OpenAlgo
@@ -604,27 +671,46 @@ def scan_symbol(
     if df is None or len(df) < 20:
         return []
 
-    # ---- Run enabled signal engines ----------------------------------------
-    if strat.get("ut_enabled", True):
-        df = compute_utbot_signals(
-            df,
-            key_value       = float(strat.get("key_value", 1.0)),
-            atr_period      = int(strat.get("atr_period", 2)),
-            use_heikin_ashi = bool(strat.get("use_heikin_ashi", False)),
-        )
-
-    sr_zones: list = []
-    if sr_cfg.get("enabled", True):
-        df, sr_zones = compute_sr_signals(
-            df,
-            pivot_period      = int(sr_cfg.get("pivot_period", 10)),
-            source            = sr_cfg.get("source", "High/Low"),
-            channel_width_pct = int(sr_cfg.get("channel_width_pct", 5)),
-            min_strength      = int(sr_cfg.get("min_strength", 1)),
-            max_num_sr        = int(sr_cfg.get("max_num_sr", 6)),
-            loopback          = int(sr_cfg.get("loopback", 290)),
-            proximity_pct     = float(sr_cfg.get("proximity_pct", 0.5)),
-        )
+    # ---- Run enabled signal engines dynamically -----------------------------
+    from signals import ENGINE_REGISTRY
+    
+    sr_zones: list = []  # Will be populated if S/R engine runs
+    
+    for engine in ENGINE_REGISTRY:
+        cfg_section = config.get(engine["config_section"], {})
+        is_enabled = cfg_section.get(engine["enabled_key"], True)
+        
+        if not is_enabled:
+            continue
+        
+        # Execute engine based on its key
+        if engine["key"] == "ut_bot":
+            df = compute_utbot_signals(
+                df,
+                key_value       = float(strat.get("key_value", 1.0)),
+                atr_period      = int(strat.get("atr_period", 2)),
+                use_heikin_ashi = bool(strat.get("use_heikin_ashi", False)),
+            )
+        elif engine["key"] == "sr_channels":
+            df, sr_zones = compute_sr_signals(
+                df,
+                pivot_period      = int(sr_cfg.get("pivot_period", 10)),
+                source            = sr_cfg.get("source", "High/Low"),
+                channel_width_pct = int(sr_cfg.get("channel_width_pct", 5)),
+                min_strength      = int(sr_cfg.get("min_strength", 1)),
+                max_num_sr        = int(sr_cfg.get("max_num_sr", 6)),
+                loopback          = int(sr_cfg.get("loopback", 290)),
+                proximity_pct     = float(sr_cfg.get("proximity_pct", 0.5)),
+            )
+        elif engine["key"] == "momentum":
+            from signals import compute_momentum_signals
+            momentum_cfg = config.get("momentum", {})
+            df = compute_momentum_signals(df, momentum_cfg)
+        elif engine["key"] == "mean_reversion":
+            from signals import compute_mean_reversion_signals
+            mr_cfg = config.get("mean_reversion", {})
+            df = compute_mean_reversion_signals(df, mr_cfg)
+        # Future engines can be added here with new elif blocks
 
     # ---- Evaluate composite signals ----------------------------------------
     composite  = evaluate_composite_signals(df, config, lookback_candles, sr_zones=sr_zones)
@@ -683,6 +769,9 @@ def scan_symbol(
         "sqz_ok":      composite.get("sqz_ok"),
     }
 
+    # RS filter enablement state (needed by _build_result closure)
+    rs_enabled = filters_cfg.get("rs_enabled", False)
+
     def _build_result(signal_type, triggered, score, reasons):
         """Build a single signal result dict with MTF, R:R, RS adjustments."""
         adj_score = score
@@ -710,16 +799,21 @@ def scan_symbol(
             adj_score += 5.0
             adj_reasons.append("MTF neutral (+5.0 pts)")
 
-        # Relative Strength score adjustment
-        rs_buy_thresh  = float(filters_cfg.get("rs_buy_threshold", 1.1))
-        rs_sell_thresh = float(filters_cfg.get("rs_sell_threshold", 0.9))
-        if rs_ratio is not None:
-            if signal_type == "BUY" and rs_ratio > rs_buy_thresh:
-                adj_score += 10.0
-                adj_reasons.append(f"Outperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
-            elif signal_type == "SELL" and rs_ratio < rs_sell_thresh:
-                adj_score += 10.0
-                adj_reasons.append(f"Underperforming NIFTY (RS: {rs_ratio:.3f}) (+10.0 pts)")
+        # Relative Strength filter (HARD FILTER when enabled)
+        rs_buy_thresh  = float(filters_cfg.get("rs_buy_threshold", 1.05))
+        rs_sell_thresh = float(filters_cfg.get("rs_sell_threshold", 0.95))
+        if rs_enabled and rs_ratio is not None:
+            if signal_type == "BUY" and rs_ratio < rs_buy_thresh:
+                # BUY signal but underperforming index → REJECT
+                return None
+            elif signal_type == "SELL" and rs_ratio > rs_sell_thresh:
+                # SELL signal but outperforming index → REJECT
+                return None
+            # Pass through: signal aligns with RS
+            if signal_type == "BUY":
+                adj_reasons.append(f"✓ RS Filter: Outperforming (RS: {rs_ratio:.3f} >= {rs_buy_thresh})")
+            else:
+                adj_reasons.append(f"✓ RS Filter: Underperforming (RS: {rs_ratio:.3f} <= {rs_sell_thresh})")
 
         # Single final cap — applied here (Stage 2) AFTER all MTF and RS adjustments
         # so the full bonus impact is visible in scores rather than being silently truncated.
@@ -821,17 +915,22 @@ def run_scan(
     timeframe = timeframe_override or config.get("candle_timeframe", config.get("scan_timeframe", "5m"))
     lookback  = int(config.get("signal_lookback_candles", 2))
 
-    ut_enabled = strat.get("ut_enabled", True)
-    sr_enabled = sr_cfg.get("enabled", True)
-
-    if ut_enabled and sr_enabled:
-        eff_mode = "UTBot+SR"
-    elif ut_enabled:
-        eff_mode = "UTBot Only"
-    elif sr_enabled:
-        eff_mode = "SR Channels Only"
-    else:
+    # ---- Determine effective signal mode dynamically -----------------------
+    from signals import ENGINE_REGISTRY
+    
+    active_engine_labels = []
+    for engine in ENGINE_REGISTRY:
+        cfg_section = config.get(engine["config_section"], {})
+        is_enabled = cfg_section.get(engine["enabled_key"], True)
+        if is_enabled:
+            active_engine_labels.append(engine["label"])
+    
+    if len(active_engine_labels) == 0:
         eff_mode = "None"
+    elif len(active_engine_labels) == 1:
+        eff_mode = f"{active_engine_labels[0]} Only"
+    else:
+        eff_mode = " + ".join(active_engine_labels)
 
     # ---- Resolve symbols ---------------------------------------------------
     # segment can be a single string or a list of strings (from config or CLI).
@@ -886,12 +985,15 @@ def run_scan(
     else:
         segment_label = "NONE"
 
-    # ---- Build enabled engine list for logging ----------------------------
+    # ---- Build enabled engine list dynamically for logging -----------------
+    from signals import ENGINE_REGISTRY
+    
     engines = []
-    if ut_enabled:
-        engines.append("UT Bot")
-    if sr_enabled:
-        engines.append("S/R Channels")
+    for engine in ENGINE_REGISTRY:
+        cfg_section = config.get(engine["config_section"], {})
+        is_enabled = cfg_section.get(engine["enabled_key"], True)
+        if is_enabled:
+            engines.append(engine["label"])
 
     log.info("=" * 70)
     log.info("  UTBot + SR Channels Scanner — %s", segment_label)
@@ -908,12 +1010,23 @@ def run_scan(
     log.info("  Scan Time     : %s", scan_time_str)
     log.info("=" * 70)
 
-    # ---- Fetch NIFTY50 index data for Relative Strength --------------------
+    # ---- Fetch index data for Relative Strength ----------------------------
     nifty_df = None
-    try:
-        nifty_df = fetch_history("^NSEI", timeframe, config)
-    except Exception as e:
-        log.debug("Could not fetch NIFTY50 index for RS: %s", e)
+    filters_cfg = config.get("filters", {})
+    rs_enabled = filters_cfg.get("rs_enabled", False)
+    
+    if rs_enabled:
+        data_source = config.get("data_source", "yfinance").lower()
+        rs_index = filters_cfg.get("rs_index", "NIFTY50")
+        
+        try:
+            index_symbol = get_index_symbol(rs_index, data_source)
+            log.debug("Fetching %s as '%s' from %s for RS", rs_index, index_symbol, data_source)
+            nifty_df = fetch_history(index_symbol, timeframe, config)
+            if nifty_df is not None:
+                log.info("  RS Index      : %s (%s) — %d bars fetched", rs_index, index_symbol, len(nifty_df))
+        except Exception as e:
+            log.warning("Could not fetch %s index for RS: %s", rs_index, e)
 
     # ---- Classify current market regime -----------------------------------
     # Uses the same nifty_df already fetched for Relative Strength — no extra
@@ -928,17 +1041,20 @@ def run_scan(
         regime_info["minus_di"], regime_info["vol_pct"],
     )
 
-    # ---- Pre-fetch HTF data for all symbols in parallel (MTF confirmation) --
-    # Mirrors the nifty_df pattern: one parallel batch before the main scan
-    # executor, eliminating a second sequential fetch inside each worker thread.
+    # ---- Pre-fetch HTF data for all symbols in parallel (only when enabled) ----
+    # HTF (Higher Timeframe) confirmation is a HARD FILTER that rejects signals
+    # when the higher timeframe trend opposes the signal direction.
+    # Pre-fetching eliminates sequential fetches inside each worker thread.
+    # 
+    # Only runs when:
+    #   • mtf_timeframe is set (e.g., "15m")
+    #   • mtf_filter_enabled = true in config.yml
     filters_cfg = config.get("filters", {})
     htf_cache: dict = {}
     mtf_tf      = filters_cfg.get("mtf_timeframe", "15m")
     mtf_active  = (
-        bool(mtf_tf) and (
-            filters_cfg.get("mtf_filter_enabled", False) or
-            filters_cfg.get("mtf_neutral_pct", 0) >= 0   # scoring always runs when mtf_tf is set
-        )
+        bool(mtf_tf) and 
+        filters_cfg.get("mtf_filter_enabled", False)
     )
     if mtf_active:
         log.info("  Pre-fetching HTF (%s) data for %d symbols...", mtf_tf, len(symbols))
@@ -960,22 +1076,15 @@ def run_scan(
 
     # ---- Log active hard filters -----------------------------------------------
     active_filters = []
-    if filters_cfg.get("ema_filter_enabled", False):
-        active_filters.append(f"EMA({filters_cfg.get('ema_period', 200)}) Hard")
-    if filters_cfg.get("volume_filter_enabled", False):
-        active_filters.append(f"Volume >{filters_cfg.get('volume_min_pct', 80)}% SMA Hard")
-    if filters_cfg.get("adx_filter_enabled", False):
-        active_filters.append(f"ADX>{filters_cfg.get('adx_min_threshold', 20)} Hard")
-    if filters_cfg.get("rsi_filter_enabled", False):
-        active_filters.append("RSI Range Hard")
     if filters_cfg.get("mtf_filter_enabled", False):
-        active_filters.append(f"MTF Hard ({filters_cfg.get('mtf_timeframe', '15m')})")
-    if filters_cfg.get("squeeze_filter_enabled", False):
-        active_filters.append("Squeeze Hard")
+        active_filters.append(f"HTF ({filters_cfg.get('mtf_timeframe', '15m')})")
+    if rs_enabled:
+        rs_index_name = filters_cfg.get("rs_index", "NIFTY50")
+        active_filters.append(f"Outperformers vs {rs_index_name}")
     if active_filters:
-        log.info("  Active Hard Filters: %s", " | ".join(active_filters))
+        log.info("  Hard Filters  : %s", " | ".join(active_filters))
     else:
-        log.info("  Active Hard Filters: None (scoring only)")
+        log.info("  Hard Filters  : None (all filters disabled)")
 
     log.info("  Scanning %d symbols on LTF (%s) ...", len(symbols), timeframe)
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -1512,18 +1621,26 @@ Examples:
     segment       = args.segment  # None → use config value
     mode_override = args.mode     # None → use config value
     scan_interval = int(config.get("scan_interval_seconds", 300))
+    
     if mode_override:
         eff_mode = mode_override
     else:
-        ut_on = config.get("strategy", {}).get("ut_enabled", True)
-        sr_on = config.get("sr_channels", {}).get("enabled", True)
-        if ut_on and sr_on:
-            eff_mode = "UTBot+SR"
-        elif ut_on:
-            eff_mode = "UTBot Only"
-        elif sr_on:
-            eff_mode = "SR Channels Only"
+        # Determine effective mode dynamically from ENGINE_REGISTRY
+        from signals import ENGINE_REGISTRY
+        
+        active_labels = []
+        for engine in ENGINE_REGISTRY:
+            cfg_section = config.get(engine["config_section"], {})
+            is_enabled = cfg_section.get(engine["enabled_key"], True)
+            if is_enabled:
+                active_labels.append(engine["label"])
+        
+        if len(active_labels) == 0:
+            eff_mode = "None"
+        elif len(active_labels) == 1:
+            eff_mode = f"{active_labels[0]} Only"
         else:
+            eff_mode = " + ".join(active_labels)
             eff_mode = "None"
 
     def _do_scan() -> tuple[list, list, str, str, int, str]:

@@ -3,8 +3,8 @@
 data_source: "openalgo"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
 trading_api_source: "openalgo"        # Options: "openalgo", "flattrade", "mstock", "shoonya", "dhan"
 exchange: "NSE"                       # Target exchange
-candle_timeframe: "5m"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
-scan_interval_seconds: 300            # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
+candle_timeframe: "1w"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_interval_seconds: 60             # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
 
 # Set to "" or [] to scan only the custom symbols list below
 segment:
@@ -14,8 +14,6 @@ use_symbols: true
 symbols:
 - RPOWER
 - IOC
-
-# UT Bot Settings
 strategy:
   ut_enabled: true
   key_value: 1.0                      # Key Value / Sensitivity (default: 1.0)
@@ -55,11 +53,11 @@ regime:
   # Per-regime engine policy — read by regime.should_enable_engine().
   # Sprint 1.5 only *tags* signals; Sprint 2 will *gate* on these.
   policy:
-    trending_up:    { utbot: true,  sr: true  }
-    trending_down:  { utbot: true,  sr: true  }
-    chop:           { utbot: false, sr: true  }
-    high_vol_chop:  { utbot: false, sr: false }
-    unknown:        { utbot: true,  sr: true  }
+    trending_up: {utbot: true, sr: true}
+    trending_down: {utbot: true, sr: true}
+    chop: {utbot: false, sr: true}
+    high_vol_chop: {utbot: false, sr: false}
+    unknown: {utbot: true, sr: true}
 
 # Setup Filters & Priorities
 filters:
@@ -159,7 +157,7 @@ risk_limits:
   max_positions_per_symbol: 1       # Reject duplicate direction/symbol churn
   daily_loss_stop_pct: -3.0         # Reject new trades once today's realized PnL% ≤ this floor
                                     # (negative → loss cutoff; sum of pnl_pct across trades closed since local midnight)
-  daily_loss_stop_rupees: null      # Optional absolute ₹ floor (e.g. -500 blocks after ₹500 loss).
+  daily_loss_stop_rupees:           # Optional absolute ₹ floor (e.g. -500 blocks after ₹500 loss).
                                     # null → disabled. Applied in ADDITION to daily_loss_stop_pct.
 
   # ---- Sprint-2 additions: capital & risk-based sizing ----
@@ -393,4 +391,4 @@ trade_management:
     on_sl_move: false            # Alert on every trailing SL adjustment (verbose)
 
 
-scan_timeframe: 5m
+scan_timeframe: 1w

@@ -157,37 +157,19 @@ class BotConfig(BaseModel):
     auto_refresh_enabled: bool = False
 
 class FiltersConfig(BaseModel):
-    ema_filter_enabled: bool
-    ema_period: int
-    volume_filter_enabled: bool
-    volume_sma_period: int
-    volume_min_pct: int
+    # Kept filters (unique functionality)
     min_alert_score: int
+    candle_patterns_enabled: bool
     mtf_filter_enabled: bool
     mtf_timeframe: str
     mtf_neutral_pct: float
     mtf_atr_period: int = 10
-    adx_filter_enabled: bool
-    adx_min_threshold: float
-    adx_strong_threshold: float
-    adx_moderate_threshold: float
-    rsi_filter_enabled: bool
-    rsi_period: int
-    rsi_buy_min: float
-    rsi_buy_max: float
-    rsi_sell_min: float
-    rsi_sell_max: float
     rs_period: int
     rs_buy_threshold: float
     rs_sell_threshold: float
     risk_reward_enabled: bool
     rr_atr_multiplier: float
     rr_default_ratio: float
-    squeeze_filter_enabled: bool = False
-    squeeze_length: int = 20
-    squeeze_bb_mult: float = 2.0
-    squeeze_kc_mult: float = 1.5
-    candle_patterns_enabled: bool
     signal_history_enabled: bool
     outcome_check_hours: int
     win_rate_backtest_enabled: bool = False
@@ -238,6 +220,50 @@ def get_config():
         return cfg
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load config: {e}")
+
+@app.get("/api/engines")
+def get_engines():
+    """
+    Return the list of registered signal engines with their metadata.
+    Frontend uses this to dynamically generate engine toggles.
+    """
+    try:
+        from signals import ENGINE_REGISTRY
+        cfg = load_config()
+        
+        engines = []
+        for engine in ENGINE_REGISTRY:
+            cfg_section = cfg.get(engine["config_section"], {})
+            is_enabled = cfg_section.get(engine["enabled_key"], True)
+            
+            engine_data = {
+                "key": engine["key"],
+                "label": engine["label"],
+                "enabled": is_enabled,
+                "config_section": engine["config_section"],
+                "enabled_key": engine["enabled_key"],
+            }
+            
+            # Add components if this engine has them
+            if "components" in engine:
+                components = []
+                for comp in engine["components"]:
+                    comp_enabled = cfg_section.get(comp["config_key"], True)
+                    components.append({
+                        "key": comp["key"],
+                        "label": comp["label"],
+                        "display_label": comp.get("display_label", comp["label"]),
+                        "config_key": comp["config_key"],
+                        "enabled": comp_enabled,
+                    })
+                engine_data["components"] = components
+            
+            engines.append(engine_data)
+        
+        return {"engines": engines}
+    except Exception as e:
+        log.exception("Failed to fetch ENGINE_REGISTRY")
+        raise HTTPException(status_code=500, detail=f"Failed to load engines: {e}")
 
 def _update_commented_map(cm, updates: dict) -> None:
     """Recursively update a ruamel.yaml CommentedMap in-place from a plain dict.

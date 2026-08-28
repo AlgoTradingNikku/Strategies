@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const historyLimit = 15;
     let lastScanTimestamp = null;  // epoch ms of the last completed scan
     let orderMode = "manual";      // "manual" | "auto" — synced with config & toggle
+    let autoOrderSessionCount = 0; // Track total auto-orders placed this session
     // Suppresses the header TF dropdown change listener when values are set
     // programmatically (e.g. during loadConfig) to prevent duplicate scans.
     let _suppressTfChange = false;
@@ -76,6 +77,218 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // API Base URL
     const API_BASE = window.location.origin;
+
+    // ---------------------------------------------------------------------------
+    // Helper: Attach engine master toggle event listener
+    // ---------------------------------------------------------------------------
+    function attachEngineToggleListener(engine, engineCard, toggleId, hasComponents) {
+        const engineCheckbox = engineCard.querySelector(`#${toggleId}`);
+        engineCheckbox.addEventListener("change", async () => {
+            try {
+                const updatePayload = {};
+                updatePayload[engine.config_section] = {};
+                updatePayload[engine.config_section][engine.enabled_key] = engineCheckbox.checked;
+                
+                const updateResp = await fetch(`${API_BASE}/api/config`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updatePayload)
+                });
+                
+                if (!updateResp.ok) throw new Error("Failed to update engine state");
+                
+                showNotification(`${engine.label} ${engineCheckbox.checked ? 'enabled' : 'disabled'}`, "success");
+                
+                // Update component states (disable/enable checkboxes and containers)
+                if (hasComponents) {
+                    const componentItems = engineCard.querySelectorAll(".component-toggle-item");
+                    
+                    componentItems.forEach(item => {
+                        const checkbox = item.querySelector("input[type='checkbox']");
+                        if (engineCheckbox.checked) {
+                            // Engine enabled - make components interactive
+                            item.classList.remove("disabled");
+                            checkbox.disabled = false;
+                        } else {
+                            // Engine disabled - make components non-interactive
+                            item.classList.add("disabled");
+                            checkbox.disabled = true;
+                        }
+                    });
+                    
+                    // Auto-expand when enabled, auto-collapse when disabled
+                    if (engineCheckbox.checked) {
+                        engineCard.classList.add("expanded");
+                    } else {
+                        engineCard.classList.remove("expanded");
+                    }
+                }
+                
+                await runScan();
+            } catch (error) {
+                console.error(`Error toggling ${engine.label}:`, error);
+                showNotification(`Failed to toggle ${engine.label}`, "error");
+                engineCheckbox.checked = !engineCheckbox.checked;
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helper: Attach component toggle event listener
+    // ---------------------------------------------------------------------------
+    function attachComponentToggleListener(engine, comp, compItem, compToggleId) {
+        const compCheckbox = compItem.querySelector(`#${compToggleId}`);
+        compCheckbox.addEventListener("change", async () => {
+            try {
+                const updatePayload = {};
+                updatePayload[engine.config_section] = {};
+                updatePayload[engine.config_section][comp.config_key] = compCheckbox.checked;
+                
+                const updateResp = await fetch(`${API_BASE}/api/config`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updatePayload)
+                });
+                
+                if (!updateResp.ok) throw new Error("Failed to update component state");
+                
+                showNotification(`${comp.label} ${compCheckbox.checked ? 'enabled' : 'disabled'}`, "success");
+                await runScan();
+            } catch (error) {
+                console.error(`Error toggling ${comp.label}:`, error);
+                showNotification(`Failed to toggle ${comp.label}`, "error");
+                compCheckbox.checked = !compCheckbox.checked;
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helper: Create components section for engine
+    // ---------------------------------------------------------------------------
+    function createEngineComponents(engine, engineCard) {
+        const componentsContainer = document.createElement("div");
+        componentsContainer.className = "engine-components";
+        
+        engine.components.forEach(comp => {
+            const compToggleId = `dash-comp-${engine.key}-${comp.key}`;
+            const compDisabled = !engine.enabled ? 'disabled' : '';
+            
+            const compItem = document.createElement("div");
+            compItem.className = `component-toggle-item ${compDisabled}`;
+            compItem.setAttribute("data-component-toggle", `${engine.key}.${comp.key}`);
+            
+            compItem.innerHTML = `
+                <div class="component-toggle-info">
+                    <span class="component-toggle-name">${comp.label}</span>
+                    <span class="component-toggle-desc">${comp.display_label}</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="${compToggleId}" ${comp.enabled ? 'checked' : ''} ${!engine.enabled ? 'disabled' : ''}>
+                    <span class="slider round"></span>
+                </label>
+            `;
+            
+            componentsContainer.appendChild(compItem);
+            attachComponentToggleListener(engine, comp, compItem, compToggleId);
+        });
+        
+        engineCard.appendChild(componentsContainer);
+        
+        // Add expand/collapse click handler to header
+        const header = engineCard.querySelector(".engine-toggle-header");
+        header.addEventListener("click", (e) => {
+            if (e.target.closest(".switch")) return;
+            engineCard.classList.toggle("expanded");
+        });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Helper: Create expandable engine toggle card with components
+    // ---------------------------------------------------------------------------
+    function createEngineToggle(engine, container) {
+        const hasComponents = engine.components && engine.components.length > 0;
+        
+        // Create engine card container
+        const engineCard = document.createElement("div");
+        engineCard.className = "engine-toggle-card";
+        engineCard.setAttribute("data-engine-toggle", engine.key);
+        
+        const toggleId = `dash-engine-${engine.key}`;
+        
+        // Build header HTML
+        let headerHTML = `
+            <div class="engine-toggle-header">
+                <div class="engine-toggle-left">
+        `;
+        
+        // Add expand icon only if engine has components
+        if (hasComponents) {
+            headerHTML += `<i class="fa-solid fa-chevron-right engine-expand-icon"></i>`;
+        }
+        
+        headerHTML += `
+                    <div class="engine-toggle-info">
+                        <span class="engine-toggle-name">${engine.label}</span>
+                        <span class="engine-toggle-desc">Enable ${engine.label} signal engine</span>
+                    </div>
+                </div>
+                <label class="switch" onclick="event.stopPropagation();">
+                    <input type="checkbox" id="${toggleId}" ${engine.enabled ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        `;
+        
+        engineCard.innerHTML = headerHTML;
+        
+        // Add components section if engine has them
+        if (hasComponents) {
+            createEngineComponents(engine, engineCard);
+        }
+        
+        // Insert at the beginning of the container (before filter toggles)
+        const firstChild = container.firstChild;
+        container.insertBefore(engineCard, firstChild);
+        
+        // Always start collapsed - users can manually expand by clicking header
+        // (Removed auto-expand logic to keep UI clean by default)
+        
+        // Attach engine master toggle listener
+        attachEngineToggleListener(engine, engineCard, toggleId, hasComponents);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Dynamic Engine Registry (Sprint 4) - Expandable/Collapsible Engines
+    // ---------------------------------------------------------------------------
+    async function loadEngineToggles() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/engines`);
+            if (!resp.ok) throw new Error("Failed to fetch engines");
+            const data = await resp.json();
+            const engines = data.engines || [];
+
+            // Target container for engine toggles
+            const container = document.querySelector(".control-toggles-list");
+            if (!container) {
+                console.warn("Engine toggles container not found");
+                return;
+            }
+
+            // Clear existing hardcoded engine toggles (UT Bot, S/R)
+            const existingEngineToggles = container.querySelectorAll("[data-engine-toggle]");
+            existingEngineToggles.forEach(el => el.remove());
+
+            // Dynamically create toggle for each engine
+            engines.forEach((engine, idx) => {
+                createEngineToggle(engine, container);
+            });
+
+            console.log(`✅ Dynamically loaded ${engines.length} engine toggles`);
+        } catch (error) {
+            console.error("Failed to load engine toggles:", error);
+            showNotification("Failed to load engine controls", "error");
+        }
+    }
 
     // ---------------------------------------------------------------------------
     // Sidebar Collapse Logic
@@ -170,11 +383,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Setup Filters
             if (cfg.filters) {
-                document.getElementById("cfg-filters-ema").checked = !!cfg.filters.ema_filter_enabled;
-                document.getElementById("cfg-filters-ema-period").value = cfg.filters.ema_period !== undefined ? cfg.filters.ema_period : 200;
-                document.getElementById("cfg-filters-volume").checked = !!cfg.filters.volume_filter_enabled;
-                document.getElementById("cfg-filters-vol-sma").value = cfg.filters.volume_sma_period !== undefined ? cfg.filters.volume_sma_period : 20;
-                document.getElementById("cfg-filters-vol-pct").value = cfg.filters.volume_min_pct !== undefined ? cfg.filters.volume_min_pct : 80;
                 document.getElementById("cfg-filters-score").value = cfg.filters.min_alert_score !== undefined ? cfg.filters.min_alert_score : 70;
                 
                 const mtfFilter = !!cfg.filters.mtf_filter_enabled;
@@ -184,21 +392,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("cfg-filters-mtf-neutral").value = cfg.filters.mtf_neutral_pct !== undefined ? cfg.filters.mtf_neutral_pct : 0.3;
                 document.getElementById("cfg-filters-mtf-atr-period").value = cfg.filters.mtf_atr_period !== undefined ? cfg.filters.mtf_atr_period : 10;
 
-                document.getElementById("cfg-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
-                document.getElementById("cfg-filters-adx-val").value = cfg.filters.adx_min_threshold !== undefined ? cfg.filters.adx_min_threshold : 20;
-                document.getElementById("cfg-filters-adx-strong").value = cfg.filters.adx_strong_threshold !== undefined ? cfg.filters.adx_strong_threshold : 25;
-                document.getElementById("cfg-filters-adx-moderate").value = cfg.filters.adx_moderate_threshold !== undefined ? cfg.filters.adx_moderate_threshold : 20;
-
-                document.getElementById("cfg-filters-rsi-filter").checked = !!cfg.filters.rsi_filter_enabled;
-                document.getElementById("cfg-filters-rsi-period").value = cfg.filters.rsi_period !== undefined ? cfg.filters.rsi_period : 14;
-                document.getElementById("cfg-filters-rsi-buy-min").value = cfg.filters.rsi_buy_min !== undefined ? cfg.filters.rsi_buy_min : 40;
-                document.getElementById("cfg-filters-rsi-buy-max").value = cfg.filters.rsi_buy_max !== undefined ? cfg.filters.rsi_buy_max : 65;
-                document.getElementById("cfg-filters-rsi-sell-min").value = cfg.filters.rsi_sell_min !== undefined ? cfg.filters.rsi_sell_min : 35;
-                document.getElementById("cfg-filters-rsi-sell-max").value = cfg.filters.rsi_sell_max !== undefined ? cfg.filters.rsi_sell_max : 60;
-
+                document.getElementById("cfg-filters-rs-enabled").checked = !!cfg.filters.rs_enabled;
+                document.getElementById("cfg-filters-rs-index").value = cfg.filters.rs_index || "NIFTY50";
                 document.getElementById("cfg-filters-rs-period").value = cfg.filters.rs_period !== undefined ? cfg.filters.rs_period : 20;
-                document.getElementById("cfg-filters-rs-buy").value = cfg.filters.rs_buy_threshold !== undefined ? cfg.filters.rs_buy_threshold : 1.1;
-                document.getElementById("cfg-filters-rs-sell").value = cfg.filters.rs_sell_threshold !== undefined ? cfg.filters.rs_sell_threshold : 0.9;
+                document.getElementById("cfg-filters-rs-buy").value = cfg.filters.rs_buy_threshold !== undefined ? cfg.filters.rs_buy_threshold : 1.05;
+                document.getElementById("cfg-filters-rs-sell").value = cfg.filters.rs_sell_threshold !== undefined ? cfg.filters.rs_sell_threshold : 0.95;
 
                 document.getElementById("cfg-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
                 document.getElementById("cfg-filters-rr-mult").value = cfg.filters.rr_atr_multiplier !== undefined ? cfg.filters.rr_atr_multiplier : 0.5;
@@ -235,21 +433,19 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById("dash-ut-enabled").checked = !!cfg.strategy.ut_enabled;
             document.getElementById("dash-sr-enabled").checked = !!cfg.sr_channels.enabled;
             if (cfg.filters) {
-                document.getElementById("dash-filters-ema").checked = !!cfg.filters.ema_filter_enabled;
-                const emaDesc = document.getElementById("dash-desc-ema");
-                if (emaDesc) emaDesc.textContent = `Filter signals by major EMA trend (${cfg.filters.ema_period || 200})`;
-
-                document.getElementById("dash-filters-volume").checked = !!cfg.filters.volume_filter_enabled;
-                
                 const mtfFilterDash = document.getElementById("dash-filters-mtf-filter");
                 if (mtfFilterDash) mtfFilterDash.checked = !!cfg.filters.mtf_filter_enabled;
                 const mtfDesc = document.getElementById("dash-desc-mtf");
                 if (mtfDesc) mtfDesc.textContent = `Filter signals by HTF trend (${cfg.filters.mtf_timeframe || '15m'})`;
-                document.getElementById("dash-filters-adx-filt").checked = !!cfg.filters.adx_filter_enabled;
-                document.getElementById("dash-filters-rsi-filter").checked = !!cfg.filters.rsi_filter_enabled;
-                
-                const sqzDash = document.getElementById("dash-filters-squeeze");
-                if (sqzDash) sqzDash.checked = !!cfg.filters.squeeze_filter_enabled;
+
+                const rsFilterDash = document.getElementById("dash-filters-rs-enabled");
+                if (rsFilterDash) rsFilterDash.checked = !!cfg.filters.rs_enabled;
+                const rsDesc = document.getElementById("dash-desc-rs");
+                if (rsDesc) {
+                    const indexName = cfg.filters.rs_index || 'NIFTY50';
+                    rsDesc.textContent = `Trade stocks outperforming ${indexName}`;
+                }
+
                 document.getElementById("dash-filters-rr-enabled").checked = !!cfg.filters.risk_reward_enabled;
                 document.getElementById("dash-filters-candle").checked = !!cfg.filters.candle_patterns_enabled;
             }
@@ -311,35 +507,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 proximity_pct: parseFloat(document.getElementById("cfg-sr-prox").value)
             },
             filters: {
-                ema_filter_enabled: document.getElementById("cfg-filters-ema").checked,
-                ema_period: parseInt(document.getElementById("cfg-filters-ema-period").value || 200),
-                volume_filter_enabled: document.getElementById("cfg-filters-volume").checked,
-                volume_sma_period: parseInt(document.getElementById("cfg-filters-vol-sma").value || 20),
-                volume_min_pct: parseInt(document.getElementById("cfg-filters-vol-pct").value || 80),
                 min_alert_score: parseInt(document.getElementById("cfg-filters-score").value || 70),
+                candle_patterns_enabled: document.getElementById("cfg-filters-candle").checked,
                 mtf_filter_enabled: document.getElementById("cfg-filters-mtf-filter").checked,
                 mtf_timeframe: document.getElementById("cfg-filters-mtf-tf").value,
                 mtf_neutral_pct: parseFloat(document.getElementById("cfg-filters-mtf-neutral").value || 0.3),
                 mtf_atr_period: parseInt(document.getElementById("cfg-filters-mtf-atr-period").value || 10),
-                adx_filter_enabled: document.getElementById("cfg-filters-adx-filt").checked,
-                adx_min_threshold: parseFloat(document.getElementById("cfg-filters-adx-val").value || 20),
-                adx_strong_threshold: parseFloat(document.getElementById("cfg-filters-adx-strong").value || 25),
-                adx_moderate_threshold: parseFloat(document.getElementById("cfg-filters-adx-moderate").value || 20),
-                rsi_filter_enabled: document.getElementById("cfg-filters-rsi-filter").checked,
-                rsi_period: parseInt(document.getElementById("cfg-filters-rsi-period").value || 14),
-                rsi_buy_min: parseFloat(document.getElementById("cfg-filters-rsi-buy-min").value || 40),
-                rsi_buy_max: parseFloat(document.getElementById("cfg-filters-rsi-buy-max").value || 65),
-                rsi_sell_min: parseFloat(document.getElementById("cfg-filters-rsi-sell-min").value || 35),
-                rsi_sell_max: parseFloat(document.getElementById("cfg-filters-rsi-sell-max").value || 60),
+                rs_enabled: document.getElementById("cfg-filters-rs-enabled").checked,
+                rs_index: document.getElementById("cfg-filters-rs-index").value,
                 rs_period: parseInt(document.getElementById("cfg-filters-rs-period").value || 20),
-                rs_buy_threshold: parseFloat(document.getElementById("cfg-filters-rs-buy").value || 1.1),
-                rs_sell_threshold: parseFloat(document.getElementById("cfg-filters-rs-sell").value || 0.9),
+                rs_buy_threshold: parseFloat(document.getElementById("cfg-filters-rs-buy").value || 1.05),
+                rs_sell_threshold: parseFloat(document.getElementById("cfg-filters-rs-sell").value || 0.95),
                 risk_reward_enabled: document.getElementById("cfg-filters-rr-enabled").checked,
                 rr_atr_multiplier: parseFloat(document.getElementById("cfg-filters-rr-mult").value || 0.5),
                 rr_default_ratio: parseFloat(document.getElementById("cfg-filters-rr-ratio").value || 2.0),
-                candle_patterns_enabled: document.getElementById("cfg-filters-candle").checked,
                 signal_history_enabled: document.getElementById("cfg-filters-history").checked,
-                outcome_check_hours: parseInt(document.getElementById("cfg-filters-history-hours").value || 4)
+                outcome_check_hours: parseInt(document.getElementById("cfg-filters-history-hours").value || 4),
+                win_rate_backtest_enabled: false
             },
             telegram: {
                 enabled: document.getElementById("cfg-tg-enabled").checked,
@@ -502,12 +686,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const dashToggles = [
         { id: "dash-ut-enabled", configPath: ["strategy", "ut_enabled"], companionId: "cfg-ut-enabled" },
         { id: "dash-sr-enabled", configPath: ["sr_channels", "enabled"], companionId: "cfg-sr-enabled" },
-        { id: "dash-filters-ema", configPath: ["filters", "ema_filter_enabled"], companionId: "cfg-filters-ema" },
-        { id: "dash-filters-volume", configPath: ["filters", "volume_filter_enabled"], companionId: "cfg-filters-volume" },
         { id: "dash-filters-mtf-filter", configPath: ["filters", "mtf_filter_enabled"], companionId: "cfg-filters-mtf-filter" },
-        { id: "dash-filters-adx-filt", configPath: ["filters", "adx_filter_enabled"], companionId: "cfg-filters-adx-filt" },
-        { id: "dash-filters-rsi-filter", configPath: ["filters", "rsi_filter_enabled"], companionId: "cfg-filters-rsi-filter" },
-        { id: "dash-filters-squeeze", configPath: ["filters", "squeeze_filter_enabled"], companionId: null },
+        { id: "dash-filters-rs-enabled", configPath: ["filters", "rs_enabled"], companionId: "cfg-filters-rs-enabled" },
         { id: "dash-filters-rr-enabled", configPath: ["filters", "risk_reward_enabled"], companionId: "cfg-filters-rr-enabled" },
         { id: "dash-filters-candle", configPath: ["filters", "candle_patterns_enabled"], companionId: "cfg-filters-candle" }
     ];
@@ -708,6 +888,27 @@ document.addEventListener("DOMContentLoaded", () => {
         [btnModeManual, btnModeAuto].forEach(btn => {
             btn.classList.toggle("active", btn.dataset.mode === mode);
         });
+        // Update badge when mode changes
+        updateAutoOrderBadge();
+    }
+
+    /** Update the auto-order badge in the dashboard header */
+    function updateAutoOrderBadge() {
+        const badge = document.getElementById("auto-order-badge");
+        if (!badge) return;
+
+        if (orderMode === "auto") {
+            badge.style.display = "inline-block";
+            if (autoOrderSessionCount > 0) {
+                badge.textContent = `${autoOrderSessionCount} placed`;
+                badge.className = "auto-badge auto-badge-active";
+            } else {
+                badge.textContent = "Waiting...";
+                badge.className = "auto-badge auto-badge-waiting";
+            }
+        } else {
+            badge.style.display = "none";
+        }
     }
 
     // Header toggle buttons
@@ -881,62 +1082,6 @@ document.addEventListener("DOMContentLoaded", () => {
                    </div>`
                 : "";
 
-            // Confluence Matrix — each icon reflects threshold pass/fail, not scoring.
-            // Backend sends explicit _ok fields; text heuristics are fallbacks for
-            // any cached results that predate these fields.
-            const reasonsText = reasonsList.join(" ");
-
-            // Trend icon: active when price is on the correct side of EMA 200
-            // OR when the higher timeframe (MTF) confirms the signal direction.
-            // Uses structured item.mtf.trend field for MTF — avoids brittle text scanning.
-            const mtfConfirms = item.mtf?.trend === (type === "BUY" ? "bullish" : "bearish");
-            const emaOk = item.ema_above !== null && item.ema_above !== undefined
-                ? (type === "BUY" ? item.ema_above === true : item.ema_above === false)
-                : reasonsText.includes("EMA") || reasonsText.includes("MTF");
-            const hasTrend = emaOk || mtfConfirms;
-            // Build a descriptive tooltip so users know which condition fired.
-            const emaStatus  = item.ema_above !== null && item.ema_above !== undefined
-                ? (emaOk ? "✅" : "❌") : "N/A";
-            const mtfStatus  = item.mtf?.trend ? item.mtf.trend : "N/A";
-            const trendTitle = `EMA 200: ${emaStatus} | HTF Trend: ${mtfStatus}`;
-
-            // RSI icon: active when RSI is within the configured optimal range
-            const hasMomentum = item.rsi_ok !== null && item.rsi_ok !== undefined
-                ? item.rsi_ok
-                : reasonsText.includes("RSI");
-
-            // Vol icon: active when volume >= configured threshold %
-            const hasVolume = item.vol_ok !== undefined ? item.vol_ok : reasonsText.includes("volume");
-
-            // S/R icon: active when price is inside or near a zone (score-text driven, always accurate)
-            const hasSR = reasonsText.includes("Support") || reasonsText.includes("Resistance") || reasonsText.includes("S/R");
-
-            // Squeeze icon: active when a squeeze release occurred on this bar
-            const hasSqueeze = item.sqz_ok !== null && item.sqz_ok !== undefined
-                ? item.sqz_ok
-                : reasonsText.includes("Squeeze");
-            
-            const activeColor = type === "BUY" ? "var(--success)" : "var(--danger)";
-            const inactiveColor = "#444";
-            
-            const dot = (isActive, label, icon) => 
-                `<div style="display:flex; flex-direction:column; align-items:center; gap:2px;" title="${label}">
-                    <i class="fa-solid ${icon}" style="color: ${isActive ? activeColor : inactiveColor}; font-size: 14px;"></i>
-                    <span style="font-size: 9px; color: ${isActive ? '#ccc' : '#666'}">${label.substring(0,3)}</span>
-                 </div>`;
-
-            const trendIcon = type === "BUY" ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
-
-            const confluenceMatrixHtml = `
-                <div style="display:flex; gap: 8px; justify-content: center;">
-                    ${dot(hasTrend, trendTitle, trendIcon)}
-                    ${dot(hasMomentum, 'RSI', 'fa-bolt')}
-                    ${dot(hasVolume, 'Vol', 'fa-chart-simple')}
-                    ${dot(hasSR, 'S/R', 'fa-bars')}
-                    ${dot(hasSqueeze, 'Sqz', 'fa-compress')}
-                </div>
-            `;
-            
             const winRateStr = item.hist_win_rate !== undefined && item.hist_win_rate !== null ? `${item.hist_win_rate}%` : "—";
 
             const actionClass = type === "BUY" ? "btn-order-buy" : "btn-order-sell";
@@ -1010,9 +1155,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </td>
                 <td>
-                    ${confluenceMatrixHtml}
-                </td>
-                <td>
                     <div class="action-cell">
                         <div class="order-qty-wrap">
                             <span class="order-qty-label">Qty</span>
@@ -1036,7 +1178,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 buySignalsTable.appendChild(createRow(item, "BUY"));
             });
         } else {
-            buySignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
+            buySignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
         }
 
         // Render SELL Signals
@@ -1045,7 +1187,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sellSignalsTable.appendChild(createRow(item, "SELL"));
             });
         } else {
-            sellSignalsTable.innerHTML = `<tr><td colspan="9" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
+            sellSignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
         }
 
         // Setup analyze buttons — open TradingView chart in a new tab
@@ -1093,9 +1235,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 ];
             }
 
-            autoSignals.forEach(sig => {
-                placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2, sig.close);
-            });
+            console.info(`[AUTO-MODE] Scan complete. Found ${autoSignals.length} eligible signal(s) for ${allowedActions} mode.`);
+
+            if (autoSignals.length > 0) {
+                autoSignals.forEach(sig => {
+                    placeOrder(sig.symbol, sig.action, null, oa.order_quantity ?? 2, sig.close);
+                    autoOrderSessionCount++;
+                });
+                showToast(`🤖 Auto-mode: Placed ${autoSignals.length} order(s) (Session: ${autoOrderSessionCount})`, "success");
+            } else {
+                showToast(`🤖 Auto-mode active — No ${allowedActions} signals to place this scan`, "info");
+            }
+
+            // Update auto-order counter badge in dashboard
+            updateAutoOrderBadge();
         }
 
         // Update stats
@@ -1461,6 +1614,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---------------------------------------------------------------------------
     async function loadPositions() {
         const tableBody = document.getElementById("positions-open-body");
+        const summaryCard = document.getElementById("portfolio-summary");
         if (!tableBody) return;
         
         try {
@@ -1474,26 +1628,47 @@ document.addEventListener("DOMContentLoaded", () => {
             if (openPositions.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="11" class="empty-placeholder">No active positions currently registered for monitoring. Placed orders will show up here.</td>
+                        <td colspan="13" class="empty-placeholder">No active positions currently registered for monitoring. Placed orders will show up here.</td>
                     </tr>
                 `;
+                // Hide summary card when no positions
+                if (summaryCard) summaryCard.style.display = "none";
                 return;
             }
 
+            // Show and update portfolio summary
+            if (summaryCard) summaryCard.style.display = "grid";
+            
+            let totalInvested = 0;
+            let totalCurrentValue = 0;
             let html = "";
+            
             openPositions.forEach(pos => {
-                const ltp = pos.high_water_mark; // Default or live
-                const pnl = pos.pnl_pct !== null ? pos.pnl_pct : (((ltp - pos.entry_price) / pos.entry_price) * 100);
+                const ltp = pos.high_water_mark || pos.entry_price; // Current price (high_water_mark is live LTP)
+                const entryPrice = pos.entry_price;
+                const qty = pos.quantity;
                 const isBuy = pos.direction === "BUY";
                 const dirClass = isBuy ? "ut-badge-type" : "sr-badge-type";
                 
+                // Calculate financial metrics
+                const invested = entryPrice * qty;
+                const currentValue = ltp * qty;
+                const pnlRupees = isBuy ? (currentValue - invested) : (invested - currentValue);
+                const pnlPct = ((pnlRupees / invested) * 100);
+                
+                // Accumulate totals
+                totalInvested += invested;
+                totalCurrentValue += currentValue;
+                
                 // Live P&L color logic
                 let pnlClass = "pnl-neutral";
-                let formattedPnl = pnl.toFixed(2) + "%";
-                if (pnl > 0) {
+                let formattedPnlPct = pnlPct.toFixed(2) + "%";
+                let formattedPnlRs = "₹" + pnlRupees.toFixed(2);
+                if (pnlPct > 0) {
                     pnlClass = "pnl-profit";
-                    formattedPnl = "+" + formattedPnl;
-                } else if (pnl < 0) {
+                    formattedPnlPct = "+" + formattedPnlPct;
+                    formattedPnlRs = "+" + formattedPnlRs;
+                } else if (pnlPct < 0) {
                     pnlClass = "pnl-loss";
                 }
 
@@ -1512,13 +1687,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     <tr>
                         <td><strong>${pos.symbol}</strong></td>
                         <td><span class="condition-badge ${dirClass}">${pos.direction}</span></td>
-                        <td>${pos.quantity}</td>
-                        <td>₹${pos.entry_price.toFixed(2)}</td>
-                        <td class="live-ltp">₹${ltp.toFixed(2)}</td>
-                        <td>₹${pos.initial_sl.toFixed(2)}</td>
+                        <td>${qty}</td>
+                        <td>₹${entryPrice.toFixed(2)}</td>
+                        <td class="live-ltp" style="font-weight: 600;">₹${ltp.toFixed(2)}</td>
+                        <td style="color: rgba(255,255,255,0.8);">₹${invested.toFixed(2)}</td>
+                        <td style="color: rgba(255,255,255,0.8);">₹${currentValue.toFixed(2)}</td>
+                        <td><span class="pnl-badge ${pnlClass}">${formattedPnlRs}</span></td>
+                        <td><span class="pnl-badge ${pnlClass}">${formattedPnlPct}</span></td>
                         <td>₹${pos.current_sl.toFixed(2)}</td>
                         <td>₹${pos.target_price.toFixed(2)}</td>
-                        <td><span class="pnl-badge ${pnlClass}">${formattedPnl}</span></td>
                         <td><span class="badge-status ${statusClass}">${statusLabel}</span></td>
                         <td>
                             <button class="btn btn-danger btn-close-pos" data-id="${pos.id}" style="padding: 3px 8px; font-size: 0.75rem;">
@@ -1529,6 +1706,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 `;
             });
             tableBody.innerHTML = html;
+
+            // Update portfolio summary
+            const totalPnlRs = totalCurrentValue - totalInvested;
+            const totalPnlPct = totalInvested > 0 ? ((totalPnlRs / totalInvested) * 100) : 0;
+            const totalPnlClass = totalPnlRs >= 0 ? "var(--color-buy)" : "var(--color-sell)";
+            const totalPnlSign = totalPnlRs >= 0 ? "+" : "";
+            
+            document.getElementById("summary-total-positions").textContent = openPositions.length;
+            document.getElementById("summary-total-invested").textContent = `₹${totalInvested.toFixed(2)}`;
+            document.getElementById("summary-current-value").textContent = `₹${totalCurrentValue.toFixed(2)}`;
+            
+            const pnlElement = document.getElementById("summary-total-pnl");
+            pnlElement.textContent = `${totalPnlSign}₹${totalPnlRs.toFixed(2)} (${totalPnlSign}${totalPnlPct.toFixed(2)}%)`;
+            pnlElement.style.color = totalPnlClass;
 
             // Bind exit buttons
             tableBody.querySelectorAll(".btn-close-pos").forEach(btn => {
@@ -1678,6 +1869,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize System
     async function init() {
+        // Load dynamic engine toggles first (Sprint 4)
+        await loadEngineToggles();
         await loadConfig();
         initAutoRefresh();
         // Trigger first scan immediately to show active triggers
@@ -1706,6 +1899,41 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, 30_000);
     }
+
+    // ---------------------------------------------------------------------------
+    // Accordion Settings Logic
+    // ---------------------------------------------------------------------------
+    function initAccordionSettings() {
+        const accordionSections = document.querySelectorAll('.accordion-section');
+        
+        accordionSections.forEach(section => {
+            const header = section.querySelector('.accordion-header');
+            if (!header) return;
+            
+            header.addEventListener('click', () => {
+                // Toggle active class
+                const wasActive = section.classList.contains('active');
+                
+                // Optional: Close other sections (comment out for multi-open mode)
+                // accordionSections.forEach(s => s.classList.remove('active'));
+                
+                // Toggle this section
+                if (wasActive) {
+                    section.classList.remove('active');
+                } else {
+                    section.classList.add('active');
+                }
+            });
+        });
+        
+        // Open first section by default
+        if (accordionSections.length > 0) {
+            accordionSections[0].classList.add('active');
+        }
+    }
+    
+    // Initialize accordion after DOM is ready
+    setTimeout(initAccordionSettings, 100);
 
     init();
 });
