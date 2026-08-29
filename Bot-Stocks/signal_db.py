@@ -10,6 +10,7 @@ Database: signals.db (auto-created in the bot directory)
 import sqlite3
 import json
 import logging
+import threading
 import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -19,6 +20,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 
 _DB_PATH         = Path(__file__).resolve().parent / "signals.db"
 _db_initialized  = False   # DDL runs only once per process
+_db_lock         = threading.Lock()
 
 
 # ============================================================================
@@ -48,82 +50,61 @@ def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, co
 def _get_connection(config: dict = None) -> sqlite3.Connection:
     """Get a connection to the SQLite database, creating tables if needed (once per process)."""
     global _db_initialized
-    conn = sqlite3.connect(str(_DB_PATH), timeout=10)
+    conn = sqlite3.connect(str(_DB_PATH), timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     if not _db_initialized:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS signals (
-                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp          TEXT NOT NULL,
-                symbol             TEXT NOT NULL,
-                signal_type        TEXT NOT NULL,
-                close_price        REAL NOT NULL,
-                setup_score        REAL DEFAULT 0.0,
-                score_reasons      TEXT DEFAULT '[]',
-                stop_loss          REAL,
-                target             REAL,
-                risk_reward        REAL,
-                triggered_conditions TEXT DEFAULT '[]',
-                timeframe          TEXT,
-                adx                REAL,
-                rs_ratio           REAL,
-                mtf_trend          TEXT,
-                outcome_checked    INTEGER DEFAULT 0,
-                outcome_pnl_pct    REAL,
-                outcome_hit_target INTEGER DEFAULT 0,
-                outcome_hit_stop   INTEGER DEFAULT 0,
-                outcome_price      REAL,
-                outcome_time       TEXT,
-                regime             TEXT,
-                mae_pct            REAL,
-                mfe_pct            REAL,
-                grade              TEXT,
-                grade_score        REAL
-            )
-        """)
-        # ---- Backfill new columns on pre-existing databases --------------
-        # SQLite lacks ADD COLUMN IF NOT EXISTS, so probe pragma_table_info
-        # and issue ALTER TABLE only when the column is missing. Safe to run
-        # on every startup; idempotent.
-        _add_column_if_missing(conn, "signals", "regime",  "TEXT")
-        _add_column_if_missing(conn, "signals", "mae_pct", "REAL")
-        _add_column_if_missing(conn, "signals", "mfe_pct", "REAL")
-        # Sprint 3 — signal grading.
-        _add_column_if_missing(conn, "signals", "grade",       "TEXT")
-        _add_column_if_missing(conn, "signals", "grade_score", "REAL")
-
-        # ---- Indexes -----------------------------------------------------
-        # Speeds up:
-        #   • get_signal_history() — ORDER BY timestamp DESC + pagination
-        #   • check_outcomes()     — WHERE outcome_checked = 0 AND timestamp <= ?
-        #   • get_statistics()     — WHERE timestamp >= ?
-        # All are IF NOT EXISTS so they're safe on pre-existing databases.
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_signals_outcome_pending "
-            "ON signals(outcome_checked, timestamp)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol)"
-        )
-        
-        # ---- Sprint 4: Additional indexes for performance ----
-        # Composite index for faster symbol+time lookups (signal deduplication)
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_signals_symbol_time ON signals(symbol, timestamp DESC)"
-        )
-        # Index on outcome_checked for faster outcome queries
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_signals_outcome_check "
-            "ON signals(outcome_checked) WHERE outcome_checked = 0"
-        )
-        
-        conn.commit()
-        _db_initialized = True
+        with _db_lock:
+            if not _db_initialized:
+                _init_schema(conn)
+                _db_initialized = True
     return conn
+
+
+def _init_schema(conn: sqlite3.Connection) -> None:
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS signals (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp          TEXT NOT NULL,
+            symbol             TEXT NOT NULL,
+            signal_type        TEXT NOT NULL,
+            close_price        REAL NOT NULL,
+            setup_score        REAL DEFAULT 0.0,
+            score_reasons      TEXT DEFAULT '[]',
+            stop_loss          REAL,
+            target             REAL,
+            risk_reward        REAL,
+            triggered_conditions TEXT DEFAULT '[]',
+            timeframe          TEXT,
+            adx                REAL,
+            rs_ratio           REAL,
+            mtf_trend          TEXT,
+            outcome_checked    INTEGER DEFAULT 0,
+            outcome_pnl_pct    REAL,
+            outcome_hit_target INTEGER DEFAULT 0,
+            outcome_hit_stop   INTEGER DEFAULT 0,
+            outcome_price      REAL,
+            outcome_time       TEXT,
+            regime             TEXT,
+            mae_pct            REAL,
+            mfe_pct            REAL,
+            grade              TEXT,
+            grade_score        REAL
+        )
+    """)
+    _add_column_if_missing(conn, "signals", "regime",  "TEXT")
+    _add_column_if_missing(conn, "signals", "mae_pct", "REAL")
+    _add_column_if_missing(conn, "signals", "mfe_pct", "REAL")
+    _add_column_if_missing(conn, "signals", "grade",       "TEXT")
+    _add_column_if_missing(conn, "signals", "grade_score", "REAL")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_outcome_pending ON signals(outcome_checked, timestamp)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_symbol_time ON signals(symbol, timestamp DESC)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_outcome_check ON signals(outcome_checked) WHERE outcome_checked = 0")
+    conn.commit()
 
 
 # ============================================================================
@@ -139,19 +120,6 @@ def log_signals_batch(
 ) -> list[int]:  # noqa: E501
     """
     Insert a list of signals into the database in a single transaction.
-
-    Parameters
-    ----------
-    signals_list : list of dicts from scanner.py's scan_symbol result
-    timeframe    : scan timeframe string (e.g. "5m", "1h")
-    config       : optional configuration dict
-    regime       : optional market-regime tag (e.g. "trending_up", "chop")
-                   from ``regime.classify_regime``. Applied to every row in
-                   the batch — reflects the market state at scan time.
-
-    Returns
-    -------
-    list[int] : list of row IDs of the inserted signals
     """
     if not signals_list:
         return []
@@ -166,53 +134,51 @@ def log_signals_batch(
     tz  = _get_tz(config)
     now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-    conn = _get_connection(config)
-    inserted_ids = []
-    try:
-        cursor = conn.cursor()
-        for signal_dict in signals_list:
-            mtf = signal_dict.get("mtf")
-            mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
+    with _db_lock:
+        conn = _get_connection(config)
+        inserted_ids = []
+        try:
+            cursor = conn.cursor()
+            for signal_dict in signals_list:
+                mtf = signal_dict.get("mtf")
+                mtf_trend = mtf.get("trend") if isinstance(mtf, dict) else None
 
-            cursor.execute("""
-                INSERT INTO signals (
-                    timestamp, symbol, signal_type, close_price, setup_score,
-                    score_reasons, stop_loss, target, risk_reward,
-                    triggered_conditions, timeframe, adx, rs_ratio, mtf_trend,
-                    regime, grade, grade_score
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                now,
-                signal_dict.get("symbol", ""),
-                signal_dict.get("signal", ""),
-                signal_dict.get("close", 0.0),
-                signal_dict.get("setup_score", 0.0),
-                json.dumps(signal_dict.get("score_reasons", [])),
-                signal_dict.get("stop_loss"),
-                signal_dict.get("target"),
-                signal_dict.get("risk_reward"),
-                json.dumps(signal_dict.get("triggered", [])),
-                timeframe,
-                signal_dict.get("adx"),
-                signal_dict.get("rs_ratio"),
-                mtf_trend,
-                regime,
-                # Sprint 3 — grade is attached by scanner._build_result. Absent
-                # on pre-Sprint-3 callers, which is fine: NULL buckets under
-                # "unknown" in get_statistics.
-                signal_dict.get("grade"),
-                signal_dict.get("grade_score"),
-            ))
-            inserted_ids.append(cursor.lastrowid)
-        conn.commit()
-        log.debug("Logged %d signals to DB in batch", len(signals_list))
-        return inserted_ids
-    except Exception as e:
-        conn.rollback()
-        log.error("Batch signal logging failed: %s", e)
-        raise e
-    finally:
-        conn.close()
+                cursor.execute("""
+                    INSERT INTO signals (
+                        timestamp, symbol, signal_type, close_price, setup_score,
+                        score_reasons, stop_loss, target, risk_reward,
+                        triggered_conditions, timeframe, adx, rs_ratio, mtf_trend,
+                        regime, grade, grade_score
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    now,
+                    signal_dict.get("symbol", ""),
+                    signal_dict.get("signal", ""),
+                    signal_dict.get("close", 0.0),
+                    signal_dict.get("setup_score", 0.0),
+                    json.dumps(signal_dict.get("score_reasons", [])),
+                    signal_dict.get("stop_loss"),
+                    signal_dict.get("target"),
+                    signal_dict.get("risk_reward"),
+                    json.dumps(signal_dict.get("triggered", [])),
+                    timeframe,
+                    signal_dict.get("adx"),
+                    signal_dict.get("rs_ratio"),
+                    mtf_trend,
+                    regime,
+                    signal_dict.get("grade"),
+                    signal_dict.get("grade_score"),
+                ))
+                inserted_ids.append(cursor.lastrowid)
+            conn.commit()
+            log.debug("Logged %d signals to DB in batch", len(signals_list))
+            return inserted_ids
+        except Exception as e:
+            conn.rollback()
+            log.error("Batch signal logging failed: %s", e)
+            raise e
+        finally:
+            conn.close()
 
 
 # ============================================================================
@@ -240,102 +206,103 @@ def check_outcomes(hours: int = 4, config: dict = None, fetch_fn=None) -> int:
         return 0
 
     tz   = _get_tz(config)
-    conn = _get_connection(config)
-    try:
-        cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    with _db_lock:
+        conn = _get_connection(config)
+        try:
+            cutoff = (datetime.now(tz).replace(tzinfo=None) - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
 
-        unchecked = conn.execute("""
-            SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe, timestamp
-            FROM signals
-            WHERE outcome_checked = 0 AND timestamp <= ?
-        """, (cutoff,)).fetchall()
+            unchecked = conn.execute("""
+                SELECT id, symbol, signal_type, close_price, stop_loss, target, timeframe, timestamp
+                FROM signals
+                WHERE outcome_checked = 0 AND timestamp <= ?
+            """, (cutoff,)).fetchall()
 
-        if not unchecked:
-            return 0
+            if not unchecked:
+                return 0
 
-        updated = 0
-        for row in unchecked:
-            sig_id = row["id"]
-            symbol = row["symbol"]
-            sig_type = row["signal_type"]
-            entry_price = row["close_price"]
-            stop_loss = row["stop_loss"]
-            target = row["target"]
-            tf = row["timeframe"] or "5m"
+            updated = 0
+            for row in unchecked:
+                sig_id = row["id"]
+                symbol = row["symbol"]
+                sig_type = row["signal_type"]
+                entry_price = row["close_price"]
+                stop_loss = row["stop_loss"]
+                target = row["target"]
+                tf = row["timeframe"] or "5m"
 
-            try:
-                df = fetch_fn(symbol, tf, config or {})
-                if df is None or len(df) == 0:
-                    continue
+                try:
+                    df = fetch_fn(symbol, tf, config or {})
+                    if df is None or len(df) == 0:
+                        continue
 
-                # Current close for unrealised P&L display
-                current_price = float(df["close"].iloc[-1])
-                now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+                    # Current close for unrealised P&L display
+                    current_price = float(df["close"].iloc[-1])
+                    now = datetime.now(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
-                # Filter to candles that closed AFTER the signal was generated.
-                # This lets us check whether the target or stop was touched on
-                # any bar's high/low intrabar — not just the latest close price.
-                sig_time = pd.to_datetime(row["timestamp"])
-                post_df = df[df.index > sig_time]
+                    # Filter to candles that closed AFTER the signal was generated.
+                    # This lets us check whether the target or stop was touched on
+                    # any bar's high/low intrabar — not just the latest close price.
+                    sig_time = pd.to_datetime(row["timestamp"])
+                    post_df = df[df.index > sig_time]
 
-                if post_df.empty:
-                    # No new candles since the signal — skip until data arrives
-                    continue
+                    if post_df.empty:
+                        # No new candles since the signal — skip until data arrives
+                        continue
 
-                post_high = float(post_df["high"].max())
-                post_low  = float(post_df["low"].min())
+                    post_high = float(post_df["high"].max())
+                    post_low  = float(post_df["low"].min())
 
-                # ---- MAE / MFE (max adverse / favourable excursion) --------
-                # Both are expressed as % of entry_price and are always ≥ 0.
-                # For a BUY: adverse = drawdown from entry (post_low ≤ entry);
-                #            favourable = rally from entry (post_high ≥ entry).
-                # For a SELL the roles flip.
-                mae_pct = None
-                mfe_pct = None
-                if entry_price and entry_price > 0:
+                    # ---- MAE / MFE (max adverse / favourable excursion) --------
+                    # Both are expressed as % of entry_price and are always ≥ 0.
+                    # For a BUY: adverse = drawdown from entry (post_low ≤ entry);
+                    #            favourable = rally from entry (post_high ≥ entry).
+                    # For a SELL the roles flip.
+                    mae_pct = None
+                    mfe_pct = None
+                    if entry_price and entry_price > 0:
+                        if sig_type == "BUY":
+                            mae_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
+                            mfe_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
+                        else:  # SELL
+                            mae_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
+                            mfe_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
+
+                    # Determine outcome using OHLC extremes on post-signal candles
+                    hit_target = 0
+                    hit_stop   = 0
                     if sig_type == "BUY":
-                        mae_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
-                        mfe_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
+                        if target is not None and post_high >= target:
+                            hit_target = 1
+                        if stop_loss is not None and post_low <= stop_loss:
+                            hit_stop = 1
+                        pnl_pct = ((current_price - entry_price) / entry_price) * 100
                     else:  # SELL
-                        mae_pct = round(max(0.0, (post_high  - entry_price) / entry_price * 100.0), 4)
-                        mfe_pct = round(max(0.0, (entry_price - post_low)  / entry_price * 100.0), 4)
+                        if target is not None and post_low <= target:
+                            hit_target = 1
+                        if stop_loss is not None and post_high >= stop_loss:
+                            hit_stop = 1
+                        pnl_pct = ((entry_price - current_price) / entry_price) * 100
 
-                # Determine outcome using OHLC extremes on post-signal candles
-                hit_target = 0
-                hit_stop   = 0
-                if sig_type == "BUY":
-                    if target is not None and post_high >= target:
-                        hit_target = 1
-                    if stop_loss is not None and post_low <= stop_loss:
-                        hit_stop = 1
-                    pnl_pct = ((current_price - entry_price) / entry_price) * 100
-                else:  # SELL
-                    if target is not None and post_low <= target:
-                        hit_target = 1
-                    if stop_loss is not None and post_high >= stop_loss:
-                        hit_stop = 1
-                    pnl_pct = ((entry_price - current_price) / entry_price) * 100
+                    conn.execute("""
+                        UPDATE signals
+                        SET outcome_checked = 1, outcome_pnl_pct = ?, outcome_hit_target = ?,
+                            outcome_hit_stop = ?, outcome_price = ?, outcome_time = ?,
+                            mae_pct = ?, mfe_pct = ?
+                        WHERE id = ?
+                    """, (round(pnl_pct, 2), hit_target, hit_stop, current_price, now,
+                          mae_pct, mfe_pct, sig_id))
+                    updated += 1
 
-                conn.execute("""
-                    UPDATE signals
-                    SET outcome_checked = 1, outcome_pnl_pct = ?, outcome_hit_target = ?,
-                        outcome_hit_stop = ?, outcome_price = ?, outcome_time = ?,
-                        mae_pct = ?, mfe_pct = ?
-                    WHERE id = ?
-                """, (round(pnl_pct, 2), hit_target, hit_stop, current_price, now,
-                      mae_pct, mfe_pct, sig_id))
-                updated += 1
+                except Exception as e:
+                    log.debug("Outcome check failed for signal %d (%s): %s", sig_id, symbol, e)
 
-            except Exception as e:
-                log.debug("Outcome check failed for signal %d (%s): %s", sig_id, symbol, e)
+            conn.commit()
+            if updated > 0:
+                log.info("📊 Checked outcomes for %d signal(s).", updated)
+            return updated
 
-        conn.commit()
-        if updated > 0:
-            log.info("📊 Checked outcomes for %d signal(s).", updated)
-        return updated
-
-    finally:
-        conn.close()
+        finally:
+            conn.close()
 
 
 # ============================================================================

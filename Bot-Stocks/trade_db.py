@@ -13,6 +13,7 @@ v2 (this rev) : added `product`, `profit_lock_tier`, `partial_exit_tier`
 
 import sqlite3
 import logging
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 
 _DB_PATH = Path(__file__).resolve().parent / "trades.db"
 _db_initialized = False
+_db_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -28,13 +30,16 @@ _db_initialized = False
 
 def _get_connection() -> sqlite3.Connection:
     global _db_initialized
-    conn = sqlite3.connect(str(_DB_PATH), timeout=10)
+    conn = sqlite3.connect(str(_DB_PATH), timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
 
     if not _db_initialized:
-        _init_schema(conn)
-        _db_initialized = True
+        with _db_lock:
+            if not _db_initialized:
+                _init_schema(conn)
+                _db_initialized = True
 
     return conn
 
@@ -131,83 +136,91 @@ def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, de
 
 def open_position_db(pos: dict) -> int:
     """Insert a new position record and return its auto-generated ID."""
-    conn = _get_connection()
-    now  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO positions (
-                order_id, symbol, exchange, direction, quantity,
-                entry_price, entry_time,
-                current_sl, initial_sl, target_price, high_water_mark,
-                profit_lock_tier, partial_exit_tier, product,
-                status, timeframe
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
-        """, (
-            pos.get("order_id"),
-            pos["symbol"],
-            pos["exchange"],
-            pos["direction"],
-            pos["quantity"],
-            pos["entry_price"],
-            now,
-            pos["current_sl"],
-            pos["initial_sl"],
-            pos["target_price"],
-            pos["entry_price"],     # high_water_mark starts at entry
-            pos.get("profit_lock_tier", 0),
-            pos.get("partial_exit_tier", 0),
-            pos.get("product", "MIS"),
-            pos.get("timeframe"),
-        ))
-        pos_id = cur.lastrowid
-        conn.commit()
-        log_event(pos_id, "OPEN", None, pos["entry_price"],
-                  f"Position opened @ ₹{pos['entry_price']:.2f}")
-        return pos_id
-    except Exception as exc:
-        conn.rollback()
-        log.error("DB error opening position: %s", exc)
-        raise
-    finally:
-        conn.close()
+    with _db_lock:
+        conn = _get_connection()
+        now  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO positions (
+                    order_id, symbol, exchange, direction, quantity,
+                    entry_price, entry_time,
+                    current_sl, initial_sl, target_price, high_water_mark,
+                    profit_lock_tier, partial_exit_tier, product,
+                    status, timeframe
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
+            """, (
+                pos.get("order_id"),
+                pos["symbol"],
+                pos["exchange"],
+                pos["direction"],
+                pos["quantity"],
+                pos["entry_price"],
+                now,
+                pos["current_sl"],
+                pos["initial_sl"],
+                pos["target_price"],
+                pos["entry_price"],     # high_water_mark starts at entry
+                pos.get("profit_lock_tier", 0),
+                pos.get("partial_exit_tier", 0),
+                pos.get("product", "MIS"),
+                pos.get("timeframe"),
+            ))
+            pos_id = cur.lastrowid
+            conn.commit()
+            _log_event_conn(conn, pos_id, "OPEN", None, pos["entry_price"],
+                            f"Position opened @ ₹{pos['entry_price']:.2f}")
+            return pos_id
+        except Exception as exc:
+            conn.rollback()
+            log.error("DB error opening position: %s", exc)
+            raise
+        finally:
+            conn.close()
 
 
 def update_position(pos_id: int, **fields) -> bool:
     """Update arbitrary columns on a position row by ID."""
     if not fields:
         return True
-    conn = _get_connection()
-    try:
-        set_clause = ", ".join(f"{k} = ?" for k in fields)
-        values     = list(fields.values()) + [pos_id]
-        conn.execute(f"UPDATE positions SET {set_clause} WHERE id = ?", values)
-        conn.commit()
-        return True
-    except Exception as exc:
-        conn.rollback()
-        log.error("DB error updating position %d: %s", pos_id, exc)
-        return False
-    finally:
-        conn.close()
+    with _db_lock:
+        conn = _get_connection()
+        try:
+            set_clause = ", ".join(f"{k} = ?" for k in fields)
+            values     = list(fields.values()) + [pos_id]
+            conn.execute(f"UPDATE positions SET {set_clause} WHERE id = ?", values)
+            conn.commit()
+            return True
+        except Exception as exc:
+            conn.rollback()
+            log.error("DB error updating position %d: %s", pos_id, exc)
+            return False
+        finally:
+            conn.close()
+
+
+def _log_event_conn(conn: sqlite3.Connection, pos_id: int, event_type: str, old_val, new_val, note: str) -> None:
+    """Internal helper to log an audit event using an open connection."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute("""
+        INSERT INTO position_events
+            (position_id, event_time, event_type, old_value, new_value, note)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (pos_id, now, event_type, old_val, new_val, note))
 
 
 def log_event(pos_id: int, event_type: str, old_val, new_val, note: str) -> None:
     """Append an audit event for a position."""
-    conn = _get_connection()
-    now  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        conn.execute("""
-            INSERT INTO position_events
-                (position_id, event_time, event_type, old_value, new_value, note)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (pos_id, now, event_type, old_val, new_val, note))
-        conn.commit()
-    except Exception as exc:
-        conn.rollback()
-        log.error("DB error logging event for position %d: %s", pos_id, exc)
-    finally:
-        conn.close()
+    with _db_lock:
+        conn = _get_connection()
+        try:
+            _log_event_conn(conn, pos_id, event_type, old_val, new_val, note)
+            conn.commit()
+        except Exception as exc:
+            conn.rollback()
+            log.error("DB error logging event for position %d: %s", pos_id, exc)
+        finally:
+            conn.close()
 
 
 def get_open_positions() -> list[dict]:
@@ -311,20 +324,21 @@ def get_position_events(pos_id: int) -> list[dict]:
 
 def clear_all_trades() -> bool:
     """Clear all records from positions and position_events tables to start fresh."""
-    conn = _get_connection()
-    try:
-        conn.execute("DELETE FROM position_events")
-        conn.execute("DELETE FROM positions")
+    with _db_lock:
+        conn = _get_connection()
         try:
-            conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('positions', 'position_events')")
-        except Exception:
-            pass
-        conn.commit()
-        log.info("Cleared all trades and position events from database.")
-        return True
-    except Exception as exc:
-        conn.rollback()
-        log.error("DB error clearing trades: %s", exc)
-        return False
-    finally:
-        conn.close()
+            conn.execute("DELETE FROM position_events")
+            conn.execute("DELETE FROM positions")
+            try:
+                conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('positions', 'position_events')")
+            except Exception:
+                pass
+            conn.commit()
+            log.info("Cleared all trades and position events from database.")
+            return True
+        except Exception as exc:
+            conn.rollback()
+            log.error("DB error clearing trades: %s", exc)
+            return False
+        finally:
+            conn.close()

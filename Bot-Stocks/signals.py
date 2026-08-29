@@ -36,6 +36,7 @@ ENGINE_REGISTRY = [
         "label": "UT Bot",
         "config_section": "strategy",
         "enabled_key": "ut_enabled",
+        "default_enabled": True,
         "buy_col": "ut_buy",
         "sell_col": "ut_sell",
         "eval_mode": "window",  # Checks last N candles with most-recent-wins reducer
@@ -47,6 +48,7 @@ ENGINE_REGISTRY = [
         "label": "S/R Channels",
         "config_section": "sr_channels",
         "enabled_key": "enabled",
+        "default_enabled": True,
         "buy_col": "sr_buy",
         "sell_col": "sr_sell",
         "eval_mode": "instant",  # Checks only the last candle
@@ -58,6 +60,7 @@ ENGINE_REGISTRY = [
         "label": "Momentum Engine",
         "config_section": "momentum",
         "enabled_key": "enabled",
+        "default_enabled": False,
         "buy_col": "momentum_buy",
         "sell_col": "momentum_sell",
         "eval_mode": "window",
@@ -77,6 +80,7 @@ ENGINE_REGISTRY = [
         "label": "Mean Reversion Engine",
         "config_section": "mean_reversion",
         "enabled_key": "enabled",
+        "default_enabled": False,
         "buy_col": "mr_buy",
         "sell_col": "mr_sell",
         "eval_mode": "instant",
@@ -232,6 +236,9 @@ def compute_utbot_signals(
     nl_vals  = n_loss.values
     n        = len(src_vals)
     stop     = np.zeros(n)
+    if n > 0:
+        init_nl = nl_vals[0] if (len(nl_vals) > 0 and not np.isnan(nl_vals[0])) else 0.0
+        stop[0] = src_vals[0] - init_nl
 
     for i in range(1, n):
         prev_stop = stop[i - 1]
@@ -258,10 +265,13 @@ def compute_utbot_signals(
     # pos = 1  when price crosses above trail (long)
     # pos = -1 when price crosses below trail (short)
     pos = np.zeros(n, dtype=int)
+    if n > 0:
+        pos[0] = 1 if src_vals[0] >= stop[0] else -1
+
     for i in range(1, n):
-        if src_vals[i - 1] < stop[i - 1] and src_vals[i] > stop[i]:
+        if src_vals[i - 1] <= stop[i - 1] and src_vals[i] > stop[i]:
             pos[i] = 1
-        elif src_vals[i - 1] > stop[i - 1] and src_vals[i] < stop[i]:
+        elif src_vals[i - 1] >= stop[i - 1] and src_vals[i] < stop[i]:
             pos[i] = -1
         else:
             pos[i] = pos[i - 1]
@@ -274,10 +284,11 @@ def compute_utbot_signals(
 
     # Pine: ut_buy  = src > trail and above
     #       ut_sell = src < trail and below
+    pos_s = pd.Series(pos, index=df.index)
     df["ut_trail"] = xATR
-    df["ut_pos"]   = pd.Series(pos, index=df.index)
-    df["ut_buy"]   = (src > xATR) & above
-    df["ut_sell"]  = (src < xATR) & below
+    df["ut_pos"]   = pos_s
+    df["ut_buy"]   = ((src > xATR) & above) | ((pos_s == 1) & (pos_s.shift(1) != 1))
+    df["ut_sell"]  = ((src < xATR) & below) | ((pos_s == -1) & (pos_s.shift(1) != -1))
 
     return df
 
@@ -1349,7 +1360,8 @@ def evaluate_composite_signals(
     active_engines = []
     for engine in ENGINE_REGISTRY:
         cfg_section = config.get(engine["config_section"], {})
-        is_enabled = cfg_section.get(engine["enabled_key"], True)
+        default_on = engine.get("default_enabled", True)
+        is_enabled = bool(cfg_section.get(engine["enabled_key"], default_on))
         if is_enabled:
             active_engines.append(engine)
     

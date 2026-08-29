@@ -1455,11 +1455,14 @@ def run_scan(
                     # in this same scan see the fresh position when the risk
                     # gate re-evaluates max_concurrent_positions.
                     open_positions.append({
+                        "id": pos_id,
                         "symbol": sym,
                         "exchange": exchange,
                         "direction": sig,
-                        "quantity": quantity,
+                        "quantity": filled_qty,
                         "entry_price": close_price,
+                        "current_sl": stop_loss,
+                        "target_price": target_price,
                     })
                     log.info("  [%s] Registered auto position ID %d in trade_db", sym, pos_id)
                 except Exception as db_err:

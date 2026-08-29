@@ -195,6 +195,21 @@ class PositionMonitor:
         interval = float(tm_cfg.get("poll_interval_seconds", 5))
 
         while self.running:
+            # Synchronize in-memory active_positions with open positions in trade_db
+            try:
+                db_positions = trade_db.get_open_positions()
+                with self.lock:
+                    db_ids = {p["id"] for p in db_positions}
+                    for p in db_positions:
+                        if p["id"] not in self.active_positions:
+                            self.active_positions[p["id"]] = p
+                            log.info("📌 PositionMonitor synced open position #%d (%s %s) from DB", p["id"], p["direction"], p["symbol"])
+                    stale_ids = [pid for pid in self.active_positions if pid not in db_ids]
+                    for pid in stale_ids:
+                        del self.active_positions[pid]
+            except Exception as sync_err:
+                log.debug("PositionMonitor DB sync error: %s", sync_err)
+
             if not self.ws_connected:
                 with self.lock:
                     snapshot = list(self.active_positions.values())
@@ -305,9 +320,26 @@ class PositionMonitor:
             )
             return
 
-        direction  = req.action.upper()
-        sl_val     = calc_sl_price(entry_price, sl_pct, direction)
-        target_val = calc_target_price(entry_price, tgt_pct, direction)
+        direction  = str(getattr(req, "action", "BUY")).upper()
+        
+        # Check if custom technical stop loss / target were supplied on req or order_result
+        custom_sl = getattr(req, "stop_loss", None) or getattr(req, "current_sl", None)
+        if custom_sl is None and isinstance(order_result, dict):
+            custom_sl = order_result.get("stop_loss") or order_result.get("current_sl")
+            
+        custom_target = getattr(req, "target", None) or getattr(req, "target_price", None)
+        if custom_target is None and isinstance(order_result, dict):
+            custom_target = order_result.get("target") or order_result.get("target_price")
+
+        try:
+            sl_val = float(custom_sl) if (custom_sl is not None and float(custom_sl) > 0) else calc_sl_price(entry_price, sl_pct, direction)
+        except (ValueError, TypeError):
+            sl_val = calc_sl_price(entry_price, sl_pct, direction)
+
+        try:
+            target_val = float(custom_target) if (custom_target is not None and float(custom_target) > 0) else calc_target_price(entry_price, tgt_pct, direction)
+        except (ValueError, TypeError):
+            target_val = calc_target_price(entry_price, tgt_pct, direction)
 
         pos_dict = {
             "order_id":          order_result.get("orderid"),
