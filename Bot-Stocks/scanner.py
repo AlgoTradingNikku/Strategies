@@ -34,10 +34,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from zoneinfo import ZoneInfo
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 import yaml
+
+# Sprint 4: Critical reliability and performance imports
+from api_rate_limiter import get_rate_limiter
+from circuit_breaker import CircuitBreaker
+from trade_management.models import calc_sl_price
 
 # ---------------------------------------------------------------------------
 # Ensure UTF-8 output on Windows so emojis / box-drawing chars don't crash
@@ -80,6 +86,10 @@ log.addHandler(console_handler)
 log.addHandler(file_handler)
 log.propagate = False  # Avoid propagating up to root logger
 
+# Suppress verbose OpenAlgo library logging (floods console with "Debug - API Response Status")
+logging.getLogger("data").setLevel(logging.WARNING)
+logging.getLogger("openalgo").setLevel(logging.WARNING)
+
 # ---------------------------------------------------------------------------
 # Local modules
 # ---------------------------------------------------------------------------
@@ -97,6 +107,25 @@ from signals import (                                          # noqa: E402
     check_mtf_confirmation,
     calculate_risk_reward,
 )
+
+
+# ---------------------------------------------------------------------------
+# Sprint 4: Timeout wrapper for data fetches
+# ---------------------------------------------------------------------------
+def _timeout_wrapper(func, *args, timeout=15, **kwargs):
+    """
+    Execute func with a timeout. Returns result or raises TimeoutError.
+    
+    Uses ThreadPoolExecutor with a simple timeout mechanism.
+    For critical operations like yfinance data fetch that sometimes hang.
+    """
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(f"{func.__name__} timed out after {timeout}s")
 
 
 # ============================================================================
@@ -275,10 +304,23 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
             )
             lookback_days = max_allowed
 
-    end_dt   = datetime.now()
+    # Calculate date range, adjusting end_date for weekends/non-trading days
+    end_dt = datetime.now()
+    
+    # If today is Saturday/Sunday, roll back to last Friday to avoid
+    # "no data available" errors from brokers that reject future/non-trading dates
+    if end_dt.weekday() >= 5:  # 5=Saturday, 6=Sunday
+        days_since_friday = end_dt.weekday() - 4
+        end_dt = end_dt - timedelta(days=days_since_friday)
+        log.debug(
+            "[%s] Weekend detected; adjusted end_date to last Friday: %s",
+            symbol, end_dt.strftime("%Y-%m-%d")
+        )
+    
     start_dt = end_dt - timedelta(days=lookback_days)
     start_str = start_dt.strftime("%Y-%m-%d")
     end_str   = end_dt.strftime("%Y-%m-%d")
+
 
     try:
         # ------------------------------------------------------------------
@@ -302,16 +344,25 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
             df = pd.DataFrame()
             for attempt in range(max_retries):
                 try:
-                    df = yf.download(
-                        tickers=yf_symbol,
-                        start=start_dt,
-                        end=end_dt,
-                        interval=timeframe,
-                        progress=False,
-                        auto_adjust=True,
-                    )
+                    # Sprint 4: Wrap yfinance.download with 15s timeout to prevent hangs
+                    def _yf_download():
+                        return yf.download(
+                            tickers=yf_symbol,
+                            start=start_dt,
+                            end=end_dt,
+                            interval=timeframe,
+                            progress=False,
+                            auto_adjust=True,
+                        )
+                    
+                    df = _timeout_wrapper(_yf_download, timeout=15)
+                    
                     if not df.empty:
                         break
+                except TimeoutError as timeout_err:
+                    log.warning("[%s] yfinance fetch timed out (attempt %d/%d): %s", symbol, attempt+1, max_retries, timeout_err)
+                    if attempt == max_retries - 1:
+                        return None
                 except Exception as e:
                     if attempt == max_retries - 1:
                         log.warning("[%s] yfinance fetch failed after %d attempts: %s", symbol, max_retries, e)
@@ -1129,7 +1180,6 @@ def run_scan(
 
     if order_mode == "auto":
         log.info("  🤖 AUTO ORDER MODE ACTIVE | Action Filter: %s", allowed_actions)
-        from types import SimpleNamespace
         import trading_adapter
         import trade_db
         import risk_limits
@@ -1141,6 +1191,9 @@ def run_scan(
         except Exception:
             open_positions = []
             open_syms = set()
+
+        # ---- Sprint 4: Initialize circuit breaker for order failures ----
+        _order_circuit_breaker = CircuitBreaker(failure_threshold=3, timeout_seconds=300)
 
         # Log risk-limits config once per scan so operators know it's active.
         rl_cfg = config.get("risk_limits", {}) or {}
@@ -1165,6 +1218,31 @@ def run_scan(
         for r in (buy_results + sell_results):
             sig = str(r.get("signal", "BUY")).upper()
             sym = r["symbol"]
+            
+            # ---- Sprint 4: Data freshness validation ----
+            # Reject signals older than 2× scan_interval to avoid acting on stale data
+            scan_interval = int(config.get("scan_interval_seconds", 60))
+            max_age_seconds = scan_interval * 2
+            
+            try:
+                signal_timestamp = r.get("timestamp")
+                if signal_timestamp:
+                    if isinstance(signal_timestamp, str):
+                        signal_dt = datetime.fromisoformat(signal_timestamp.replace("Z", "+00:00"))
+                    else:
+                        signal_dt = signal_timestamp
+                    
+                    age_seconds = (datetime.now(ZoneInfo("Asia/Kolkata")) - signal_dt).total_seconds()
+                    
+                    if age_seconds > max_age_seconds:
+                        log.warning(
+                            "  [%s] ⚠️ Stale signal rejected (age: %.1fs, max: %ds) - skipping",
+                            sym, age_seconds, max_age_seconds
+                        )
+                        continue
+            except Exception as freshness_err:
+                log.warning("  [%s] Could not validate signal freshness: %s", sym, freshness_err)
+                # Don't reject on validation error - continue
 
             if allowed_actions == "BUY_ONLY" and sig != "BUY":
                 log.info("  [%s] Skipped auto order for %s signal (openalgo.allowed_actions = BUY_ONLY)", sym, sig)
@@ -1299,16 +1377,72 @@ def run_scan(
             )
 
             log.info("  [%s] Auto-executing %s order via trading adapter...", sym, sig)
-            ord_res = trading_adapter.place_order(config, req)
+            
+            # ---- Sprint 4: Circuit breaker wrapping ----
+            try:
+                ord_res = _order_circuit_breaker.call(trading_adapter.place_order, config, req)
+            except Exception as order_err:
+                log.error("  [%s] Order failed: %s", sym, order_err)
+                
+                if _order_circuit_breaker.is_open:
+                    log.critical("🚨 Circuit breaker OPEN - stopping auto-orders for this scan")
+                    send_telegram_alert(
+                        f"🚨 AUTO-ORDERS STOPPED\n"
+                        f"3 consecutive order failures detected.\n"
+                        f"Last error: {str(order_err)[:200]}\n"
+                        f"Please check broker connection and API status.",
+                        priority=10, config=config
+                    )
+                    break  # Exit the auto-order loop
+                
+                continue  # Skip this symbol, try next
 
             if ord_res.get("status") == "success":
+                order_id = ord_res.get("orderid")
+                
+                # ---- Sprint 4: Verify filled quantity (handle partial fills) ----
+                filled_qty = quantity  # Default to requested qty
+                try:
+                    # Wait 2 seconds for order execution
+                    import time
+                    time.sleep(2)
+                    
+                    # Query order status from broker
+                    # For OpenAlgo:
+                    from openalgo import api as oa_api
+                    oa_cfg_check = config.get("openalgo", {})
+                    oa_client = oa_api(api_key=oa_cfg_check["apikey"], host=oa_cfg_check.get("base_url", "http://127.0.0.1:5000"))
+                    orderbook = oa_client.orderbook()
+                    
+                    # Find our order
+                    our_order = next((o for o in orderbook if str(o.get("orderid")) == str(order_id)), None)
+                    
+                    if our_order:
+                        status = str(our_order.get("status", "")).upper()
+                        if status in ["COMPLETE", "FILLED"]:
+                            filled_qty = int(our_order.get("filled_quantity", quantity))
+                        elif status in ["PENDING", "OPEN", "TRIGGER_PENDING"]:
+                            log.warning("  [%s] Order %s still pending (status: %s) - skipping position registration", sym, order_id, status)
+                            continue
+                    
+                    if filled_qty < quantity:
+                        log.warning("  [%s] ⚠️ Partial fill: requested %d, filled %d", sym, quantity, filled_qty)
+                        send_telegram_alert(
+                            f"⚠️ Partial Fill\n{sym}: {filled_qty}/{quantity} filled",
+                            priority=7, config=config
+                        )
+                        
+                except Exception as fill_check_err:
+                    log.error("  [%s] Could not verify fill quantity: %s - using requested qty", sym, fill_check_err)
+                    # Continue with requested quantity as fallback
+                
                 try:
                     pos_id = trade_db.open_position_db({
-                        "order_id": ord_res.get("orderid") or f"AUTO_{int(datetime.now().timestamp()*1000)}",
+                        "order_id": order_id or f"AUTO_{int(datetime.now().timestamp()*1000)}",
                         "symbol": sym,
                         "exchange": exchange,
                         "direction": sig,
-                        "quantity": quantity,
+                        "quantity": filled_qty,  # ✅ Use actual filled quantity
                         "entry_price": close_price,
                         "current_sl": stop_loss,
                         "initial_sl": stop_loss,

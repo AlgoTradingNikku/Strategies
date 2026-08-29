@@ -24,6 +24,8 @@ For session-token-based brokers (Flattrade, MStock, Shoonya) the session_token
 must be obtained via your broker's login flow and placed in config.yml before
 the market opens. Dhan uses a long-lived access_token from the Dhan developer
 portal.
+
+Sprint 4: API rate limiting applied to ALL broker API calls to prevent blocks.
 ===============================================================================
 """
 
@@ -32,6 +34,9 @@ import threading
 import hashlib
 import logging
 import requests
+
+# Sprint 4: Import rate limiter
+from api_rate_limiter import get_rate_limiter
 
 log = logging.getLogger("UTBotSRChannelsScanner")
 
@@ -521,8 +526,13 @@ def place_order(cfg: dict, req) -> dict:
             "message": f"Unknown trading_api_source: '{source}'. "
                        f"Valid options: {list(_PLACE_ORDER_DISPATCH)}",
         }
-    log.info("Placing %s order for %s via %s", req.action, req.symbol, source.upper())
-    result = fn(cfg, req)
+    
+    # Sprint 4: Apply rate limiting to all order placements
+    rate_limiter = get_rate_limiter(cfg)
+    with rate_limiter:
+        log.info("Placing %s order for %s via %s", req.action, req.symbol, source.upper())
+        result = fn(cfg, req)
+    
     if result.get("status") == "success":
         log.info("✅ Order placed [%s] %s %s qty=%d → orderid=%s",
                  source.upper(), req.action, req.symbol, req.quantity, result.get("orderid", "?"))
@@ -589,7 +599,11 @@ def get_ltp(cfg: dict, symbol: str, exchange: str, max_age: float = 1.5) -> floa
     last_exc: Exception | None = None
     for attempt in range(1, _LTP_RETRY_ATTEMPTS + 1):
         try:
-            price = fn(cfg, symbol, exchange)
+            # Sprint 4: Apply rate limiting to LTP fetches
+            rate_limiter = get_rate_limiter(cfg)
+            with rate_limiter:
+                price = fn(cfg, symbol, exchange)
+            
             if price is None or not (isinstance(price, (int, float))) or price <= 0:
                 raise RuntimeError(f"Invalid LTP value from {source}: {price!r}")
             with _LTP_CACHE_LOCK:

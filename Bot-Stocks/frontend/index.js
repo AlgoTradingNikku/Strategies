@@ -1760,6 +1760,63 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Sprint 4: Emergency Exit Button Handler
+    const btnEmergencyExit = document.getElementById("btn-emergency-exit");
+    if (btnEmergencyExit) {
+        btnEmergencyExit.addEventListener("click", async () => {
+            const confirmed = confirm(
+                "🚨 EMERGENCY EXIT 🚨\n\n" +
+                "This will IMMEDIATELY close ALL open positions at market price.\n\n" +
+                "⚠️ This action:\n" +
+                "• Bypasses normal position management\n" +
+                "• Sends critical Telegram alerts\n" +
+                "• Cannot be undone\n\n" +
+                "Only use in PANIC situations!\n\n" +
+                "Are you ABSOLUTELY SURE?"
+            );
+            
+            if (!confirmed) return;
+            
+            // Double confirmation
+            const doubleCheck = confirm("FINAL WARNING: Proceed with emergency exit?");
+            if (!doubleCheck) return;
+            
+            btnEmergencyExit.disabled = true;
+            btnEmergencyExit.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> EMERGENCY EXIT IN PROGRESS...';
+            btnEmergencyExit.style.animation = "none";
+            
+            try {
+                const resp = await fetch(`${API_BASE}/api/emergency-exit`, { method: "POST" });
+                const data = await resp.json();
+                
+                if (!resp.ok) {
+                    throw new Error(data.detail || data.message || "Emergency exit failed");
+                }
+                
+                let message = `Emergency Exit Complete\n\n`;
+                message += `Closed: ${data.closed}/${data.total} positions\n`;
+                
+                if (data.errors && data.errors.length > 0) {
+                    message += `\n⚠️ Errors:\n${data.errors.slice(0, 3).join('\n')}`;
+                    if (data.errors.length > 3) {
+                        message += `\n... and ${data.errors.length - 3} more`;
+                    }
+                }
+                
+                alert(message);
+                await loadPositions();
+                await loadClosedPositions();
+                
+            } catch (err) {
+                alert("🚨 EMERGENCY EXIT FAILED:\n\n" + err.message + "\n\nPlease check logs and close positions manually!");
+            } finally {
+                btnEmergencyExit.disabled = false;
+                btnEmergencyExit.innerHTML = '🚨 EMERGENCY EXIT';
+                btnEmergencyExit.style.animation = "pulse-red 2s infinite";
+            }
+        });
+    }
+
     // Helper: shared reset-databases logic used by both buttons
     async function resetAllDatabases(btn) {
         if (!confirm("⚠️ Are you SURE you want to clear ALL trade database history, active positions, and signal history?\n\nThis will wipe all tracking logs to start completely fresh!")) return;

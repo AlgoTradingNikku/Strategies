@@ -109,6 +109,18 @@ def _get_connection(config: dict = None) -> sqlite3.Connection:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol)"
         )
+        
+        # ---- Sprint 4: Additional indexes for performance ----
+        # Composite index for faster symbol+time lookups (signal deduplication)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_symbol_time ON signals(symbol, timestamp DESC)"
+        )
+        # Index on outcome_checked for faster outcome queries
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_signals_outcome_check "
+            "ON signals(outcome_checked) WHERE outcome_checked = 0"
+        )
+        
         conn.commit()
         _db_initialized = True
     return conn

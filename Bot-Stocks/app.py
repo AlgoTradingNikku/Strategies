@@ -1,5 +1,6 @@
 import sys
 import logging
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -23,6 +24,10 @@ sys.path.insert(0, str(_bot_dir))
 # Configure logging specifically for the web app to avoid duplicating log setups
 log = logging.getLogger("UTBotSRChannelsScanner")
 
+# Suppress verbose OpenAlgo library logging (floods console with "Debug - API Response Status")
+logging.getLogger("data").setLevel(logging.WARNING)
+logging.getLogger("openalgo").setLevel(logging.WARNING)
+
 # Import scanner functions
 from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
@@ -34,15 +39,19 @@ import trade_db
 # ---------------------------------------------------------------------------
 # Module-level OpenAlgo client cache — avoids re-constructing the client on
 # every /api/order request (one client per unique apikey+host combination).
+# Thread-safe with lock protection (Sprint 4 fix).
 # ---------------------------------------------------------------------------
 _oa_client_cache: dict = {}
+_oa_client_lock = threading.Lock()
 
 def _get_oa_client(oa_cfg: dict):
-    """Return a cached OpenAlgo API client for the given config."""
+    """Return a cached OpenAlgo API client for the given config (thread-safe)."""
     key = (oa_cfg.get("apikey", ""), oa_cfg.get("base_url", "http://127.0.0.1:5000"))
-    if key not in _oa_client_cache:
-        _oa_client_cache[key] = oa_api(api_key=key[0], host=key[1])
-    return _oa_client_cache[key]
+    
+    with _oa_client_lock:
+        if key not in _oa_client_cache:
+            _oa_client_cache[key] = oa_api(api_key=key[0], host=key[1])
+        return _oa_client_cache[key]
 
 
 _monitor = PositionMonitor()
@@ -51,11 +60,71 @@ _monitor = PositionMonitor()
 # ---------------------------------------------------------------------------
 # Lifespan handler (replaces deprecated @app.on_event startup/shutdown)
 # ---------------------------------------------------------------------------
+def _log_config_summary(cfg: dict):
+    """Display current configuration summary in console logs."""
+    log.info("=" * 70)
+    log.info("📊 Bot Configuration")
+    log.info("=" * 70)
+    
+    # Show segments being scanned
+    segments = cfg.get("segment", [])
+    if isinstance(segments, str):
+        segments = [segments] if segments else []
+    
+    if segments:
+        log.info(f"🎯 Scanning Segments: {', '.join(segments)}")
+    else:
+        log.info("🎯 Scanning Segments: None (using symbols only)")
+    
+    # Show custom symbols
+    use_symbols = cfg.get("use_symbols", False)
+    symbols = cfg.get("symbols", [])
+    if use_symbols and symbols:
+        log.info(f"📌 Custom Symbols: {', '.join(symbols[:10])}{' ...' if len(symbols) > 10 else ''}")
+        log.info(f"   Total: {len(symbols)} symbols")
+    elif not segments:
+        log.info("📌 Custom Symbols: None configured")
+    
+    # Show enabled engines
+    enabled_engines = []
+    if cfg.get("strategy", {}).get("ut_enabled", False):
+        enabled_engines.append("UT Bot")
+    if cfg.get("sr_channels", {}).get("enabled", False):
+        enabled_engines.append("S/R Channels")
+    if cfg.get("momentum", {}).get("enabled", False):
+        enabled_engines.append("Momentum")
+    if cfg.get("mean_reversion", {}).get("enabled", False):
+        enabled_engines.append("Mean Reversion")
+    
+    if enabled_engines:
+        log.info(f"🔧 Active Engines: {', '.join(enabled_engines)}")
+    else:
+        log.info("🔧 Active Engines: None (all disabled)")
+    
+    log.info(f"📈 Data Source: {cfg.get('data_source', 'unknown')}")
+    log.info(f"⚡ Trading API: {cfg.get('trading_api_source', 'unknown')}")
+    log.info(f"🕒 Scan Interval: {cfg.get('scan_interval_seconds', 60)}s")
+    log.info("=" * 70)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # ---- Startup ----
     try:
         cfg = load_config()
+        
+        # Display configuration info at startup
+        _log_config_summary(cfg)
+        
+        # Run health check on startup (Sprint 4)
+        try:
+            from health_check import run_health_check
+            health = run_health_check(cfg)
+            if health["status"] == "critical":
+                log.error("⚠️ Critical health check failures detected!")
+        except Exception as e:
+            log.warning("Health check failed: %s", e)
+        
         _monitor.start(cfg)
     except Exception as e:
         log.error("Failed to start Trade Monitor: %s", e)
@@ -133,6 +202,11 @@ class DhanConfig(BaseModel):
     order_quantity: int = 1
     order_type: str = "MARKET"
 
+class ApiRateLimitConfig(BaseModel):
+    enabled: bool = True
+    max_requests_per_second: int = 10
+    burst_size: int = 15
+
 class StrategyConfig(BaseModel):
     ut_enabled: bool
     key_value: float
@@ -193,6 +267,7 @@ class ConfigUpdateRequest(BaseModel):
     mstock: MStockConfig = MStockConfig()
     shoonya: ShoonyaConfig = ShoonyaConfig()
     dhan: DhanConfig = DhanConfig()
+    api_rate_limit: ApiRateLimitConfig = ApiRateLimitConfig()
     data: dict
     bot: BotConfig
     symbols: list[str]
@@ -329,6 +404,10 @@ def update_config(req: ConfigUpdateRequest):
             except Exception:
                 pass
             raise
+
+        # Log the updated configuration summary
+        log.info("Configuration updated via dashboard")
+        _log_config_summary(config_dict)
 
         return {"status": "success", "message": "Configuration saved successfully."}
     except Exception as e:
@@ -526,6 +605,125 @@ async def close_all_positions_endpoint():
     except Exception as e:
         log.error("Close all positions failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Close all positions failed: {e}")
+
+
+@app.post("/api/emergency-exit")
+async def emergency_exit():
+    """
+    🚨 EMERGENCY EXIT - Close ALL open positions immediately at market price.
+    
+    Unlike /api/positions/close-all, this endpoint:
+    - Logs critical warnings
+    - Sends Telegram alerts
+    - Bypasses normal position management flow
+    - Intended for panic situations only
+    
+    Returns
+    -------
+    dict
+        {
+            "status": "success" | "partial",
+            "closed": int,
+            "total": int,
+            "errors": list[str]
+        }
+    """
+    try:
+        cfg = load_config()
+        open_positions = await run_in_threadpool(trade_db.get_open_positions)
+        
+        if not open_positions:
+            return {"status": "success", "message": "No open positions", "closed": 0, "total": 0, "errors": []}
+        
+        log.critical("🚨 EMERGENCY EXIT TRIGGERED - Closing %d positions", len(open_positions))
+        
+        closed_count = 0
+        errors = []
+        
+        def _emergency_close_position(pos):
+            nonlocal closed_count
+            try:
+                # Get current LTP
+                ltp = adapter_get_ltp(cfg, pos["symbol"], pos["exchange"])
+                if ltp <= 0:
+                    ltp = float(pos.get("entry_price", 0.0))
+                
+                # Place exit order
+                action = "SELL" if pos["direction"].upper() == "BUY" else "BUY"
+                from types import SimpleNamespace
+                req = SimpleNamespace(
+                    symbol=pos["symbol"],
+                    exchange=pos["exchange"],
+                    action=action,
+                    quantity=pos["quantity"],
+                    product=pos.get("product", "MIS"),
+                    price_type="MARKET",
+                    price=ltp,
+                    trigger_price=0.0,
+                    strategy="UTBot_SR_EmergencyExit",
+                )
+                
+                adapter_place_order(cfg, req)
+                
+                # Update database
+                entry = float(pos.get("entry_price", ltp or 1.0))
+                direction = pos.get("direction", "BUY")
+                pnl_pct = round(((ltp - entry)/entry)*100, 2) if direction.upper() == "BUY" else round(((entry - ltp)/entry)*100, 2)
+                
+                trade_db.update_position(
+                    pos["id"],
+                    status="CLOSED",
+                    close_reason="EMERGENCY_EXIT",
+                    close_price=ltp,
+                    close_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    pnl_pct=pnl_pct
+                )
+                
+                # Remove from monitor
+                with _monitor.lock:
+                    _monitor.active_positions.pop(pos["id"], None)
+                
+                closed_count += 1
+                log.info("✅ Emergency closed position: %s", pos["symbol"])
+                
+            except Exception as e:
+                log.error("❌ Failed to emergency close %s: %s", pos["symbol"], e)
+                errors.append(f"{pos['symbol']}: {str(e)}")
+        
+        # Execute all closes in parallel
+        with ThreadPoolExecutor(max_workers=min(10, len(open_positions))) as executor:
+            futures = [executor.submit(_emergency_close_position, pos) for pos in open_positions]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception:
+                    pass  # Already logged in _emergency_close_position
+        
+        # Send critical Telegram alert
+        try:
+            from telegram import send_telegram_alert
+            send_telegram_alert(
+                f"🚨 EMERGENCY EXIT COMPLETED\n"
+                f"Closed: {closed_count}/{len(open_positions)}\n"
+                f"Errors: {len(errors)}\n"
+                f"{('Failed symbols: ' + ', '.join([e.split(':')[0] for e in errors[:5]])) if errors else ''}",
+                priority=10, config=cfg
+            )
+        except Exception as e:
+            log.error("Failed to send Telegram alert: %s", e)
+        
+        status = "success" if closed_count == len(open_positions) else "partial"
+        
+        return {
+            "status": status,
+            "closed": closed_count,
+            "total": len(open_positions),
+            "errors": errors
+        }
+        
+    except Exception as e:
+        log.critical("Emergency exit failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/reset-data")
 async def reset_data_endpoint():

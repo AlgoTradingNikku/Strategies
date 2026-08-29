@@ -100,6 +100,19 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_close_time ON positions(close_time DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_events_position ON position_events(position_id, event_time)")
+    
+    # ---- Sprint 4: Additional indexes for performance ----
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_symbol ON positions(symbol, exchange)")
+    
+    # ---- Sprint 4: Unique constraint to prevent duplicate open positions ----
+    # Ensures only one OPEN position per (symbol, exchange) combination.
+    # Protects against race conditions when multiple scans try to open same symbol.
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_open_position
+        ON positions(symbol, exchange)
+        WHERE status = 'OPEN'
+    """)
+    
     conn.commit()
 
 

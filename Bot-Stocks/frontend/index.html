@@ -274,16 +274,13 @@
 
                         <div class="sidebar-header">
                             <i class="fa-solid fa-sliders"></i>
-                            <span>Quick Filter Controls</span>
+                            <span>Quick Controls</span>
                         </div>
-                        <p class="sidebar-desc-text">
-                            Toggle active scanner filters and criteria in real-time. Changes are saved dynamically and re-trigger scanning.
-                        </p>
                         <div class="control-toggles-list">
                             <!-- UTBot Engine (will be replaced dynamically) -->
                             <div class="control-toggle-item" data-engine-toggle="ut_bot">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">UT Bot Engine</span>
+                                    <span class="toggle-name">UT Bot</span>
                                     <span class="toggle-desc">Enable UT Bot signals</span>
                                 </div>
                                 <label class="switch">
@@ -294,7 +291,7 @@
                             <!-- SR Channels Engine (will be replaced dynamically) -->
                             <div class="control-toggle-item" data-engine-toggle="sr_channels">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">S/R Zones Engine</span>
+                                    <span class="toggle-name">S/R Channels</span>
                                     <span class="toggle-desc">Enable S/R boundaries</span>
                                 </div>
                                 <label class="switch">
@@ -819,6 +816,10 @@
                             </button>
                             <button class="btn btn-secondary" id="btn-close-all-positions" style="background-color: var(--color-sell); color: white; border: none; font-weight: 600; font-size: 0.85rem; padding: 6px 14px; cursor: pointer;">
                                 <i class="fa-solid fa-square-xmark"></i> Close All Positions
+                            </button>
+                            <!-- Sprint 4: Emergency Exit Button -->
+                            <button class="btn btn-danger" id="btn-emergency-exit" style="background-color: #c91f37; color: white; border: 2px solid #8b0000; font-weight: bold; font-size: 0.9rem; padding: 7px 16px; cursor: pointer; animation: pulse-red 2s infinite;">
+                                🚨 EMERGENCY EXIT
                             </button>
                             <span class="last-updated-badge badge-fresh" id="positions-last-update-badge">Live Streaming</span>
                         </div>

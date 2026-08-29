@@ -3,12 +3,46 @@
 data_source: "openalgo"               # Options: "yfinance", "openalgo", "tvdatafeed", "twelvedata"
 trading_api_source: "openalgo"        # Options: "openalgo", "flattrade", "mstock", "shoonya", "dhan"
 exchange: "NSE"                       # Target exchange
-candle_timeframe: "1w"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
-scan_interval_seconds: 60             # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
+
+# ============================================================================
+# API RATE LIMITING — Prevent broker API blocks (Sprint 4)
+# ============================================================================
+# Token bucket algorithm: allows burst traffic while maintaining average rate.
+# Applies to ALL broker API calls (order placement, LTP, positions, etc.)
+#
+# TO DISABLE RATE LIMITING (make unlimited):
+#   Set enabled: false
+#
+# RECOMMENDED SETTINGS BY BROKER (if enabled):
+#   OpenAlgo:   10-15 req/sec (proxies to underlying broker)
+#   Flattrade:  10 req/sec
+#   Dhan:       3 req/sec (STRICTEST - only 3 allowed!)
+#   Shoonya:    10 req/sec
+#   MStock:     10 req/sec
+#   Unlimited:  Set enabled: false
+#
+# HOW IT WORKS:
+#   - Bucket holds tokens (max = burst_size)
+#   - Tokens refill at max_requests_per_second rate
+#   - Each API call consumes 1 token
+#   - If no tokens available, request waits until refill
+#
+# EXAMPLE: rate=10, burst=15
+#   - Can make 15 calls instantly (burst)
+#   - Then limited to 10 calls/second average
+# ============================================================================
+api_rate_limit:
+  enabled: true                       # Master toggle: true = rate limiting ON, false = UNLIMITED
+  max_requests_per_second: 10         # Average rate limit (ignored if enabled: false)
+  burst_size: 15                      # Allow short bursts (ignored if enabled: false)
+
+candle_timeframe: "5m"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_interval_seconds: 300            # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
 
 # Set to "" or [] to scan only the custom symbols list below
 segment:
 - BANKNIFTY
+- NIFTY
 use_symbols: true
 
 symbols:
@@ -34,6 +68,95 @@ sr_channels:
   max_num_sr: 6                       # Maximum number of active S/R zones (1 to 10)
   loopback: 290                       # Bars to scan for pivot collection (100 to 400)
   proximity_pct: 0.2                  # % from boundary to count as "near" (0.0 disables near)
+
+# Momentum Engine (Sprint 1.5) — Trend Continuation Signals
+# Combines RSI, Volume, ADX, EMA, BB, and ROC to detect strong trending moves.
+momentum:
+  enabled: false                      # Enable/disable momentum signals
+  min_score: 60                       # Minimum score (0-100) to trigger a signal
+  # RSI Component (40-70 buy zone, 30-60 sell zone)
+  rsi_enabled: true
+  rsi_period: 14
+  rsi_buy_zone: [40, 70]              # [min, max] for bullish momentum
+  rsi_sell_zone: [30, 60]             # [min, max] for bearish momentum
+  rsi_weight: 20                      # Contribution to total score (0-100)
+  # Volume Surge Component
+  volume_enabled: true
+  volume_sma_period: 20
+  volume_surge_min: 1.5               # Volume must be 1.5× average
+  volume_weight: 20
+
+  # ADX Trend Strength Component
+  adx_enabled: true
+  adx_period: 14
+  adx_min_threshold: 20.0             # Weak trend threshold
+  adx_strong_threshold: 25.0          # Strong trend threshold
+  adx_weight: 15
+
+  # EMA Trend Filter Component
+  ema_enabled: true
+  ema_period: 200                     # Long-term trend filter
+  ema_weight: 20
+
+  # Bollinger Bands Breakout Component
+  bb_enabled: true
+  bb_period: 20
+  bb_std_dev: 2.0
+  bb_weight: 10
+
+  # Rate of Change Component
+  roc_enabled: true
+  roc_period: 10
+  roc_threshold: 3.0                  # % change threshold
+  roc_weight: 15
+
+# Mean Reversion Engine (Sprint 1.5) — Snap-Back Signals
+# Detects stretched price moves likely to revert to mean.
+mean_reversion:
+  enabled: false                      # Enable/disable mean reversion signals
+  min_score: 60                       # Minimum score (0-100) to trigger a signal
+  # Bollinger Bands Touch Component
+  bb_enabled: true
+  bb_period: 20
+  bb_std_dev: 2.0
+  bb_touch_threshold: 0.02            # Within 2% of band = touch
+  bb_weight: 25
+
+  # RSI Extreme Component
+  rsi_extreme_enabled: true
+  rsi_extreme_period: 14
+  rsi_oversold: 30                    # Buy when RSI < 30
+  rsi_overbought: 70                  # Sell when RSI > 70
+  rsi_extreme_weight: 20
+
+  # Stochastic Oscillator Component
+  stochastic_enabled: true
+  stoch_k_period: 14
+  stoch_d_period: 3
+  stoch_smooth_k: 3
+  stoch_oversold: 20
+  stoch_overbought: 80
+  stoch_weight: 15
+
+  # Z-Score Deviation Component
+  zscore_enabled: true
+  zscore_period: 50
+  zscore_threshold: 2.0               # ±2 std devs from mean
+  zscore_weight: 20
+
+  # Williams %R Component
+  williams_enabled: true
+  williams_period: 14
+  williams_oversold: -80
+  williams_overbought: -20
+  williams_weight: 10
+
+  # CCI Extreme Component
+  cci_enabled: true
+  cci_period: 20
+  cci_oversold: -100
+  cci_overbought: 100
+  cci_weight: 10
 
 # Market Regime Classifier (Sprint 1.5)
 # Every scan tags its signals with the current regime, computed from NIFTY.
@@ -288,7 +411,25 @@ tvdatafeed:
 # 5. DATA & SYSTEM SETTINGS
 # ------------------------------------------------------------
 data:
-  lookback_days: 5                   # Days of historical data to fetch
+  lookback_days: 7                   # Days of historical data to fetch (calendar days, not trading days)
+                                      # 
+                                      # ADJUST BASED ON YOUR TIMEFRAME:
+                                      # ================================
+                                      # Intraday Timeframes:
+                                      #   1m, 2m:         5-7 days   (yfinance hard limit = 7 days)
+                                      #   5m, 15m:        7 days     (yfinance hard limit = 7 days; safe for OpenAlgo)
+                                      #   30m, 60m:       7-30 days  (more history = better S/R, but slower scans)
+                                      # 
+                                      # Daily/Weekly Timeframes:
+                                      #   1d (daily):     400 days   (≈ 280 trading days for S/R loopback=290)
+                                      #   1w (weekly):    700 days   (≈ 2 years = 100+ weeks for indicators)
+                                      # 
+                                      # WHY SO MUCH FOR DAILY?
+                                      # - S/R Channels: loopback=290 bars (need 290 trading days ≈ 400+ calendar days)
+                                      # - Momentum/Mean Reversion: RSI/ADX need 14-50 bars minimum
+                                      # - Regime Classifier: vol_percentile_window=200 bars
+                                      # 
+                                      # CURRENT SETTING: 7 days (for 5m/15m intraday scanning)
 
 bot:
   log_level: "INFO"                   # Console logging level (INFO, DEBUG, WARNING, etc.)
@@ -391,4 +532,4 @@ trade_management:
     on_sl_move: false            # Alert on every trailing SL adjustment (verbose)
 
 
-scan_timeframe: 1w
+scan_timeframe: 5m
