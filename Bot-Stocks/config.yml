@@ -36,8 +36,8 @@ api_rate_limit:
   max_requests_per_second: 10         # Average rate limit (ignored if enabled: false)
   burst_size: 15                      # Allow short bursts (ignored if enabled: false)
 
-candle_timeframe: "5m"              # Chart candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
-scan_interval_seconds: 300            # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
+candle_timeframe: "5m"              # Chart LTF candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+scan_interval_seconds: 300          # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
 
 # Set to "" or [] to scan only the custom symbols list below
 segment:
@@ -60,7 +60,7 @@ signal_lookback_candles: 2
 
 # Support/Resistance Channels Settings
 sr_channels:
-  enabled: true
+  enabled: false
   pivot_period: 10                    # Period to confirm a pivot (range: 4 to 30)
   source: "High/Low"                  # Source prices: "High/Low" or "Close/Open"
   channel_width_pct: 5.0              # Max channel width as % of 300-bar price range (1 to 8)
@@ -72,7 +72,7 @@ sr_channels:
 # Momentum Engine (Sprint 1.5) — Trend Continuation Signals
 # Combines RSI, Volume, ADX, EMA, BB, and ROC to detect strong trending moves.
 momentum:
-  enabled: false                      # Enable/disable momentum signals
+  enabled: true                       # Enable/disable momentum signals
   min_score: 60                       # Minimum score (0-100) to trigger a signal
   # RSI Component (40-70 buy zone, 30-60 sell zone)
   rsi_enabled: true
@@ -155,6 +155,43 @@ mean_reversion:
   cci_enabled: true
   cci_period: 20
   cci_oversold: -100
+# Momentum-ChatGPT Strategy Engine — Comprehensive Swing Momentum
+# Features Market Regime, Sector Strength, Setup Detection (Breakout/Retest/Continuation), Scoring & Risk Sizing
+momentum_chatgpt:
+  enabled: false                      # Enable/disable Momentum-ChatGPT signals
+  min_score: 60                       # Minimum score (0-100) to trigger a signal
+  execution_mode: READ_ONLY           # READ_ONLY, PAPER, MANUAL_APPROVAL, LIVE
+  # Subcomponent Toggles
+  regime_enabled: true                # Market Regime (NIFTY 50 & Breadth)
+  sector_enabled: true                # Sector Relative Strength
+  momentum_enabled: true              # Stock Momentum (EMA, RSI, ADX, Vol)
+  setup_enabled: true                 # Setup Detection (Breakout/Retest/Consolidation)
+  # Universe & Liquidity Filters
+  primary_universe: NIFTY200
+  min_history_bars: 300               # Required historical bars for scan validation
+  min_turnover_20d_crore: 25.0        # Minimum 20D turnover (₹ Crore)
+  min_price: 100.0                    # Minimum close price (₹)
+  # Setup & Technical Components
+  rsi_enabled: true
+  rsi_period: 14
+  rsi_buy_zone: [55, 75]
+  adx_enabled: true
+  adx_period: 14
+  adx_min_threshold: 20.0
+  volume_enabled: true
+  volume_surge_min: 1.5
+
+  # Risk & Portfolio Constraints
+  risk_per_trade_pct: 0.50            # Risk per trade (% of portfolio capital)
+  max_position_pct: 15.0              # Max capital per position (%)
+  max_sector_exposure_pct: 30.0       # Max sector exposure (%)
+  max_positions: 8                    # Maximum open positions
+  minimum_cash_pct: 20.0              # Minimum reserved cash (%)
+  max_correlation: 0.70               # Max 60D return correlation allowed between candidates
+  min_rr_ratio: 1.5                   # Minimum Reward-to-Risk ratio
+  preferred_rr_ratio: 2.0             # Target Reward-to-Risk ratio
+
+
   cci_overbought: 100
   cci_weight: 10
 

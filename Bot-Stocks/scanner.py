@@ -761,6 +761,9 @@ def scan_symbol(
             from signals import compute_mean_reversion_signals
             mr_cfg = config.get("mean_reversion", {})
             df = compute_mean_reversion_signals(df, mr_cfg)
+        elif engine["key"] == "momentum_chatgpt":
+            from signals import compute_momentum_chatgpt_signals
+            df = compute_momentum_chatgpt_signals(df, config)
         # Future engines can be added here with new elif blocks
 
     # ---- Evaluate composite signals ----------------------------------------

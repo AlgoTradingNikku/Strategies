@@ -33,19 +33,20 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 ENGINE_REGISTRY = [
     {
         "key": "ut_bot",
-        "label": "UT Bot",
+        "label": "UTBot - Entry/Exit",
         "config_section": "strategy",
         "enabled_key": "ut_enabled",
         "default_enabled": True,
         "buy_col": "ut_buy",
         "sell_col": "ut_sell",
+        "pos_col": "ut_pos",
         "eval_mode": "window",  # Checks last N candles with most-recent-wins reducer
-        "buy_label": "UT Bot",
-        "sell_label": "UT Bot",
+        "buy_label": "UTBot Buy",
+        "sell_label": "UTBot Sell",
     },
     {
         "key": "sr_channels",
-        "label": "S/R Channels",
+        "label": "Support & Resistance",
         "config_section": "sr_channels",
         "enabled_key": "enabled",
         "default_enabled": True,
@@ -57,15 +58,15 @@ ENGINE_REGISTRY = [
     },
     {
         "key": "momentum",
-        "label": "Momentum Engine",
+        "label": "Technical Momentum",
         "config_section": "momentum",
         "enabled_key": "enabled",
         "default_enabled": False,
         "buy_col": "momentum_buy",
         "sell_col": "momentum_sell",
         "eval_mode": "window",
-        "buy_label": "Momentum Long",
-        "sell_label": "Momentum Short",
+        "buy_label": "Tech Momentum Long",
+        "sell_label": "Tech Momentum Short",
         "components": [
             {"key": "rsi", "label": "RSI", "config_key": "rsi_enabled", "display_label": "RSI (14:40-70)"},
             {"key": "volume", "label": "Volume", "config_key": "volume_enabled", "display_label": "Volume (1.5× SMA)"},
@@ -77,7 +78,7 @@ ENGINE_REGISTRY = [
     },
     {
         "key": "mean_reversion",
-        "label": "Mean Reversion Engine",
+        "label": "Mean Reversion",
         "config_section": "mean_reversion",
         "enabled_key": "enabled",
         "default_enabled": False,
@@ -93,6 +94,25 @@ ENGINE_REGISTRY = [
             {"key": "stochastic", "label": "Stochastic", "config_key": "stochastic_enabled", "display_label": "Stochastic (14)"},
             {"key": "zscore", "label": "Z-Score", "config_key": "zscore_enabled", "display_label": "Z-Score (±2)"},
             {"key": "vol_climax", "label": "Volume Climax", "config_key": "vol_climax_enabled", "display_label": "Vol Climax (2.5×)"},
+        ],
+    },
+    {
+        "key": "momentum_chatgpt",
+        "label": "Sector Swing (Long)",
+        "config_section": "momentum_chatgpt",
+        "enabled_key": "enabled",
+        "default_enabled": False,
+        "buy_col": "mcg_buy",
+        "sell_col": "mcg_sell",
+        "long_only": True,
+        "eval_mode": "instant",
+        "buy_label": "Sector Swing Long",
+        "sell_label": "Sector Swing Short",
+        "components": [
+            {"key": "market_regime", "label": "Market Regime", "config_key": "regime_enabled", "display_label": "Market Regime (NIFTY50 & Breadth)"},
+            {"key": "sector_strength", "label": "Sector Strength", "config_key": "sector_enabled", "display_label": "Sector Relative Strength"},
+            {"key": "stock_momentum", "label": "Stock Momentum", "config_key": "momentum_enabled", "display_label": "EMA, RSI, ADX & Vol"},
+            {"key": "setup_detection", "label": "Setup Detection", "config_key": "setup_enabled", "display_label": "Breakout / Retest / Consolidation"},
         ],
     },
 ]
@@ -1088,6 +1108,33 @@ def compute_mean_reversion_signals(df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     
     return df
 
+def compute_momentum_chatgpt_signals(df: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """
+    Compute Momentum-ChatGPT strategy signals on OHLCV DataFrame.
+    Calculates stock momentum evaluation and adds `mcg_buy`, `mcg_sell`, `mcg_score` columns.
+    """
+    df["mcg_buy"] = False
+    df["mcg_sell"] = False
+    df["mcg_score"] = 0.0
+
+    if df is None or len(df) < 50:
+        return df
+
+    cfg = config.get("momentum_chatgpt", {})
+    from strategies.momentum_chatgpt import evaluate_stock_momentum
+    
+    eval_res = evaluate_stock_momentum(df, benchmark_df=None, cfg=cfg)
+    if eval_res.get("qualified", False):
+        score = eval_res.get("raw_score", 0.0)
+        df["mcg_score"] = score
+        min_score = cfg.get("min_score", 60)
+        if score >= min_score:
+            df["mcg_buy"] = True
+
+    return df
+
+
+
 
 # ============================================================================
 # 6. ATR-BASED RISK/REWARD CALCULATOR
@@ -1379,6 +1426,8 @@ def evaluate_composite_signals(
             buy_col = engine["buy_col"]
             sell_col = engine["sell_col"]
             eval_mode = engine["eval_mode"]
+            pos_col = engine.get("pos_col")
+            is_long_only = bool(engine.get("long_only", False))
             
             # Evaluate engine signal based on its mode
             if eval_mode == "window":
@@ -1402,31 +1451,48 @@ def evaluate_composite_signals(
                             engine_buy = False
                         elif last_buy_idx > last_sell_idx:
                             engine_sell = False
-                
+
+                # Position state validation (e.g. ut_pos): suppress buy if cur state is SHORT (-1), suppress sell if LONG (+1)
+                if pos_col and pos_col in eval_df.columns and len(eval_df) > 0:
+                    cur_pos = int(eval_df[pos_col].iloc[-1])
+                    if cur_pos == -1:
+                        engine_buy = False
+                    elif cur_pos == 1:
+                        engine_sell = False
+
                 buy_votes.append(engine_buy)
-                sell_votes.append(engine_sell)
+                if not is_long_only:
+                    sell_votes.append(engine_sell)
                 
                 if engine_buy:
                     triggered_buy.append(engine["buy_label"])
-                if engine_sell:
+                if engine_sell and not is_long_only:
                     triggered_sell.append(engine["sell_label"])
                     
             elif eval_mode == "instant":
                 # Instant mode: check only the last candle
-                # (Currently only S/R uses this)
                 engine_buy = False
                 engine_sell = False
                 
                 if buy_col in eval_df.columns and len(eval_df) > 0:
                     engine_buy = bool(eval_df[buy_col].iloc[-1])
                     engine_sell = bool(eval_df[sell_col].iloc[-1])
-                
+
+                # Position state validation (e.g. ut_pos)
+                if pos_col and pos_col in eval_df.columns and len(eval_df) > 0:
+                    cur_pos = int(eval_df[pos_col].iloc[-1])
+                    if cur_pos == -1:
+                        engine_buy = False
+                    elif cur_pos == 1:
+                        engine_sell = False
+
                 buy_votes.append(engine_buy)
-                sell_votes.append(engine_sell)
+                if not is_long_only:
+                    sell_votes.append(engine_sell)
                 
                 if engine_buy:
                     triggered_buy.append(engine["buy_label"])
-                if engine_sell:
+                if engine_sell and not is_long_only:
                     triggered_sell.append(engine["sell_label"])
             else:
                 # Unknown eval_mode — treat as disabled

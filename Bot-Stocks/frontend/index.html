@@ -280,8 +280,8 @@
                             <!-- UTBot Engine (will be replaced dynamically) -->
                             <div class="control-toggle-item" data-engine-toggle="ut_bot">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">UT Bot</span>
-                                    <span class="toggle-desc">Enable UT Bot signals</span>
+                                    <span class="toggle-name">UTBot - Entry/Exit</span>
+                                    <span class="toggle-desc">Enable UTBot signals</span>
                                 </div>
                                 <label class="switch">
                                     <input type="checkbox" id="dash-ut-enabled">
@@ -291,7 +291,7 @@
                             <!-- SR Channels Engine (will be replaced dynamically) -->
                             <div class="control-toggle-item" data-engine-toggle="sr_channels">
                                 <div class="toggle-info">
-                                    <span class="toggle-name">S/R Channels</span>
+                                    <span class="toggle-name">Support & Resistance</span>
                                     <span class="toggle-desc">Enable S/R boundaries</span>
                                 </div>
                                 <label class="switch">
@@ -438,9 +438,9 @@
                             <div class="accordion-content">
                                 <!-- UTBot Engine -->
                                 <div class="engine-subsection">
-                                    <h4 class="sub-header-line">UT Bot Engine</h4>
+                                    <h4 class="sub-header-line">UTBot - Entry/Exit Engine</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-ut-enabled">Enable UT Bot Engine</label>
+                                <label for="cfg-ut-enabled">Enable UTBot - Entry/Exit Engine</label>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-ut-enabled">
                                     <span class="slider round"></span>
@@ -464,10 +464,10 @@
                                 </label>
                             </div>
 
-                            <!-- S/R Channels -->
-                            <h4 class="sub-header-line">S/R Zone Parameters</h4>
+                            <!-- Support & Resistance Channels -->
+                            <h4 class="sub-header-line">Support & Resistance Parameters</h4>
                             <div class="form-group toggle-group">
-                                <label for="cfg-sr-enabled">Enable S/R Channels Engine</label>
+                                <label for="cfg-sr-enabled">Enable Support & Resistance Engine</label>
                                 <label class="switch">
                                     <input type="checkbox" id="cfg-sr-enabled">
                                     <span class="slider round"></span>
@@ -758,6 +758,45 @@
                             </button>
                         </div>
                     </div>
+                    <!-- Column: Sector Swing (Long) Strategy Settings -->
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <i class="fa-solid fa-robot"></i> Sector Swing (Long) Strategy Settings
+                        </div>
+                        <div class="config-card-body">
+                            <p style="font-size: 0.85rem; color: var(--text-secondary,#94a3b8); margin-bottom: 12px;">
+                                Configure Market Regime, Sector Relative Strength, Setup Detection, and Risk Sizing.
+                            </p>
+                            <div class="form-group toggle-group">
+                                <label for="cfg-mcg-enabled">Enable Sector Swing (Long) Strategy</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="cfg-mcg-enabled">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-mcg-min-score">Minimum Composite Score</label>
+                                    <input type="number" id="cfg-mcg-min-score" min="0" max="100" value="60">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mcg-risk-pct">Risk Per Trade (%)</label>
+                                    <input type="number" id="cfg-mcg-risk-pct" step="0.05" min="0.1" max="5.0" value="0.50">
+                                </div>
+                            </div>
+                            <div class="form-group-row">
+                                <div class="form-group">
+                                    <label for="cfg-mcg-max-pos">Max Positions</label>
+                                    <input type="number" id="cfg-mcg-max-pos" min="1" max="20" value="8">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mcg-max-sec-pct">Max Sector Exposure (%)</label>
+                                    <input type="number" id="cfg-mcg-max-sec-pct" min="5" max="100" value="30.0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
 
                         <button type="button" class="btn btn-secondary" id="btn-reset-config">Reset Changes</button>
                         <button type="submit" class="btn btn-primary">Save Configuration</button>

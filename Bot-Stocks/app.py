@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import yaml
 import pandas as pd
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -88,13 +88,15 @@ def _log_config_summary(cfg: dict):
     # Show enabled engines
     enabled_engines = []
     if cfg.get("strategy", {}).get("ut_enabled", False):
-        enabled_engines.append("UT Bot")
+        enabled_engines.append("UTBot - Entry/Exit")
     if cfg.get("sr_channels", {}).get("enabled", False):
-        enabled_engines.append("S/R Channels")
+        enabled_engines.append("Support & Resistance")
     if cfg.get("momentum", {}).get("enabled", False):
-        enabled_engines.append("Momentum")
+        enabled_engines.append("Technical Momentum")
     if cfg.get("mean_reversion", {}).get("enabled", False):
         enabled_engines.append("Mean Reversion")
+    if cfg.get("momentum_chatgpt", {}).get("enabled", False):
+        enabled_engines.append("Sector Swing (Long)")
     
     if enabled_engines:
         log.info(f"🔧 Active Engines: {', '.join(enabled_engines)}")
@@ -354,18 +356,19 @@ def _update_commented_map(cm, updates: dict) -> None:
 
 
 @app.post("/api/config")
-def update_config(req: ConfigUpdateRequest):
+def update_config(req: dict = Body(...)):
     """Save the updated configuration file to disk, preserving all YAML comments.
 
     Uses an atomic write pattern (write-to-temp + os.replace) so a crash mid-write
     can never leave `config.yml` truncated or corrupt.
+    Supports both partial dictionary updates (e.g. engine/component toggles) and full config.
     """
     import os
     import tempfile
 
     try:
         config_path = _bot_dir / "config.yml"
-        config_dict = req.model_dump()
+        config_dict = req
 
         ryaml = _RYAML()
         ryaml.preserve_quotes = True

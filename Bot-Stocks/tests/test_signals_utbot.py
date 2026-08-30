@@ -143,6 +143,7 @@ def test_composite_prefers_latest_when_buy_then_sell_in_window():
     df["ut_pos"]   = 1
     df.loc[df.index[-2], "ut_buy"]  = True   # older signal in window
     df.loc[df.index[-1], "ut_sell"] = True   # newer signal in window
+    df.loc[df.index[-1], "ut_pos"]  = -1     # UTBot position flips to -1 on SELL
 
     result = evaluate_composite_signals(df, _base_config(), lookback_candles=2)
     assert result["sell"] is True,  "Latest bar is SELL — composite must be SELL"
@@ -176,4 +177,16 @@ def test_composite_keeps_single_signal_in_window():
     result = evaluate_composite_signals(df, _base_config(), lookback_candles=2)
     assert result["buy"]  is True
     assert result["sell"] is False
+
+def test_ut_pos_short_suppresses_lookback_buy():
+    """When a lookback BUY signal exists at N-1 but ut_pos is -1 on N, BUY must be suppressed."""
+    df = _minimal_ohlc_with_flags()
+    df["ut_buy"]  = False
+    df["ut_sell"] = False
+    df["ut_trail"] = df["close"] + 1.0
+    df["ut_pos"]   = -1  # Latest candle position state is SHORT
+    df.loc[df.index[-2], "ut_buy"] = True  # Lookback BUY from 1 candle ago
+
+    result = evaluate_composite_signals(df, _base_config(), lookback_candles=2)
+    assert result["buy"] is False, "Lookback BUY must be suppressed when current ut_pos is -1"
 

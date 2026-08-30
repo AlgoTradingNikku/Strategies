@@ -135,11 +135,54 @@ def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, de
 # ---------------------------------------------------------------------------
 
 def open_position_db(pos: dict) -> int:
-    """Insert a new position record and return its auto-generated ID."""
+    """Insert a new position record or update an existing OPEN position, returning its ID."""
     with _db_lock:
         conn = _get_connection()
         now  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
+            # Check if there is already an OPEN position for (symbol, exchange)
+            existing = conn.execute(
+                "SELECT * FROM positions WHERE symbol = ? AND exchange = ? AND status = 'OPEN'",
+                (pos["symbol"], pos["exchange"])
+            ).fetchone()
+
+            if existing:
+                pos_id = existing["id"]
+                old_qty = int(existing["quantity"])
+                add_qty = int(pos["quantity"])
+                new_qty = old_qty + add_qty
+                old_entry = float(existing["entry_price"])
+                add_entry = float(pos["entry_price"])
+                new_entry = round(((old_qty * old_entry) + (add_qty * add_entry)) / new_qty, 2) if new_qty > 0 else add_entry
+
+                conn.execute("""
+                    UPDATE positions
+                    SET quantity = ?, entry_price = ?, order_id = ?,
+                        current_sl = ?, initial_sl = ?, target_price = ?, high_water_mark = ?
+                    WHERE id = ?
+                """, (
+                    new_qty,
+                    new_entry,
+                    pos.get("order_id") or existing["order_id"],
+                    pos["current_sl"],
+                    pos["initial_sl"],
+                    pos["target_price"],
+                    new_entry,
+                    pos_id
+                ))
+                _log_event_conn(
+                    conn,
+                    pos_id,
+                    "POSITION_ADD",
+                    old_qty,
+                    new_qty,
+                    f"Added {add_qty} qty @ ₹{add_entry:.2f}. Total: {new_qty} @ avg ₹{new_entry:.2f}"
+                )
+                conn.commit()
+                log.info("Updated existing OPEN position #%d (%s %s): new qty %d @ avg ₹%.2f",
+                         pos_id, pos["direction"], pos["symbol"], new_qty, new_entry)
+                return pos_id
+
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO positions (
@@ -171,6 +214,19 @@ def open_position_db(pos: dict) -> int:
             _log_event_conn(conn, pos_id, "OPEN", None, pos["entry_price"],
                             f"Position opened @ ₹{pos['entry_price']:.2f}")
             return pos_id
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            # Handle race condition where position was created between SELECT and INSERT
+            row = conn.execute(
+                "SELECT id FROM positions WHERE symbol = ? AND exchange = ? AND status = 'OPEN'",
+                (pos["symbol"], pos["exchange"])
+            ).fetchone()
+            if row:
+                log.warning("Duplicate open position detected for %s (%s); reusing position #%d",
+                            pos["symbol"], pos["exchange"], row["id"])
+                return row["id"]
+            log.error("DB IntegrityError opening position for %s: UNIQUE constraint failed", pos.get("symbol"))
+            raise
         except Exception as exc:
             conn.rollback()
             log.error("DB error opening position: %s", exc)

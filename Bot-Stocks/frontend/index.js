@@ -99,24 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 showNotification(`${engine.label} ${engineCheckbox.checked ? 'enabled' : 'disabled'}`, "success");
                 
-                // Update component states (disable/enable checkboxes and containers)
+                // Auto-expand when enabled, auto-collapse when disabled
                 if (hasComponents) {
-                    const componentItems = engineCard.querySelectorAll(".component-toggle-item");
-                    
-                    componentItems.forEach(item => {
-                        const checkbox = item.querySelector("input[type='checkbox']");
-                        if (engineCheckbox.checked) {
-                            // Engine enabled - make components interactive
-                            item.classList.remove("disabled");
-                            checkbox.disabled = false;
-                        } else {
-                            // Engine disabled - make components non-interactive
-                            item.classList.add("disabled");
-                            checkbox.disabled = true;
-                        }
-                    });
-                    
-                    // Auto-expand when enabled, auto-collapse when disabled
                     if (engineCheckbox.checked) {
                         engineCard.classList.add("expanded");
                     } else {
@@ -171,10 +155,9 @@ document.addEventListener("DOMContentLoaded", () => {
         
         engine.components.forEach(comp => {
             const compToggleId = `dash-comp-${engine.key}-${comp.key}`;
-            const compDisabled = !engine.enabled ? 'disabled' : '';
             
             const compItem = document.createElement("div");
-            compItem.className = `component-toggle-item ${compDisabled}`;
+            compItem.className = "component-toggle-item";
             compItem.setAttribute("data-component-toggle", `${engine.key}.${comp.key}`);
             
             compItem.innerHTML = `
@@ -182,8 +165,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     <span class="component-toggle-name">${comp.label}</span>
                     <span class="component-toggle-desc">${comp.display_label}</span>
                 </div>
-                <label class="switch">
-                    <input type="checkbox" id="${compToggleId}" ${comp.enabled ? 'checked' : ''} ${!engine.enabled ? 'disabled' : ''}>
+                <label class="switch" onclick="event.stopPropagation();">
+                    <input type="checkbox" id="${compToggleId}" ${comp.enabled ? 'checked' : ''}>
                     <span class="slider round"></span>
                 </label>
             `;
