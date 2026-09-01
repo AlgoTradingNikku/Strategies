@@ -1064,28 +1064,40 @@ def run_scan(
     log.info("  Scan Time     : %s", scan_time_str)
     log.info("=" * 70)
 
-    # ---- Fetch index data for Relative Strength ----------------------------
+    # ---- Fetch index data for Relative Strength & Market Regime ------------
     nifty_df = None
     filters_cfg = config.get("filters", {})
     rs_enabled = filters_cfg.get("rs_enabled", False)
-    
-    if rs_enabled:
-        data_source = config.get("data_source", "yfinance").lower()
-        rs_index = filters_cfg.get("rs_index", "NIFTY50")
+    rs_index = filters_cfg.get("rs_index", "NIFTY50")
+    data_source = config.get("data_source", "yfinance").lower()
+
+    try:
+        index_symbol = get_index_symbol(rs_index, data_source)
+        log.debug("Fetching %s as '%s' from %s for RS/Regime", rs_index, index_symbol, data_source)
         
-        try:
-            index_symbol = get_index_symbol(rs_index, data_source)
-            log.debug("Fetching %s as '%s' from %s for RS", rs_index, index_symbol, data_source)
-            nifty_df = fetch_history(index_symbol, timeframe, config)
-            if nifty_df is not None:
-                log.info("  RS Index      : %s (%s) — %d bars fetched", rs_index, index_symbol, len(nifty_df))
-        except Exception as e:
-            log.warning("Could not fetch %s index for RS: %s", rs_index, e)
+        # Ensure sufficient lookback (minimum 90 days) so index data has >= min_bars (50) candles
+        idx_config = config.copy()
+        idx_data_cfg = dict(idx_config.get("data", {}))
+        idx_data_cfg["lookback_days"] = max(int(idx_data_cfg.get("lookback_days", 30)), 90)
+        idx_config["data"] = idx_data_cfg
+
+        nifty_df = fetch_history(index_symbol, timeframe, idx_config)
+
+        # Fallback to yfinance if primary source (e.g. OpenAlgo/broker) fails or lacks index contracts
+        if (nifty_df is None or nifty_df.empty) and data_source != "yfinance":
+            yf_symbol = get_index_symbol(rs_index, "yfinance")
+            log.info("  Index Fallback: Primary source '%s' failed for %s. Falling back to yfinance ('%s')...", data_source, index_symbol, yf_symbol)
+            yf_idx_config = idx_config.copy()
+            yf_idx_config["data_source"] = "yfinance"
+            nifty_df = fetch_history(yf_symbol, timeframe, yf_idx_config)
+
+        if nifty_df is not None and not nifty_df.empty:
+            log.info("  Index Data    : %s (%s) — %d bars fetched", rs_index, index_symbol, len(nifty_df))
+    except Exception as e:
+        log.warning("Could not fetch %s index for RS/Regime: %s", rs_index, e)
 
     # ---- Classify current market regime -----------------------------------
-    # Uses the same nifty_df already fetched for Relative Strength — no extra
-    # network call. Regime is a tag on every signal from this scan and is used
-    # by Sprint 2 to gate engines (e.g. disable UT Bot in chop).
+    # Uses nifty_df fetched above for Market Regime and Relative Strength.
     regime_info = classify_regime(nifty_df, config)
     current_regime = regime_info["regime"]
     log.info(

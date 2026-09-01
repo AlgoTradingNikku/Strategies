@@ -50,7 +50,7 @@ symbols:
 - IOC
 strategy:
   ut_enabled: true
-  key_value: 1.0                      # Key Value / Sensitivity (default: 1.0)
+  key_value: 1                        # Key Value / Sensitivity (default: 1.0)
   atr_period: 2                       # ATR Period (default: 2)
   use_heikin_ashi: false              # Use Heikin Ashi candle close as price source
   signal_on_closed_bar: true          # true = ignore the still-forming candle (TradingView-parity, avoids intrabar flicker)
@@ -60,10 +60,10 @@ signal_lookback_candles: 2
 
 # Support/Resistance Channels Settings
 sr_channels:
-  enabled: false
+  enabled: true
   pivot_period: 10                    # Period to confirm a pivot (range: 4 to 30)
   source: "High/Low"                  # Source prices: "High/Low" or "Close/Open"
-  channel_width_pct: 5.0              # Max channel width as % of 300-bar price range (1 to 8)
+  channel_width_pct: 5                # Max channel width as % of 300-bar price range (1 to 8)
   min_strength: 1                     # Minimum pivot strength to qualify a zone
   max_num_sr: 6                       # Maximum number of active S/R zones (1 to 10)
   loopback: 290                       # Bars to scan for pivot collection (100 to 400)
@@ -72,13 +72,17 @@ sr_channels:
 # Momentum Engine (Sprint 1.5) — Trend Continuation Signals
 # Combines RSI, Volume, ADX, EMA, BB, and ROC to detect strong trending moves.
 momentum:
-  enabled: true                       # Enable/disable momentum signals
+  enabled: false                      # Enable/disable momentum signals
   min_score: 60                       # Minimum score (0-100) to trigger a signal
   # RSI Component (40-70 buy zone, 30-60 sell zone)
   rsi_enabled: true
   rsi_period: 14
-  rsi_buy_zone: [40, 70]              # [min, max] for bullish momentum
-  rsi_sell_zone: [30, 60]             # [min, max] for bearish momentum
+  rsi_buy_zone:                       # [min, max] for bullish momentum
+  - 40
+  - 70
+  rsi_sell_zone:                      # [min, max] for bearish momentum
+  - 30
+  - 60
   rsi_weight: 20                      # Contribution to total score (0-100)
   # Volume Surge Component
   volume_enabled: true
@@ -89,8 +93,8 @@ momentum:
   # ADX Trend Strength Component
   adx_enabled: true
   adx_period: 14
-  adx_min_threshold: 20.0             # Weak trend threshold
-  adx_strong_threshold: 25.0          # Strong trend threshold
+  adx_min_threshold: 20               # Weak trend threshold
+  adx_strong_threshold: 25            # Strong trend threshold
   adx_weight: 15
 
   # EMA Trend Filter Component
@@ -101,13 +105,13 @@ momentum:
   # Bollinger Bands Breakout Component
   bb_enabled: true
   bb_period: 20
-  bb_std_dev: 2.0
+  bb_std_dev: 2
   bb_weight: 10
 
   # Rate of Change Component
   roc_enabled: true
   roc_period: 10
-  roc_threshold: 3.0                  # % change threshold
+  roc_threshold: 3                    # % change threshold
   roc_weight: 15
 
 # Mean Reversion Engine (Sprint 1.5) — Snap-Back Signals
@@ -118,7 +122,7 @@ mean_reversion:
   # Bollinger Bands Touch Component
   bb_enabled: true
   bb_period: 20
-  bb_std_dev: 2.0
+  bb_std_dev: 2
   bb_touch_threshold: 0.02            # Within 2% of band = touch
   bb_weight: 25
 
@@ -141,7 +145,7 @@ mean_reversion:
   # Z-Score Deviation Component
   zscore_enabled: true
   zscore_period: 50
-  zscore_threshold: 2.0               # ±2 std devs from mean
+  zscore_threshold: 2                 # ±2 std devs from mean
   zscore_weight: 20
 
   # Williams %R Component
@@ -169,27 +173,29 @@ momentum_chatgpt:
   # Universe & Liquidity Filters
   primary_universe: NIFTY200
   min_history_bars: 300               # Required historical bars for scan validation
-  min_turnover_20d_crore: 25.0        # Minimum 20D turnover (₹ Crore)
-  min_price: 100.0                    # Minimum close price (₹)
+  min_turnover_20d_crore: 25          # Minimum 20D turnover (₹ Crore)
+  min_price: 100                      # Minimum close price (₹)
   # Setup & Technical Components
   rsi_enabled: true
   rsi_period: 14
-  rsi_buy_zone: [55, 75]
+  rsi_buy_zone:
+  - 55
+  - 75
   adx_enabled: true
   adx_period: 14
-  adx_min_threshold: 20.0
+  adx_min_threshold: 20
   volume_enabled: true
   volume_surge_min: 1.5
 
   # Risk & Portfolio Constraints
-  risk_per_trade_pct: 0.50            # Risk per trade (% of portfolio capital)
-  max_position_pct: 15.0              # Max capital per position (%)
-  max_sector_exposure_pct: 30.0       # Max sector exposure (%)
+  risk_per_trade_pct: 0.5             # Risk per trade (% of portfolio capital)
+  max_position_pct: 15                # Max capital per position (%)
+  max_sector_exposure_pct: 30         # Max sector exposure (%)
   max_positions: 8                    # Maximum open positions
-  minimum_cash_pct: 20.0              # Minimum reserved cash (%)
-  max_correlation: 0.70               # Max 60D return correlation allowed between candidates
+  minimum_cash_pct: 20                # Minimum reserved cash (%)
+  max_correlation: 0.7                # Max 60D return correlation allowed between candidates
   min_rr_ratio: 1.5                   # Minimum Reward-to-Risk ratio
-  preferred_rr_ratio: 2.0             # Target Reward-to-Risk ratio
+  preferred_rr_ratio: 2               # Target Reward-to-Risk ratio
 
 
   cci_overbought: 100
@@ -208,7 +214,7 @@ regime:
   adx_strong_threshold: 30            # ADX >= this is a strong trend (reserved)
   vol_lookback: 20                    # bars over which realised vol is computed
   vol_percentile_window: 200          # bars over which vol is ranked
-  vol_high_percentile: 0.80           # >= this percentile -> "high_vol_chop"
+  vol_high_percentile: 0.8            # >= this percentile -> "high_vol_chop"
   min_bars: 50                        # below this many bars -> "unknown"
   # Per-regime engine policy — read by regime.should_enable_engine().
   # Sprint 1.5 only *tags* signals; Sprint 2 will *gate* on these.
@@ -249,17 +255,17 @@ filters:
 
   # --- ADX Trend Strength ---
   adx_filter_enabled: false           # false = score only, no rejection | true: Rejects the stocks when ADX < threshold
-  adx_min_threshold: 20.0             # ADX below this = no trend, reject signal (when hard filter ON)
-  adx_strong_threshold: 25.0          # ADX >= this = strong trend (+10 pts to score)
-  adx_moderate_threshold: 20.0        # ADX >= this = moderate trend (+5 pts to score)
+  adx_min_threshold: 20               # ADX below this = no trend, reject signal (when hard filter ON)
+  adx_strong_threshold: 25            # ADX >= this = strong trend (+10 pts to score)
+  adx_moderate_threshold: 20          # ADX >= this = moderate trend (+5 pts to score)
 
   # --- RSI Momentum Scoring ---
   rsi_filter_enabled: false           # false = no rejection of stocks in results, only adds points when RSI is outside optimal range | true: Rejects the stocks when RSI is outside optimal range 
   rsi_period: 14                      # RSI calculation period
-  rsi_buy_min: 40.0                   # BUY gets +10 pts when RSI is between buy_min and buy_max
-  rsi_buy_max: 65.0
-  rsi_sell_min: 35.0                  # SELL gets +10 pts when RSI is between sell_min and sell_max
-  rsi_sell_max: 60.0
+  rsi_buy_min: 40                     # BUY gets +10 pts when RSI is between buy_min and buy_max
+  rsi_buy_max: 65
+  rsi_sell_min: 35                    # SELL gets +10 pts when RSI is between sell_min and sell_max
+  rsi_sell_max: 60
 
   # --- Relative Strength vs NIFTY ---
   rs_period: 20                       # Lookback bars for RS ratio calculation vs NIFTY50
@@ -269,12 +275,12 @@ filters:
   # --- Risk/Reward Calculator ---
   risk_reward_enabled: false           # Calculate SL/Target/R:R for each signal
   rr_atr_multiplier: 0.5              # ATR buffer added beyond stop level
-  rr_default_ratio: 2.0               # Default target R:R when no S/R zone found
+  rr_default_ratio: 2                 # Default target R:R when no S/R zone found
 
   # --- Volatility Squeeze (TTM Squeeze) ---
   squeeze_filter_enabled: false        # true: Rejects signals if not in a squeeze release
   squeeze_length: 20                  # Length for BB and KC
-  squeeze_bb_mult: 2.0                # Bollinger Bands std dev multiplier
+  squeeze_bb_mult: 2                  # Bollinger Bands std dev multiplier
   squeeze_kc_mult: 1.5                # Keltner Channels ATR multiplier
 
 
@@ -315,7 +321,7 @@ risk_limits:
   enabled: false                    # Master toggle for the gate
   max_concurrent_positions: 5       # Reject when open positions >= this count
   max_positions_per_symbol: 1       # Reject duplicate direction/symbol churn
-  daily_loss_stop_pct: -3.0         # Reject new trades once today's realized PnL% ≤ this floor
+  daily_loss_stop_pct: -3           # Reject new trades once today's realized PnL% ≤ this floor
                                     # (negative → loss cutoff; sum of pnl_pct across trades closed since local midnight)
   daily_loss_stop_rupees:           # Optional absolute ₹ floor (e.g. -500 blocks after ₹500 loss).
                                     # null → disabled. Applied in ADDITION to daily_loss_stop_pct.
@@ -331,7 +337,7 @@ risk_limits:
                                     #              [industry-standard fixed-fractional; safest]
                                     # capital_pct → qty = floor(capital / entry)  [deploys full capital]
                                     # legacy      → preserves pre-Sprint-2 openalgo.capital_per_trade behaviour
-  risk_per_trade_pct: 1.0           # Only used when sizing_mode="risk_based". % of capital risked
+  risk_per_trade_pct: 1             # Only used when sizing_mode="risk_based". % of capital risked
                                     # per trade. Default 1% is the classical Van Tharp rule.
 
   # ---- Sprint-3 additions: grade multiplier & portfolio exposure cap ----
@@ -342,7 +348,7 @@ risk_limits:
   grade_multiplier_enabled: false
   grade_multipliers:
     A: 1.5                          # 1% base risk → 1.5% risked on an A setup
-    B: 1.0
+    B: 1
     C: 0.75
     D: 0.5
   # Caps the SUM of open entry-notional (qty × entry_price) across all open
@@ -386,12 +392,12 @@ signal_grading:
     B: 60
     C: 45
 
-  adx_floor: 20.0                   # ADX at/below this earns 0 for the adx factor
-  adx_strong: 35.0                  # ADX at/above this earns full adx credit
-  rs_strong: 1.10                   # BUY needs RS ≥ this for full credit;
+  adx_floor: 20                     # ADX at/below this earns 0 for the adx factor
+  adx_strong: 35                    # ADX at/above this earns full adx credit
+  rs_strong: 1.1                    # BUY needs RS ≥ this for full credit;
                                     # SELL target is mirrored about 1.0 (→ 0.90)
   sr_near_pct: 0.5                  # within this % of an S/R edge → full credit
-  sr_far_pct: 3.0                   # beyond this % from any S/R edge → 0 credit
+  sr_far_pct: 3                     # beyond this % from any S/R edge → 0 credit
   mtf_neutral_credit: 0.6           # partial credit when the HTF trend is neutral
   unknown_credit: 0.5               # credit granted when a factor's input is missing
 
@@ -485,8 +491,8 @@ trade_management:
 
   # Initial SL and Target (percentage-based, anchored to entry price)
   # Works correctly for ₹50 stocks and ₹5000 stocks alike.
-  stop_loss_pct: 1.0             # % below/above entry price for initial SL
-  target_pct: 2.0                # % above/below entry price for target
+  stop_loss_pct: 1               # % below/above entry price for initial SL
+  target_pct: 2                  # % above/below entry price for target
 
   # ------------------------------------------------------------------
   # Partial Exit — scale out of the position in configurable tranches
@@ -499,44 +505,25 @@ trade_management:
     # exit_qty_fraction applies to the *remaining* quantity at that point.
     # move_sl_to_be: move stop-loss to breakeven (entry price) after this tier fires.
     tiers:
-    - trigger_pct: 1.0            # Fire Tier 1 when profit reaches 1%
-      exit_qty_fraction: 0.33     # Exit 33% of position
-      move_sl_to_be: true         # Move SL to breakeven
-
-    - trigger_pct: 2.0            # Fire Tier 2 when profit reaches 2%
-      exit_qty_fraction: 0.50     # Exit 50% of remaining position
+    - trigger_pct: 1
+      exit_qty_fraction: 0.33
+      move_sl_to_be: true
+    - trigger_pct: 2
+      exit_qty_fraction: 0.5
       move_sl_to_be: false
-
-    # LEGACY flat keys (used only when `tiers` list is absent above)
-    # target1_pct: 1.0
-    # exit_qty_fraction: 0.5
-    # move_sl_to_breakeven: true
-
-  # ------------------------------------------------------------------
-  # Trailing Stop Loss — dynamically moves SL behind the high-water mark
-  # ------------------------------------------------------------------
   trailing_sl:
     enabled: true
-    activation_pct: 1.0          # Minimum profit % before trailing activates
+    activation_pct: 1            # Minimum profit % before trailing activates
 
     # TIERED mode — tighten the trail as profit grows.
     # The highest tier whose min_gain_pct <= current_gain_pct is applied.
     tiers:
-    - min_gain_pct: 1.0
-      distance_pct: 0.8          # Keep SL 0.8% behind HWM when profit is 1–2%
-
-    - min_gain_pct: 2.0
-      distance_pct: 0.5          # Tighten to 0.5% trail when profit exceeds 2%
-
+    - min_gain_pct: 1
+      distance_pct: 0.8
+    - min_gain_pct: 2
+      distance_pct: 0.5
     - min_gain_pct: 3.5
-      distance_pct: 0.3          # Tighten further to 0.3% when profit exceeds 3.5%
-
-    # LEGACY flat key (used only when `tiers` list is absent above)
-    # distance_pct: 0.5
-
-  # ------------------------------------------------------------------
-  # Profit Lock — ratchet SL up to lock a fraction of unrealised gain
-  # ------------------------------------------------------------------
+      distance_pct: 0.3
   profit_lock:
     enabled: true
 
@@ -545,22 +532,12 @@ trade_management:
     # lock_fraction is applied to the absolute gain from entry to HWM.
     # Example: entry=100, HWM=104, lock_fraction=0.5 → new SL = 100 + (4×0.5) = 102
     tiers:
-    - threshold_pct: 1.5          # Activate when profit ≥ 1.5%
-      lock_fraction: 0.30         # Lock 30% of peak gain as new SL
-
-    - threshold_pct: 2.5          # Activate when profit ≥ 2.5%
-      lock_fraction: 0.50         # Lock 50% of peak gain
-
-    - threshold_pct: 4.0          # Activate when profit ≥ 4.0%
-      lock_fraction: 0.75         # Lock 75% of peak gain
-
-    # LEGACY flat keys (used only when `tiers` list is absent above)
-    # threshold_pct: 1.5
-    # lock_fraction: 0.50
-
-  # ------------------------------------------------------------------
-  # Notifications (Telegram alerts)
-  # ------------------------------------------------------------------
+    - threshold_pct: 1.5
+      lock_fraction: 0.3
+    - threshold_pct: 2.5
+      lock_fraction: 0.5
+    - threshold_pct: 4
+      lock_fraction: 0.75
   notifications:
     on_open: true                # Alert when a new position is registered
     on_exit: true                # Alert on full position close (target / SL / manual)

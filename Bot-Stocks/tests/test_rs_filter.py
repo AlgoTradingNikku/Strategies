@@ -45,7 +45,7 @@ def test_index_symbol_mapping():
     print(f"Results: {passed} passed, {failed} failed")
     print("=" * 70)
     
-    return failed == 0
+    assert failed == 0
 
 def test_config_loading():
     """Test that config.yml loads correctly with new RS settings."""
@@ -80,23 +80,20 @@ def test_config_loading():
         print(f"Results: {passed}/{len(checks)} config keys present")
         print("=" * 70)
         
-        return passed == len(checks)
+        assert passed == len(checks)
         
     except Exception as e:
         print(f"❌ Config loading failed: {e}")
         print("=" * 70)
-        return False
+        raise
 
 if __name__ == "__main__":
     print("\n🚀 RS Filter + Dynamic Index Symbol Validation")
     print("=" * 70)
     
-    test1 = test_index_symbol_mapping()
-    test2 = test_config_loading()
+    test_index_symbol_mapping()
+    test_config_loading()
     
     print("\n" + "=" * 70)
-    if test1 and test2:
-        print("✅ ALL TESTS PASSED — Implementation successful!")
-    else:
-        print("❌ SOME TESTS FAILED — Review errors above")
+    print("✅ ALL TESTS PASSED — Implementation successful!")
     print("=" * 70)
