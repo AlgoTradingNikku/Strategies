@@ -31,7 +31,8 @@ logging.getLogger("openalgo").setLevel(logging.WARNING)
 # Import scanner functions
 from scanner import load_config, run_scan, fetch_history
 from signals import compute_utbot_signals, compute_sr_signals
-from signal_db import get_signal_history, get_statistics, clear_all_signals
+from signal_db import get_signal_history, get_statistics, clear_all_signals, update_signal_ai_analysis
+import ai_analyst
 from trading_adapter import place_order as adapter_place_order, get_ltp as adapter_get_ltp
 from trade_manager import PositionMonitor
 import trade_db
@@ -884,6 +885,26 @@ def get_stats(days: int = 30):
     except Exception as e:
         log.error("Failed to retrieve statistics: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {e}")
+
+
+@app.post("/api/ai-analyze")
+async def analyze_signal_endpoint(request: Request):
+    """Run on-demand AI analysis for a signal."""
+    try:
+        data = await request.json()
+        sig = data.get("signal", {})
+        signal_id = data.get("signal_id")
+        cfg = load_config()
+
+        ai_res = ai_analyst.analyze_signal(sig, cfg)
+
+        if signal_id:
+            update_signal_ai_analysis(signal_id, ai_res, cfg)
+
+        return {"status": "success", "ai_analysis": ai_res}
+    except Exception as e:
+        log.error("On-demand AI analysis failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {e}")
 
 
 @app.get("/api/risk/status")

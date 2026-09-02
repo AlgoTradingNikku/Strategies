@@ -19,10 +19,10 @@ def test_index_symbol_mapping():
     
     test_cases = [
         ("NIFTY50", "yfinance", "^NSEI"),
-        ("NIFTY50", "openalgo", "NIFTY 50"),
+        ("NIFTY50", "openalgo", "NIFTY"),  # Fixed: was "NIFTY 50", now "NIFTY" (use with exchange NSE_INDEX)
         ("NIFTY50", "tvdatafeed", "NIFTY"),
         ("BANKNIFTY", "yfinance", "^NSEBANK"),
-        ("BANKNIFTY", "openalgo", "NIFTY BANK"),
+        ("BANKNIFTY", "openalgo", "BANKNIFTY"),  # Fixed: was "NIFTY BANK", now "BANKNIFTY" (use with exchange NSE_INDEX)
         ("FINNIFTY", "openalgo", "FINNIFTY"),
         ("NIFTYIT", "yfinance", "^CNXIT"),
         ("NIFTYIT", "openalgo", "NIFTY IT"),

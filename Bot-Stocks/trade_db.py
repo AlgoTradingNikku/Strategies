@@ -21,7 +21,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 
 _DB_PATH = Path(__file__).resolve().parent / "trades.db"
 _db_initialized = False
-_db_lock = threading.Lock()
+_db_lock = threading.RLock()  # RLock: _get_connection() re-enters this lock during schema init
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +210,9 @@ def open_position_db(pos: dict) -> int:
                 pos.get("timeframe"),
             ))
             pos_id = cur.lastrowid
-            conn.commit()
             _log_event_conn(conn, pos_id, "OPEN", None, pos["entry_price"],
                             f"Position opened @ ₹{pos['entry_price']:.2f}")
+            conn.commit()
             return pos_id
         except sqlite3.IntegrityError:
             conn.rollback()

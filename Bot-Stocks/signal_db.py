@@ -20,7 +20,7 @@ log = logging.getLogger("UTBotSRChannelsScanner")
 
 _DB_PATH         = Path(__file__).resolve().parent / "signals.db"
 _db_initialized  = False   # DDL runs only once per process
-_db_lock         = threading.Lock()
+_db_lock         = threading.RLock()  # RLock: _get_connection() re-enters this lock during schema init
 
 
 # ============================================================================
@@ -90,14 +90,22 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             mae_pct            REAL,
             mfe_pct            REAL,
             grade              TEXT,
-            grade_score        REAL
+            grade_score        REAL,
+            ai_recommendation  TEXT,
+            ai_score           REAL,
+            ai_badge           TEXT,
+            ai_reasoning       TEXT
         )
     """)
-    _add_column_if_missing(conn, "signals", "regime",  "TEXT")
-    _add_column_if_missing(conn, "signals", "mae_pct", "REAL")
-    _add_column_if_missing(conn, "signals", "mfe_pct", "REAL")
-    _add_column_if_missing(conn, "signals", "grade",       "TEXT")
-    _add_column_if_missing(conn, "signals", "grade_score", "REAL")
+    _add_column_if_missing(conn, "signals", "regime",            "TEXT")
+    _add_column_if_missing(conn, "signals", "mae_pct",           "REAL")
+    _add_column_if_missing(conn, "signals", "mfe_pct",           "REAL")
+    _add_column_if_missing(conn, "signals", "grade",             "TEXT")
+    _add_column_if_missing(conn, "signals", "grade_score",       "REAL")
+    _add_column_if_missing(conn, "signals", "ai_recommendation", "TEXT")
+    _add_column_if_missing(conn, "signals", "ai_score",          "REAL")
+    _add_column_if_missing(conn, "signals", "ai_badge",          "TEXT")
+    _add_column_if_missing(conn, "signals", "ai_reasoning",      "TEXT")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_outcome_pending ON signals(outcome_checked, timestamp)")
@@ -148,8 +156,9 @@ def log_signals_batch(
                         timestamp, symbol, signal_type, close_price, setup_score,
                         score_reasons, stop_loss, target, risk_reward,
                         triggered_conditions, timeframe, adx, rs_ratio, mtf_trend,
-                        regime, grade, grade_score
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        regime, grade, grade_score,
+                        ai_recommendation, ai_score, ai_badge, ai_reasoning
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     now,
                     signal_dict.get("symbol", ""),
@@ -168,6 +177,10 @@ def log_signals_batch(
                     regime,
                     signal_dict.get("grade"),
                     signal_dict.get("grade_score"),
+                    signal_dict.get("ai_recommendation"),
+                    signal_dict.get("ai_score"),
+                    signal_dict.get("ai_badge"),
+                    signal_dict.get("ai_reasoning"),
                 ))
                 inserted_ids.append(cursor.lastrowid)
             conn.commit()
@@ -475,8 +488,39 @@ def get_signal_history(limit: int = 50, offset: int = 0) -> list[dict]:
                 # migration hasn't run yet on an exotic/read-only DB copy.
                 "grade":                r["grade"] if "grade" in r.keys() else None,
                 "grade_score":          r["grade_score"] if "grade_score" in r.keys() else None,
+                "ai_recommendation":    r["ai_recommendation"] if "ai_recommendation" in r.keys() else None,
+                "ai_score":             r["ai_score"] if "ai_score" in r.keys() else None,
+                "ai_badge":             r["ai_badge"] if "ai_badge" in r.keys() else None,
+                "ai_reasoning":         r["ai_reasoning"] if "ai_reasoning" in r.keys() else None,
             })
         return results
+    finally:
+        conn.close()
+
+
+def update_signal_ai_analysis(signal_id: int, ai_data: dict, config: dict = None) -> bool:
+    """Update AI analysis fields for an existing signal record in DB."""
+    conn = _get_connection(config)
+    try:
+        with conn:
+            conn.execute("""
+                UPDATE signals
+                SET ai_recommendation = ?,
+                    ai_score = ?,
+                    ai_badge = ?,
+                    ai_reasoning = ?
+                WHERE id = ?
+            """, (
+                ai_data.get("ai_recommendation"),
+                ai_data.get("ai_score"),
+                ai_data.get("ai_badge"),
+                ai_data.get("ai_reasoning"),
+                signal_id,
+            ))
+        return True
+    except Exception as e:
+        log.error("Failed to update AI analysis for signal #%s: %s", signal_id, e)
+        return False
     finally:
         conn.close()
 

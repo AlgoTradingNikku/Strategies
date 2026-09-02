@@ -100,6 +100,7 @@ from signal_db import log_signals_batch, check_outcomes                         
 from regime    import classify_regime                                              # noqa: E402
 import regime_gate                                                                  # noqa: E402
 import signal_grader                                                                # noqa: E402
+import ai_analyst                                                                      # noqa: E402
 from signals import (                                          # noqa: E402
     compute_utbot_signals,
     compute_sr_signals,
@@ -168,18 +169,26 @@ def get_index_symbol(index_name: str, data_source: str) -> str:
     >>> get_index_symbol("NIFTY50", "yfinance")
     "^NSEI"
     >>> get_index_symbol("NIFTY50", "openalgo")
-    "NIFTY 50"
+    "NIFTY"
+    
+    Notes
+    -----
+    For OpenAlgo, index symbols are without spaces/suffixes:
+    - "NIFTY" (not "NIFTY 50")
+    - "NIFTY BANK" → "BANKNIFTY"  
+    - "NIFTY IT" (kept as-is, with space)
+    Use with exchange="NSE_INDEX" in fetch_history.
     """
     INDEX_SYMBOL_MAP = {
         "NIFTY50": {
             "yfinance": "^NSEI",
-            "openalgo": "NIFTY 50",
+            "openalgo": "NIFTY",  # Fixed: was "NIFTY 50", now "NIFTY" with exchange NSE_INDEX
             "tvdatafeed": "NIFTY",
             "twelvedata": "NIFTY50",
         },
         "BANKNIFTY": {
             "yfinance": "^NSEBANK",
-            "openalgo": "NIFTY BANK",
+            "openalgo": "BANKNIFTY",  # Fixed: was "NIFTY BANK", now "BANKNIFTY" with exchange NSE_INDEX
             "tvdatafeed": "BANKNIFTY",
             "twelvedata": "BANKNIFTY",
         },
@@ -191,7 +200,7 @@ def get_index_symbol(index_name: str, data_source: str) -> str:
         },
         "NIFTYIT": {
             "yfinance": "^CNXIT",
-            "openalgo": "NIFTY IT",
+            "openalgo": "NIFTY IT",  # Kept as-is (OpenAlgo requires space for IT index)
             "tvdatafeed": "CNXIT",
             "twelvedata": "NIFTYIT",
         },
@@ -471,6 +480,15 @@ def fetch_history(symbol: str, timeframe: str, config: dict) -> pd.DataFrame | N
             host   = oa_cfg.get("base_url", "http://127.0.0.1:5000")
             apikey = oa_cfg.get("apikey", "")
             client = oa_api(api_key=apikey, host=host)
+
+            # --- Detect index symbols and use NSE_INDEX exchange ---
+            # Index symbols: NIFTY, BANKNIFTY, FINNIFTY, NIFTY IT, etc.
+            index_symbols = ["NIFTY", "BANKNIFTY", "FINNIFTY", "NIFTY IT", "MIDCPNIFTY", "INDIAVIX"]
+            is_index = symbol in index_symbols or symbol.startswith("NIFTY") or symbol.endswith("NIFTY")
+            
+            if is_index:
+                exchange = "NSE_INDEX"  # Override exchange for indices
+                log.debug("[%s] Detected as index symbol, using exchange=%s", symbol, exchange)
 
             # --- Interval mapping (openalgo uses "D"/"W"/"M", not "1d"/"1W"/"1M") ---
             oa_interval = _openalgo_map_interval(timeframe)
@@ -1504,6 +1522,12 @@ def run_scan(
                     f"Setup Score: {r.get('setup_score', 0.0):.1f}"
                 )
                 send_telegram_alert(tg_msg, config=config)
+
+    # ---- Run AI Analysis on top candidates (Sprint / LLM Integration) ----
+    try:
+        ai_analyst.analyze_signals_batch(buy_results + sell_results, config)
+    except Exception as ai_err:
+        log.debug("AI analysis batch call failed: %s", ai_err)
 
     return buy_results, sell_results, segment_label, timeframe, len(symbols), current_regime
 

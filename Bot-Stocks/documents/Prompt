@@ -1,0 +1,105 @@
+I have a stock-trading bot called “Bot-Stocks” located at:
+
+C:\Rahul\Trade\Strategies\Bot-Stocks
+
+Please perform a thorough end-to-end review of the entire bot, acting as both:
+
+A stock-market / quantitative trading expert
+A senior software architect and software engineer
+1. Trading Strategy Review
+
+Understand the complete trading strategy and evaluate:
+
+How stocks are selected
+Entry conditions and signals
+Exit conditions
+Stop-loss and target logic
+Position sizing
+Risk/reward ratio
+Capital allocation
+Portfolio-level risk
+Momentum/swing-trading logic
+Indicators and technical calculations
+Market-regime considerations
+Handling of gaps, volatility and illiquid stocks
+Whether the strategy has potential for look-ahead bias, survivorship bias or overfitting
+Whether the logic is realistic for live Indian stock-market trading
+
+Identify any logic flaws, weak assumptions, hidden risks or situations where the bot could generate misleading signals.
+
+2. Code Review
+
+Review the complete source code for:
+
+Correctness and bugs
+Architecture and design
+Modularity and maintainability
+Error handling
+Exception handling
+Logging and monitoring
+Configuration management
+API usage
+Database/file handling
+Performance
+Concurrency/threading issues
+Race conditions
+Reliability and fault tolerance
+Security issues
+Hard-coded values
+Duplicate or unnecessary code
+Naming and coding standards
+Dependency management
+Testability
+Unit/integration test coverage
+3. Trading-System Reliability
+
+Pay particular attention to issues that could cause real financial loss, including:
+
+Duplicate orders
+Missing orders
+Incorrect quantities
+Incorrect entry/exit prices
+Stale market data
+API failures/timeouts
+Partial fills
+Order rejection
+Network interruption
+Bot restart/recovery
+Position reconciliation
+Incorrect portfolio state
+Market-hours handling
+Circuit limits
+Slippage
+Brokerage, STT, exchange charges and taxes
+Unexpected broker/API responses
+
+Recommendations
+
+For every significant issue, provide:
+
+Severity: Critical / High / Medium / Low
+Area: Trading Logic / Risk / Code / Architecture / Performance / Reliability / Security
+Problem
+Why it matters
+Potential impact
+Recommended fix
+Priority
+
+Please distinguish between:
+
+Critical issues that should be fixed before live trading
+Important improvements
+Nice-to-have improvements
+6. Overall Assessment
+
+At the end, provide:
+
+Overall Trading Strategy Score / 10
+Overall Code Quality Score / 10
+Overall Risk Management Score / 10
+Overall Production Readiness Score / 10
+Top 10 issues to address
+Top 10 recommended improvements
+Whether you consider the bot suitable for paper trading, small-capital live trading, or full-scale live trading
+
+Important: Do not make assumptions about functionality that you have not verified in the code. Trace the actual execution flow across the project and explain how the different modules interact.

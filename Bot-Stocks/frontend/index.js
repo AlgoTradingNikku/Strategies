@@ -422,7 +422,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (mtfDesc) mtfDesc.textContent = `Filter signals by HTF trend (${cfg.filters.mtf_timeframe || '15m'})`;
 
                 const rsFilterDash = document.getElementById("dash-filters-rs-enabled");
-                if (rsFilterDash) rsFilterDash.checked = !!cfg.filters.rs_enabled;
+                if (rsFilterDash) {
+                    rsFilterDash.checked = !!cfg.filters.rs_enabled;
+                    console.log(`[Dashboard] RS Filter toggle synced: ${rsFilterDash.checked ? 'ON' : 'OFF'} (rs_enabled: ${cfg.filters.rs_enabled})`);
+                }
                 const rsDesc = document.getElementById("dash-desc-rs");
                 if (rsDesc) {
                     const indexName = cfg.filters.rs_index || 'NIFTY50';
@@ -1121,6 +1124,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.15); color:var(--success,#10b981); border:1px solid rgba(16,185,129,0.35); vertical-align:middle;" title="${psTooltip.replace(/"/g,'&quot;')}">Qty ${psQty}</span>`;
             }
 
+            // AI / LLM Recommendation Tag
+            if (item.ai_recommendation && item.ai_recommendation !== "N/A") {
+                const aiRec = String(item.ai_recommendation).toUpperCase();
+                const isBull = aiRec.includes("BUY");
+                const isAvoid = aiRec.includes("AVOID") || aiRec.includes("SELL");
+                
+                let aiBg = "rgba(16,185,129,0.15)";
+                let aiFg = "var(--success,#10b981)";
+                let aiBd = "rgba(16,185,129,0.35)";
+                
+                if (isAvoid) {
+                    aiBg = "rgba(239,68,68,0.15)";
+                    aiFg = "var(--danger,#ef4444)";
+                    aiBd = "rgba(239,68,68,0.35)";
+                } else if (!isBull) {
+                    aiBg = "rgba(245,158,11,0.15)";
+                    aiFg = "var(--warning,#f59e0b)";
+                    aiBd = "rgba(245,158,11,0.35)";
+                }
+                
+                const badgeText = item.ai_badge || `🤖 AI: ${aiRec}`;
+                const scoreStr = item.ai_score !== undefined && item.ai_score !== null ? ` (${Math.round(item.ai_score)}/100)` : "";
+                const reasonStr = item.ai_reasoning ? ` — ${item.ai_reasoning}` : "";
+                const titleText = `AI Recommendation: ${aiRec}${scoreStr}${reasonStr}`;
+                
+                sprintTagsHtml += `<span class="ai-recommendation-tag" style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${aiBg}; color:${aiFg}; border:1px solid ${aiBd}; vertical-align:middle; cursor:help;" title="${titleText.replace(/"/g, '&quot;')}">${badgeText}</span>`;
+            }
+
             tr.innerHTML = `
                 <td><strong>${item.symbol}</strong>${sprintTagsHtml}</td>
                 <td>${item.close.toFixed(2)}</td>
@@ -1441,9 +1472,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 const mtfVal = r.mtf_trend ? r.mtf_trend.toUpperCase() : "—";
                 let mtfClass = mtfVal === "BULLISH" ? "text-buy" : mtfVal === "BEARISH" ? "text-sell" : "";
 
+                let aiTagHtml = "";
+                if (r.ai_recommendation && r.ai_recommendation !== "N/A") {
+                    const aiRec = String(r.ai_recommendation).toUpperCase();
+                    const isBull = aiRec.includes("BUY");
+                    const isAvoid = aiRec.includes("AVOID") || aiRec.includes("SELL");
+                    let aiBg = "rgba(16,185,129,0.15)", aiFg = "var(--success,#10b981)", aiBd = "rgba(16,185,129,0.35)";
+                    if (isAvoid) {
+                        aiBg = "rgba(239,68,68,0.15)"; aiFg = "var(--danger,#ef4444)"; aiBd = "rgba(239,68,68,0.35)";
+                    } else if (!isBull) {
+                        aiBg = "rgba(245,158,11,0.15)"; aiFg = "var(--warning,#f59e0b)"; aiBd = "rgba(245,158,11,0.35)";
+                    }
+                    const badgeText = r.ai_badge || `🤖 ${aiRec}`;
+                    const scoreStr = r.ai_score !== undefined && r.ai_score !== null ? ` (${Math.round(r.ai_score)}/100)` : "";
+                    const reasonStr = r.ai_reasoning ? ` — ${r.ai_reasoning}` : "";
+                    const titleText = `AI Recommendation: ${aiRec}${scoreStr}${reasonStr}`;
+                    aiTagHtml = `<br><span style="display:inline-block; margin-top:2px; padding:1px 5px; border-radius:4px; font-size:0.60rem; font-weight:800; background:${aiBg}; color:${aiFg}; border:1px solid ${aiBd}; cursor:help;" title="${titleText.replace(/"/g, '&quot;')}">${badgeText}</span>`;
+                }
+
                 tr.innerHTML = `
                     <td><small>${ts}</small></td>
-                    <td><strong>${r.symbol}</strong></td>
+                    <td><strong>${r.symbol}</strong>${aiTagHtml}</td>
                     <td><span class="condition-badge" style="background: #2a3b5c; color: white;">${r.timeframe || "N/A"}</span></td>
                     <td><span class="condition-badge ${r.signal_type === "BUY" ? "ut-badge-type" : "sr-badge-type"}">${r.signal_type}</span></td>
                     <td>${r.close_price.toFixed(2)}</td>

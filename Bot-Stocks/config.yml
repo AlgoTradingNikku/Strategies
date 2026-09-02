@@ -36,7 +36,7 @@ api_rate_limit:
   max_requests_per_second: 10         # Average rate limit (ignored if enabled: false)
   burst_size: 15                      # Allow short bursts (ignored if enabled: false)
 
-candle_timeframe: "5m"              # Chart LTF candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
+candle_timeframe: "15m"             # Chart LTF candle resolution for signal analysis (e.g., 1m, 3m, 5m, 15m, 30m, 1h, 1d)
 scan_interval_seconds: 300          # Scan / Auto-refresh interval in seconds (e.g., 60 = 1m, 120 = 2m, 300 = 5m)
 
 # Set to "" or [] to scan only the custom symbols list below
@@ -49,9 +49,13 @@ symbols:
 - RPOWER
 - IOC
 strategy:
-  ut_enabled: true
+  ut_enabled: false
   key_value: 1                        # Key Value / Sensitivity (default: 1.0)
   atr_period: 2                       # ATR Period (default: 2)
+                                      # ⚠ RECOMMENDATION: For NSE equities on 5m bars, values of 2–4 cause
+                                      #   excessive whipsaw due to the short smoothing window. Consider
+                                      #   atr_period: 10 (balanced) or 14 (smoother, fewer signals).
+                                      #   Rule of thumb: 1m charts → 5–7, 5m charts → 10–14, 15m+ → 14–20.
   use_heikin_ashi: false              # Use Heikin Ashi candle close as price source
   signal_on_closed_bar: true          # true = ignore the still-forming candle (TradingView-parity, avoids intrabar flicker)
                                       # false = evaluate the running bar (earlier alerts, but signals can flip mid-bar)
@@ -60,7 +64,7 @@ signal_lookback_candles: 2
 
 # Support/Resistance Channels Settings
 sr_channels:
-  enabled: true
+  enabled: false
   pivot_period: 10                    # Period to confirm a pivot (range: 4 to 30)
   source: "High/Low"                  # Source prices: "High/Low" or "Close/Open"
   channel_width_pct: 5                # Max channel width as % of 300-bar price range (1 to 8)
@@ -268,9 +272,11 @@ filters:
   rsi_sell_max: 60
 
   # --- Relative Strength vs NIFTY ---
+  rs_enabled: false                     # Enable RS ratio calculation
+  rs_index: "NIFTY50"                 # Benchmark index (canonical key, no space — translated per data_source by get_index_symbol())
   rs_period: 20                       # Lookback bars for RS ratio calculation vs NIFTY50
-  rs_buy_threshold: 1.1               # RS ratio above this = outperforming NIFTY (+10 pts for BUY)
-  rs_sell_threshold: 0.9              # RS ratio below this = underperforming NIFTY (+10 pts for SELL)
+  rs_buy_threshold: 1.05              # RS ratio above this = outperforming NIFTY (+5% minimum outperformance for BUY signals)
+  rs_sell_threshold: 0.95             # RS ratio below this = underperforming NIFTY (-5% minimum underperformance for SELL signals)
 
   # --- Risk/Reward Calculator ---
   risk_reward_enabled: false           # Calculate SL/Target/R:R for each signal
@@ -374,6 +380,29 @@ signal_grading:
                                     #         so any min-grade gate is a no-op
   min_grade_to_trade: "D"           # A | B | C | D. "D" is the lowest grade, so
                                     # the default NEVER blocks a trade —
+                                    # the default NEVER blocks a trade —
+
+# ------------------------------------------------------------
+# AI / LLM Signal Analysis & Recommendations
+# ------------------------------------------------------------
+# Provider Options:
+#   - "openai_compatible" / "custom" : Custom gateways (e.g., IBM ICA, OpenRouter, Groq). Requires `base_url`.
+#   - "openai"                     : Direct OpenAI API (leave base_url blank).
+#   - "anthropic"                  : Direct Anthropic Claude API (leave base_url blank).
+#   - "deepseek"                   : Direct DeepSeek API (leave base_url blank).
+#   - "ollama"                     : Local Ollama server (uses ollama_url).
+# Note: Keep `base_url` blank/omitted for official providers; set only for custom gateways (e.g., IBM ICA).
+ai_analysis:
+  enabled: true                       # Enable/disable AI analysis on scan signals
+  provider: "openai_compatible"       # "openai_compatible" | "openai" | "anthropic" | "deepseek" | "ollama"
+  base_url: "https://api.nextgen-beta.ica.ibm.com/ica/v1" # Gateway URL (e.g. IBM ICA). Leave blank for standard providers.
+  model: "gemini-3.6-flash"           # Model ID (e.g. gemini-3.6-flash, gpt-4o-mini, claude-3-5-sonnet-20241022)
+  api_key_env: "sk-GxzwESkmItEqhkJCMiv0tQ"    # API key (enter directly, not as environment variable name)
+  ollama_url: "http://localhost:11434" # Ollama server base URL (only used when provider is "ollama")
+  eval_min_grade: "C"                 # Minimum signal grade to run AI analysis on ("A", "B", "C", "D")
+  max_candidates_per_scan: 5          # Max top candidates to analyze per scan execution
+  timeout_seconds: 10                 # Timeout per AI request in seconds (fails open if timeout)
+
                                     # Sprint 3 ships observe-only. Raise to "C"
                                     # or "B" once by_grade stats justify it.
 
@@ -546,4 +575,4 @@ trade_management:
     on_sl_move: false            # Alert on every trailing SL adjustment (verbose)
 
 
-scan_timeframe: 5m
+scan_timeframe: 15m
