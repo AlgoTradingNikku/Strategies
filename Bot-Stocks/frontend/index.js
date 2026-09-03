@@ -1153,6 +1153,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${qualityBadgesHtml}</td>
                 <td>
                     <div class="action-cell">
+                        <button class="btn-analyze" data-symbol="${item.symbol}" title="View ${item.symbol} chart on TradingView">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </button>
                         <div class="order-qty-wrap">
                             <span class="order-qty-label">Qty</span>
                             <input type="number" class="order-qty-input" value="${activeConfig?.openalgo?.order_quantity ?? 2}" min="1" step="1" title="Number of shares to buy/sell">

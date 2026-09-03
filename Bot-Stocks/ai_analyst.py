@@ -49,9 +49,23 @@ def _build_prompt(signal: dict) -> str:
     rs_ratio = signal.get("rs_ratio")
     mtf = signal.get("mtf_trend") or signal.get("mtf", {})
     regime = signal.get("regime", "unknown")
-    sl = signal.get("stop_loss", "N/A")
-    tp = signal.get("target", "N/A")
-    rr = signal.get("risk_reward", "N/A")
+    # Use `or` (not dict.get's default) because the key is often present with
+    # a literal None value when risk_reward_enabled is off or ATR data is too
+    # short — dict.get(key, default) only substitutes when the key is absent,
+    # so a plain .get(..., "N/A") would leak "None" straight into the prompt.
+    sl = signal.get("stop_loss") or None
+    tp = signal.get("target") or None
+    rr = signal.get("risk_reward") or None
+    risk_defined = sl is not None and tp is not None
+
+    if risk_defined:
+        risk_line = f"Stop Loss: ₹{sl} | Target: ₹{tp} | Risk/Reward Ratio: {rr if rr is not None else 'N/A'}"
+    else:
+        risk_line = (
+            "Stop Loss / Target: NOT COMPUTED (risk/reward calculator disabled or "
+            "insufficient price history for this symbol — this is a data-availability "
+            "gap, not evidence of a bad setup)"
+        )
 
     prompt = f"""You are an expert quantitative stock trader reviewing scanner signals.
 Evaluate the following trade setup and provide a JSON recommendation.
@@ -66,10 +80,18 @@ Market Regime: {regime}
 ADX Trend Strength: {adx if adx is not None else 'N/A'}
 Relative Strength vs NIFTY: {rs_ratio if rs_ratio is not None else 'N/A'}
 Multi-Timeframe Trend: {mtf}
-Stop Loss: ₹{sl} | Target: ₹{tp} | Risk/Reward Ratio: {rr}
+{risk_line}
 Triggered Setup Reasons: {', '.join(reasons) if reasons else 'Standard Rule Match'}
 
 --- INSTRUCTIONS ---
+Base "ai_recommendation" and "ai_score" primarily on signal/context quality:
+setup score, grade, ADX, relative strength, multi-timeframe agreement, and
+regime. Do NOT treat a missing/not-computed Stop Loss or Target as a reason
+to AVOID a technically strong setup — that reflects a data or config gap, not
+the market. If risk parameters are not computed, mention it only as a
+separate caveat in "ai_reasoning" (e.g. "manual stop required"), not as the
+primary driver of the recommendation.
+
 Respond ONLY with a valid raw JSON object (no markdown formatting, no code blocks) with keys:
 {{
   "ai_recommendation": "STRONG BUY" | "BUY" | "NEUTRAL" | "AVOID" | "STRONG SELL" | "SELL",

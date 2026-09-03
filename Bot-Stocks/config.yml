@@ -279,7 +279,7 @@ filters:
   rs_sell_threshold: 0.95             # RS ratio below this = underperforming NIFTY (-5% minimum underperformance for SELL signals)
 
   # --- Risk/Reward Calculator ---
-  risk_reward_enabled: false           # Calculate SL/Target/R:R for each signal
+  risk_reward_enabled: true            # Calculate SL/Target/R:R for each signal
   rr_atr_multiplier: 0.5              # ATR buffer added beyond stop level
   rr_default_ratio: 2                 # Default target R:R when no S/R zone found
 
@@ -399,7 +399,7 @@ ai_analysis:
   model: "gemini-3.6-flash"           # Model ID (e.g. gemini-3.6-flash, gpt-4o-mini, claude-3-5-sonnet-20241022)
   api_key_env: "sk-GxzwESkmItEqhkJCMiv0tQ"    # API key (enter directly, not as environment variable name)
   ollama_url: "http://localhost:11434" # Ollama server base URL (only used when provider is "ollama")
-  eval_min_grade: "C"                 # Minimum signal grade to run AI analysis on ("A", "B", "C", "D")
+  eval_min_grade: "D"                 # Minimum signal grade to run AI analysis on ("A", "B", "C", "D")
   max_candidates_per_scan: 5          # Max top candidates to analyze per scan execution
   timeout_seconds: 10                 # Timeout per AI request in seconds (fails open if timeout)
 

@@ -1525,6 +1525,26 @@ input:disabled:checked + .slider:before {
     color: #34d399 !important;
 }
 
+/* Chart button — opens TradingView chart for the row's symbol */
+.btn-analyze {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: var(--color-accent);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-analyze:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.6);
+    transform: scale(1.08);
+}
+
 /* btn-analyze consistent sizing inside action-cell */
 .action-cell .btn-analyze {
     padding: 4px 10px;
