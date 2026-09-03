@@ -49,7 +49,7 @@ symbols:
 - RPOWER
 - IOC
 strategy:
-  ut_enabled: false
+  ut_enabled: true
   key_value: 1                        # Key Value / Sensitivity (default: 1.0)
   atr_period: 2                       # ATR Period (default: 2)
                                       # ⚠ RECOMMENDATION: For NSE equities on 5m bars, values of 2–4 cause
@@ -232,7 +232,7 @@ regime:
 # Setup Filters & Priorities
 filters:
 
-  candle_patterns_enabled: true       # Detect candlestick patterns at S/R zones
+  candle_patterns_enabled: false       # Detect candlestick patterns at S/R zones
   # --- Multi-Timeframe Confirmation ---
   mtf_filter_enabled: false           # false = score only, no rejection | true: Rejects signals against HTF trend
   mtf_timeframe: "15m"                # Higher TF to check UTBot trend direction

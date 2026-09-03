@@ -1068,20 +1068,13 @@ document.addEventListener("DOMContentLoaded", () => {
                    </div>`
                 : "";
 
-            const winRateStr = item.hist_win_rate !== undefined && item.hist_win_rate !== null ? `${item.hist_win_rate}%` : "—";
-
             const actionClass = type === "BUY" ? "btn-order-buy" : "btn-order-sell";
 
-            // Sprint 2.5: engine tag + regime-gate + sizing badges rendered
-            // inline with the symbol so no new columns are needed. Fields are
-            // optional — pre-Sprint-2 rows simply render without them.
-            let sprintTagsHtml = "";
-            const eng = item.engine;
-            if (eng) {
-                const engMap = { utbot: "UT", sr: "SR", "utbot+sr": "UT+SR" };
-                const engLabel = engMap[String(eng).toLowerCase()] || eng;
-                sprintTagsHtml += `<span class="engine-tag" style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:var(--surface-2,#1e2130); color:var(--text-secondary,#94a3b8); border:1px solid var(--border,#2d3748); vertical-align:middle;" title="Signal engine">${engLabel}</span>`;
-            }
+            // Sprint 2.5: Consolidate quality indicators (Grade + AI) into single column
+            // REMOVED: engine labels (UT/SR/UT+SR) - clutter for regular users
+            // REMOVED: hist_win_rate column - feature disabled, redundant with Signal History
+            let qualityBadgesHtml = "";
+            let symbolBadgesHtml = "";
             // Sprint 3: grade badge — A green, B blue, C amber, D red. Tooltip
             // carries the composite score; the full per-factor breakdown lives
             // in item.grade_breakdown if you want to extend the tooltip later.
@@ -1096,19 +1089,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 const c = gradeColours[String(gr).toUpperCase()] || gradeColours.C;
                 const gScore = item.grade_score !== undefined && item.grade_score !== null
                     ? ` · score ${Number(item.grade_score).toFixed(0)}` : "";
-                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; vertical-align:middle;" title="Signal grade ${String(gr).toUpperCase()}${gScore} (market-context quality — see signal_grading config)">${String(gr).toUpperCase()}</span>`;
+                qualityBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${c.bg}; color:${c.fg}; border:1px solid ${c.bd}; vertical-align:middle;" title="Signal grade ${String(gr).toUpperCase()}${gScore} (market-context quality — see signal_grading config)">${String(gr).toUpperCase()}</span>`;
             }
             if (item.regime_gate_ok === false) {
                 const gr2 = item.regime_gate_reason || "gate blocked";
-                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gr2.replace(/"/g,"&quot;")}">GATE</span>`;
+                symbolBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gr2.replace(/"/g,"&quot;")}">GATE</span>`;
             }
             if (item.grade_gate_ok === false) {
                 const gg = item.grade_gate_reason || "grade gate blocked";
-                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gg.replace(/"/g,"&quot;")}">GRADE</span>`;
+                symbolBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${gg.replace(/"/g,"&quot;")}">GRADE-GATE</span>`;
             }
             if (item.exposure_gate_ok === false) {
                 const ex = item.exposure_gate_reason || "exposure cap hit";
-                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${ex.replace(/"/g,"&quot;")}">EXPOSURE</span>`;
+                symbolBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(239,68,68,0.15); color:var(--danger,#ef4444); border:1px solid rgba(239,68,68,0.35); vertical-align:middle;" title="${ex.replace(/"/g,"&quot;")}">EXPOSURE</span>`;
             }
             const ps = item.position_sizing;
             let psTooltip = "";
@@ -1121,53 +1114,43 @@ document.addEventListener("DOMContentLoaded", () => {
                 const psMult  = ps.grade_multiplier !== undefined && ps.grade_multiplier !== 1.0
                     ? ` · grade ×${ps.grade_multiplier}` : "";
                 psTooltip = `Sizing: ${psMode} · qty ${psQty} · risk ${psRisk}${psMult}`;
-                sprintTagsHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.15); color:var(--success,#10b981); border:1px solid rgba(16,185,129,0.35); vertical-align:middle;" title="${psTooltip.replace(/"/g,'&quot;')}">Qty ${psQty}</span>`;
+                symbolBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; background:rgba(16,185,129,0.15); color:var(--success,#10b981); border:1px solid rgba(16,185,129,0.35); vertical-align:middle;" title="${psTooltip.replace(/"/g,'&quot;')}">Qty ${psQty}</span>`;
             }
 
-            // AI / LLM Recommendation Tag
-            if (item.ai_recommendation && item.ai_recommendation !== "N/A") {
-                const aiRec = String(item.ai_recommendation).toUpperCase();
-                const isBull = aiRec.includes("BUY");
-                const isAvoid = aiRec.includes("AVOID") || aiRec.includes("SELL");
-                
-                let aiBg = "rgba(16,185,129,0.15)";
-                let aiFg = "var(--success,#10b981)";
-                let aiBd = "rgba(16,185,129,0.35)";
-                
-                if (isAvoid) {
-                    aiBg = "rgba(239,68,68,0.15)";
-                    aiFg = "var(--danger,#ef4444)";
-                    aiBd = "rgba(239,68,68,0.35)";
-                } else if (!isBull) {
-                    aiBg = "rgba(245,158,11,0.15)";
-                    aiFg = "var(--warning,#f59e0b)";
-                    aiBd = "rgba(245,158,11,0.35)";
-                }
-                
-                const badgeText = item.ai_badge || `🤖 AI: ${aiRec}`;
+            // AI / LLM Recommendation Tag - Add to quality column with N/A indicator
+            const aiRec = item.ai_recommendation;
+            if (aiRec) {
+                // Backend returns uppercase values (STRONG BUY, BUY, NEUTRAL, AVOID, STRONG SELL, SELL)
+                const recMap = {
+                    "STRONG BUY":  { badge: "🚀 Strong Buy",  bg: "rgba(16,185,129,0.2)",  fg: "#10b981", bd: "rgba(16,185,129,0.4)" },
+                    "BUY":         { badge: "✅ Buy",         bg: "rgba(34,197,94,0.2)",   fg: "#22c55e", bd: "rgba(34,197,94,0.4)" },
+                    "NEUTRAL":     { badge: "⏸️ Neutral",     bg: "rgba(148,163,184,0.2)", fg: "#94a3b8", bd: "rgba(148,163,184,0.4)" },
+                    "AVOID":       { badge: "🛑 Avoid",       bg: "rgba(239,68,68,0.2)",   fg: "#ef4444", bd: "rgba(239,68,68,0.4)" },
+                    "STRONG SELL": { badge: "⛔ Strong Sell", bg: "rgba(220,38,38,0.2)",   fg: "#dc2626", bd: "rgba(220,38,38,0.4)" },
+                    "SELL":        { badge: "📉 Sell",        bg: "rgba(248,113,113,0.2)", fg: "#f87171", bd: "rgba(248,113,113,0.4)" },
+                };
+                const recData = recMap[aiRec?.toUpperCase()] || recMap["NEUTRAL"];
+                const { badge: badgeText, bg: aiBg, fg: aiFg, bd: aiBd } = recData;
                 const scoreStr = item.ai_score !== undefined && item.ai_score !== null ? ` (${Math.round(item.ai_score)}/100)` : "";
                 const reasonStr = item.ai_reasoning ? ` — ${item.ai_reasoning}` : "";
                 const titleText = `AI Recommendation: ${aiRec}${scoreStr}${reasonStr}`;
                 
-                sprintTagsHtml += `<span class="ai-recommendation-tag" style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${aiBg}; color:${aiFg}; border:1px solid ${aiBd}; vertical-align:middle; cursor:help;" title="${titleText.replace(/"/g, '&quot;')}">${badgeText}</span>`;
+                qualityBadgesHtml += `<span class="ai-recommendation-tag" style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:800; background:${aiBg}; color:${aiFg}; border:1px solid ${aiBd}; vertical-align:middle; cursor:help;" title="${titleText.replace(/"/g, '&quot;')}">${badgeText}</span>`;
+            } else {
+                // No AI analysis available - show N/A indicator
+                if (gr && String(gr).toUpperCase() === "D") {
+                    // Grade D - not eligible for AI analysis
+                    qualityBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:600; background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.25); vertical-align:middle; cursor:help;" title="AI analysis only runs on Grade A/B/C signals (top 5 per scan)">🤖 N/A</span>`;
+                } else if (gr) {
+                    // Grade A/B/C but no AI data - likely API failure or top-5 limit
+                    qualityBadgesHtml += `<span style="display:inline-block; margin-left:4px; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:600; background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.25); vertical-align:middle; cursor:help;" title="AI analysis pending or limited to top 5 signals per scan">🤖 N/A</span>`;
+                }
             }
 
             tr.innerHTML = `
-                <td><strong>${item.symbol}</strong>${sprintTagsHtml}</td>
+                <td><strong>${item.symbol}</strong>${symbolBadgesHtml}</td>
                 <td>${item.close.toFixed(2)}</td>
-                <td><span class="win-rate-val">${winRateStr}</span></td>
-                <td>
-                    <div class="score-container">
-                        <div style="display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; justify-content: center; align-items: center; column-gap: 10px; row-gap: 3px;">
-                            <span class="score-badge ${scoreClass}" style="grid-column: 1; grid-row: 1; font-size: 0.85rem; padding: 2px 8px; min-width: 32px;">${scoreTier}</span>
-                            <button class="btn-analyze" data-symbol="${item.symbol}" style="grid-column: 2; grid-row: 1; background: none; border: none; color: var(--color-accent); cursor: pointer; padding: 0; font-size: 0.95rem; font-weight: 800; -webkit-text-stroke: 0.5px currentColor; display: inline-flex; align-items: center;" title="View Chart">
-                                <i class="fa-solid fa-chart-line" style="font-weight: 800;"></i>
-                            </button>
-                            <span style="grid-column: 1; grid-row: 2; font-size: 0.7rem; color: #888;">${score.toFixed(1)}</span>
-                        </div>
-                        ${reasonsHtml}
-                    </div>
-                </td>
+                <td>${qualityBadgesHtml}</td>
                 <td>
                     <div class="action-cell">
                         <div class="order-qty-wrap">
@@ -1192,7 +1175,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 buySignalsTable.appendChild(createRow(item, "BUY"));
             });
         } else {
-            buySignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
+            buySignalsTable.innerHTML = `<tr><td colspan="7" class="empty-placeholder">No BUY signals found for this scan interval.</td></tr>`;
         }
 
         // Render SELL Signals
@@ -1201,7 +1184,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 sellSignalsTable.appendChild(createRow(item, "SELL"));
             });
         } else {
-            sellSignalsTable.innerHTML = `<tr><td colspan="8" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
+            sellSignalsTable.innerHTML = `<tr><td colspan="7" class="empty-placeholder">No SELL signals found for this scan interval.</td></tr>`;
         }
 
         // Setup analyze buttons — open TradingView chart in a new tab
