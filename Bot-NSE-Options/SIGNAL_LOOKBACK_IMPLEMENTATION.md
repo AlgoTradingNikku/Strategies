@@ -13,9 +13,9 @@ Successfully implemented **Signal Lookback Logic** with **"Most-Recent-Wins" Con
 ## 🎯 What Was Implemented
 
 ### **Core Feature: Signal Lookback Window**
-- Bot now checks **last N completed candles** (default: 2) for UTBot signals instead of only the most recent bar
+- Bot checks the configured number of recent completed candles for UTBot signals. Current config uses `1`, meaning **latest completed candle only**.
 - Prevents missing signals due to scan timing misalignment, network latency, or rapid market moves
-- Configurable via `options.signal_lookback_candles` parameter (range: 1-5 recommended)
+- Configurable via `strategy.signal_lookback_candles` parameter (range: 1-5 recommended). Legacy `options.signal_lookback_candles` is still accepted as a fallback.
 
 ### **Intelligent Conflict Resolution**
 - When both BUY and SELL signals appear within the lookback window, only the **most recent signal** is kept
@@ -32,10 +32,10 @@ Successfully implemented **Signal Lookback Logic** with **"Most-Recent-Wins" Con
 ## 📝 Files Modified
 
 ### **1. config.yml**
-**Added:**
+**Added under UTBot strategy settings:**
 ```yaml
-options:
-  signal_lookback_candles: 2        # Number of recent completed candles to check for UTBot signals
+strategy:
+  signal_lookback_candles: 1        # Latest completed candle only
 ```
 
 **Updated:**
@@ -62,7 +62,7 @@ strategy:
 ✅ Old config variable `signal_on_running_bar` still works  
 ✅ New config variable `signal_on_closed_bar` takes precedence  
 ✅ Default behavior unchanged for existing users  
-✅ Lookback defaults to 2 if not specified
+✅ Lookback defaults to 2 if not specified, but current config intentionally uses 1 for latest-candle-only signals
 
 ---
 
@@ -71,13 +71,12 @@ strategy:
 ### **New Parameters**
 
 ```yaml
-options:
-  signal_lookback_candles: 2        # 1-5 recommended
+strategy:
+  signal_lookback_candles: 1        # 1-5 supported
                                     # 1 = most strict (current bar only)
                                     # 2 = balanced (default, 1-candle buffer)
                                     # 3-5 = more lenient (catches delayed signals)
 
-strategy:
   signal_on_closed_bar: true        # Recommended for stable signals
 ```
 
@@ -87,7 +86,7 @@ strategy:
 |-----------|----------|-----------|
 | 1m | 1-2 | Fast markets, keep signals fresh |
 | 3m | 2 | Balanced for quick moves |
-| 5m | 2 | **Current default, optimal for options** |
+| 5m | 1 | Strict/latest completed candle only; use 2 if scan timing needs a buffer |
 | 15m | 2-3 | More buffer for slower scans |
 | 1h+ | 3-5 | Longer timeframes need wider window |
 

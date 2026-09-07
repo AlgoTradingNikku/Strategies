@@ -303,10 +303,11 @@ def evaluate_composite_signals(
     vol_sma = df["volume"].rolling(20).mean() if "volume" in df.columns else pd.Series(0, index=df.index)
     df["vol_sma"] = vol_sma
 
-    # ---- 4. Get lookback candles parameter and handle closed-bar mode --------
-    # Read from options.signal_lookback_candles (new location) or fall back to old config location
+    # ---- 4. Get UTBot lookback parameter and handle closed-bar mode ----------
+    # Preferred location: strategy.signal_lookback_candles.
+    # Backward compatibility: options.signal_lookback_candles, then root-level signal_lookback_candles.
     opt_cfg = cfg.get("options", {})
-    lookback_candles = int(opt_cfg.get("signal_lookback_candles", cfg.get("signal_lookback_candles", 2)))
+    lookback_candles = max(1, int(ut_cfg.get("signal_lookback_candles", opt_cfg.get("signal_lookback_candles", cfg.get("signal_lookback_candles", 2)))))
     
     # Backward compatibility: support both old and new config variable names
     # Old: signal_on_running_bar (inverted logic)

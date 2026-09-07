@@ -172,6 +172,7 @@ class OpenAlgoConfig(BaseModel):
     order_product: str = "MIS"
     order_quantity: int = 1
     order_type: str = "MARKET"
+    l1_limit_mode: str = "AGGRESSIVE"
 
 class FlattradeConfig(BaseModel):
     api_key: str = ""

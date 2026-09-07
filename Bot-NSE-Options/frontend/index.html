@@ -29,6 +29,10 @@
                     <i class="fa-solid fa-briefcase"></i>
                     <span>Active Positions</span>
                 </button>
+                <button class="nav-item" data-tab="combos">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Strategy Combos</span>
+                </button>
                 <button class="nav-item" data-tab="history">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Signal History</span>
@@ -497,6 +501,22 @@
                             </div>
                         </div>
                     </aside>
+                </div>
+            </section>
+
+            <!-- Strategy Combos Tab -->
+            <section class="tab-panel" id="panel-combos">
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3><i class="fa-solid fa-layer-group"></i> Strategy Combos</h3>
+                        <button class="btn btn-primary" onclick="loadStrategyCombos()"><i class="fa-solid fa-rotate"></i> Refresh Combos</button>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
+                        Defined-risk and volatility combo candidates built from current UTBot/S-R option signals. Review all legs before executing.
+                    </p>
+                    <div id="strategy-combos-grid" class="combo-grid">
+                        <div class="empty-placeholder">No strategy combos yet. Run the scanner to generate candidates.</div>
+                    </div>
                 </div>
             </section>
 

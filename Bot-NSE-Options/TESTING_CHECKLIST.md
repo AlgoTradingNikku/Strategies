@@ -7,7 +7,7 @@
 ## 📋 Pre-Flight Checklist
 
 ### ✅ Code Changes
-- [x] `config.yml` updated with `signal_lookback_candles: 2`
+- [x] `config.yml` updated with `strategy.signal_lookback_candles: 1`
 - [x] `config.yml` updated with `signal_on_closed_bar: true`
 - [x] `signals.py` - Added helper functions and lookback logic
 - [x] `scanner.py` - Enhanced logging and config handling
@@ -32,12 +32,12 @@ python scanner.py
 **Expected Log Output:**
 ```
 Starting Options Scan Cycle | Underlying: NIFTY | ...
-Signal Mode: UTBot | Timeframe: 5m | Lookback: 2 candles | Bar Mode: Closed-bar only (TradingView parity)
+Signal Mode: UTBot | Timeframe: 5m | Lookback: 1 candles | Bar Mode: Closed-bar only (TradingView parity)
 ```
 
 **Checklist:**
 - [ ] Scanner starts without errors
-- [ ] Log shows `Lookback: 2 candles`
+- [ ] Log shows `Lookback: 1 candles`
 - [ ] Log shows `Bar Mode: Closed-bar only`
 - [ ] No Python errors
 

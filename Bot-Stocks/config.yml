@@ -315,7 +315,8 @@ openalgo:
                                     #   'SELL_ONLY' -> Auto-place ONLY SELL signals
   order_product: "MIS"              # Product type: MIS (intraday) or CNC (delivery)
   order_quantity: 1                 # Default quantity per order (used when capital_per_trade is unset)
-  order_type: "MARKET"               # "MARKET" or "LIMIT"
+  order_type: "LIMIT"                # "MARKET" or "LIMIT"
+  l1_limit_mode: "AGGRESSIVE"        # "AGGRESSIVE" (BUY at Ask, SELL at Bid) | "PASSIVE" (BUY at Bid+tick, SELL at Ask-tick) | "MIDPOINT"
   # capital_per_trade: 25000        # Optional: when set, quantity = max(1, floor(capital / price))
                                     # Takes precedence over order_quantity for auto-orders.
 

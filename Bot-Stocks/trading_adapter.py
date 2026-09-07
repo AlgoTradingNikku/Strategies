@@ -501,6 +501,149 @@ _GET_LTP_DISPATCH = {
 }
 
 
+def _openalgo_get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    """Fetch L1 Quote (ltp, bid, ask, open, high, low, volume) from OpenAlgo."""
+    from openalgo import api as oa_api
+    oa_cfg = cfg.get("openalgo", {})
+    try:
+        from app import _get_oa_client
+        client = _get_oa_client(oa_cfg)
+    except ImportError:
+        client = oa_api(
+            api_key=oa_cfg.get("apikey", ""),
+            host=oa_cfg.get("base_url", "http://127.0.0.1:5000"),
+        )
+    resp = client.quotes(symbol=symbol, exchange=exchange)
+    if isinstance(resp, dict) and resp.get("status") == "error":
+        raise RuntimeError(resp.get("message", str(resp)))
+    data = resp.get("data", {}) if isinstance(resp, dict) else {}
+    ltp = float(data.get("ltp") or resp.get("ltp") or 0.0)
+    bid = float(data.get("bid") or 0.0)
+    ask = float(data.get("ask") or 0.0)
+    return {
+        "symbol": symbol,
+        "exchange": exchange,
+        "ltp": ltp,
+        "bid": bid if bid > 0 else ltp,
+        "ask": ask if ask > 0 else ltp,
+        "open": float(data.get("open") or 0.0),
+        "high": float(data.get("high") or 0.0),
+        "low": float(data.get("low") or 0.0),
+        "prev_close": float(data.get("prev_close") or 0.0),
+        "volume": float(data.get("volume") or 0.0),
+    }
+
+
+def _flattrade_get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    ft = cfg.get("flattrade", {})
+    session_token = ft.get("session_token", "")
+    client_id = ft.get("client_id", "")
+    if not session_token:
+        raise RuntimeError("Flattrade session_token missing")
+    payload = {"uid": client_id, "exch": exchange, "token": symbol, "jKey": session_token}
+    resp = _post(f"{_FLATTRADE_BASE}/GetQuotes", payload)
+    if resp.get("stat") == "Ok":
+        ltp = float(resp.get("lp", 0))
+        bid = float(resp.get("bp1", 0) or ltp)
+        ask = float(resp.get("sp1", 0) or ltp)
+        return {"symbol": symbol, "exchange": exchange, "ltp": ltp, "bid": bid, "ask": ask}
+    raise RuntimeError(resp.get("emsg", str(resp)))
+
+
+def _mstock_get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    ltp = _mstock_get_ltp(cfg, symbol, exchange)
+    return {"symbol": symbol, "exchange": exchange, "ltp": ltp, "bid": ltp, "ask": ltp}
+
+
+def _shoonya_get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    sh = cfg.get("shoonya", {})
+    session_token = sh.get("session_token", "")
+    client_id = sh.get("client_id", "")
+    if not session_token:
+        raise RuntimeError("Shoonya session_token missing")
+    payload = {"uid": client_id, "exch": exchange, "token": symbol, "jKey": session_token}
+    resp = _post(f"{_SHOONYA_BASE}/GetQuotes", payload)
+    if resp.get("stat") == "Ok":
+        ltp = float(resp.get("lp", 0))
+        bid = float(resp.get("bp1", 0) or ltp)
+        ask = float(resp.get("sp1", 0) or ltp)
+        return {"symbol": symbol, "exchange": exchange, "ltp": ltp, "bid": bid, "ask": ask}
+    raise RuntimeError(resp.get("emsg", str(resp)))
+
+
+def _dhan_get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    ltp = _dhan_get_ltp(cfg, symbol, exchange)
+    return {"symbol": symbol, "exchange": exchange, "ltp": ltp, "bid": ltp, "ask": ltp}
+
+
+_GET_QUOTE_DISPATCH = {
+    "openalgo":  _openalgo_get_quote,
+    "flattrade": _flattrade_get_quote,
+    "mstock":    _mstock_get_quote,
+    "shoonya":   _shoonya_get_quote,
+    "dhan":      _dhan_get_quote,
+}
+
+
+def get_quote(cfg: dict, symbol: str, exchange: str) -> dict:
+    """
+    Fetch live L1 quote (ltp, bid, ask) with broker rate limiting.
+    """
+    source = cfg.get("trading_api_source", "openalgo").lower()
+    fn = _GET_QUOTE_DISPATCH.get(source)
+    if fn is None:
+        raise RuntimeError(
+            f"Unknown trading_api_source: '{source}'. "
+            f"Valid options: {list(_GET_QUOTE_DISPATCH)}"
+        )
+    rate_limiter = get_rate_limiter(cfg)
+    with rate_limiter:
+        quote = fn(cfg, symbol, exchange)
+    return quote
+
+
+def calculate_l1_limit_price(
+    action: str,
+    quote: dict,
+    l1_mode: str = "AGGRESSIVE",
+    tick_size: float = 0.05,
+) -> float:
+    """
+    Calculate optimal L1 limit price for BUY or SELL orders based on top-of-book depth.
+    
+    Modes:
+      - AGGRESSIVE: BUY at Best Ask, SELL at Best Bid (Instant fill with slippage protection)
+      - PASSIVE:    BUY at Best Bid + 1 tick, SELL at Best Ask - 1 tick (Spread capture / Maker)
+      - MIDPOINT:   BUY/SELL at (Best Bid + Best Ask) / 2
+    """
+    ltp = float(quote.get("ltp") or 0.0)
+    bid = float(quote.get("bid") or ltp)
+    ask = float(quote.get("ask") or ltp)
+    
+    # Fallback to LTP if bid/ask are missing or non-positive
+    if bid <= 0:
+        bid = ltp
+    if ask <= 0:
+        ask = ltp
+
+    mode = (l1_mode or "AGGRESSIVE").upper()
+    act = (action or "BUY").upper()
+
+    if mode == "AGGRESSIVE":
+        target_price = ask if act == "BUY" else bid
+    elif mode == "PASSIVE":
+        target_price = (bid + tick_size) if act == "BUY" else (ask - tick_size)
+    elif mode == "MIDPOINT":
+        target_price = (bid + ask) / 2.0
+    else:
+        target_price = ask if act == "BUY" else bid
+
+    # Ensure price is non-negative and round to exchange tick size (0.05 on NSE)
+    target_price = max(tick_size, target_price)
+    rounded = round(round(target_price / tick_size) * tick_size, 2)
+    return rounded
+
+
 def place_order(cfg: dict, req) -> dict:
     """
     Place an order using the configured trading_api_source.

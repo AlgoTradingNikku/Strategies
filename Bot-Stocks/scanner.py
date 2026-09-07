@@ -1394,8 +1394,28 @@ def run_scan(
             r["exposure_gate_ok"] = True
 
             product = str(oa_cfg.get("order_product", "MIS"))
-            price_type = str(oa_cfg.get("order_type", "MARKET"))
+            price_type = str(oa_cfg.get("order_type", "MARKET")).upper()
             exchange = str(config.get("exchange", "NSE"))
+
+            order_price = 0.0
+            if price_type == "LIMIT":
+                try:
+                    quote = trading_adapter.get_quote(config, sym, exchange)
+                    l1_mode = str(oa_cfg.get("l1_limit_mode", "AGGRESSIVE")).upper()
+                    order_price = trading_adapter.calculate_l1_limit_price(
+                        action=sig,
+                        quote=quote,
+                        l1_mode=l1_mode,
+                    )
+                    log.info(
+                        "  [%s] 🎯 L1 Smart Limit (%s): Best Bid=₹%.2f, Best Ask=₹%.2f, LTP=₹%.2f -> Limit Price=₹%.2f",
+                        sym, l1_mode, quote.get("bid", 0.0), quote.get("ask", 0.0), quote.get("ltp", 0.0), order_price
+                    )
+                except Exception as quote_err:
+                    log.warning("  [%s] L1 quote fetch failed: %s — falling back to close price ₹%.2f", sym, quote_err, close_price)
+                    order_price = round(round(close_price / 0.05) * 0.05, 2)
+            else:
+                order_price = close_price
 
             req = SimpleNamespace(
                 symbol=sym,
@@ -1404,7 +1424,7 @@ def run_scan(
                 quantity=quantity,
                 product=product,
                 price_type=price_type,
-                price=close_price,
+                price=order_price,
                 trigger_price=0.0,
                 strategy="UTBot_SR_Stocks",
             )

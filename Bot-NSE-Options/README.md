@@ -49,6 +49,7 @@ FastAPI + web dashboard and OpenAlgo broker integration.
 | `trading_adapter.py`              | OpenAlgo REST wrapper                                                |
 | `trade_db.py` / `signal_db.py`    | SQLite persistence                                                   |
 | `trade_management/`               | Position monitor, trailing-SL, auto-exit                              |
+| `strategy_combos.py`              | Multi-leg strategy candidate builder + combo execution helper         |
 | `telegram.py`                     | Telegram alerts                                                      |
 | `frontend/`                       | Dashboard UI                                                         |
 
@@ -194,6 +195,27 @@ when the limit is breached.
 Fully backwards compatible via `.get(..., default)` everywhere.
 
 ---
+
+## Strategy Combos Dashboard
+
+The **Strategy Combos** tab converts current UTBot/S-R option signals into multi-leg candidates:
+
+- Bull Call Spread from strong CE BUY signals.
+- Bear Put Spread from strong PE BUY signals.
+- Long Straddle/Strangle when both CE and PE momentum signals qualify.
+
+Each combo card shows legs, reference premiums, max profit/loss, breakeven, R:R, confidence, and a one-click **Execute Combo** action. Executed legs are written to `trade_db` with shared `combo_id`, `combo_name`, `combo_type`, and `combo_leg_role` columns for later grouping.
+
+Config is under `strategy_combos:` in `config.yml`. Manual execution is enabled by `execution_enabled`; `auto_execute_enabled` is intentionally defaulted to `false` as a safety switch. If enabled, combo auto-execution only runs when `trading.order_mode: auto` and is capped by `auto_execute_max_per_scan`.
+
+API endpoints:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/strategy-combos` | Run scan and return combo candidates |
+| POST | `/api/strategy-combos/execute` | Execute all legs of a selected combo |
+
+
 
 ## Sprint Roadmap
 

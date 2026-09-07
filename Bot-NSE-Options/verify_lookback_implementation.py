@@ -21,21 +21,24 @@ try:
     opt_cfg = cfg.get("options", {})
     strat_cfg = cfg.get("strategy", {})
     
-    lookback = opt_cfg.get("signal_lookback_candles", "NOT SET")
+    lookback = strat_cfg.get("signal_lookback_candles", opt_cfg.get("signal_lookback_candles", "NOT SET"))
+    lookback_source = "strategy" if "signal_lookback_candles" in strat_cfg else "options/legacy"
     closed_bar = strat_cfg.get("signal_on_closed_bar", "NOT SET")
     
     print(f"📊 Configuration Values:")
-    print(f"  • signal_lookback_candles: {lookback}")
+    print(f"  • signal_lookback_candles: {lookback} ({lookback_source})")
     print(f"  • signal_on_closed_bar: {closed_bar}")
     
     # Validation
     print(f"\n🔍 Validation:")
-    if lookback == 2:
-        print(f"  ✅ Lookback set to optimal value (2)")
+    if lookback == 1:
+        print(f"  ✅ Lookback set to latest completed candle only (1)")
+    elif lookback == 2:
+        print(f"  ✅ Lookback set to balanced value (2)")
     elif lookback == "NOT SET":
         print(f"  ❌ ERROR: signal_lookback_candles not found in config!")
     else:
-        print(f"  ⚠️  Lookback set to {lookback} (2 is recommended)")
+        print(f"  ⚠️  Lookback set to {lookback} (1 = latest completed candle only; 2-5 = delayed-scan buffer)")
     
     if closed_bar == True:
         print(f"  ✅ Closed-bar mode enabled (TradingView parity)")

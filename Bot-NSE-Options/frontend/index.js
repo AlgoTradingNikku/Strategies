@@ -1,5 +1,6 @@
 let autoRefreshInterval = null;
-let currentScanData = { buy_results: [], sell_results: [] };
+let currentScanData = { buy_results: [], sell_results: [], strategy_combos: [] };
+let currentStrategyCombos = [];
 let activeConfig = null;  // Global config cache for interval management
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -31,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById(`panel-${tabId}`).classList.add("active");
 
             if (tabId === "positions") loadPositions();
+            if (tabId === "combos") loadStrategyCombos();
             if (tabId === "history") loadHistory();
             if (tabId === "stats") loadStats();
             if (tabId === "logs") loadLogs();
@@ -770,8 +772,10 @@ async function runScan() {
         document.getElementById("stat-sell-count").textContent = data.sell_results.length;
         document.getElementById("stat-last-scan-time").textContent = data.timestamp;
 
+        currentStrategyCombos = data.strategy_combos || [];
         renderSignals(data.buy_results, "buy-signals-table", "buy-last-updated", "BUY");
         renderSignals(data.sell_results, "sell-signals-table", "sell-last-updated", "SELL");
+        renderStrategyCombos(currentStrategyCombos);
     } catch (err) {
         console.error("Scan error:", err);
     } finally {
@@ -944,6 +948,93 @@ function renderSignals(results, tableId, badgeId, signalType) {
             </tr>
         `;
     }).join("");
+}
+
+async function loadStrategyCombos() {
+    try {
+        const res = await fetch("/api/strategy-combos");
+        const data = await res.json();
+        currentStrategyCombos = data.strategy_combos || [];
+        renderStrategyCombos(currentStrategyCombos);
+    } catch (err) {
+        console.error("Strategy combos error:", err);
+    }
+}
+
+function renderStrategyCombos(combos) {
+    const grid = document.getElementById("strategy-combos-grid");
+    if (!grid) return;
+    if (!combos || combos.length === 0) {
+        grid.innerHTML = '<div class="empty-placeholder">No strategy combos available for the current scan.</div>';
+        return;
+    }
+    grid.innerHTML = combos.map((c, idx) => {
+        const legs = (c.legs || []).map(l => `
+            <tr>
+                <td>${l.leg_role || '-'}</td>
+                <td style="font-family:var(--font-mono);font-weight:700;">${l.symbol}</td>
+                <td><span class="badge-${l.action === 'BUY' ? 'ce' : 'pe'}">${l.action}</span></td>
+                <td>${l.quantity}</td>
+                <td>₹${Number(l.price || 0).toFixed(2)}</td>
+            </tr>
+        `).join("");
+        const maxProfit = c.max_profit === null || c.max_profit === undefined ? 'Unlimited' : `₹${Number(c.max_profit).toFixed(0)}`;
+        const breakeven = Array.isArray(c.breakeven) ? c.breakeven.map(v => `₹${Number(v).toFixed(2)}`).join(' / ') : `₹${Number(c.breakeven || 0).toFixed(2)}`;
+        return `
+            <div class="combo-card">
+                <div class="combo-card-header">
+                    <div>
+                        <h4>${c.combo_name}</h4>
+                        <div class="combo-subtitle">${c.direction} · ${c.underlying || ''} · ${c.expiry || ''}</div>
+                    </div>
+                    <span class="grade-badge grade-${String(c.grade || 'b').toLowerCase()}">${c.grade || '-'} ${Number(c.setup_score || 0).toFixed(0)}</span>
+                </div>
+                <div class="combo-metrics">
+                    <div><span>Net Debit</span><strong>₹${Number(c.entry_debit || c.net_premium || 0).toFixed(2)}</strong></div>
+                    <div><span>Max Profit</span><strong>${maxProfit}</strong></div>
+                    <div><span>Max Loss</span><strong>₹${Number(c.max_loss || 0).toFixed(0)}</strong></div>
+                    <div><span>Breakeven</span><strong>${breakeven}</strong></div>
+                    <div><span>R:R</span><strong>${c.risk_reward || '—'}</strong></div>
+                    <div><span>Confidence</span><strong>${Number(c.confidence || 0).toFixed(0)}%</strong></div>
+                </div>
+                <table class="data-table combo-legs-table">
+                    <thead><tr><th>Role</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Ref Price</th></tr></thead>
+                    <tbody>${legs}</tbody>
+                </table>
+                <div class="combo-notes">${c.notes || ''}</div>
+                <div class="combo-actions">
+                    <input type="number" class="order-qty-input combo-multiplier" value="1" min="1" step="1" title="Lot multiplier">
+                    <button class="btn-order-buy" onclick="executeStrategyCombo(${idx}, this)"><i class="fa-solid fa-bolt"></i> Execute Combo</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+async function executeStrategyCombo(index, btnEl) {
+    const combo = currentStrategyCombos[index];
+    if (!combo) return;
+    if (!confirm(`Execute ${combo.combo_name} with ${combo.legs.length} legs?`)) return;
+    const multInput = btnEl.closest('.combo-card').querySelector('.combo-multiplier');
+    const multiplier = parseInt(multInput?.value || '1') || 1;
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Executing...';
+    try {
+        const res = await fetch('/api/strategy-combos/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ combo, quantity_multiplier: multiplier, dry_run: false })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || data.message || 'Execution blocked');
+        alert(`Combo executed: ${data.combo_name} (${data.legs_executed} legs)`);
+        loadPositions();
+    } catch (err) {
+        alert(`Combo execution failed: ${err.message || err}`);
+    } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i class="fa-solid fa-bolt"></i> Execute Combo';
+    }
 }
 
 async function loadPositions() {

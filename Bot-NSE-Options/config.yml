@@ -27,13 +27,11 @@ options:
   index_exchange: NSE_INDEX         # Exchange segment for underlying index spot price
   option_exchange: NFO              # Exchange segment for derivative option contracts
   base_atm_strike: ''               # Manual ATM strike override (leave empty '' for dynamic auto-detection)
-  expiry_date: 01SEP26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
+  expiry_date: 15SEP26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
   levels_up_down: 3                 # Number of strike levels above and below ATM in option grid (3 CE + 1 ATM + 3 PE)
   strike_gap: 50                    # Strike price interval in points (50 for NIFTY, 100 for BANKNIFTY)
   timeframe: 5m                     # Primary candlestick timeframe for signal scanning (e.g., 1m, 3m, 5m, 15m)
   trend_timeframe: 15m              # Higher timeframe used for overall trend directional context
-  signal_lookback_candles: 2        # Number of recent completed candles to check for UTBot signals (1-5 recommended)
-                                    # Higher values catch delayed signals but may act on stale data
 
 # ------------------------------------------------------------------------------
 # 3. Strategy & Signal Engine (UTBot)
@@ -45,6 +43,8 @@ strategy:
   atr_period: 1                     # Lookback period for ATR calculation in UTBot
   use_heikin_ashi: false            # Set true to calculate UTBot signals on Heikin-Ashi candles
   ut_enabled: true                  # Master switch to enable UTBot signal generation logic
+  signal_lookback_candles: 1        # Number of recent completed candles to check for UTBot crossover labels.
+                                    # 1 = latest completed candle only; 2-5 catch delayed scans but may act on stale data.
   signal_on_closed_bar: true        # Signal evaluation mode (standardized naming):
                                     #   true  -> Evaluate signals on LAST COMPLETED / CLOSED candle only (TradingView parity, no mid-bar flicker)
                                     #   false -> Include CURRENT RUNNING / ACTIVE candle (earlier signals, but can flip mid-bar)
@@ -130,7 +130,7 @@ bot:
 # ------------------------------------------------------------------------------
 trading:
   enabled: true                     # Master toggle to enable automated order execution engine
-  order_mode: auto                  # Order execution mode:
+  order_mode: manual                # Order execution mode:
                                     #   'auto'   -> Automatically place orders via OpenAlgo WITHOUT manual intervention
                                     #   'manual' -> Semi-automated / alert mode (user confirms orders via Web UI)
   allowed_actions: BUY_ONLY         # Applies ONLY when order_mode is 'auto'. (Manual web UI orders are always unrestricted)
@@ -149,7 +149,7 @@ trading:
   # Prevents stacking multiple orders on the same option contract and rapid re-entry
   # after an exit (which typically produces whipsaw losses on the same underlying move).
   dedup:
-    enabled: true                   # Block new entry if same-symbol position already OPEN, or exited recently.
+    enabled: false                  # Block new entry if same-symbol position already OPEN, or exited recently.
     cooldown_minutes: 5             # Minutes to wait after an exit before allowing re-entry on the same symbol.
 
   # ---- [Sprint-1] Directional Gate (spot-trend alignment) ----
@@ -157,12 +157,32 @@ trading:
   # Only allows CE-BUY when spot is UP-trending and PE-BUY when spot is DOWN-trending.
   # Kills the "long-gamma-both-sides" trap where CE and PE are bought simultaneously.
   directional_gate:
-    enabled: true                   # Master toggle for spot-trend directional filter.
+    enabled: false                  # Master toggle for spot-trend directional filter.
 
   options:
     quantity: 65                    # Lot size / contract quantity per trade (65 = 1 lot NIFTY)
     product: NRML                   # Product type: NRML (Normal/Overnight) or MIS (Intraday)
     price_type: MARKET              # Order price type: MARKET or LIMIT
+
+# ------------------------------------------------------------------------------
+# 7A. Strategy Combos Dashboard
+# ------------------------------------------------------------------------------
+strategy_combos:
+  enabled: true                     # Build multi-leg candidates from scanner signals.
+  execution_enabled: true           # Allows manual one-click combo execution from dashboard.
+  auto_execute_enabled: false       # Optional auto-execution when trading.order_mode=auto; keep false until tested.
+  auto_execute_max_per_scan: 1      # Safety cap for combo auto-execution per scan cycle.
+  min_grade: 'B'                    # Minimum source signal grade for combo generation.
+  min_score: 60                     # Minimum source signal score for combo generation.
+  max_candidates: 8                 # Max combo cards returned to dashboard.
+  enabled_types:
+  - bull_call_spread
+  - bear_put_spread
+  - long_straddle
+  - long_strangle
+  vertical_width_steps: 1           # Hedge one strike away for vertical spreads.
+  hedge_price_pct: 0.45             # Fallback hedge price when hedge leg quote is not in scan results.
+  volatility_max_gap_steps: 1       # CE/PE max strike gap for straddle/strangle candidates.
 
 # ------------------------------------------------------------------------------
 # 8. Trade Management (SL / TP / Trailing SL / Profit Lock / Partial Exits)
