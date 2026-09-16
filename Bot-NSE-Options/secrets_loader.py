@@ -18,6 +18,8 @@ Recognised environment variables:
     OPENALGO_WS_URL        -> openalgo.ws_url
     TELEGRAM_BOT_TOKEN     -> telegram.bot_token
     TELEGRAM_CHAT_ID       -> telegram.chat_id
+    ANTHROPIC_API_KEY      -> ai.api_key
+    OPENAI_API_KEY         -> ai.fallback_api_key
 
 Fail-open on every step — missing dotenv, missing .env, missing env var all
 leave cfg untouched.
@@ -43,6 +45,8 @@ _ENV_MAP: Dict[str, Tuple[str, str]] = {
     "OPENALGO_WS_URL": ("openalgo", "ws_url"),
     "TELEGRAM_BOT_TOKEN": ("telegram", "bot_token"),
     "TELEGRAM_CHAT_ID": ("telegram", "chat_id"),
+    "ANTHROPIC_API_KEY": ("ai", "api_key"),
+    "OPENAI_API_KEY": ("ai", "fallback_api_key"),
 }
 
 _dotenv_loaded = False

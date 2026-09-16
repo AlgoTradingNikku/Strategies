@@ -1,6 +1,5 @@
 let autoRefreshInterval = null;
-let currentScanData = { buy_results: [], sell_results: [], strategy_combos: [] };
-let currentStrategyCombos = [];
+let currentScanData = { buy_results: [], sell_results: [] };
 let activeConfig = null;  // Global config cache for interval management
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -32,10 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
             document.getElementById(`panel-${tabId}`).classList.add("active");
 
             if (tabId === "positions") loadPositions();
-            if (tabId === "combos") loadStrategyCombos();
             if (tabId === "history") loadHistory();
             if (tabId === "stats") loadStats();
             if (tabId === "logs") loadLogs();
+            if (tabId === "ai-strategy") aiStrategy.onTabActivate();
         });
     });
 
@@ -772,10 +771,8 @@ async function runScan() {
         document.getElementById("stat-sell-count").textContent = data.sell_results.length;
         document.getElementById("stat-last-scan-time").textContent = data.timestamp;
 
-        currentStrategyCombos = data.strategy_combos || [];
         renderSignals(data.buy_results, "buy-signals-table", "buy-last-updated", "BUY");
         renderSignals(data.sell_results, "sell-signals-table", "sell-last-updated", "SELL");
-        renderStrategyCombos(currentStrategyCombos);
     } catch (err) {
         console.error("Scan error:", err);
     } finally {
@@ -948,93 +945,6 @@ function renderSignals(results, tableId, badgeId, signalType) {
             </tr>
         `;
     }).join("");
-}
-
-async function loadStrategyCombos() {
-    try {
-        const res = await fetch("/api/strategy-combos");
-        const data = await res.json();
-        currentStrategyCombos = data.strategy_combos || [];
-        renderStrategyCombos(currentStrategyCombos);
-    } catch (err) {
-        console.error("Strategy combos error:", err);
-    }
-}
-
-function renderStrategyCombos(combos) {
-    const grid = document.getElementById("strategy-combos-grid");
-    if (!grid) return;
-    if (!combos || combos.length === 0) {
-        grid.innerHTML = '<div class="empty-placeholder">No strategy combos available for the current scan.</div>';
-        return;
-    }
-    grid.innerHTML = combos.map((c, idx) => {
-        const legs = (c.legs || []).map(l => `
-            <tr>
-                <td>${l.leg_role || '-'}</td>
-                <td style="font-family:var(--font-mono);font-weight:700;">${l.symbol}</td>
-                <td><span class="badge-${l.action === 'BUY' ? 'ce' : 'pe'}">${l.action}</span></td>
-                <td>${l.quantity}</td>
-                <td>₹${Number(l.price || 0).toFixed(2)}</td>
-            </tr>
-        `).join("");
-        const maxProfit = c.max_profit === null || c.max_profit === undefined ? 'Unlimited' : `₹${Number(c.max_profit).toFixed(0)}`;
-        const breakeven = Array.isArray(c.breakeven) ? c.breakeven.map(v => `₹${Number(v).toFixed(2)}`).join(' / ') : `₹${Number(c.breakeven || 0).toFixed(2)}`;
-        return `
-            <div class="combo-card">
-                <div class="combo-card-header">
-                    <div>
-                        <h4>${c.combo_name}</h4>
-                        <div class="combo-subtitle">${c.direction} · ${c.underlying || ''} · ${c.expiry || ''}</div>
-                    </div>
-                    <span class="grade-badge grade-${String(c.grade || 'b').toLowerCase()}">${c.grade || '-'} ${Number(c.setup_score || 0).toFixed(0)}</span>
-                </div>
-                <div class="combo-metrics">
-                    <div><span>Net Debit</span><strong>₹${Number(c.entry_debit || c.net_premium || 0).toFixed(2)}</strong></div>
-                    <div><span>Max Profit</span><strong>${maxProfit}</strong></div>
-                    <div><span>Max Loss</span><strong>₹${Number(c.max_loss || 0).toFixed(0)}</strong></div>
-                    <div><span>Breakeven</span><strong>${breakeven}</strong></div>
-                    <div><span>R:R</span><strong>${c.risk_reward || '—'}</strong></div>
-                    <div><span>Confidence</span><strong>${Number(c.confidence || 0).toFixed(0)}%</strong></div>
-                </div>
-                <table class="data-table combo-legs-table">
-                    <thead><tr><th>Role</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Ref Price</th></tr></thead>
-                    <tbody>${legs}</tbody>
-                </table>
-                <div class="combo-notes">${c.notes || ''}</div>
-                <div class="combo-actions">
-                    <input type="number" class="order-qty-input combo-multiplier" value="1" min="1" step="1" title="Lot multiplier">
-                    <button class="btn-order-buy" onclick="executeStrategyCombo(${idx}, this)"><i class="fa-solid fa-bolt"></i> Execute Combo</button>
-                </div>
-            </div>
-        `;
-    }).join("");
-}
-
-async function executeStrategyCombo(index, btnEl) {
-    const combo = currentStrategyCombos[index];
-    if (!combo) return;
-    if (!confirm(`Execute ${combo.combo_name} with ${combo.legs.length} legs?`)) return;
-    const multInput = btnEl.closest('.combo-card').querySelector('.combo-multiplier');
-    const multiplier = parseInt(multInput?.value || '1') || 1;
-    btnEl.disabled = true;
-    btnEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Executing...';
-    try {
-        const res = await fetch('/api/strategy-combos/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ combo, quantity_multiplier: multiplier, dry_run: false })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || data.message || 'Execution blocked');
-        alert(`Combo executed: ${data.combo_name} (${data.legs_executed} legs)`);
-        loadPositions();
-    } catch (err) {
-        alert(`Combo execution failed: ${err.message || err}`);
-    } finally {
-        btnEl.disabled = false;
-        btnEl.innerHTML = '<i class="fa-solid fa-bolt"></i> Execute Combo';
-    }
 }
 
 async function loadPositions() {
@@ -1395,3 +1305,635 @@ if (typeof refreshSystemHealth === "function" && !window.__sprint6MetricsWrapped
     window.__sprint6MetricsWrapped = true;
 }
 
+
+/* =============================================================================
+   AI STRATEGY MODULE
+   All DOM interaction and API calls for the AI Strategy tab.
+   Exposed as a single `aiStrategy` namespace object.
+   ============================================================================= */
+
+const aiStrategy = (() => {
+    // ── State ─────────────────────────────────────────────────────────────────
+    let _activeIndex   = "NIFTY";
+    let _activeExpiry  = "weekly";
+    let _analysisId    = null;
+    let _analysisData  = null;   // full recommendation payload
+    let _ttlTimer      = null;
+    let _ttlEnds       = null;
+    let _wsConn        = null;
+    let _chainMaxOI    = 1;      // for OI heatmap normalisation
+
+    // ── DOM refs (resolved lazily) ─────────────────────────────────────────
+    const el = id => document.getElementById(id);
+
+    // ── Initialise (called once on DOMContentLoaded) ───────────────────────
+    function init() {
+        _bindIndexButtons();
+        _bindExpiryButtons();
+        _bindAnalyzeButton();
+        _bindChainRefresh();
+        _bindApproveReject();
+        _bindTogglePanel();
+        _bindHistoryLoad();
+        _bindModalButtons();
+        _initWebSocket();
+    }
+
+    // Called each time user switches to AI Strategy tab
+    function onTabActivate() {
+        if (!_analysisId) {
+            // Load settings into toggles, load history sidebar
+            loadSettings();
+            _loadHistory();
+        }
+    }
+
+    // ── Index / Expiry selectors ──────────────────────────────────────────
+    function _bindIndexButtons() {
+        document.querySelectorAll("#ai-index-group .ai-index-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                if (btn.disabled) return;
+                document.querySelectorAll("#ai-index-group .ai-index-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                _activeIndex = btn.dataset.index;
+            });
+        });
+    }
+
+    function _bindExpiryButtons() {
+        document.querySelectorAll("#ai-expiry-group .ai-index-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll("#ai-expiry-group .ai-index-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                _activeExpiry = btn.dataset.expiry;
+            });
+        });
+    }
+
+    // ── Run Analysis ─────────────────────────────────────────────────────
+    function _bindAnalyzeButton() {
+        el("btn-ai-analyze").addEventListener("click", runAnalysis);
+    }
+
+    async function runAnalysis() {
+        _showLoading("Initialising analysis…");
+        _hideError();
+        _setStatus("running", `Analysing ${_activeIndex}…`);
+        _clearStrategies();
+        _hideTTL();
+        el("ai-action-bar").style.display = "none";
+        el("ai-reasoning-panel").style.display = "none";
+
+        try {
+            const resp = await fetch("/api/ai/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    underlying: _activeIndex,
+                    expiry_date: "",
+                    trigger_source: "user_request",
+                }),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+                throw new Error(err.detail || "Analyze request failed");
+            }
+            const data = await resp.json();
+            _analysisId = data.analysis_id || data.id || null;
+
+            if (data.status === "no_trade") {
+                _hideLoading();
+                _setStatus("done", `NO TRADE — ${data.no_trade_reason || ""}`);
+                _renderRegime(data);
+                _showNoTrade(data.no_trade_reason);
+                return;
+            }
+
+            if (data.status === "error") {
+                _hideLoading();
+                _setStatus("error", "Analysis error");
+                _showError(data.errors ? data.errors.join("; ") : "Unknown error");
+                return;
+            }
+
+            _renderFullResult(data);
+        } catch (e) {
+            _hideLoading();
+            _setStatus("error", "Request failed");
+            _showError(e.message);
+        }
+    }
+
+    function _renderFullResult(data) {
+        _hideLoading();
+        _analysisData = data;
+        _analysisId   = data.analysis_id || data.id || _analysisId;
+
+        _renderRegime(data);
+        _renderChain(data.chain);
+        _renderStrategies(data.scored_candidates || []);
+        _renderLLM(data.llm_recommendation);
+        _showActionBar(data.analysis_id || data.id, data);
+        _startTTL(data.recommendation_valid_until);
+        _setStatus("done", `Analysis complete — ${_activeIndex}`);
+    }
+
+    // ── Regime ────────────────────────────────────────────────────────────
+    function _renderRegime(data) {
+        const regime = data.regime || {};
+        const market = data.market_data || {};
+        const snap   = data.snapshot || {};
+
+        // Badge
+        const badge = el("ai-regime-badge");
+        const trendDir = (regime.trend || "neutral").toLowerCase();
+        badge.textContent = regime.trend || "—";
+        badge.className = "ai-regime-badge " + (
+            trendDir.includes("bull") ? "bullish" :
+            trendDir.includes("bear") ? "bearish" :
+            regime.no_trade ? "no-trade" : "neutral"
+        );
+
+        _setText("ai-trend-dir",         regime.trend         || "—");
+        _setText("ai-vol-regime",         regime.vol_regime    || "—");
+        _setText("ai-iv-regime",          regime.iv_regime     || "—");
+        _setText("ai-spot-val",           snap.underlying_ltp !== undefined ? snap.underlying_ltp.toLocaleString("en-IN") : (market.spot_ltp || "—"));
+        _setText("ai-atm-val",            snap.atm_strike  || market.atm_strike || "—");
+        _setText("ai-vix-val",            market.vix !== undefined ? market.vix.toFixed(2) : "—");
+
+        // Trend strength bar
+        const strength = regime.trend_strength || 0;
+        el("ai-trend-strength-bar").style.width = `${Math.min(100, strength)}%`;
+        _setText("ai-trend-strength-val", `${Math.round(strength)}%`);
+
+        // TF alignment cells
+        const tfAlign = regime.timeframe_alignment || {};
+        document.querySelectorAll(".ai-tf-cell").forEach(cell => {
+            const tf = cell.dataset.tf;
+            const dir = (tfAlign[tf] || "").toLowerCase();
+            cell.className = "ai-tf-cell " + (
+                dir.includes("bull") ? "bullish" :
+                dir.includes("bear") ? "bearish" : "neutral"
+            );
+        });
+
+        // NO TRADE banner
+        if (regime.no_trade) {
+            el("ai-notrade-banner").style.display = "flex";
+            _setText("ai-notrade-reason", regime.no_trade_reason || "NO TRADE conditions detected");
+        } else {
+            el("ai-notrade-banner").style.display = "none";
+        }
+    }
+
+    // ── Option Chain Table ────────────────────────────────────────────────
+    function _bindChainRefresh() {
+        el("btn-ai-chain-refresh").addEventListener("click", _refreshChain);
+    }
+
+    async function _refreshChain() {
+        try {
+            const resp = await fetch(`/api/ai/chain?underlying=${_activeIndex}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            _renderChain(data.strikes);
+            el("ai-chain-expiry").textContent = data.expiry_date || "";
+        } catch (_) {}
+    }
+
+    function _renderChain(strikes) {
+        const tbody = el("ai-chain-tbody");
+        if (!strikes || !strikes.length) {
+            tbody.innerHTML = `<tr><td colspan="7" class="ai-empty">No chain data.</td></tr>`;
+            return;
+        }
+
+        // Compute max OI for heatmap
+        _chainMaxOI = Math.max(1, ...strikes.flatMap(s => [
+            s.ce?.oi || 0, s.pe?.oi || 0
+        ]));
+
+        tbody.innerHTML = strikes.slice(0, 21).map(s => {
+            const isATM = s.is_atm || s.strike === s.atm_strike;
+            const ceOI  = s.ce?.oi  || 0;
+            const peOI  = s.pe?.oi  || 0;
+            const ceAlpha = Math.round(40 * ceOI / _chainMaxOI);
+            const peAlpha = Math.round(40 * peOI / _chainMaxOI);
+            return `<tr class="${isATM ? "ai-atm-row" : ""}">
+                <td class="ai-oi-cell ai-ce-col" style="background:rgba(16,185,129,0.${ceAlpha.toString().padStart(2,"0")})">${_fmtOI(ceOI)}</td>
+                <td class="ai-ce-col">${s.ce?.ltp?.toFixed(1) ?? "—"}</td>
+                <td class="ai-ce-col">${s.ce?.iv ? s.ce.iv.toFixed(1)+"%" : "—"}</td>
+                <td class="ai-strike-col">${s.strike}</td>
+                <td class="ai-pe-col">${s.pe?.iv ? s.pe.iv.toFixed(1)+"%" : "—"}</td>
+                <td class="ai-pe-col">${s.pe?.ltp?.toFixed(1) ?? "—"}</td>
+                <td class="ai-oi-cell ai-pe-col" style="background:rgba(244,63,94,0.${peAlpha.toString().padStart(2,"0")})">${_fmtOI(peOI)}</td>
+            </tr>`;
+        }).join("");
+    }
+
+    function _fmtOI(v) {
+        if (v >= 1e7) return (v / 1e7).toFixed(1) + "Cr";
+        if (v >= 1e5) return (v / 1e5).toFixed(1) + "L";
+        if (v >= 1e3) return (v / 1e3).toFixed(0) + "K";
+        return v || "—";
+    }
+
+    // ── Strategy Cards ────────────────────────────────────────────────────
+    function _clearStrategies() {
+        el("ai-strategy-cards").innerHTML = `
+            <div class="ai-placeholder-msg" id="ai-strategy-placeholder">
+                <i class="fa-solid fa-brain" style="font-size:2.5rem;opacity:0.18;display:block;margin-bottom:12px;"></i>
+                Running analysis…
+            </div>`;
+    }
+
+    function _renderStrategies(candidates) {
+        const container = el("ai-strategy-cards");
+        if (!candidates.length) {
+            container.innerHTML = `<div class="ai-placeholder-msg">No strategy candidates generated.</div>`;
+            return;
+        }
+        container.innerHTML = candidates.slice(0, 3).map((c, i) => _buildStrategyCard(c, i)).join("");
+    }
+
+    function _buildStrategyCard(c, rank) {
+        const cand      = c.candidate || c;
+        const score     = c.score != null ? c.score : (cand.score || 0);
+        const breakdown = c.score_breakdown || {};
+        const isCredit  = (cand.net_credit || 0) >= 0;
+        const creditVal = cand.net_credit != null ? cand.net_credit : (cand.net_debit != null ? -cand.net_debit : null);
+
+        const legs = (cand.legs || []).map(l =>
+            `<div class="ai-leg-row">
+                <span class="ai-leg-action ${l.action}">${l.action}</span>
+                <span class="ai-leg-strike">${l.strike}</span>
+                <span class="ai-leg-type">${l.option_type || ""}</span>
+                <span class="ai-leg-ltp">${l.ltp != null ? "₹" + l.ltp.toFixed(1) : ""}</span>
+            </div>`
+        ).join("");
+
+        const breakdownRows = Object.entries(breakdown).map(([k, v]) =>
+            `<div class="ai-breakdown-row">
+                <span>${k.replace(/_/g," ")}</span>
+                <span>${typeof v === "number" ? v.toFixed(1) : v}</span>
+            </div>`
+        ).join("");
+
+        return `
+        <div class="ai-strategy-card${rank === 0 ? " ai-card-selected" : ""}">
+            <div class="ai-strategy-card-header">
+                <div class="ai-strategy-rank">${rank + 1}</div>
+                <span class="ai-strategy-type-badge">${(cand.strategy_type || "UNKNOWN").replace(/_/g," ")}</span>
+                ${creditVal != null ? `<span class="ai-strategy-credit ${isCredit ? "credit" : "debit"}">
+                    ${isCredit ? "+" : ""}₹${Math.abs(creditVal).toFixed(1)}
+                </span>` : ""}
+            </div>
+            <div class="ai-strategy-score-wrap">
+                <div class="ai-score-bar-wrap"><div class="ai-score-bar" style="width:${score}%"></div></div>
+                <span class="ai-score-val">${score.toFixed(1)}</span>
+            </div>
+            <div class="ai-strategy-legs">${legs}</div>
+            <div class="ai-strategy-metrics">
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">Max Profit</span>
+                    <span class="ai-metric-value pos">${cand.max_profit != null ? "₹"+_fmtNum(cand.max_profit) : "—"}</span>
+                </div>
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">Max Loss</span>
+                    <span class="ai-metric-value neg">${cand.max_loss != null ? "₹"+_fmtNum(Math.abs(cand.max_loss)) : "—"}</span>
+                </div>
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">R:R</span>
+                    <span class="ai-metric-value">${cand.risk_reward != null ? cand.risk_reward.toFixed(2) : "—"}</span>
+                </div>
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">Prob. Profit</span>
+                    <span class="ai-metric-value">${cand.probability_profit != null ? (cand.probability_profit*100).toFixed(1)+"%" : "—"}</span>
+                </div>
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">Breakevens</span>
+                    <span class="ai-metric-value">${(cand.breakevens || []).join(" / ") || "—"}</span>
+                </div>
+                <div class="ai-metric-item">
+                    <span class="ai-metric-label">Type</span>
+                    <span class="ai-metric-value">${isCredit ? "Credit" : "Debit"}</span>
+                </div>
+            </div>
+            ${breakdownRows ? `<div class="ai-score-breakdown">${breakdownRows}</div>` : ""}
+        </div>`;
+    }
+
+    function _fmtNum(v) {
+        if (v >= 1e5) return (v / 1e5).toFixed(1) + "L";
+        if (v >= 1e3) return (v / 1e3).toFixed(1) + "K";
+        return Math.round(v).toString();
+    }
+
+    // ── LLM Reasoning ─────────────────────────────────────────────────────
+    function _renderLLM(llm) {
+        const panel = el("ai-reasoning-panel");
+        if (!llm) { panel.style.display = "none"; return; }
+        panel.style.display = "";
+
+        _setText("ai-llm-provider",          llm.provider || "Claude");
+        _setText("ai-market-view-badge",      llm.market_view || "—");
+        _setText("ai-selected-strategy-badge", (llm.selected_strategy_type || "").replace(/_/g," ") || "—");
+
+        const conf = llm.confidence || 0;
+        el("ai-confidence-bar").style.width = `${conf}%`;
+        _setText("ai-confidence-pct", `${conf}%`);
+
+        const rList = el("ai-reasoning-list");
+        rList.innerHTML = (llm.reasoning || []).map(r => `<li>${r}</li>`).join("");
+
+        const rkList = el("ai-risks-list");
+        rkList.innerHTML = (llm.risks || []).map(r => `<li>${r}</li>`).join("");
+
+        const conflicts = llm.conflicts || [];
+        const cBox = el("ai-conflicts-box");
+        if (conflicts.length) {
+            cBox.style.display = "";
+            el("ai-conflicts-list").innerHTML = conflicts.map(c => `<li>${c}</li>`).join("");
+        } else {
+            cBox.style.display = "none";
+        }
+    }
+
+    // ── Approve / Reject ─────────────────────────────────────────────────
+    function _showActionBar(analysisId, data) {
+        el("ai-action-bar").style.display = "flex";
+        _setText("ai-analysis-id-display", analysisId ? analysisId.slice(0, 16) + "…" : "—");
+
+        const approveBtn = el("btn-ai-approve");
+        approveBtn.disabled = !analysisId;
+    }
+
+    function _bindApproveReject() {
+        el("btn-ai-approve").addEventListener("click", _openApproveModal);
+        el("btn-ai-reject").addEventListener("click", _doReject);
+    }
+
+    function _openApproveModal() {
+        if (!_analysisData || !_analysisId) return;
+
+        const top = (_analysisData.scored_candidates || [])[0];
+        const cand = top ? (top.candidate || top) : null;
+
+        // Build legs table
+        let legsHtml = `<table class="ai-modal-legs-table">
+            <thead><tr><th>Action</th><th>Strike</th><th>Type</th><th>Est. LTP</th></tr></thead>
+            <tbody>`;
+        if (cand && cand.legs) {
+            const lots = parseInt(el("ai-lot-count").value) || 1;
+            cand.legs.forEach(l => {
+                legsHtml += `<tr>
+                    <td class="${l.action === "BUY" ? "text-buy" : "text-sell"}">${l.action}</td>
+                    <td>${l.strike}</td>
+                    <td>${l.option_type || ""}</td>
+                    <td>₹${l.ltp != null ? l.ltp.toFixed(1) : "—"}</td>
+                </tr>`;
+            });
+        }
+        legsHtml += "</tbody></table>";
+
+        el("ai-modal-legs-table-wrap").innerHTML = legsHtml;
+        el("ai-modal-credit").textContent   = cand?.net_credit != null ? `₹${cand.net_credit.toFixed(1)}` : "—";
+        el("ai-modal-maxprofit").textContent = cand?.max_profit != null ? `₹${_fmtNum(cand.max_profit)}` : "—";
+        el("ai-modal-maxloss").textContent   = cand?.max_loss   != null ? `₹${_fmtNum(Math.abs(cand.max_loss))}` : "—";
+
+        el("ai-approve-modal").style.display = "flex";
+    }
+
+    async function _doConfirmApprove() {
+        el("ai-approve-modal").style.display = "none";
+        if (!_analysisId) return;
+
+        const lots = parseInt(el("ai-lot-count").value) || 1;
+        _setStatus("running", "Placing order…");
+
+        try {
+            const resp = await fetch(`/api/ai/approve/${_analysisId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lot_count: lots }),
+            });
+            const result = await resp.json();
+            if (!resp.ok) throw new Error(result.detail || "Approve failed");
+            _setStatus("done", `Order placed: ${result.status || "submitted"}`);
+            el("btn-ai-approve").disabled = true;
+            _stopTTL();
+        } catch (e) {
+            _setStatus("error", "Order failed");
+            _showError(e.message);
+        }
+    }
+
+    async function _doReject() {
+        if (!_analysisId) return;
+        try {
+            await fetch(`/api/ai/reject/${_analysisId}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reason: "User rejected from dashboard" }),
+            });
+        } catch (_) {}
+        _setStatus("idle", "Recommendation rejected.");
+        el("ai-action-bar").style.display = "none";
+        _stopTTL();
+        _analysisId   = null;
+        _analysisData = null;
+    }
+
+    function _bindModalButtons() {
+        el("btn-ai-modal-cancel").addEventListener("click", () => {
+            el("ai-approve-modal").style.display = "none";
+        });
+        el("btn-ai-modal-confirm").addEventListener("click", _doConfirmApprove);
+        // Close on backdrop click
+        el("ai-approve-modal").addEventListener("click", e => {
+            if (e.target === el("ai-approve-modal")) el("ai-approve-modal").style.display = "none";
+        });
+    }
+
+    // ── TTL Countdown ─────────────────────────────────────────────────────
+    function _startTTL(validUntilISO) {
+        _stopTTL();
+        if (!validUntilISO) return;
+        _ttlEnds = new Date(validUntilISO);
+        _updateTTL();
+        _ttlTimer = setInterval(_updateTTL, 1000);
+    }
+
+    function _updateTTL() {
+        const secsLeft = Math.floor((_ttlEnds - Date.now()) / 1000);
+        const ttlEl = el("ai-ttl-display");
+        const approveBtn = el("btn-ai-approve");
+        if (secsLeft <= 0) {
+            ttlEl.textContent = "TTL: EXPIRED";
+            ttlEl.style.display = "inline";
+            if (approveBtn) { approveBtn.disabled = true; approveBtn.title = "Recommendation has expired — re-run analysis"; }
+            _setStatus("error", "Recommendation expired — re-run analysis");
+            _stopTTL();
+        } else {
+            ttlEl.textContent = `TTL: ${secsLeft}s`;
+            ttlEl.style.display = "inline";
+            if (approveBtn) approveBtn.disabled = false;
+        }
+    }
+
+    function _stopTTL() {
+        if (_ttlTimer) { clearInterval(_ttlTimer); _ttlTimer = null; }
+    }
+    function _hideTTL() {
+        el("ai-ttl-display").style.display = "none";
+        _stopTTL();
+    }
+
+    // ── Toggle Panel ──────────────────────────────────────────────────────
+    function _bindTogglePanel() {
+        // Section accordion headers
+        document.querySelectorAll(".ai-toggle-section-hdr").forEach(hdr => {
+            hdr.addEventListener("click", () => {
+                hdr.closest(".ai-toggle-section").classList.toggle("collapsed");
+            });
+        });
+
+        // Individual toggle switches (non-disabled)
+        document.querySelectorAll(".ai-toggle-row:not(.ai-toggle-disabled) .ai-switch input").forEach(chk => {
+            chk.addEventListener("change", async () => {
+                const row = chk.closest(".ai-toggle-row");
+                const key = row?.dataset?.key;
+                if (!key) return;
+                try {
+                    await fetch("/api/ai/settings/toggle", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ key, value: chk.checked }),
+                    });
+                } catch (_) {
+                    // revert on error
+                    chk.checked = !chk.checked;
+                }
+            });
+        });
+
+        // Reset button
+        el("btn-ai-toggles-reset").addEventListener("click", async () => {
+            if (!confirm("Reset all AI platform toggles to defaults?")) return;
+            try {
+                const resp = await fetch("/api/ai/settings/reset", { method: "POST" });
+                if (resp.ok) {
+                    const settings = await resp.json();
+                    _applySettingsToToggles(settings);
+                }
+            } catch (_) {}
+        });
+    }
+
+    async function loadSettings() {
+        try {
+            const resp = await fetch("/api/ai/settings");
+            if (!resp.ok) return;
+            const settings = await resp.json();
+            _applySettingsToToggles(settings);
+        } catch (_) {}
+    }
+
+    function _applySettingsToToggles(settings) {
+        document.querySelectorAll(".ai-toggle-row").forEach(row => {
+            const key = row.dataset.key;
+            if (!key || !(key in settings)) return;
+            const chk = row.querySelector("input[type=checkbox]");
+            if (chk && !chk.disabled) chk.checked = !!settings[key];
+        });
+    }
+
+    // ── History ───────────────────────────────────────────────────────────
+    function _bindHistoryLoad() {
+        el("btn-ai-history-load").addEventListener("click", _loadHistory);
+    }
+
+    async function _loadHistory() {
+        try {
+            const resp = await fetch("/api/ai/history?limit=10");
+            if (!resp.ok) return;
+            const data = await resp.json();
+            _renderHistory(data.history || []);
+        } catch (_) {}
+    }
+
+    function _renderHistory(rows) {
+        const tbody = el("ai-hist-tbody");
+        if (!rows.length) {
+            tbody.innerHTML = `<tr><td colspan="6" class="ai-empty">No history yet.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = rows.map(r => {
+            const decisionClass = r.human_decision === "approve" ? "text-buy" : r.human_decision === "reject" ? "text-sell" : "";
+            return `<tr>
+                <td>${r.timestamp ? r.timestamp.slice(11,16) : "—"}</td>
+                <td>${r.underlying || "—"}</td>
+                <td>${r.regime || "—"}</td>
+                <td>${r.top_strategy_type ? r.top_strategy_type.replace(/_/g," ") : "—"}</td>
+                <td>${r.top_score != null ? r.top_score.toFixed(1) : "—"}</td>
+                <td class="${decisionClass}">${r.human_decision || "pending"}</td>
+            </tr>`;
+        }).join("");
+    }
+
+    // ── WebSocket ─────────────────────────────────────────────────────────
+    function _initWebSocket() {
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        const url   = `${proto}://${location.host}/api/ai/ws/stream`;
+        try {
+            _wsConn = new WebSocket(url);
+            _wsConn.onmessage = _onWsMessage;
+            _wsConn.onclose = () => { _wsConn = null; };
+            _wsConn.onerror = () => { _wsConn = null; };
+        } catch (_) { _wsConn = null; }
+    }
+
+    function _onWsMessage(evt) {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch (_) { return; }
+
+        if (msg.type === "progress") {
+            _setText("ai-loading-stage", `${msg.stage || "running"}…`);
+            _setStatus("running", msg.stage || "running…");
+        } else if (msg.type === "complete") {
+            _renderFullResult(msg.data || {});
+        } else if (msg.type === "error") {
+            _hideLoading();
+            _setStatus("error", "WebSocket error");
+            _showError(msg.message || "Unknown error");
+        }
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────
+    function _showLoading(text) {
+        el("ai-loading-overlay").style.display = "flex";
+        _setText("ai-loading-stage", text || "Initialising…");
+    }
+    function _hideLoading()  { el("ai-loading-overlay").style.display = "none"; }
+    function _showError(msg) { el("ai-error-banner").style.display = "flex"; _setText("ai-error-text", msg); }
+    function _hideError()    { el("ai-error-banner").style.display = "none"; }
+    function _showNoTrade(reason) {
+        el("ai-notrade-banner").style.display = "flex";
+        _setText("ai-notrade-reason", reason || "NO TRADE conditions detected");
+    }
+    function _setStatus(cls, text) {
+        const el_ = el("ai-status-text");
+        el_.className = "ai-status-" + cls;
+        el_.textContent = text;
+    }
+    function _setText(id, val) {
+        const e = el(id);
+        if (e) e.textContent = val;
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────
+    return { init, onTabActivate, loadSettings, runAnalysis };
+})();
+
+// Initialise AI module after DOM ready
+document.addEventListener("DOMContentLoaded", () => aiStrategy.init());

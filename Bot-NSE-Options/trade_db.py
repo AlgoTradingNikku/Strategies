@@ -45,32 +45,10 @@ def init_db():
                 opened_at TEXT NOT NULL,
                 closed_at TEXT,
                 exit_price REAL,
-                exit_reason TEXT,
-                combo_id TEXT,
-                combo_name TEXT,
-                combo_type TEXT,
-                combo_leg_role TEXT,
-                combo_net_premium REAL
+                exit_reason TEXT
             )
         """)
-        _ensure_trade_columns(cursor)
         conn.commit()
-
-
-def _ensure_trade_columns(cursor) -> None:
-    """Backfill combo columns for existing trades.db files."""
-    cursor.execute("PRAGMA table_info(trades)")
-    existing = {row[1] for row in cursor.fetchall()}
-    additions = {
-        "combo_id": "TEXT",
-        "combo_name": "TEXT",
-        "combo_type": "TEXT",
-        "combo_leg_role": "TEXT",
-        "combo_net_premium": "REAL",
-    }
-    for col, typ in additions.items():
-        if col not in existing:
-            cursor.execute(f"ALTER TABLE trades ADD COLUMN {col} {typ}")
 
 
 init_db()
@@ -83,8 +61,8 @@ def add_trade(trade_data: Dict[str, Any]) -> int:
             INSERT INTO trades (
                 order_id, symbol, exchange, action, quantity, entry_price,
                 current_price, stop_loss, target, trailing_sl, status, product,
-                opened_at, combo_id, combo_name, combo_type, combo_leg_role, combo_net_premium
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                opened_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             trade_data.get("order_id", f"ORD_{int(datetime.now().timestamp()*1000)}"),
             trade_data.get("symbol"),
@@ -99,14 +77,10 @@ def add_trade(trade_data: Dict[str, Any]) -> int:
             "OPEN",
             trade_data.get("product", "NRML"),
             datetime.now().isoformat(),
-            trade_data.get("combo_id"),
-            trade_data.get("combo_name"),
-            trade_data.get("combo_type"),
-            trade_data.get("combo_leg_role"),
-            trade_data.get("combo_net_premium"),
         ))
         conn.commit()
         return cursor.lastrowid
+
 
 
 def update_trade_price(trade_id: int, current_price: float, trailing_sl: Optional[float] = None):

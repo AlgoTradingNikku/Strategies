@@ -60,7 +60,6 @@ from trading_adapter import place_order as adapter_place_order, get_ltp as adapt
 from trade_manager import PositionMonitor
 import trade_db
 import risk_manager
-import strategy_combos
 import trading_adapter
 # [Sprint-5] Production-hardening helpers
 import health_check
@@ -72,6 +71,9 @@ import broker_watchdog
 from log_json import setup_json_logging
 
 app = FastAPI(title="Bot-NSE-Options Dashboard API", version="1.6.0")
+
+from api.ai_routes import router as ai_router
+app.include_router(ai_router, prefix="/api/ai", tags=["AI Strategy"])
 
 _monitor = PositionMonitor()
 _auto_scan_running = False
@@ -245,12 +247,6 @@ class OrderRequest(BaseModel):
     price: float = 0.0
     trigger_price: float = 0.0
     strategy: str = "UTBot_Options"
-
-
-class StrategyComboExecuteRequest(BaseModel):
-    combo: dict
-    quantity_multiplier: int = 1
-    dry_run: bool = False
 
 
 class GridUpdateRequest(BaseModel):
@@ -573,41 +569,6 @@ async def update_alpha_settings(req: AlphaEnhancersSettingsRequest):
 async def get_signals():
     results = run_scan()
     return results
-
-
-@app.get("/api/strategy-combos")
-async def get_strategy_combos():
-    cfg = load_config()
-    scan_results = run_scan()
-    combos = scan_results.get("strategy_combos")
-    if combos is None:
-        combos = strategy_combos.generate_strategy_combos(scan_results, cfg)
-    return {
-        "status": "success",
-        "timestamp": scan_results.get("timestamp"),
-        "strategy_combos": combos,
-        "source_counts": {
-            "buy": len(scan_results.get("buy_results") or []),
-            "sell": len(scan_results.get("sell_results") or []),
-        },
-    }
-
-
-@app.post("/api/strategy-combos/execute")
-async def execute_strategy_combo_endpoint(req: StrategyComboExecuteRequest):
-    cfg = load_config()
-    result = await run_in_threadpool(
-        strategy_combos.execute_strategy_combo,
-        cfg,
-        req.combo,
-        trading_adapter=trading_adapter,
-        trade_db=trade_db,
-        quantity_multiplier=req.quantity_multiplier,
-        dry_run=req.dry_run,
-    )
-    if result.get("status") == "blocked":
-        raise HTTPException(status_code=400, detail=result.get("message", "Combo execution blocked"))
-    return result
 
 
 @app.post("/api/scan")

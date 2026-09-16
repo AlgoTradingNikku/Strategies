@@ -27,7 +27,7 @@ options:
   index_exchange: NSE_INDEX         # Exchange segment for underlying index spot price
   option_exchange: NFO              # Exchange segment for derivative option contracts
   base_atm_strike: ''               # Manual ATM strike override (leave empty '' for dynamic auto-detection)
-  expiry_date: 15SEP26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
+  expiry_date: 22SEP26              # Active option contract expiry date (Format: DDMMMYY e.g. 18AUG26)
   levels_up_down: 3                 # Number of strike levels above and below ATM in option grid (3 CE + 1 ATM + 3 PE)
   strike_gap: 50                    # Strike price interval in points (50 for NIFTY, 100 for BANKNIFTY)
   timeframe: 5m                     # Primary candlestick timeframe for signal scanning (e.g., 1m, 3m, 5m, 15m)
@@ -54,7 +54,7 @@ strategy:
 # 4. Support & Resistance Channels (S/R Engine)
 # ------------------------------------------------------------------------------
 sr_channels:
-  enabled: true                     # Enable Support & Resistance channel detection engine
+  enabled: true                      # Enable Support & Resistance channel detection engine
   pivot_period: 10                  # Lookback candle period to identify pivot high/low points
   source: High/Low                  # Price source for pivot calculation (High/Low or Close)
   channel_width_pct: 5              # Channel width percentage for consolidating close pivot levels into zones
@@ -133,7 +133,7 @@ trading:
   order_mode: manual                # Order execution mode:
                                     #   'auto'   -> Automatically place orders via OpenAlgo WITHOUT manual intervention
                                     #   'manual' -> Semi-automated / alert mode (user confirms orders via Web UI)
-  allowed_actions: BUY_ONLY         # Applies ONLY when order_mode is 'auto'. (Manual web UI orders are always unrestricted)
+  allowed_actions: BUY_ONLY     # Applies ONLY when order_mode is 'auto'. (Manual web UI orders are always unrestricted)
                                     #   'BUY_ONLY'  -> Auto-place ONLY BUY signals (Options Buying: CE/PE)
                                     #   'BOTH'      -> Auto-place both BUY and SELL signals
                                     #   'SELL_ONLY' -> Auto-place ONLY SELL signals
@@ -163,26 +163,6 @@ trading:
     quantity: 65                    # Lot size / contract quantity per trade (65 = 1 lot NIFTY)
     product: NRML                   # Product type: NRML (Normal/Overnight) or MIS (Intraday)
     price_type: MARKET              # Order price type: MARKET or LIMIT
-
-# ------------------------------------------------------------------------------
-# 7A. Strategy Combos Dashboard
-# ------------------------------------------------------------------------------
-strategy_combos:
-  enabled: true                     # Build multi-leg candidates from scanner signals.
-  execution_enabled: true           # Allows manual one-click combo execution from dashboard.
-  auto_execute_enabled: false       # Optional auto-execution when trading.order_mode=auto; keep false until tested.
-  auto_execute_max_per_scan: 1      # Safety cap for combo auto-execution per scan cycle.
-  min_grade: 'B'                    # Minimum source signal grade for combo generation.
-  min_score: 60                     # Minimum source signal score for combo generation.
-  max_candidates: 8                 # Max combo cards returned to dashboard.
-  enabled_types:
-  - bull_call_spread
-  - bear_put_spread
-  - long_straddle
-  - long_strangle
-  vertical_width_steps: 1           # Hedge one strike away for vertical spreads.
-  hedge_price_pct: 0.45             # Fallback hedge price when hedge leg quote is not in scan results.
-  volatility_max_gap_steps: 1       # CE/PE max strike gap for straddle/strangle candidates.
 
 # ------------------------------------------------------------------------------
 # 8. Trade Management (SL / TP / Trailing SL / Profit Lock / Partial Exits)
@@ -395,3 +375,143 @@ telegram:
   mode: direct                      # Connection mode ('direct' sends directly via Bot API)
   bot_token: 8654539518:AAEzxdObWmcyZnDKT4xOdnG_W03vmMBVOYI # Telegram Bot authentication token
   chat_id: '939814804'              # Target Telegram Chat / Channel ID for notifications
+scan_interval_seconds: 300
+
+# ==============================================================================
+# AI Platform — LLM Configuration
+# ==============================================================================
+ai:
+  # Primary LLM provider
+  # Supported: openai_compatible | openai | anthropic | deepseek | ollama
+  provider: openai_compatible
+  model: gemini-3.6-flash             # Model ID served by the gateway
+  api_key: "sk-GxzwESkmItEqhkJCMiv0tQ"  # API key (direct value)
+  api_key_env: ANTHROPIC_API_KEY      # Env-var override (takes precedence if set)
+  base_url: "https://api.nextgen-beta.ica.ibm.com/ica/v1"  # OpenAI-compatible gateway URL
+
+  # Ollama (only used when provider: ollama)
+  ollama_url: "http://localhost:11434"
+
+  # Fallback LLM (used if primary fails)
+  fallback_provider: openai
+  fallback_model: gpt-4o
+  fallback_api_key_env: OPENAI_API_KEY
+
+  # Prompt versioning
+  prompt_version: "1.0"
+
+  # Data freshness
+  freshness_max_sec: 10               # Max age of option chain snapshot before re-fetch
+
+  # Recommendation TTL
+  recommendation_ttl_sec: 90          # Recommendation expires after 90 seconds
+  stale_price_threshold_pct: 0.3      # Invalidate if spot moves >0.3% from recommendation time
+
+  # Strategy scoring weights (must sum to 100)
+  scoring_weights:
+    trend_alignment: 22
+    oi_structure: 18
+    risk_reward: 15
+    iv_environment: 12
+    probability_metrics: 10
+    liquidity: 10
+    expected_move_alignment: 8
+    event_risk: 3
+    slippage: 2
+
+# ==============================================================================
+# Supported Underlyings (Index Toggle)
+# ==============================================================================
+underlyings:
+  - symbol: NIFTY
+    exchange: NSE_INDEX
+    option_exchange: NFO
+    strike_gap: 50
+    lot_size: 75
+    expiry_date: ''                   # Leave empty for auto-nearest-weekly
+    strikes_each_side: 10
+    enabled: true                     # Active in MVP 1
+
+  - symbol: BANKNIFTY
+    exchange: NSE_INDEX
+    option_exchange: NFO
+    strike_gap: 100
+    lot_size: 35
+    expiry_date: ''                   # Leave empty for auto-nearest-weekly
+    strikes_each_side: 10
+    enabled: true                     # Active in MVP 1
+
+  - symbol: FINNIFTY
+    exchange: NSE_INDEX
+    option_exchange: NFO
+    strike_gap: 50
+    lot_size: 40
+    expiry_date: ''
+    strikes_each_side: 10
+    enabled: false                    # Greyed in MVP 1, enabled in MVP 2
+
+# ==============================================================================
+# Platform Toggles — Default State (persisted to SQLite at runtime)
+# ==============================================================================
+toggles:
+  # ---- Level 1: Data Source Toggles ----
+  data_option_chain: true             # Fetch full option chain
+  data_spot_futures: true             # Fetch spot LTP and OHLCV history
+  data_india_vix: true                # Fetch INDIAVIX
+  data_option_greeks: true            # Fetch per-strike Greeks via optiongreeks API
+  data_futures_basis: false           # MVP 2 feature
+
+  # ---- Level 2: Quant Engine Component Toggles ----
+  quant_oi_analysis: true             # OI interpretation (PCR, writing zones, S/R)
+  quant_iv_engine: true               # IV Rank, IV Percentile, Expected Move
+  quant_greeks: true                  # Per-strike Greeks (delta, gamma, theta, vega)
+  quant_technicals: true              # EMA 9/20/50, VWAP, RSI 14, ATR 14
+  quant_regime_engine: true           # Market regime classification
+  quant_vix_regime: true              # VIX fear/greed overlay on regime
+  quant_session_weighting: false      # Time-of-day signal bias (off by default)
+
+  # ---- Level 3: Strategy Type Toggles ----
+  strategy_bull_put_spread: true
+  strategy_bear_call_spread: true
+  strategy_bull_call_spread: true
+  strategy_bear_put_spread: true
+  strategy_iron_condor: true
+  strategy_iron_fly: true
+  strategy_long_straddle: true
+  strategy_short_strangle: true
+
+  # ---- Level 4: Risk & Execution Toggles ----
+  risk_kill_switch: false             # Master off switch
+  risk_paper_trade: false             # Simulate without real orders
+  risk_auto_execution: false          # LOCKED - always false until MVP 3
+  risk_daily_loss_limit: false        # Auto-halt on daily loss breach
+  risk_market_hours_check: false      # Block orders outside market hours
+  risk_duplicate_guard: false         # Block same-symbol re-entry
+  risk_recommendation_ttl: true       # Invalidate stale recommendations
+  risk_consecutive_loss_breaker: false # Pause after N consecutive losses
+
+# ==============================================================================
+# Regime Engine — Classification Thresholds
+# ==============================================================================
+regime:
+  # Trend strength thresholds (0-100 score)
+  strong_bullish_threshold: 75
+  bullish_threshold: 55
+  bearish_threshold: 45
+  strong_bearish_threshold: 25
+
+  # VIX regime thresholds
+  vix_low_threshold: 13               # VIX < 13 = LOW volatility regime
+  vix_high_threshold: 20              # VIX > 20 = HIGH volatility regime
+
+  # IV regime
+  iv_rank_high_threshold: 50          # IV Rank > 50% = elevated IV (favor selling)
+  iv_rank_low_threshold: 30           # IV Rank < 30% = low IV (favor buying)
+
+  # Minimum trend strength to allow directional strategies
+  min_trend_strength_for_directional: 55
+
+  # No-trade conditions (if true, these conditions trigger NO_TRADE output)
+  no_trade_on_contradictory_signals: true
+  no_trade_on_stale_data: true
+  no_trade_on_low_liquidity: true

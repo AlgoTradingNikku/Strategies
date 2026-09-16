@@ -29,10 +29,6 @@
                     <i class="fa-solid fa-briefcase"></i>
                     <span>Active Positions</span>
                 </button>
-                <button class="nav-item" data-tab="combos">
-                    <i class="fa-solid fa-layer-group"></i>
-                    <span>Strategy Combos</span>
-                </button>
                 <button class="nav-item" data-tab="history">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Signal History</span>
@@ -40,6 +36,10 @@
                 <button class="nav-item" data-tab="stats">
                     <i class="fa-solid fa-chart-pie"></i>
                     <span>Performance Stats</span>
+                </button>
+                <button class="nav-item" data-tab="ai-strategy">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>AI Strategy</span>
                 </button>
                 <button class="nav-item" data-tab="config">
                     <i class="fa-solid fa-sliders"></i>
@@ -504,22 +504,6 @@
                 </div>
             </section>
 
-            <!-- Strategy Combos Tab -->
-            <section class="tab-panel" id="panel-combos">
-                <div class="table-card">
-                    <div class="table-card-header">
-                        <h3><i class="fa-solid fa-layer-group"></i> Strategy Combos</h3>
-                        <button class="btn btn-primary" onclick="loadStrategyCombos()"><i class="fa-solid fa-rotate"></i> Refresh Combos</button>
-                    </div>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 14px;">
-                        Defined-risk and volatility combo candidates built from current UTBot/S-R option signals. Review all legs before executing.
-                    </p>
-                    <div id="strategy-combos-grid" class="combo-grid">
-                        <div class="empty-placeholder">No strategy combos yet. Run the scanner to generate candidates.</div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Active Positions Tab -->
             <section class="tab-panel" id="panel-positions">
                 <div class="table-card">
@@ -964,6 +948,412 @@
                     </div>
                 </div>
             </section>
+            <!-- ═══════════════════════════════════════════════════════════════
+                 AI STRATEGY TAB
+            ═══════════════════════════════════════════════════════════════ -->
+            <section class="tab-panel" id="panel-ai-strategy">
+
+                <!-- ── Top Controls Bar ─────────────────────────────────────── -->
+                <div class="ai-top-bar">
+                    <!-- Index Selector -->
+                    <div class="ai-index-selector">
+                        <span class="ai-section-label">Index</span>
+                        <div class="ai-index-btns" id="ai-index-group">
+                            <button class="ai-index-btn active" data-index="NIFTY">NIFTY</button>
+                            <button class="ai-index-btn" data-index="BANKNIFTY">BANKNIFTY</button>
+                            <button class="ai-index-btn ai-btn-dim" data-index="FINNIFTY" disabled title="Available in MVP 2">FINNIFTY <span class="ai-badge-mvp">MVP2</span></button>
+                        </div>
+                    </div>
+                    <!-- Expiry -->
+                    <div class="ai-expiry-selector">
+                        <span class="ai-section-label">Expiry</span>
+                        <div class="ai-index-btns" id="ai-expiry-group">
+                            <button class="ai-index-btn active" data-expiry="weekly">Weekly</button>
+                            <button class="ai-index-btn" data-expiry="monthly">Monthly</button>
+                        </div>
+                    </div>
+                    <!-- Run Analysis Button -->
+                    <button class="btn btn-primary ai-run-btn" id="btn-ai-analyze">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Run AI Analysis
+                    </button>
+                    <!-- Status / TTL -->
+                    <div class="ai-status-bar" id="ai-status-bar">
+                        <span id="ai-status-text" class="ai-status-idle">Idle — press Run to start analysis</span>
+                        <span id="ai-ttl-display" class="ai-ttl-display" style="display:none;"></span>
+                    </div>
+                </div>
+
+                <!-- ── Main Content Grid ─────────────────────────────────────── -->
+                <div class="ai-main-grid">
+
+                    <!-- LEFT COLUMN: Regime + Chain + History -->
+                    <div class="ai-left-col">
+
+                        <!-- Regime Panel -->
+                        <div class="ai-card" id="ai-regime-panel">
+                            <div class="ai-card-header">
+                                <i class="fa-solid fa-compass"></i> Market Regime
+                                <span class="ai-regime-badge" id="ai-regime-badge">—</span>
+                            </div>
+                            <div class="ai-regime-grid">
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">Trend</span>
+                                    <span class="ai-regime-value" id="ai-trend-dir">—</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">Trend Strength</span>
+                                    <div class="ai-progress-bar-wrap">
+                                        <div class="ai-progress-bar" id="ai-trend-strength-bar" style="width:0%"></div>
+                                    </div>
+                                    <span class="ai-regime-value" id="ai-trend-strength-val">0%</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">Vol Regime</span>
+                                    <span class="ai-regime-value" id="ai-vol-regime">—</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">IV Regime</span>
+                                    <span class="ai-regime-value" id="ai-iv-regime">—</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">India VIX</span>
+                                    <span class="ai-regime-value" id="ai-vix-val">—</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">Spot LTP</span>
+                                    <span class="ai-regime-value" id="ai-spot-val">—</span>
+                                </div>
+                                <div class="ai-regime-row">
+                                    <span class="ai-regime-label">ATM Strike</span>
+                                    <span class="ai-regime-value" id="ai-atm-val">—</span>
+                                </div>
+                            </div>
+                            <!-- TF Alignment Grid -->
+                            <div class="ai-tf-grid" id="ai-tf-grid">
+                                <span class="ai-tf-cell" data-tf="1m">1m</span>
+                                <span class="ai-tf-cell" data-tf="5m">5m</span>
+                                <span class="ai-tf-cell" data-tf="15m">15m</span>
+                                <span class="ai-tf-cell" data-tf="1h">1h</span>
+                                <span class="ai-tf-cell" data-tf="1d">1d</span>
+                            </div>
+                            <!-- No-Trade Banner -->
+                            <div class="ai-notrade-banner" id="ai-notrade-banner" style="display:none;">
+                                <i class="fa-solid fa-hand"></i>
+                                <span id="ai-notrade-reason">NO TRADE conditions detected</span>
+                            </div>
+                        </div>
+
+                        <!-- Option Chain Mini Table -->
+                        <div class="ai-card" id="ai-chain-panel">
+                            <div class="ai-card-header">
+                                <i class="fa-solid fa-table"></i> Option Chain (ATM ±5)
+                                <span id="ai-chain-expiry" class="ai-muted-badge"></span>
+                                <button class="ai-refresh-btn" id="btn-ai-chain-refresh" title="Refresh chain"><i class="fa-solid fa-rotate"></i></button>
+                            </div>
+                            <div class="ai-chain-table-wrap">
+                                <table class="ai-chain-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="ai-ce-col">CE OI</th>
+                                            <th class="ai-ce-col">CE LTP</th>
+                                            <th class="ai-ce-col">CE IV%</th>
+                                            <th class="ai-strike-col">Strike</th>
+                                            <th class="ai-pe-col">PE IV%</th>
+                                            <th class="ai-pe-col">PE LTP</th>
+                                            <th class="ai-pe-col">PE OI</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ai-chain-tbody">
+                                        <tr><td colspan="7" class="ai-empty">No chain data. Run analysis or click refresh.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- AI Recommendation History -->
+                        <div class="ai-card">
+                            <div class="ai-card-header">
+                                <i class="fa-solid fa-clock-rotate-left"></i> Recent AI Recommendations
+                            </div>
+                            <table class="ai-hist-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Index</th>
+                                        <th>Regime</th>
+                                        <th>Strategy</th>
+                                        <th>Score</th>
+                                        <th>Decision</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ai-hist-tbody">
+                                    <tr><td colspan="6" class="ai-empty">No history yet.</td></tr>
+                                </tbody>
+                            </table>
+                            <button class="ai-link-btn" id="btn-ai-history-load"><i class="fa-solid fa-rotate"></i> Load History</button>
+                        </div>
+                    </div>
+
+                    <!-- CENTRE COLUMN: Strategy Cards + LLM Reasoning -->
+                    <div class="ai-centre-col">
+
+                        <!-- Analysis Progress / Loading State -->
+                        <div class="ai-progress-overlay" id="ai-loading-overlay" style="display:none;">
+                            <div class="ai-spinner"></div>
+                            <div class="ai-loading-stage" id="ai-loading-stage">Initialising…</div>
+                        </div>
+
+                        <!-- Error Banner -->
+                        <div class="ai-error-banner" id="ai-error-banner" style="display:none;">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span id="ai-error-text">Analysis error</span>
+                        </div>
+
+                        <!-- Strategy Cards (top 3) -->
+                        <div id="ai-strategy-cards">
+                            <div class="ai-placeholder-msg" id="ai-strategy-placeholder">
+                                <i class="fa-solid fa-brain" style="font-size:2.5rem; opacity:0.18; display:block; margin-bottom:12px;"></i>
+                                Run an AI analysis to see ranked strategy recommendations.
+                            </div>
+                        </div>
+
+                        <!-- LLM Reasoning Panel -->
+                        <div class="ai-card ai-reasoning-card" id="ai-reasoning-panel" style="display:none;">
+                            <div class="ai-card-header">
+                                <i class="fa-solid fa-robot"></i> LLM Analysis
+                                <span class="ai-llm-provider-badge" id="ai-llm-provider">Claude</span>
+                                <span class="ai-confidence-label">Confidence:</span>
+                                <div class="ai-confidence-bar-wrap">
+                                    <div class="ai-confidence-bar" id="ai-confidence-bar" style="width:0%"></div>
+                                </div>
+                                <span class="ai-confidence-pct" id="ai-confidence-pct">0%</span>
+                            </div>
+                            <div class="ai-market-view-row">
+                                <span class="ai-regime-label">Market View</span>
+                                <span class="ai-market-view-badge" id="ai-market-view-badge">—</span>
+                                <span class="ai-regime-label" style="margin-left:16px;">Selected Strategy</span>
+                                <span class="ai-selected-strategy-badge" id="ai-selected-strategy-badge">—</span>
+                            </div>
+                            <div class="ai-reasoning-section">
+                                <div class="ai-reasoning-label"><i class="fa-solid fa-list-check"></i> Reasoning</div>
+                                <ul id="ai-reasoning-list" class="ai-reasoning-list"></ul>
+                            </div>
+                            <div class="ai-reasoning-section" id="ai-risks-section">
+                                <div class="ai-reasoning-label ai-risk-label"><i class="fa-solid fa-triangle-exclamation"></i> Risks</div>
+                                <ul id="ai-risks-list" class="ai-reasoning-list ai-risk-list"></ul>
+                            </div>
+                            <div class="ai-conflicts-box" id="ai-conflicts-box" style="display:none;">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                                <span class="ai-conflicts-title">Conflicts:</span>
+                                <ul id="ai-conflicts-list" class="ai-reasoning-list"></ul>
+                            </div>
+                        </div>
+
+                        <!-- Approve / Reject Controls -->
+                        <div class="ai-action-bar" id="ai-action-bar" style="display:none;">
+                            <div class="ai-action-info">
+                                <span class="ai-action-label">Analysis ID:</span>
+                                <span class="ai-action-value ai-mono" id="ai-analysis-id-display">—</span>
+                            </div>
+                            <div class="ai-action-btns">
+                                <div class="ai-lot-selector">
+                                    <label class="ai-action-label">Lots</label>
+                                    <input type="number" id="ai-lot-count" value="1" min="1" max="20" class="ai-lot-input">
+                                </div>
+                                <button class="btn ai-approve-btn" id="btn-ai-approve" disabled>
+                                    <i class="fa-solid fa-check-circle"></i> Approve &amp; Place Order
+                                </button>
+                                <button class="btn ai-reject-btn" id="btn-ai-reject">
+                                    <i class="fa-solid fa-times-circle"></i> Reject
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Toggle Control Panel -->
+                    <div class="ai-right-col">
+                        <div class="ai-card ai-toggles-card">
+                            <div class="ai-card-header">
+                                <i class="fa-solid fa-sliders"></i> Platform Toggles
+                                <button class="ai-link-btn" id="btn-ai-toggles-reset" title="Reset all to defaults" style="margin-left:auto;">
+                                    <i class="fa-solid fa-arrow-rotate-left"></i> Reset
+                                </button>
+                            </div>
+
+                            <!-- Level 1: Index & Data -->
+                            <div class="ai-toggle-section">
+                                <div class="ai-toggle-section-hdr" data-section="data">
+                                    <i class="fa-solid fa-database"></i> Data Sources
+                                    <i class="fa-solid fa-chevron-down ai-chevron"></i>
+                                </div>
+                                <div class="ai-toggle-group" id="ai-tg-data">
+                                    <div class="ai-toggle-row" data-key="data_option_chain">
+                                        <div class="ai-toggle-info"><span>Option Chain</span><span class="ai-toggle-desc">Fetch full chain</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="data_spot_futures">
+                                        <div class="ai-toggle-info"><span>Spot / Futures</span><span class="ai-toggle-desc">LTP &amp; OHLCV</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="data_india_vix">
+                                        <div class="ai-toggle-info"><span>India VIX</span><span class="ai-toggle-desc">Vol regime source</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="data_option_greeks">
+                                        <div class="ai-toggle-info"><span>Option Greeks</span><span class="ai-toggle-desc">Per-strike BSM greeks</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row ai-toggle-disabled" data-key="data_futures_basis" title="Available in MVP 2">
+                                        <div class="ai-toggle-info"><span>Futures Basis <span class="ai-badge-mvp">MVP2</span></span><span class="ai-toggle-desc">Premium vs spot</span></div>
+                                        <label class="ai-switch"><input type="checkbox" disabled><span class="ai-slider"></span></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Level 2: Quant Engine -->
+                            <div class="ai-toggle-section">
+                                <div class="ai-toggle-section-hdr" data-section="quant">
+                                    <i class="fa-solid fa-gears"></i> Quant Engine
+                                    <i class="fa-solid fa-chevron-down ai-chevron"></i>
+                                </div>
+                                <div class="ai-toggle-group" id="ai-tg-quant">
+                                    <div class="ai-toggle-row" data-key="quant_oi_analysis">
+                                        <div class="ai-toggle-info"><span>OI Analysis</span><span class="ai-toggle-desc">PCR, OI zones, S/R</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_iv_engine">
+                                        <div class="ai-toggle-info"><span>IV Engine</span><span class="ai-toggle-desc">IV rank, expected move</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_greeks">
+                                        <div class="ai-toggle-info"><span>Greeks</span><span class="ai-toggle-desc">Δ, Γ, θ, ν per strike</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_technicals">
+                                        <div class="ai-toggle-info"><span>Technicals</span><span class="ai-toggle-desc">EMA, RSI, ATR, VWAP</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_regime_engine">
+                                        <div class="ai-toggle-info"><span>Regime Engine</span><span class="ai-toggle-desc">Market regime gate</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_vix_regime">
+                                        <div class="ai-toggle-info"><span>VIX Regime</span><span class="ai-toggle-desc">Fear/greed overlay</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="quant_session_weighting">
+                                        <div class="ai-toggle-info"><span>Session Weighting</span><span class="ai-toggle-desc">Time-of-day bias</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Level 3: Strategy Types -->
+                            <div class="ai-toggle-section">
+                                <div class="ai-toggle-section-hdr" data-section="strategies">
+                                    <i class="fa-solid fa-chess"></i> Strategy Types
+                                    <i class="fa-solid fa-chevron-down ai-chevron"></i>
+                                </div>
+                                <div class="ai-toggle-group" id="ai-tg-strategies">
+                                    <div class="ai-toggle-row" data-key="strategy_bull_put_spread">
+                                        <div class="ai-toggle-info"><span>Bull Put Spread</span><span class="ai-toggle-desc">Mildly bullish, credit</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_bear_call_spread">
+                                        <div class="ai-toggle-info"><span>Bear Call Spread</span><span class="ai-toggle-desc">Mildly bearish, credit</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_bull_call_spread">
+                                        <div class="ai-toggle-info"><span>Bull Call Spread</span><span class="ai-toggle-desc">Strongly bullish, debit</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_bear_put_spread">
+                                        <div class="ai-toggle-info"><span>Bear Put Spread</span><span class="ai-toggle-desc">Strongly bearish, debit</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_iron_condor">
+                                        <div class="ai-toggle-info"><span>Iron Condor</span><span class="ai-toggle-desc">Range / neutral</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_iron_fly">
+                                        <div class="ai-toggle-info"><span>Iron Fly</span><span class="ai-toggle-desc">Very tight range, ATM short</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_long_straddle">
+                                        <div class="ai-toggle-info"><span>Long Straddle</span><span class="ai-toggle-desc">High-vol / event play</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="strategy_short_strangle">
+                                        <div class="ai-toggle-info"><span>Short Strangle</span><span class="ai-toggle-desc">Low-vol, premium sell</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Level 4: Risk & Execution -->
+                            <div class="ai-toggle-section">
+                                <div class="ai-toggle-section-hdr" data-section="risk">
+                                    <i class="fa-solid fa-shield-halved"></i> Risk &amp; Execution
+                                    <i class="fa-solid fa-chevron-down ai-chevron"></i>
+                                </div>
+                                <div class="ai-toggle-group" id="ai-tg-risk">
+                                    <div class="ai-toggle-row ai-toggle-danger" data-key="risk_kill_switch">
+                                        <div class="ai-toggle-info"><span>🛑 Kill Switch</span><span class="ai-toggle-desc">Block ALL new orders</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider ai-slider-danger"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_paper_trade">
+                                        <div class="ai-toggle-info"><span>Paper Trade Mode</span><span class="ai-toggle-desc">Simulate, no real orders</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row ai-toggle-disabled" data-key="risk_auto_execution" title="Available in MVP 3">
+                                        <div class="ai-toggle-info"><span>Auto-Execution <span class="ai-badge-locked">MVP3</span></span><span class="ai-toggle-desc">Fully automatic placement</span></div>
+                                        <label class="ai-switch"><input type="checkbox" disabled><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_daily_loss_limit">
+                                        <div class="ai-toggle-info"><span>Daily Loss Limit</span><span class="ai-toggle-desc">Auto-halt on breach</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_market_hours_check">
+                                        <div class="ai-toggle-info"><span>Market Hours Check</span><span class="ai-toggle-desc">Block outside 9:15–15:30</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_duplicate_guard">
+                                        <div class="ai-toggle-info"><span>Duplicate Guard</span><span class="ai-toggle-desc">Block re-entry same symbol</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_recommendation_ttl">
+                                        <div class="ai-toggle-info"><span>Recommendation TTL</span><span class="ai-toggle-desc">Invalidate stale recs (90s)</span></div>
+                                        <label class="ai-switch"><input type="checkbox" checked><span class="ai-slider"></span></label>
+                                    </div>
+                                    <div class="ai-toggle-row" data-key="risk_consecutive_loss_breaker">
+                                        <div class="ai-toggle-info"><span>Consec. Loss Breaker</span><span class="ai-toggle-desc">Pause after N losses</span></div>
+                                        <label class="ai-switch"><input type="checkbox"><span class="ai-slider"></span></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Approval Confirmation Modal -->
+            <div class="modal-overlay" id="ai-approve-modal" style="display:none;">
+                <div class="modal-box ai-approve-modal-box">
+                    <h3 class="modal-title"><i class="fa-solid fa-check-circle" style="color:var(--color-buy);"></i> Confirm Strategy Order</h3>
+                    <div id="ai-modal-legs-table-wrap"></div>
+                    <div class="ai-modal-info-row">
+                        <span>Est. Credit/Debit:</span><strong id="ai-modal-credit">—</strong>
+                        <span style="margin-left:16px;">Max Profit:</span><strong id="ai-modal-maxprofit">—</strong>
+                        <span style="margin-left:16px;">Max Loss:</span><strong id="ai-modal-maxloss">—</strong>
+                    </div>
+                    <div class="ai-modal-warning"><i class="fa-solid fa-triangle-exclamation"></i> Always verify fills with your broker. This recommendation has a 90-second validity window.</div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                        <button class="btn btn-secondary" id="btn-ai-modal-cancel">Cancel</button>
+                        <button class="btn ai-approve-btn" id="btn-ai-modal-confirm"><i class="fa-solid fa-bolt"></i> Confirm &amp; Submit Order</button>
+                    </div>
+                </div>
+            </div>
+
             <section class="tab-panel" id="panel-logs">
 
                 <div class="table-card">

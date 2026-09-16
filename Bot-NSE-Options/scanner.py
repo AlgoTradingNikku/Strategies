@@ -78,7 +78,6 @@ import risk_manager
 import signal_quality
 import position_sizer
 import alpha_enhancers
-import strategy_combos
 
 
 def load_config(path: Path | str = None) -> dict:
@@ -558,32 +557,11 @@ def run_scan(config: dict = None) -> dict:
     log.info("Scan Cycle Finished at %s | Scanned: %d | BUY Signals: %d | SELL Signals: %d", last_scan_time, len(symbols), len(buy_results), len(sell_results))
     log.info("========================================================\n")
 
-    combos = []
-    try:
-        combos = strategy_combos.generate_strategy_combos({"buy_results": buy_results, "sell_results": sell_results}, config)
-        scfg = config.get("strategy_combos", {}) or {}
-        trading_cfg = config.get("trading", {}) or {}
-        if scfg.get("auto_execute_enabled", False) and str(trading_cfg.get("order_mode", "manual")).lower() == "auto":
-            max_auto = max(1, int(scfg.get("auto_execute_max_per_scan", 1)))
-            for combo in combos[:max_auto]:
-                log.warning("[strategy_combos] AUTO executing combo %s (%s)", combo.get("combo_name"), combo.get("combo_id"))
-                combo["auto_execution"] = strategy_combos.execute_strategy_combo(
-                    config,
-                    combo,
-                    trading_adapter=trading_adapter,
-                    trade_db=trade_db,
-                    quantity_multiplier=1,
-                    dry_run=False,
-                )
-    except Exception as exc:
-        log.debug("[strategy_combos] candidate generation/execution skipped: %s", exc)
-
     return {
         "timestamp": last_scan_time,
         "grid_info": grid_info,
         "buy_results": buy_results,
         "sell_results": sell_results,
-        "strategy_combos": combos,
         "total_scanned": len(symbols),
         "indices": indices,
     }
