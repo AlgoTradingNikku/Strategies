@@ -101,7 +101,12 @@ def get_ltp(cfg: dict, symbol: str, exchange: str = "NFO") -> float:
     client = _get_oa_client(oa_cfg)
 
     def _do_ltp():
-        return client.getltp(symbol=symbol, exchange=exchange)
+        # NOTE: the OpenAlgo Python SDK has no `getltp()` method — the REST
+        # snapshot method is `quotes(symbol=, exchange=)`. (`get_ltp()` on the
+        # SDK is an unrelated WebSocket-subscription cache lookup that returns
+        # an empty nested dict unless the symbol was explicitly subscribed via
+        # `subscribe_ltp`, so it must NOT be used here.)
+        return client.quotes(symbol=symbol, exchange=exchange)
 
     try:
         # [Sprint-5] Retry transient network errors only; parse errors are not retried.

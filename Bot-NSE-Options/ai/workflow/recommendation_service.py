@@ -196,6 +196,23 @@ class RecommendationService:
         from execution.order_validator import validate_order
         approved = _ensure_scored_candidate(state.get("approved_strategy"))
         settings = _ensure_platform_settings(state.get("active_toggles"))
+
+        # Apply the user-selected lot_count to the candidate before it is
+        # validated/executed. Without this, the candidate's default
+        # lot_count=1 (set by strategies/generator.py) is always used,
+        # silently ignoring the caller-provided lot sizing.
+        if approved is not None:
+            try:
+                requested_lots = max(1, int(lot_count))
+            except (TypeError, ValueError):
+                requested_lots = 1
+            candidate_obj = approved.candidate if hasattr(approved, "candidate") else approved.get("candidate")
+            if candidate_obj is not None:
+                if hasattr(candidate_obj, "lot_count"):
+                    candidate_obj.lot_count = requested_lots
+                elif isinstance(candidate_obj, dict):
+                    candidate_obj["lot_count"] = requested_lots
+
         validation = validate_order(approved, cfg, state, settings)
 
         if not validation.valid:

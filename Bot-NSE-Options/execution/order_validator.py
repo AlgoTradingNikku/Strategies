@@ -33,13 +33,17 @@ def validate_order(
         return OrderValidationResult(valid=False, errors=["No approved strategy to validate"])
 
     # ── 1. Kill switch ────────────────────────────────────────────
+    # NOTE: risk_manager exposes `is_kill_switch_on(cfg) -> bool`, not
+    # `check_kill_switch`. This is a safety-critical gate, so a failure
+    # here must fail CLOSED (block the order) rather than be swallowed
+    # into a warning.
     try:
         import risk_manager
-        allowed, reason = risk_manager.check_kill_switch(cfg)
-        if not allowed:
-            errors.append(f"Kill switch active: {reason}")
+        if risk_manager.is_kill_switch_on(cfg):
+            errors.append("Kill switch active: risk.kill_switch is ON in config.yml")
     except Exception as exc:
-        warnings.append(f"Kill switch check skipped: {exc}")
+        log.error("[order_validator] Kill switch check failed — failing closed: %s", exc)
+        errors.append(f"Kill switch check failed (fail-closed): {exc}")
 
     # ── 2. Market hours ───────────────────────────────────────────
     market_open = True

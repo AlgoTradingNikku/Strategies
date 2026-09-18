@@ -112,7 +112,8 @@ def build_analysis_prompt(state: dict) -> str:
                 f"{l.action} {l.strike}{l.option_type}@{l.ltp}" for l in c.legs
             )
             lines += [
-                f"### Candidate #{sc.rank}: {c.strategy_type.replace('_', ' ').title()} — Score: {sc.score}/100",
+                f"### Candidate #{sc.rank}: {c.strategy_type.replace('_', ' ').title()} "
+                f"(strategy_type key: \"{c.strategy_type}\") — Score: {sc.score}/100",
                 f"  Legs: {legs_str}",
                 f"  Credit/Debit: {p.entry_credit}  Max Profit: {p.max_profit}  Max Loss: {p.max_loss}",
                 f"  Breakeven(s): {p.breakeven_lower} / {p.breakeven_upper}",
@@ -142,7 +143,8 @@ def build_analysis_prompt(state: dict) -> str:
         ' "dashboard_summary": "<one concise line for the dashboard>"}',
         "",
         "Rules:",
-        "- selected_strategy_type MUST match one of the candidate types listed above",
+        "- selected_strategy_type MUST be the exact strategy_type key shown in parentheses above "
+        "(lowercase, underscore-separated, e.g. \"bull_call_spread\") — NOT the Title Case display name",
         "- reasoning must have at least 2 bullets grounded in the supplied data",
         "- risks must have at least 1 bullet",
         "- Output ONLY the JSON object, nothing else",

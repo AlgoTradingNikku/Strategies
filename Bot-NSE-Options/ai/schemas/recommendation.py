@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
+from ai.schemas.strategy import STRATEGY_TYPES
+
 
 class LLMRecommendation(BaseModel):
     """
@@ -44,6 +46,29 @@ class LLMRecommendation(BaseModel):
     def validate_confidence(cls, v: int) -> int:
         if not 0 <= v <= 100:
             raise ValueError("confidence must be 0-100")
+        return v
+
+    @field_validator("selected_strategy_type")
+    @classmethod
+    def normalize_strategy_type(cls, v: str) -> str:
+        """
+        [Bug fix] LLM providers occasionally ignore the "use the exact key"
+        instruction and return the Title Case display name (e.g. "Bull Call
+        Spread") instead of the canonical snake_case key ("bull_call_spread").
+        Normalize any case/whitespace variant to the canonical STRATEGY_TYPES
+        identifier so validate_strategy_node's exact-match check doesn't
+        spuriously reject an otherwise-valid recommendation.
+        """
+        if not v:
+            return v
+        normalized = v.strip().lower().replace(" ", "_").replace("-", "_")
+        if normalized in STRATEGY_TYPES:
+            return normalized
+        if v == "no_trade" or normalized == "no_trade":
+            return "no_trade"
+        # Unrecognized value — leave as-is; validate_strategy_node will
+        # reject it explicitly with a clear warning instead of silently
+        # coercing to something incorrect.
         return v
 
 
